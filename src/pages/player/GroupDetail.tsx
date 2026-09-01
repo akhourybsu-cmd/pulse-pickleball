@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
+import { venueChrome } from '@/lib/venues/branding';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -33,6 +34,7 @@ import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
+import { VenueWelcome } from '@/components/community/VenueWelcome';
 
 
 
@@ -116,7 +118,7 @@ export default function GroupDetail() {
       const [groupRes, memberRes] = await Promise.all([
         supabase
           .from('groups')
-          .select(`*, venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)`)
+          .select(`*, venues:venue_id (id, name, slug, logo_url, cover_image_url, primary_color, secondary_color, tagline, welcome_headline, welcome_message)`)
           .eq('id', groupId!)
           .single(),
         supabase
@@ -203,9 +205,11 @@ export default function GroupDetail() {
   // venue joined onto the group, behind the flag, and falls back to standard
   // Pulse chrome for every other community.
   const isVenueGroup = isVenueCommunitiesEnabled() && !!group?.venue;
-  const venueColor: string | null = isVenueGroup
-    ? group?.venue?.primary_color ?? null
-    : null;
+  const chrome = useMemo(
+    () => (isVenueGroup ? venueChrome(group?.venue) : null),
+    [isVenueGroup, group?.venue],
+  );
+  const venueColor: string | null = chrome?.accent ?? null;
 
   // Memoize tab config — labeled tabs with More holding Files/Settings
   const tabs = useMemo(() => [
@@ -322,13 +326,15 @@ export default function GroupDetail() {
       <div
         className="relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
         style={{
-          // PULSE hero ink — same emerald/gold band the league + round
-          // robin heroes use, so community reads as one product.
           // PULSE ink band — same ink ramp as the rest of the app chrome
-          // (hsl 220 10%), finished with a gold hairline.
+          // (hsl 220 10%), finished with a gold hairline. A venue community
+          // swaps the two colours that carry identity — the band and the
+          // hairline — and keeps the composition, so every venue still reads
+          // as the same product.
           backgroundImage:
+            chrome?.backgroundImage ??
             'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 60%, hsl(220 12% 8%) 100%)',
-          borderBottom: '1px solid hsl(var(--primary) / 0.28)',
+          borderBottom: `1px solid ${chrome?.border ?? 'hsl(var(--primary) / 0.28)'}`,
         }}
       >
         {/* Gold hairline + ambient bloom — broadcast framing. */}
@@ -336,14 +342,15 @@ export default function GroupDetail() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
           style={{
-            background:
-              'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.9), transparent)',
+            background: `linear-gradient(90deg, transparent, ${
+              chrome?.accent ?? 'hsl(var(--primary) / 0.9)'
+            }, transparent)`,
           }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full blur-3xl"
-          style={{ background: 'hsl(var(--primary) / 0.16)' }}
+          style={{ background: chrome?.bloom ?? 'hsl(var(--primary) / 0.16)' }}
         />
         {/* Court-line watermark — bleeds off the top-right corner. */}
         <svg
@@ -373,14 +380,26 @@ export default function GroupDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
+          {isVenueGroup && group.venue?.logo_url && (
+            <img
+              src={group.venue.logo_url}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/20"
+            />
+          )}
+
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
-            <div
-              className="h-[3px] w-10 mt-1.5 rounded-full"
-              style={{ background: 'hsl(var(--primary))' }}
-            />
+            {isVenueGroup && group.venue?.tagline ? (
+              <p className="mt-0.5 truncate text-xs text-white/70">{group.venue.tagline}</p>
+            ) : (
+              <div
+                className="h-[3px] w-10 mt-1.5 rounded-full"
+                style={{ background: chrome?.accent ?? 'hsl(var(--primary))' }}
+              />
+            )}
           </div>
 
           {/* Right-side action cluster — white on the dark band. */}
@@ -464,7 +483,9 @@ export default function GroupDetail() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div
           className="border-b border-border/30 bg-background shrink-0 relative"
-          style={isVenueGroup ? { borderColor: `${venueColor}20` } : undefined}
+          style={
+            chrome?.accentHex ? { borderColor: `${chrome.accentHex}20` } : undefined
+          }
         >
           <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
             {tabs.map((tab) => {
@@ -531,6 +552,13 @@ export default function GroupDetail() {
                   <EnablePushBanner
                     dismissKey={`pulse.enablePushBanner.group.${groupId}`}
                     contextLabel={group.name}
+                  />
+                )}
+                {isVenueGroup && (
+                  <VenueWelcome
+                    headline={group.venue?.welcome_headline ?? null}
+                    message={group.venue?.welcome_message ?? null}
+                    accent={chrome?.accentHex ?? null}
                   />
                 )}
                 <GroupFeed 

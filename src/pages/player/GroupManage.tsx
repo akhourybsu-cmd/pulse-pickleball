@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, Shield, Users, Lock, AlertTriangle, Save } from 'lucide-react';
+import { ArrowLeft, Settings, Shield, Users, Lock, AlertTriangle, Save, Store } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,8 @@ import { AdminPrivacyTab } from '@/components/community/admin/AdminPrivacyTab';
 import { AdminPermissionsTab } from '@/components/community/admin/AdminPermissionsTab';
 import { AdminRolesTab } from '@/components/community/admin/AdminRolesTab';
 import { AdminDangerZoneTab } from '@/components/community/admin/AdminDangerZoneTab';
+import { AdminVenueTab } from '@/components/community/admin/AdminVenueTab';
+import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import type { Group } from '@/hooks/useGroups';
 
 export default function GroupManage() {
@@ -290,8 +292,15 @@ export default function GroupManage() {
     );
   }
 
+  // A venue community gets one extra tab: the venue's own identity. Gated on
+  // the flag AND on the group actually having a venue, so ordinary communities
+  // are untouched and existing venue groups degrade to standard settings when
+  // the flag is off.
+  const showsVenueTab = isVenueCommunitiesEnabled() && !!group?.venue_id;
+
   const TABS: { value: string; label: string; icon: typeof Settings }[] = [
     { value: 'general', label: 'General', icon: Settings },
+    ...(showsVenueTab ? [{ value: 'venue', label: 'Venue', icon: Store }] : []),
     { value: 'privacy', label: 'Privacy', icon: Lock },
     { value: 'permissions', label: 'Permissions', icon: Shield },
     { value: 'roles', label: 'Roles', icon: Users },
@@ -383,6 +392,16 @@ export default function GroupManage() {
             onIconUrlChange={setIconUrl}
           />
         </TabsContent>
+
+        {showsVenueTab && (
+          <TabsContent value="venue" className="mt-6">
+            <AdminVenueTab
+              groupId={groupId!}
+              venueId={group.venue_id!}
+              isVerified={!!group.is_venue_verified}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="privacy" className="mt-6">
           <AdminPrivacyTab

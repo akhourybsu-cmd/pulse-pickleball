@@ -29,8 +29,12 @@ export interface Group {
     name: string;
     slug: string | null;
     logo_url: string | null;
+    cover_image_url: string | null;
     primary_color: string | null;
     secondary_color: string | null;
+    tagline: string | null;
+    welcome_headline: string | null;
+    welcome_message: string | null;
   } | null;
 }
 
@@ -90,7 +94,7 @@ export function useGroups() {
           *,
           groups (
             *,
-            venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)
+            venues:venue_id (id, name, slug, logo_url, cover_image_url, primary_color, secondary_color, tagline, welcome_headline, welcome_message)
           )
         `)
         .eq('user_id', currentUserId)
@@ -262,7 +266,7 @@ export function useGroups() {
       // Return the created group so callers can navigate straight into it.
       const { data: group } = await supabase
         .from('groups')
-        .select('*, venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)')
+        .select('*, venues:venue_id (id, name, slug, logo_url, cover_image_url, primary_color, secondary_color, tagline, welcome_headline, welcome_message)')
         .eq('id', groupId)
         .single();
 
