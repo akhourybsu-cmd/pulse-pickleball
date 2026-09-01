@@ -158,6 +158,7 @@ const Community = lazy(() => import("./pages/player/Community"));
 const GroupRoute = lazy(() => import("./pages/player/GroupRoute"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
+const VenuePreview = lazy(() => import("./pages/dev/VenuePreview"));
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -315,6 +316,11 @@ const AppContent = () => {
       <PWAInstallPrompt />
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* Design harness for the venue surfaces. Not registered in a
+              production build, so it cannot ship. */}
+          {import.meta.env.DEV && (
+            <Route path="/__venue-preview" element={<VenuePreview />} />
+          )}
           {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />

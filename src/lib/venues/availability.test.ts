@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDayGrid,
+  courtBlocks,
   courtsFreeAt,
   freeRuns,
   intervalOf,
@@ -341,5 +342,58 @@ describe('selectionRange', () => {
   it('is null for a court that is no longer in the grid', () => {
     const grid = buildDayGrid(courts, [], DAY, GRID);
     expect(selectionRange(grid, { courtId: 'gone', from: 0, to: 0 })).toBeNull();
+  });
+});
+
+describe('courtBlocks', () => {
+  const courts = [court('c1', 1)];
+
+  it('merges the slots of one booking into a single block', () => {
+    const grid = buildDayGrid(courts, [booking('a', 'c1', 9, 12)], DAY, GRID);
+    const blocks = courtBlocks(grid[0]);
+
+    const booked = blocks.filter((b) => b.reservation);
+    expect(booked).toHaveLength(1);
+    expect(booked[0]).toMatchObject({ fromIndex: 1, toIndex: 3 });
+  });
+
+  it('does not merge two different bookings that happen to be adjacent', () => {
+    const grid = buildDayGrid(
+      courts,
+      [booking('a', 'c1', 8, 10), booking('b', 'c1', 10, 12)],
+      DAY,
+      GRID,
+    );
+    const booked = courtBlocks(grid[0]).filter((b) => b.reservation);
+    expect(booked.map((b) => b.reservation!.id)).toEqual(['a', 'b']);
+  });
+
+  /** Each open slot must stay individually tappable. */
+  it('keeps bookable slots separate', () => {
+    const grid = buildDayGrid(courts, [], DAY, GRID);
+    const blocks = courtBlocks(grid[0]);
+    expect(blocks).toHaveLength(4);
+    expect(blocks.every((b) => b.bookable && b.fromIndex === b.toIndex)).toBe(true);
+  });
+
+  it('merges dead space, which has nothing to differentiate', () => {
+    const grid = buildDayGrid(courts, [], DAY, { ...GRID, now: at(11) });
+    const blocks = courtBlocks(grid[0]);
+    // 8-11 is past and merges; 11-12 is still bookable.
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toMatchObject({ fromIndex: 0, toIndex: 2, bookable: false });
+    expect(blocks[1]).toMatchObject({ fromIndex: 3, toIndex: 3, bookable: true });
+  });
+
+  it('covers every slot exactly once', () => {
+    const grid = buildDayGrid(courts, [booking('a', 'c1', 9, 11)], DAY, GRID);
+    const covered = courtBlocks(grid[0]).flatMap((b) =>
+      Array.from({ length: b.toIndex - b.fromIndex + 1 }, (_, i) => b.fromIndex + i),
+    );
+    expect(covered).toEqual([0, 1, 2, 3]);
+  });
+
+  it('handles a column with no slots', () => {
+    expect(courtBlocks({ court: courts[0], slots: [] })).toEqual([]);
   });
 });

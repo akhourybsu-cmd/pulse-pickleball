@@ -70,7 +70,9 @@ function CourtCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         live && 'border-primary/40',
         !live && !closed && 'border-border hover:border-primary/30',
-        closed && 'border-border/60 bg-muted/40',
+        // Dashed, not just dimmed: a muted fill nearly vanishes against a dark
+        // card, so an out-of-service court read the same as an open one.
+        closed && 'border-dashed border-muted-foreground/40 bg-muted/40',
       )}
       style={live && accent ? { borderColor: `${accent}66` } : undefined}
     >
@@ -81,7 +83,7 @@ function CourtCard({
           'absolute inset-y-0 left-0 w-[3px]',
           live && 'bg-primary',
           !live && !closed && 'bg-emerald-500/70',
-          closed && 'bg-muted-foreground/30',
+          closed && 'bg-muted-foreground/50',
         )}
         style={live && accent ? { backgroundColor: accent } : undefined}
       />
@@ -96,7 +98,7 @@ function CourtCard({
       <div className="mt-2 min-h-[2.75rem] pl-1.5">
         {live && current ? (
           <>
-            <p className="truncate text-xs font-medium text-foreground">
+            <p className="line-clamp-1 text-xs font-medium text-foreground">
               {current.title || 'In play'}
             </p>
             <p className="mt-0.5 text-lg font-bold leading-none tabular-nums">
@@ -105,16 +107,23 @@ function CourtCard({
             </p>
           </>
         ) : closed ? (
-          <p className="truncate text-xs text-muted-foreground">
-            {current?.title || 'Out of service'}
-          </p>
+          <>
+            <p className="truncate text-xs font-medium text-foreground">
+              {current?.title || 'Out of service'}
+            </p>
+            {minutesLeft !== null && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Back in {formatDuration(minutesLeft)}
+              </p>
+            )}
+          </>
         ) : (
           <>
             <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Free</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
               {next && minutesUntilNext !== null
                 ? `${formatSlotTime(new Date(next.start_time))} · ${next.title || 'Booked'}`
-                : 'Rest of day'}
+                : 'Free rest of day'}
             </p>
           </>
         )}
@@ -153,7 +162,7 @@ function StatePill({ state }: { state: CourtStatus['state'] }) {
       )}
     >
       <Icon className="h-3 w-3" />
-      <span className="hidden sm:inline">{label}</span>
+      {label}
     </span>
   );
 }

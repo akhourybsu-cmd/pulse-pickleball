@@ -164,6 +164,11 @@ function SessionRow({
   const urgent = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= URGENT_AT;
   const past = (end ?? start) < new Date();
 
+  const formatLabel = FORMAT_LABEL[session.event_format] ?? 'Event';
+  const titleStatesFormat = session.title
+    .toLowerCase()
+    .includes(formatLabel.toLowerCase());
+
   const Row = onPick ? 'button' : 'div';
 
   return (
@@ -200,11 +205,13 @@ function SessionRow({
       <p className="mt-1 truncate text-base font-bold leading-tight">{session.title}</p>
 
       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
+        {/* The kind chip is dropped when the title already says it — "Open Play"
+            twice on one row is clutter, not information. */}
+        {!titleStatesFormat && (
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
             {FORMAT_LABEL[session.event_format] ?? 'Event'}
           </span>
-        </span>
+        )}
         {venueName && (
           <span className="inline-flex min-w-0 items-center gap-1">
             <MapPin className="h-3 w-3 shrink-0" />

@@ -11,9 +11,10 @@ import {
   selectionRange,
   timeList,
   toggleSlot,
+  courtBlocks,
+  type CourtBlock,
   type CourtColumn,
   type SlotSelection,
-  type Slot,
 } from '@/lib/venues/availability';
 import { DayStrip } from './DayStrip';
 
@@ -91,7 +92,10 @@ export function VenueBookingGrid({
     <div className="space-y-3">
       <DayStrip value={day} onChange={onDayChange} accent={accent} />
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          Availability
+        </span>
         <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
           <ViewButton
             active={effectiveMode === 'times'}
@@ -251,17 +255,23 @@ function TimesView({
         entry.kind === 'unavailable' ? (
           // One band instead of a run of identical empty rows. A venue booked
           // solid 6-8pm should say so once.
+          // Deliberately slight: this is dead time, and giving it the same
+          // weight as a bookable row pushed the first real row off the screen.
           <div
             key={`gap-${entry.fromIndex}`}
-            className="rounded-lg border border-border/50 bg-muted/30 px-3 py-3 text-center"
+            className="flex items-center gap-3 px-3 py-1.5"
           >
-            <p className="text-sm font-semibold tabular-nums text-muted-foreground">
-              {formatSlotTime(entry.start)} – {formatSlotTime(entry.end)}
-            </p>
-            <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-16 shrink-0 text-xs tabular-nums text-muted-foreground/70">
+              {formatSlotTime(entry.start)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
               {!entry.booked && <MoonStar className="h-3 w-3" />}
-              {entry.booked ? 'No courts available' : 'Closed'}
-            </p>
+              {entry.booked ? 'Fully booked' : 'Closed'}
+              <span className="text-muted-foreground/50">
+                · until {formatSlotTime(entry.end)}
+              </span>
+            </span>
+            <span aria-hidden className="h-px flex-1 bg-border/60" />
           </div>
         ) : (
           <div
@@ -272,7 +282,10 @@ function TimesView({
               {formatSlotTime(entry.start)}
             </span>
 
-            <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                Court
+              </span>
               {entry.free.map((col) => {
                 const picked = isSelected(selection, col.court.id, entry.index);
                 return (
@@ -296,7 +309,7 @@ function TimesView({
                         : undefined
                     }
                   >
-                    {col.court.name ?? `Court ${col.court.court_number}`}
+                    {shortCourtName(col.court)}
                   </button>
                 );
               })}
@@ -314,7 +327,15 @@ function TimesView({
   );
 }
 
-/** The real grid: courts across, time down. */
+/**
+ * The real grid: courts across, time down.
+ *
+ * A CSS grid rather than rows of cells, so a booking is ONE block spanning its
+ * real height instead of its title repeated once per hour. Free slots are left
+ * genuinely empty — printing "Open" sixty times down a quiet afternoon is what
+ * made this read as a spreadsheet rather than a calendar. The affordance
+ * appears on hover instead.
+ */
 function CourtsView({
   grid,
   canBook,
@@ -329,126 +350,187 @@ function CourtsView({
   onPickSession?: (sessionId: string) => void;
 }) {
   const slotCount = grid[0]?.slots.length ?? 0;
+  if (slotCount === 0) return null;
+
+  const ROW = 44;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <div className="min-w-max">
-        {/* Court headers */}
-        <div className="flex border-b border-border bg-muted/40">
-          <div className="w-16 shrink-0 px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            Time
-          </div>
-          {grid.map((col) => (
-            <div
-              key={col.court.id}
-              className="w-[104px] shrink-0 border-l border-border px-2 py-2 text-center"
-            >
-              <div className="truncate text-xs font-semibold">
-                {col.court.name ?? `Court ${col.court.court_number}`}
-              </div>
-              {col.court.is_premium && (
-                <Badge variant="outline" className="mt-0.5 h-4 px-1 text-[9px]">
-                  Premium
-                </Badge>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {Array.from({ length: slotCount }, (_, i) => (
-          <div key={i} className="flex border-b border-border/50 last:border-0">
-            <div className="w-16 shrink-0 px-2 py-1.5 text-xs font-semibold tabular-nums text-muted-foreground">
-              {formatSlotTime(grid[0].slots[i].start)}
-            </div>
-            {grid.map((col) => (
-              <GridCell
-                key={col.court.id}
-                slot={col.slots[i]}
-                canBook={canBook}
-                accent={accent}
-                onClick={() => onPickSlot(col.court.id, col.slots[i].start)}
-                onPickSession={onPickSession}
-              />
-            ))}
+    <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <div
+        className="grid min-w-max"
+        style={{
+          // Columns stretch to fill a wide screen rather than leaving a dead
+          // zone to the right of a narrow fixed table.
+          gridTemplateColumns: `56px repeat(${grid.length}, minmax(104px, 1fr))`,
+          gridTemplateRows: `auto repeat(${slotCount}, ${ROW}px)`,
+        }}
+      >
+        {/* Corner + court headers */}
+        <div className="sticky left-0 z-10 border-b border-r border-border bg-muted/50" />
+        {grid.map((col) => (
+          <div
+            key={col.court.id}
+            className="flex flex-col items-center justify-center gap-0.5 border-b border-border bg-muted/50 px-2 py-2"
+          >
+            <span className="truncate text-xs font-semibold">
+              {col.court.name ?? `Court ${col.court.court_number}`}
+            </span>
+            {col.court.is_premium && (
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                Premium
+              </span>
+            )}
           </div>
         ))}
+
+        {/* Time gutter */}
+        {grid[0].slots.map((slot, i) => (
+          <div
+            key={`t-${i}`}
+            className="sticky left-0 z-10 flex items-start justify-end border-r border-border bg-card pr-2 pt-1"
+            style={{ gridColumn: 1, gridRow: i + 2 }}
+          >
+            <span className="whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground">
+              {compactTime(slot.start)}
+            </span>
+          </div>
+        ))}
+
+        {/* Hour rules, drawn once across the whole width rather than per cell */}
+        {grid[0].slots.map((_, i) => (
+          <div
+            key={`r-${i}`}
+            aria-hidden
+            className="border-b border-border/40"
+            style={{ gridColumn: `2 / span ${grid.length}`, gridRow: i + 2 }}
+          />
+        ))}
+
+        {/* Blocks */}
+        {grid.map((col, colIndex) =>
+          courtBlocks(col).map((block) => (
+            <GridBlock
+              key={`${col.court.id}-${block.fromIndex}`}
+              block={block}
+              column={colIndex + 2}
+              canBook={canBook}
+              accent={accent}
+              onBook={() => onPickSlot(col.court.id, col.slots[block.fromIndex].start)}
+              onOpenSession={
+                onPickSession && block.reservation
+                  ? () => onPickSession(block.reservation!.id)
+                  : undefined
+              }
+            />
+          )),
+        )}
       </div>
     </div>
   );
 }
 
-function GridCell({
-  slot,
+/**
+ * "1" from "Court 1" — a row of chips that all begin with the same word wastes
+ * the width it needs to avoid wrapping. Anything not of that shape is left
+ * alone, so a court actually called "Stadium" still reads as itself.
+ */
+function shortCourtName(court: CourtColumn['court']): string {
+  const name = court.name ?? (court.court_number != null ? `Court ${court.court_number}` : '');
+  const match = /^court\s+(\S.*)$/i.exec(name.trim());
+  return match ? match[1] : name;
+}
+
+/** "8 AM" / "12:30 PM" — one line, so rows keep a constant height. */
+function compactTime(d: Date): string {
+  const minutes = d.getMinutes();
+  return d
+    .toLocaleTimeString([], {
+      hour: 'numeric',
+      ...(minutes === 0 ? {} : { minute: '2-digit' }),
+    })
+    .replace(/\s?([AP])M/i, ' $1M');
+}
+
+function GridBlock({
+  block,
+  column,
   canBook,
   accent,
-  onClick,
-  onPickSession,
+  onBook,
+  onOpenSession,
 }: {
-  slot: Slot;
+  block: CourtBlock;
+  column: number;
   canBook: boolean;
   accent?: string | null;
-  onClick: () => void;
-  onPickSession?: (sessionId: string) => void;
+  onBook: () => void;
+  onOpenSession?: () => void;
 }) {
-  if (slot.reservation) {
-    const closed = slot.reservation.event_format === 'maintenance';
-    const Cell = onPickSession ? 'button' : 'div';
+  const span = block.toIndex - block.fromIndex + 1;
+  const position = { gridColumn: column, gridRow: `${block.fromIndex + 2} / span ${span}` };
+
+  if (block.reservation) {
+    const closed = block.reservation.event_format === 'maintenance';
+    const Tag = onOpenSession ? 'button' : 'div';
     return (
-      <Cell
-        {...(onPickSession
-          ? {
-              type: 'button' as const,
-              onClick: () => onPickSession(slot.reservation!.id),
-            }
-          : {})}
-        className={cn(
-          'w-[104px] shrink-0 border-l border-border px-1.5 py-1.5 text-left',
-          onPickSession && 'transition-colors hover:bg-muted/60',
-        )}
-        title={slot.reservation.title ?? undefined}
+      <Tag
+        {...(onOpenSession ? { type: 'button' as const, onClick: onOpenSession } : {})}
+        style={position}
+        className="p-[3px] text-left"
+        title={block.reservation.title ?? undefined}
       >
         <div
           className={cn(
-            'truncate rounded-md px-1.5 py-1 text-[11px] font-medium',
+            'flex h-full flex-col justify-start overflow-hidden rounded-md px-2 py-1.5',
+            'border-l-2 text-[11px] font-medium leading-tight',
             closed
-              ? 'bg-muted text-muted-foreground line-through decoration-1'
-              : 'bg-primary/10',
+              ? 'border-l-muted-foreground/40 bg-muted text-muted-foreground'
+              : 'border-l-primary bg-primary/10 text-foreground',
+            onOpenSession && 'transition-opacity hover:opacity-80',
           )}
-          style={!closed && accent ? { backgroundColor: `${accent}1f`, color: accent } : undefined}
+          style={
+            !closed && accent
+              ? { backgroundColor: `${accent}1a`, borderLeftColor: accent }
+              : undefined
+          }
         >
-          {slot.reservation.title || (closed ? 'Closed' : 'Booked')}
+          <span className="truncate font-semibold">
+            {block.reservation.title || (closed ? 'Closed' : 'Booked')}
+          </span>
         </div>
-      </Cell>
+      </Tag>
     );
   }
 
-  if (!slot.bookable) {
+  // Dead space: outside hours or already gone. Reads as inert, says nothing.
+  if (!block.bookable) {
     return (
-      <div className="w-[104px] shrink-0 border-l border-border bg-muted/30 px-1.5 py-1.5">
-        <div className="h-[26px]" />
-      </div>
+      // Tinted from the foreground rather than `muted`, so it darkens on a
+      // light theme and lightens on a dark one. A muted fill was invisible
+      // against a dark card, making unbookable time look bookable.
+      <div aria-hidden style={position} className="bg-foreground/[0.05]" />
     );
   }
 
+  // Free and bookable. Deliberately empty until hovered — the whole column
+  // saying "Open" is noise, and the emptiness is what makes booked blocks read.
   return (
     <button
       type="button"
       disabled={!canBook}
-      onClick={onClick}
+      onClick={onBook}
+      style={position}
       className={cn(
-        'w-[104px] shrink-0 border-l border-border px-1.5 py-1.5 text-left transition-colors',
-        canBook ? 'hover:bg-primary/5' : 'cursor-default',
+        'group m-[3px] rounded-md transition-colors',
+        canBook ? 'hover:bg-primary/10' : 'cursor-default',
       )}
-      aria-label={`Book ${formatSlotTime(slot.start)}`}
+      aria-label={canBook ? 'Book this slot' : undefined}
     >
-      <div
-        className={cn(
-          'flex h-[26px] items-center justify-center rounded-md border border-dashed text-[11px] font-medium',
-          canBook ? 'border-border text-muted-foreground' : 'border-border/50 text-muted-foreground/60',
-        )}
-      >
-        {canBook ? 'Open' : '—'}
-      </div>
+      {canBook && (
+        <span className="flex h-full items-center justify-center text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+          +
+        </span>
+      )}
     </button>
   );
 }

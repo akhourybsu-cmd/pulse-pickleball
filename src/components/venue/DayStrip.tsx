@@ -48,7 +48,7 @@ export function DayStrip({ value, onChange, days = 14, accent }: DayStripProps) 
   return (
     <div
       ref={scroller}
-      className="-mx-4 overflow-x-auto border-b border-border bg-card px-4"
+      className="-mx-4 overflow-x-auto border-b border-border px-4"
       role="tablist"
       aria-label="Choose a day"
     >

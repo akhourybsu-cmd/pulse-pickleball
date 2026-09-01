@@ -362,3 +362,57 @@ export function selectionRange(
 
   return { start, end, minutes: Math.round((end.getTime() - start.getTime()) / 60000) };
 }
+
+/**
+ * Contiguous blocks down one court's column.
+ *
+ * The grid used to draw one cell per slot, so a booking covering 12:00–18:00
+ * printed its title six times and a free afternoon printed the word "Open"
+ * down the whole column. Calendars don't look like that, and it is the single
+ * loudest thing that made the grid read as a spreadsheet.
+ *
+ * Slots merge into a block when they belong to the SAME session, so a booking
+ * renders once and spans its real height. Unavailable-but-unbooked slots (past,
+ * or outside opening hours) merge too, since they are undifferentiated dead
+ * space. Bookable slots stay separate — each one has to remain individually
+ * tappable.
+ */
+export interface CourtBlock {
+  fromIndex: number;
+  /** Inclusive. */
+  toIndex: number;
+  reservation: Reservation | null;
+  bookable: boolean;
+}
+
+export function courtBlocks(column: CourtColumn): CourtBlock[] {
+  const blocks: CourtBlock[] = [];
+
+  column.slots.forEach((slot, index) => {
+    const previous = blocks[blocks.length - 1];
+
+    const mergeable =
+      previous !== undefined &&
+      previous.toIndex === index - 1 &&
+      // Same session, or both dead space. Never merge bookable slots.
+      ((slot.reservation !== null && previous.reservation?.id === slot.reservation.id) ||
+        (slot.reservation === null &&
+          previous.reservation === null &&
+          !slot.bookable &&
+          !previous.bookable));
+
+    if (mergeable) {
+      previous.toIndex = index;
+      return;
+    }
+
+    blocks.push({
+      fromIndex: index,
+      toIndex: index,
+      reservation: slot.reservation,
+      bookable: slot.bookable,
+    });
+  });
+
+  return blocks;
+}
