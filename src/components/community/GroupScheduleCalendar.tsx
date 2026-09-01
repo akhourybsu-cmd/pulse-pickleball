@@ -199,16 +199,46 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
         })}
       </div>
 
-      {selectedDate && (
-        <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs">
+      <div className="relative mt-3 pt-3 border-t border-border/40 flex items-center justify-between gap-2 text-xs">
+        {selectedDate ? (
           <span className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{format(selectedDate, 'EEE, MMM d')}</span>
+            Showing{' '}
+            <span className="font-semibold text-foreground">
+              {format(selectedDate, 'EEE, MMM d')}
+            </span>
           </span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onSelectDate(null)}>
-            Clear
+        ) : (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            Tap a day to filter
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-full px-3 text-xs font-semibold"
+            onClick={() => {
+              const now = new Date();
+              setPivot(startOfMonth(now));
+              onSelectDate(now);
+            }}
+          >
+            Today
           </Button>
+          {selectedDate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full px-3 text-xs text-muted-foreground"
+              onClick={() => onSelectDate(null)}
+            >
+              Clear
+            </Button>
+          )}
         </div>
-      )}
+      </div>
+
     </div>
   );
 }
