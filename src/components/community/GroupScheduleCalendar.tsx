@@ -81,24 +81,40 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
 
   const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+  const monthEventCount = useMemo(
+    () => events.filter((e) => isSameMonth(parseISO(e.start_time), pivot)).length,
+    [events, pivot],
+  );
+
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-3 sm:p-4">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-3 backdrop-blur-sm shadow-[0_12px_36px_-26px_hsl(var(--foreground)/0.5)] sm:p-4">
+      {/* Ambient bloom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-16 -right-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+      />
+
       {/* Header — month label + nav */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-3">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 rounded-full border border-border/50"
           onClick={() => setPivot((p) => subMonths(p, 1))}
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="text-sm font-semibold tracking-tight">{monthLabel}</div>
+        <div className="flex flex-col items-center">
+          <div className="text-sm font-bold uppercase tracking-[0.14em]">{monthLabel}</div>
+          <div className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+            {monthEventCount} {monthEventCount === 1 ? 'event' : 'events'}
+          </div>
+        </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 rounded-full border border-border/50"
           onClick={() => setPivot((p) => addMonths(p, 1))}
           aria-label="Next month"
         >
@@ -107,16 +123,17 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
       </div>
 
       {/* Weekday header row */}
-      <div className="grid grid-cols-7 mb-1.5">
+      <div className="relative grid grid-cols-7 mb-1.5 border-b border-border/40 pb-1.5">
         {weekdays.map((w, i) => (
           <div
             key={i}
-            className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-center"
+            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 text-center"
           >
             {w}
           </div>
         ))}
       </div>
+
 
       {/* Day grid */}
       <div className="grid grid-cols-7 gap-1">
