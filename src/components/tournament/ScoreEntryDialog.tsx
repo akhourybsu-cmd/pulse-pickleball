@@ -196,9 +196,18 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
       // the final are no-ops. Failures here must not lose the saved score, so
       // they surface as their own toast rather than failing the submit.
       const winner = winnerOf(match.team1_id, match.team2_id, data.team1_score, data.team2_score);
+      // In double elimination the loser drops into the losers bracket rather
+      // than exiting, so advancement needs both sides.
+      const loser = winner
+        ? (winner === match.team1_id ? match.team2_id : match.team1_id)
+        : null;
       if (winner) {
         try {
-          const outcome = await advanceWinner({ matchId: match.id, winnerTeamId: winner });
+          const outcome = await advanceWinner({
+            matchId: match.id,
+            winnerTeamId: winner,
+            loserTeamId: loser,
+          });
           if (outcome.advanced && outcome.downstreamDirty) {
             toast({
               title: "Later round already played",

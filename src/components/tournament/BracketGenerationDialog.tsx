@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import { generateSingleElimination } from "@/lib/tournaments/singleElimination";
+import { generateDoubleElimination } from "@/lib/tournaments/doubleElimination";
 import { bracketSizeFor, byeCountFor } from "@/lib/tournaments/seeding";
 
 const bracketSchema = z.object({
@@ -94,19 +95,28 @@ export function BracketGenerationDialog({
       .eq("division_id", divisionId);
 
     // Seeded order — teams already come back ordered by seed_number.
-    const draw = generateSingleElimination(teams.map((t) => t.id));
+    const seeded = teams.map((t) => t.id);
+    const isDouble = data.bracket_type === "double_elimination";
+    const draw = isDouble
+      ? generateDoubleElimination(seeded)
+      : generateSingleElimination(seeded);
 
-    const matches = draw.matches.map((m) => ({
+    const matches = draw.matches.map((m: any) => ({
       division_id: divisionId,
       round_number: m.round,
       match_number: m.matchNumber,
       team1_id: m.teamA,
       team2_id: m.teamB,
+      // Winners/losers/grand_final. Single elimination tags every match
+      // 'winners' so position lookups stay unambiguous going forward.
+      bracket: isDouble ? m.bracket : "winners",
       status: "scheduled",
     }));
 
-    // Insert matches
-    const { error: insertError } = await supabase
+    // Insert matches. Cast: the `bracket` column lands with migration
+    // 20260901120000 and isn't in the generated types until they're
+    // regenerated against the live database.
+    const { error: insertError } = await (supabase as any)
       .from("tournaments_matches")
       .insert(matches);
 
@@ -120,7 +130,7 @@ export function BracketGenerationDialog({
       toast({
         title: "Bracket generated",
         description:
-          `${draw.rounds} rounds on a ${draw.bracketSize}-team bracket` +
+          `${draw.bracketSize}-team ${isDouble ? "double" : "single"} elimination` +
           (draw.byes > 0 ? `, ${draw.byes} first-round bye${draw.byes === 1 ? "" : "s"}` : "") +
           `. ${matches.length} match slots created.`,
       });
@@ -170,15 +180,16 @@ export function BracketGenerationDialog({
                       <SelectItem value="single_elimination">
                         Single Elimination
                       </SelectItem>
-                      <SelectItem value="double_elimination" disabled>
-                        Double Elimination (coming soon)
+                      <SelectItem value="double_elimination">
+                        Double Elimination
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Single elimination: one loss and you're out. Seeds are drawn
-                    1-vs-N so the top seeds meet as late as possible. Double
-                    elimination needs a losers bracket and isn't wired up yet.
+                    Single elimination: one loss and you're out. Double: losers
+                    drop into a second bracket and need two losses to be
+                    eliminated. Seeds are drawn 1-vs-N so the top seeds meet as
+                    late as possible.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
