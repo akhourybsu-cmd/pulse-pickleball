@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, CalendarClock, CalendarDays, LayoutGrid,
   MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone, Gauge,
-  Ticket, ChevronRight,
+  Ticket, ChevronRight, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,9 +20,14 @@ import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { DayStrip } from '@/components/venue/DayStrip';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
-import { VenueWelcome } from '@/components/community/VenueWelcome';
+import { VenueHome } from '@/components/venue/VenueHome';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
+import { GroupChat } from '@/components/community/GroupChat';
+import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { useGroupRealtime } from '@/hooks/useGroupRealtime';
+import { useGroupPosts } from '@/hooks/useGroupPosts';
+import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 
 /**
  * A venue's community.
@@ -51,9 +56,45 @@ export default function VenueCommunity() {
     return d;
   });
 
+  const [activeTab, setActiveTab] = useState('home');
+  // Chat and feed are expensive and subscribe to realtime, so they mount only
+  // once visited and then stay mounted — remounting a chat loses its scroll
+  // position and re-runs its queries every time you glance at another tab.
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['home']));
+
+  const openTab = (tab: string) => {
+    setActiveTab(tab);
+    setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
+  };
+
+  // One presence subscription for the page, shared with chat. Two would
+  // double-count who is online.
+  const { onlineCount, isConnected } = useGroupPresence(groupId);
+  useGroupRealtime(groupId);
+
+  // The feed's composer. Without this the venue feed rendered its post CTAs
+  // and none of them did anything — a community you cannot post in.
+  const { createPost } = useGroupPosts(groupId || '');
+  const [quickPostOpen, setQuickPostOpen] = useState(false);
+  const [quickPostType, setQuickPostType] = useState<PostType>('post');
+
+  const openQuickPost = (type: PostType) => {
+    setQuickPostType(type);
+    setQuickPostOpen(true);
+  };
+
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
   const [bookingMinutes, setBookingMinutes] = useState<number | null>(null);
+
+  // Snapshot the viewer's last-read marker BEFORE anything updates it, so the
+  // chat's unread divider reflects where they actually left off.
+  const lastReadRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastReadRef.current === null && membership?.last_read_at) {
+      lastReadRef.current = membership.last_read_at;
+    }
+  }, [membership?.last_read_at]);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
@@ -209,160 +250,162 @@ export default function VenueCommunity() {
         </div>
       </header>
 
-      <Tabs defaultValue={hasCourts ? 'book' : 'home'} className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b border-border bg-card p-1">
-          <VenueTab value="home" icon={MapPin}>Home</VenueTab>
-          {hasCourts && <VenueTab value="book" icon={LayoutGrid}>Book</VenueTab>}
-          <VenueTab value="play" icon={CalendarDays}>Play</VenueTab>
-          <VenueTab value="feed" icon={MessageSquare}>Feed</VenueTab>
-          <VenueTab value="more" icon={MoreHorizontal}>More</VenueTab>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={openTab} className="flex min-h-0 flex-1 flex-col">
+        {/* A scrolling strip rather than a squeezed row: six destinations do not
+            fit a phone at a readable size, and shrinking them all to fit is how
+            tab bars become unreadable. */}
+        <div className="border-b border-border bg-card">
+          <div className="mx-auto max-w-[1400px] overflow-x-auto px-2 sm:px-4">
+            <TabsList className="h-auto w-max justify-start gap-1 rounded-none border-0 bg-transparent p-1.5">
+              <VenueTab value="home" icon={MapPin}>Home</VenueTab>
+              {hasCourts && <VenueTab value="book" icon={LayoutGrid}>Book</VenueTab>}
+              <VenueTab value="play" icon={CalendarDays}>Play</VenueTab>
+              <VenueTab value="feed" icon={MessageSquare}>Feed</VenueTab>
+              <VenueTab value="chat" icon={MessageCircle}>Chat</VenueTab>
+              <VenueTab value="more" icon={MoreHorizontal}>More</VenueTab>
+            </TabsList>
+          </div>
+        </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <TabsContent value="home" className="mt-0 space-y-4">
-            <VenueWelcome
-              headline={venue?.welcome_headline ?? null}
-              message={venue?.welcome_message ?? null}
-              accent={chrome?.accentHex ?? null}
-            />
-
-            {nextUp.length > 0 && (
-              <section className="space-y-2">
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                  Coming up
-                </h2>
-                {nextUp.map((p) => (
-                  <div key={p.id} className="rounded-xl border border-border bg-card p-3">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">{p.title}</span>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {formatSlotTime(new Date(p.start_time))}
-                      </span>
-                    </div>
-                    {p.description && (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {p.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </section>
-            )}
-
-            {(venue?.city || venue?.phone || venue?.website_url) && (
-              <section className="space-y-1.5 rounded-xl border border-border bg-card p-3">
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                  About
-                </h2>
-                {venue.city && (
-                  <ContactRow icon={MapPin}>
-                    {[venue.city, venue.state].filter(Boolean).join(', ')}
-                  </ContactRow>
-                )}
-                {venue.phone && <ContactRow icon={Phone}>{venue.phone}</ContactRow>}
-                <div className="pt-1">
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                    Hours
-                  </p>
-                  {/* Today first, so the answer most people want is the first
-                      line rather than buried under Sunday. */}
-                  {Array.from({ length: 7 }, (_, i) => (new Date().getDay() + i) % 7).map((d) => (
-                    <div key={d} className="flex justify-between gap-3 text-xs">
-                      <span className={cn('text-muted-foreground', d === new Date().getDay() && 'font-semibold text-foreground')}>
-                        {DAY_NAMES[d]}
-                      </span>
-                      <span className={cn('tabular-nums text-muted-foreground', d === new Date().getDay() && 'font-semibold text-foreground')}>
-                        {describeDay(hours.days[d])}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {venue.website_url && (
-                  <ContactRow icon={Globe}>
-                    <a
-                      href={venue.website_url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="underline underline-offset-2"
-                    >
-                      {venue.website_url.replace(/^https?:\/\//, '')}
-                    </a>
-                  </ContactRow>
-                )}
-              </section>
-            )}
-          </TabsContent>
-
-          {hasCourts && (
-            <TabsContent value="book" className="mt-0">
-              {closed && (
-                <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
-                  Closed on this day.
-                </p>
-              )}
-              <VenueBookingGrid
-                grid={grid}
-                day={day}
-                loading={dayLoading}
-                canBook={canBook}
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
+            <TabsContent value="home" className="mt-0">
+              <VenueHome
+                welcomeHeadline={venue?.welcome_headline ?? null}
+                welcomeMessage={venue?.welcome_message ?? null}
+                city={venue?.city ?? null}
+                state={venue?.state ?? null}
+                phone={venue?.phone ?? null}
+                websiteUrl={venue?.website_url ?? null}
+                hours={hours}
+                nextUp={nextUp}
+                hasCourts={hasCourts}
+                freeNow={freeNow}
+                courtCount={courts.length}
                 accent={chrome?.accentHex}
-                onDayChange={setDay}
-                onPickSlot={(courtId, start, minutes) => {
-                  setBookingCourtId(courtId);
-                  setBookingStart(start);
-                  setBookingMinutes(minutes || null);
-                }}
+                onBook={() => openTab('book')}
+                onOpenPlay={() => openTab('play')}
               />
             </TabsContent>
-          )}
 
-          <TabsContent value="play" className="mt-0 space-y-3">
-            {/* Same day model as Book, so moving between the two tabs keeps
-                the viewer on the day they were already looking at. */}
-            <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
-            <VenueProgramming
-              sessions={programming}
-              going={going}
-              loading={dayLoading}
-              venueName={venue?.name ?? null}
-              accent={chrome?.accentHex}
-            />
-          </TabsContent>
+            {hasCourts && (
+              <TabsContent value="book" className="mt-0">
+                {closed && (
+                  <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
+                    Closed on this day.
+                  </p>
+                )}
+                <VenueBookingGrid
+                  grid={grid}
+                  day={day}
+                  loading={dayLoading}
+                  canBook={canBook}
+                  accent={chrome?.accentHex}
+                  onDayChange={setDay}
+                  onPickSlot={(courtId, start, minutes) => {
+                    setBookingCourtId(courtId);
+                    setBookingStart(start);
+                    setBookingMinutes(minutes || null);
+                  }}
+                />
+              </TabsContent>
+            )}
 
-          <TabsContent value="feed" className="mt-0">
-            <GroupFeed
-              groupId={groupId!}
-              groupName={venue?.name ?? group.name}
-              isAdmin={isAdmin}
-              currentUserId={membership?.user_id ?? null}
-            />
-          </TabsContent>
-
-          <TabsContent value="more" className="mt-0 space-y-4">
-            {/* A player who books here needs somewhere to see what they booked;
-                the list itself spans every venue, not just this one. */}
-            <button
-              type="button"
-              onClick={() => navigate('/player/bookings')}
-              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition-colors hover:border-primary/40"
-            >
-              <Ticket
-                className="h-4 w-4 shrink-0 text-primary"
-                style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">My bookings</p>
-                <p className="text-xs text-muted-foreground">
-                  Courts you're holding and sessions you've joined
-                </p>
+            <TabsContent value="play" className="mt-0">
+              <div className="max-w-3xl space-y-3">
+                {/* Same day model as Book, so moving between the two keeps the
+                    viewer on the day they were already looking at. */}
+                <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
+                <VenueProgramming
+                  sessions={programming}
+                  going={going}
+                  loading={dayLoading}
+                  venueName={venue?.name ?? null}
+                  accent={chrome?.accentHex}
+                />
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
+            </TabsContent>
 
-            <GroupMembers groupId={groupId!} isAdmin={isAdmin} currentUserId={membership?.user_id ?? null} />
-          </TabsContent>
+            {/* A feed constrained to a readable measure. Posts running the full
+                width of a laptop are unreadable however well they are styled. */}
+            <TabsContent
+              value="feed"
+              className={cn('mt-0 max-w-2xl', activeTab !== 'feed' && 'hidden')}
+              forceMount={visitedTabs.has('feed') ? true : undefined}
+            >
+              {visitedTabs.has('feed') && (
+                <GroupFeed
+                  groupId={groupId!}
+                  groupName={venue?.name ?? group.name}
+                  isAdmin={isAdmin}
+                  currentUserId={membership?.user_id ?? null}
+                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                  onSwitchToEvents={() => openTab('play')}
+                />
+              )}
+            </TabsContent>
+
+            {/* Chat needs a concrete height: GroupChat is h-full and would
+                collapse inside a page that grows with its content. */}
+            <TabsContent
+              value="chat"
+              className={cn('mt-0 max-w-3xl', activeTab !== 'chat' && 'hidden')}
+              forceMount={visitedTabs.has('chat') ? true : undefined}
+            >
+              {visitedTabs.has('chat') && (
+                <div className="h-[70dvh] min-h-[420px] overflow-hidden rounded-xl border border-border bg-card">
+                  <GroupChat
+                    groupId={groupId!}
+                    currentUserId={membership?.user_id ?? null}
+                    onlineCount={onlineCount}
+                    isConnected={isConnected}
+                    isAdmin={isAdmin}
+                    lastReadAt={lastReadRef.current}
+                  />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="more" className="mt-0">
+              <div className="max-w-3xl space-y-4">
+                {/* A player who books here needs somewhere to see what they
+                    booked; that list spans every venue, not just this one. */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/player/bookings')}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
+                >
+                  <Ticket
+                    className="h-4 w-4 shrink-0 text-primary"
+                    style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">My bookings</p>
+                    <p className="text-xs text-muted-foreground">
+                      Courts you're holding and sessions you've joined
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+
+                <GroupMembers
+                  groupId={groupId!}
+                  isAdmin={isAdmin}
+                  currentUserId={membership?.user_id ?? null}
+                />
+              </div>
+            </TabsContent>
+          </div>
         </div>
       </Tabs>
+
+      <QuickPostComposer
+        open={quickPostOpen}
+        onOpenChange={setQuickPostOpen}
+        initialType={quickPostType}
+        groupId={groupId || ''}
+        onSubmit={async (data: any) => !!(await createPost(data))}
+      />
 
       {group.venue_id && (
         <BookCourtDialog
@@ -389,6 +432,7 @@ export default function VenueCommunity() {
   );
 }
 
+/** Heading with a rule, matching the operations dashboard's rhythm. */
 function VenueTab({
   value,
   icon: Icon,
@@ -430,17 +474,3 @@ function Stat({
   );
 }
 
-function ContactRow({
-  icon: Icon,
-  children,
-}: {
-  icon: typeof MapPin;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{children}</span>
-    </div>
-  );
-}

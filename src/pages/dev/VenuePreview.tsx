@@ -4,6 +4,8 @@ import { courtStatuses, daySummary } from '@/lib/venues/ops';
 import { upcomingGaps } from '@/lib/venues/ops';
 import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
+import { VenueHome } from '@/components/venue/VenueHome';
+import { parseVenueHours } from '@/lib/venues/hours';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 
 /**
@@ -112,7 +114,42 @@ export default function VenuePreview() {
         onFillGap={() => {}}
       />
 
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
+      <div className="mx-auto max-w-[1400px] space-y-8 px-4 py-5 sm:px-6">
+        <Section title="Venue home (player-facing)">
+          <VenueHome
+            welcomeHeadline="Welcome to Riverside"
+            welcomeMessage="Open play every weekday morning, clinics on Saturdays. New players always welcome — say hello at the desk and we'll find you a game."
+            city="Bridgewater"
+            state="MA"
+            phone="(508) 555-0142"
+            websiteUrl="https://riversidepickleball.com"
+            hours={parseVenueHours({
+              slotMinutes: 60,
+              days: {
+                '0': { open: '08:00', close: '20:00' },
+                '1': null,
+                '2': { open: '06:00', close: '22:00' },
+                '3': { open: '06:00', close: '22:00' },
+                '4': { open: '06:00', close: '22:00' },
+                '5': { open: '06:00', close: '23:00' },
+                '6': { open: '07:00', close: '21:00' },
+              },
+            })}
+            nextUp={programming.slice(0, 3).map((p) => ({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              start_time: p.start_time,
+            }))}
+            hasCourts
+            freeNow={2}
+            courtCount={6}
+            accent={ACCENT}
+            onBook={() => {}}
+            onOpenPlay={() => {}}
+          />
+        </Section>
+
         <Section title="Play (player-facing)">
           <VenueProgramming
             sessions={programming}
