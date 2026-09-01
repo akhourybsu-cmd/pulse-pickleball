@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -196,9 +197,15 @@ export default function GroupDetail() {
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
   
-  // Venue feature retired — groups no longer carry venue branding.
-  const isVenueGroup = false;
-  const venueColor: string | null = null;
+  // Venue branding. The accent plumbing below (the --venue-primary custom
+  // property, the tinted tab underline) has always been here; it was fed a
+  // hard-coded null while the venue feature was retired. It now reads the
+  // venue joined onto the group, behind the flag, and falls back to standard
+  // Pulse chrome for every other community.
+  const isVenueGroup = isVenueCommunitiesEnabled() && !!group?.venue;
+  const venueColor: string | null = isVenueGroup
+    ? group?.venue?.primary_color ?? null
+    : null;
 
   // Memoize tab config — labeled tabs with More holding Files/Settings
   const tabs = useMemo(() => [

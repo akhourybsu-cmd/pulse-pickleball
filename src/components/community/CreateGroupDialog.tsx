@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Trophy, Calendar, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail, Building2 } from 'lucide-react';
+import { Users, Trophy, Calendar, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail, Building2, Store } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import type { Group } from '@/hooks/useGroups';
+import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 
 interface CreateGroupDialogProps {
   open: boolean;
@@ -26,14 +27,40 @@ interface CreateGroupDialogProps {
     join_method: Group['join_method'];
     venue_id?: string;
   }) => Promise<Group | null>;
+  /**
+   * Venue path. Separate from onSubmit because creating a venue community also
+   * creates the venue itself and the caller's staff record — one RPC, not an
+   * ordinary group insert.
+   */
+  onSubmitVenue?: (data: {
+    name: string;
+    description?: string;
+    visibility: Group['visibility'];
+    join_method: Group['join_method'];
+    venue_type?: string;
+    city?: string;
+    state?: string;
+  }) => Promise<Group | null>;
 }
 
-const groupTypes = [
+const baseGroupTypes = [
   { value: 'crew', label: 'Crew', description: 'Friends & recurring group', icon: Users },
   { value: 'league', label: 'League', description: 'Competitive play', icon: Trophy },
   { value: 'open_play', label: 'Open Play', description: 'Casual sessions', icon: Calendar },
-  { value: 'club', label: 'Pickleball Club / Venue', description: 'Club or facility community', icon: Building2 },
+  { value: 'club', label: 'Pickleball Club', description: 'Club or group community', icon: Building2 },
 ] as const;
+
+/**
+ * The venue option. Picking it creates a real venue record alongside the
+ * community, which is what unlocks branding, courts and reservations — so it
+ * reads as an identity claim ("I run a venue"), not just another group type.
+ */
+const venueGroupType = {
+  value: 'venue_official',
+  label: "I'm a venue",
+  description: 'Facility, club or court owner \u2014 branded community with courts & programming',
+  icon: Store,
+} as const;
 
 const visibilityOptions = [
   { value: 'public', label: 'Public', description: 'Anyone can find and view', icon: Globe },
@@ -47,7 +74,9 @@ const joinOptions = [
   { value: 'invite_only', label: 'Invite Only', description: 'Manual invitations only', icon: Mail },
 ] as const;
 
-export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupDialogProps) {
+export function CreateGroupDialog({ open, onOpenChange, onSubmit, onSubmitVenue }: CreateGroupDialogProps) {
+  const venuesEnabled = isVenueCommunitiesEnabled() && !!onSubmitVenue;
+  const groupTypes = venuesEnabled ? [...baseGroupTypes, venueGroupType] : baseGroupTypes;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,13 +85,28 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
     type: 'crew' as Group['type'],
     visibility: 'unlisted' as Group['visibility'],
     join_method: 'open' as Group['join_method'],
+    city: '',
+    state: '',
   });
+
+  const isVenue = formData.type === 'venue_official';
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) return;
 
     setLoading(true);
-    const result = await onSubmit(formData);
+    // A venue creates its venue record and staff row too, so it takes the RPC
+    // path rather than a plain group insert.
+    const result = isVenue && onSubmitVenue
+      ? await onSubmitVenue({
+          name: formData.name,
+          description: formData.description,
+          visibility: formData.visibility,
+          join_method: formData.join_method,
+          city: formData.city,
+          state: formData.state,
+        })
+      : await onSubmit(formData);
     setLoading(false);
 
     if (result) {
@@ -75,6 +119,8 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
         type: 'crew',
         visibility: 'unlisted',
         join_method: 'open',
+        city: '',
+        state: '',
       });
     }
   };
@@ -90,7 +136,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
 
   const getStepDescription = () => {
     if (step === 1) return 'Choose what type of group you want to create';
-    if (step === 2) return 'Set up your group details';
+    if (step === 2) return isVenue ? 'Tell us about your venue' : 'Set up your group details';
     if (step === 3) return 'Configure privacy and access';
     return '';
   };
@@ -147,15 +193,40 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
         {step === 2 && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Group Name *</Label>
+              <Label htmlFor="name">{isVenue ? 'Venue Name *' : 'Group Name *'}</Label>
               <Input
                 id="name"
-                placeholder="Friday Night Crew"
+                placeholder={isVenue ? 'Riverside Pickleball Club' : 'Friday Night Crew'}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 maxLength={50}
               />
             </div>
+
+            {isVenue && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    placeholder="Bridgewater"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    maxLength={80}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    placeholder="MA"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="description">Description (optional)</Label>
@@ -256,7 +327,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
               <Button onClick={handleSubmit} disabled={loading || !formData.name.trim()}>
-                {loading ? 'Creating...' : 'Create Group'}
+                {loading ? 'Creating...' : isVenue ? 'Create Venue' : 'Create Group'}
               </Button>
             </div>
           </div>

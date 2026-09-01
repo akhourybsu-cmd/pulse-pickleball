@@ -217,6 +217,69 @@ export function useGroups() {
     }
   };
 
+  /**
+   * Create a venue and its official community in one step.
+   *
+   * This is three rows across three tables (venues, venue_staff, groups), so it
+   * goes through a SECURITY DEFINER function rather than three client writes —
+   * a failure partway through the client version would leave an orphaned venue
+   * that nobody can see or delete. The venue starts unverified; the verified
+   * badge is an admin decision, not a side effect of signing up.
+   */
+  const createVenueCommunity = async (data: {
+    name: string;
+    description?: string;
+    visibility: Group['visibility'];
+    join_method: Group['join_method'];
+    venue_type?: string;
+    city?: string;
+    state?: string;
+  }) => {
+    if (!currentUserId) {
+      toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
+      return null;
+    }
+
+    try {
+      const { data: result, error } = await supabase.rpc('create_venue_community' as any, {
+        p_name: data.name,
+        p_description: data.description ?? null,
+        p_visibility: data.visibility,
+        p_join_method: data.join_method,
+        p_venue_type: data.venue_type ?? 'other',
+        p_city: data.city ?? null,
+        p_state: data.state ?? null,
+      });
+
+      if (error) throw error;
+
+      const groupId = (result as { group_id?: string } | null)?.group_id;
+      if (!groupId) throw new Error('Venue community was not created');
+
+      toast({ title: 'Venue created', description: `${data.name} is ready to customize.` });
+      await fetchMyGroups();
+
+      // Return the created group so callers can navigate straight into it.
+      const { data: group } = await supabase
+        .from('groups')
+        .select('*, venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)')
+        .eq('id', groupId)
+        .single();
+
+      return group
+        ? ({ ...(group as any), venue: (group as any).venues || null } as Group)
+        : null;
+    } catch (error: any) {
+      console.error('Error creating venue community:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create venue community',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
   const joinGroupByCode = async (code: string) => {
     if (!currentUserId) {
       toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
@@ -437,6 +500,7 @@ export function useGroups() {
     loading,
     currentUserId,
     createGroup,
+    createVenueCommunity,
     joinGroupByCode,
     joinPublicGroup,
     leaveGroup,

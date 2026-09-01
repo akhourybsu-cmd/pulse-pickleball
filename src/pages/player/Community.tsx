@@ -21,7 +21,7 @@ type View = 'mine' | 'explore';
  * everything fits on mobile.
  */
 export default function Community() {
-  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
+  const { myGroups, publicGroups, loading, createGroup, createVenueCommunity, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [view, setView] = useState<View>('mine');
@@ -156,6 +156,7 @@ export default function Community() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSubmit={createGroup}
+        onSubmitVenue={createVenueCommunity}
       />
       <JoinGroupDialog
         open={joinDialogOpen}
