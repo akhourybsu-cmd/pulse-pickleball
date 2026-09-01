@@ -6963,9 +6963,9 @@ export type Database = {
           score_edited_by: string | null
           started_at: string | null
           status: string
-          team1_id: string
+          team1_id: string | null
           team1_score: number | null
-          team2_id: string
+          team2_id: string | null
           team2_score: number | null
           updated_at: string
         }
@@ -6995,9 +6995,9 @@ export type Database = {
           score_edited_by?: string | null
           started_at?: string | null
           status?: string
-          team1_id: string
+          team1_id?: string | null
           team1_score?: number | null
-          team2_id: string
+          team2_id?: string | null
           team2_score?: number | null
           updated_at?: string
         }
@@ -7027,9 +7027,9 @@ export type Database = {
           score_edited_by?: string | null
           started_at?: string | null
           status?: string
-          team1_id?: string
+          team1_id?: string | null
           team1_score?: number | null
-          team2_id?: string
+          team2_id?: string | null
           team2_score?: number | null
           updated_at?: string
         }
@@ -9217,6 +9217,10 @@ export type Database = {
           player_rating: number
         }
         Returns: number
+      }
+      can_manage_tournament_division: {
+        Args: { _division_id: string }
+        Returns: boolean
       }
       can_view_player_skill: { Args: { p_player_id: string }; Returns: boolean }
       cancel_ladder_sub_request: {
