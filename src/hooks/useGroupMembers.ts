@@ -11,6 +11,7 @@ export interface GroupMemberWithProfile {
   status: 'active' | 'pending' | 'banned';
   joined_at: string;
   last_read_at: string | null;
+  last_chat_read_at?: string | null;
   profile: {
     id: string;
     display_name: string | null;

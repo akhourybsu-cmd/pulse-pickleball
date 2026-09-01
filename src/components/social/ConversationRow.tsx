@@ -42,7 +42,7 @@ export function ConversationRow({
 
   const open = () => {
     haptic("tap");
-    navigate(c.route);
+    navigate(c.route, { state: isGroup ? { fromSocialInbox: true } : undefined });
   };
 
   return (

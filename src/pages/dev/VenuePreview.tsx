@@ -5,8 +5,10 @@ import { upcomingGaps } from '@/lib/venues/ops';
 import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
+import { ChatMessage } from '@/components/community/ChatMessage';
 import { parseVenueHours } from '@/lib/venues/hours';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
+import type { GroupMessage } from '@/hooks/useGroupChat';
 
 /**
  * Design harness for the venue surfaces.
@@ -16,7 +18,9 @@ import type { VenueDaySession } from '@/hooks/useVenueDay';
  * before anyone has a venue set up, rather than being judged from the source.
  */
 
-const ACCENT = '#C9962F';
+// Mirrors the ELEVENO test venue so visual work is judged against the same
+// brand palette and operating hours used in staging.
+const ACCENT = '#C5AD11';
 const DAY = new Date();
 DAY.setHours(0, 0, 0, 0);
 
@@ -72,6 +76,42 @@ const SESSIONS: VenueDaySession[] = [
 
 const GOING: Record<string, number> = { s2: 13, s4: 8, s5: 4 };
 
+function chatMessage(
+  id: string,
+  userId: string,
+  minute: number,
+  content: string,
+  displayName: string,
+  reactions: GroupMessage['reactions'] = [],
+): GroupMessage {
+  const createdAt = at(14, minute).toISOString();
+  return {
+    id,
+    group_id: 'eleveno',
+    user_id: userId,
+    content,
+    created_at: createdAt,
+    updated_at: createdAt,
+    _status: 'sent',
+    reactions,
+    profile: {
+      id: userId,
+      display_name: displayName,
+      full_name: displayName,
+      avatar_url: null,
+    },
+  };
+}
+
+const CHAT_MESSAGES = [
+  chatMessage('m1', 'alex', 4, 'Anyone looking for a fourth at 6:30 tonight?', 'Alex Morgan'),
+  chatMessage('m2', 'alex', 5, 'We have Court 4 booked for ninety minutes.', 'Alex Morgan'),
+  chatMessage('m3', 'me', 9, 'I can play. I’ll be there a few minutes early.', 'Taylor Reed', [
+    { emoji: '👍', count: 2, hasReacted: false },
+  ]),
+  chatMessage('m4', 'jordan', 16, 'Perfect — I’ll join too. See everyone tonight!', 'Jordan Lee'),
+];
+
 export default function VenuePreview() {
   const [day, setDay] = useState(DAY);
 
@@ -92,7 +132,7 @@ export default function VenuePreview() {
   return (
     <>
       <OpsDashboard
-        venueName="Riverside Pickleball"
+        venueName="ELEVENO"
         day={day}
         now={NOW}
         isToday
@@ -115,24 +155,66 @@ export default function VenuePreview() {
       />
 
       <div className="mx-auto max-w-[1400px] space-y-8 px-4 py-5 sm:px-6">
+        <Section title="Venue chat (player-facing)">
+          <div className="mx-auto max-w-[420px] overflow-hidden rounded-2xl border border-border/80 bg-background shadow-[0_16px_48px_-28px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center gap-2.5 border-b border-border/60 px-3 py-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
+                EL
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">ELEVENO</p>
+                <p className="text-[11px] text-muted-foreground">Venue chat · 8 online</p>
+              </div>
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Connected" />
+            </div>
+            <div className="px-3 pb-5 sm:px-4">
+              {CHAT_MESSAGES.map((message, index) => {
+                const previous = CHAT_MESSAGES[index - 1];
+                const next = CHAT_MESSAGES[index + 1];
+                const firstInRun = !previous || previous.user_id !== message.user_id;
+                const lastInRun = !next || next.user_id !== message.user_id;
+                return (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    isOwn={message.user_id === 'me'}
+                    showAvatar={message.user_id !== 'me' && lastInRun}
+                    showHeader={firstInRun}
+                    isLastInGroup={lastInRun}
+                    showDateSeparator={index === 0}
+                    previousMessageDate={previous ? new Date(previous.created_at) : undefined}
+                    onReactionAdd={() => {}}
+                  />
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-3">
+              <div className="flex h-10 flex-1 items-center rounded-full border border-border/70 bg-muted/35 px-3 text-sm text-muted-foreground">
+                Message…
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">↑</div>
+            </div>
+          </div>
+        </Section>
+
         <Section title="Venue home (player-facing)">
           <VenueHome
-            welcomeHeadline="Welcome to Riverside"
-            welcomeMessage="Open play every weekday morning, clinics on Saturdays. New players always welcome — say hello at the desk and we'll find you a game."
-            city="Bridgewater"
+            welcomeHeadline="Welcome to ELEVENO"
+            welcomeMessage="Book court time, find today’s sessions, and stay connected with the players and staff at ELEVENO."
+            city="Foxboro"
             state="MA"
-            phone="(508) 555-0142"
-            websiteUrl="https://riversidepickleball.com"
+            phone={null}
+            websiteUrl={null}
             hours={parseVenueHours({
               slotMinutes: 60,
               days: {
-                '0': { open: '08:00', close: '20:00' },
-                '1': null,
-                '2': { open: '06:00', close: '22:00' },
-                '3': { open: '06:00', close: '22:00' },
-                '4': { open: '06:00', close: '22:00' },
-                '5': { open: '06:00', close: '23:00' },
-                '6': { open: '07:00', close: '21:00' },
+                '0': { open: '09:00', close: '22:00' },
+                '1': { open: '09:00', close: '22:00' },
+                '2': { open: '09:00', close: '22:00' },
+                '3': { open: '09:00', close: '22:00' },
+                '4': { open: '09:00', close: '22:00' },
+                '5': { open: '09:00', close: '22:00' },
+                '6': { open: '09:00', close: '22:00' },
               },
             })}
             nextUp={programming.slice(0, 3).map((p) => ({
@@ -155,7 +237,7 @@ export default function VenuePreview() {
             sessions={programming}
             going={GOING}
             loading={false}
-            venueName="Riverside Pickleball"
+            venueName="ELEVENO"
             accent={ACCENT}
           />
         </Section>

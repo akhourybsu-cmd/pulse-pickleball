@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Settings, Shield, Users, Lock, AlertTriangle, Save, Store } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ export default function GroupManage() {
   
   // Hooks
   const { settings, saving: savingSettings, updateSetting } = useGroupSettings(groupId);
-  const { members, updateRole } = useGroupMembers(groupId);
+  const { members, updateRole, refetch: refetchMembers } = useGroupMembers(groupId);
 
   useEffect(() => {
     if (groupId) {
@@ -236,33 +238,50 @@ export default function GroupManage() {
     if (!groupId || !currentUserId) return false;
 
     try {
-      // Find the current owner's member record and new owner's member record
-      const currentOwnerMember = members.find(m => m.user_id === currentUserId);
       const newOwnerMember = members.find(m => m.user_id === newOwnerId);
 
-      if (!currentOwnerMember || !newOwnerMember) {
-        toast({ title: 'Error', description: 'Could not find member records', variant: 'destructive' });
+      if (!newOwnerMember) {
+        toast({ title: 'Error', description: 'Could not find the selected member', variant: 'destructive' });
         return false;
       }
 
-      // Update new owner to 'owner' role
-      const { error: newOwnerError } = await supabase
-        .from('group_members')
-        .update({ role: 'owner' })
-        .eq('id', newOwnerMember.id);
+      // One transaction moves the community owner and, for official venues,
+      // venues.owner_id plus the venue_staff owner role. The old two-request
+      // flow could partially fail and leave two owners behind.
+      const { data: transferResult, error } = await supabase.rpc('transfer_group_ownership', {
+        p_group_id: groupId,
+        p_new_owner_id: newOwnerId,
+      });
+      if (error) throw error;
+      const venueTransferred =
+        !!transferResult &&
+        typeof transferResult === 'object' &&
+        !Array.isArray(transferResult) &&
+        transferResult.venue_transferred === true;
 
-      if (newOwnerError) throw newOwnerError;
+      setIsOwner(false);
+      await Promise.all([
+        refetchMembers(),
+        queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] }),
+        queryClient.invalidateQueries({ queryKey: ['group-members', groupId] }),
+        group?.venue_id
+          ? queryClient.invalidateQueries({ queryKey: ['venue-staff', group.venue_id] })
+          : Promise.resolve(),
+        group?.venue_id
+          ? queryClient.invalidateQueries({ queryKey: ['my-venue-role', group.venue_id] })
+          : Promise.resolve(),
+      ]);
 
-      // Demote current owner to 'moderator'
-      const { error: currentOwnerError } = await supabase
-        .from('group_members')
-        .update({ role: 'moderator' })
-        .eq('id', currentOwnerMember.id);
-
-      if (currentOwnerError) throw currentOwnerError;
-
-      toast({ title: 'Ownership Transferred', description: 'You are now a moderator' });
-      navigate(`/player/community/group/${groupId}`);
+      const nextName =
+        newOwnerMember.profile?.display_name ||
+        newOwnerMember.profile?.full_name ||
+        'The selected member';
+      toast({
+        title: 'Ownership transferred',
+        description: venueTransferred
+          ? `${nextName} now owns the community and venue settings. You are now a moderator and venue manager.`
+          : `${nextName} now owns this community. You are now a moderator.`,
+      });
       return true;
     } catch (error: any) {
       console.error('Error transferring ownership:', error);
@@ -428,6 +447,7 @@ export default function GroupManage() {
             members={members}
             currentUserId={currentUserId}
             isOwner={isOwner}
+            isVenue={showsVenueTab}
             onPromoteToModerator={handlePromoteToModerator}
             onDemoteToMember={handleDemoteToMember}
             onTransferOwnership={handleTransferOwnership}

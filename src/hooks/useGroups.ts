@@ -50,7 +50,8 @@ export interface GroupMember {
   user_id: string;
   role: 'owner' | 'moderator' | 'member';
   status: string;
-  last_read_at: string;
+  last_read_at: string | null;
+  last_chat_read_at?: string | null;
   joined_at: string;
   display_order?: number;
   profile?: {
@@ -120,6 +121,7 @@ export function useGroups() {
             role: m.role,
             status: m.status,
             last_read_at: m.last_read_at,
+            last_chat_read_at: m.last_chat_read_at ?? m.last_read_at,
             joined_at: m.joined_at,
             display_order: m.display_order ?? 0,
           },

@@ -30,18 +30,22 @@ export function VenueWelcome({ headline, message, accent }: VenueWelcomeProps) {
 
   return (
     <section
-      className="rounded-xl border bg-card/60 p-4"
-      style={accent ? { borderColor: `${accent}40` } : undefined}
+      className="relative py-1 pl-5"
       aria-label="Welcome from the venue"
     >
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-0.5 rounded-full bg-primary"
+        style={accent ? { backgroundColor: accent } : undefined}
+      />
       {headline && (
-        <h2 className="text-sm font-semibold leading-snug text-foreground">{headline}</h2>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">{headline}</h2>
       )}
       {shown && (
         <p
           className={cn(
-            'whitespace-pre-line text-sm text-muted-foreground',
-            headline && 'mt-1',
+            'max-w-2xl whitespace-pre-line text-sm leading-6 text-muted-foreground',
+            headline && 'mt-1.5',
           )}
         >
           {shown}
@@ -51,7 +55,7 @@ export function VenueWelcome({ headline, message, accent }: VenueWelcomeProps) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-foreground/70 transition-colors hover:text-foreground"
         >
           {expanded ? 'Show less' : 'Read more'}
           <ChevronDown

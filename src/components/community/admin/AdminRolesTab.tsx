@@ -27,6 +27,7 @@ interface AdminRolesTabProps {
   members: GroupMemberWithProfile[];
   currentUserId: string | null;
   isOwner: boolean;
+  isVenue?: boolean;
   onPromoteToModerator: (memberId: string) => Promise<boolean>;
   onDemoteToMember: (memberId: string) => Promise<boolean>;
   onTransferOwnership: (newOwnerId: string) => Promise<boolean>;
@@ -36,6 +37,7 @@ export function AdminRolesTab({
   members,
   currentUserId,
   isOwner,
+  isVenue = false,
   onPromoteToModerator,
   onDemoteToMember,
   onTransferOwnership,
@@ -51,11 +53,14 @@ export function AdminRolesTab({
   const handleTransferOwnership = async () => {
     if (!selectedNewOwner) return;
     setIsTransferring(true);
-    const success = await onTransferOwnership(selectedNewOwner);
-    setIsTransferring(false);
-    if (success) {
-      setTransferDialogOpen(false);
-      setSelectedNewOwner('');
+    try {
+      const success = await onTransferOwnership(selectedNewOwner);
+      if (success) {
+        setTransferDialogOpen(false);
+        setSelectedNewOwner('');
+      }
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -78,7 +83,9 @@ export function AdminRolesTab({
             Owner
           </CardTitle>
           <CardDescription>
-            The owner has full control over the group.
+            {isVenue
+              ? 'The owner controls the community, venue identity, courts, hours, and staff access.'
+              : 'The owner has full control over the group.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,8 +205,9 @@ export function AdminRolesTab({
             <AlertDialogTitle>Transfer Ownership</AlertDialogTitle>
             <AlertDialogDescription className="space-y-4">
               <p>
-                You are about to transfer ownership of this group. This action cannot be undone.
-                You will become a moderator after the transfer.
+                {isVenue
+                  ? 'This transfers the community and the venue itself, including branding, courts, hours, operations, feed, chat, and member administration. You will remain a moderator and venue manager.'
+                  : 'This transfers full control of the community. You will remain a moderator after the transfer.'}
               </p>
               <div className="pt-2">
                 <Select value={selectedNewOwner} onValueChange={setSelectedNewOwner}>
@@ -225,7 +233,12 @@ export function AdminRolesTab({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isTransferring}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleTransferOwnership}
+              onClick={(event) => {
+                // Keep the confirmation open while the transaction runs, and
+                // on failure so the owner can retry without reselecting.
+                event.preventDefault();
+                void handleTransferOwnership();
+              }}
               disabled={!selectedNewOwner || isTransferring}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

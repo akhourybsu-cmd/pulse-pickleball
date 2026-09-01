@@ -5,11 +5,9 @@ import { useStaffBadge, useVenueStaffAccent } from './VenueStaffContext';
 /**
  * Marks a message or post as coming from the venue.
  *
- * Deliberately loud. A member needs to know at a glance that "courts are closed
- * tomorrow" came from the front desk and not from another player guessing — so
- * this is a filled chip rather than the outline badges used elsewhere, and it
- * carries a check mark so it reads as authority even at a glance or in
- * greyscale.
+ * The check mark and explicit role make venue authority legible without using
+ * a loud filled chip on every message. Brand colour is confined to the border
+ * and icon so light venue accents (including ELEVENO gold) keep text contrast.
  *
  * Renders nothing outside a venue, or for a member who isn't staff, so shared
  * community components can drop it in unconditionally.
@@ -29,14 +27,14 @@ export function StaffBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary px-1.5 py-[1px]',
-        'text-[9px] font-bold uppercase tracking-[0.08em] text-primary-foreground',
+        'inline-flex shrink-0 items-center gap-0.5 rounded-md border border-border/70 bg-background/70 px-1.5 py-[1px]',
+        'text-[9px] font-bold uppercase tracking-[0.08em] text-foreground/70',
         className,
       )}
-      style={accent ? { backgroundColor: accent, color: '#fff' } : undefined}
+      style={accent ? { backgroundColor: `${accent}12`, borderColor: `${accent}66` } : undefined}
       title={`${badge.label} at this venue`}
     >
-      <BadgeCheck className="h-2.5 w-2.5" aria-hidden />
+      <BadgeCheck className="h-2.5 w-2.5 text-primary" style={accent ? { color: accent } : undefined} aria-hidden />
       {badge.label}
     </span>
   );

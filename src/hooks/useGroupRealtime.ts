@@ -5,6 +5,7 @@ import type { GroupMessage } from './useGroupChat';
 import type { GroupPost } from './useGroupPosts';
 import type { PostComment } from './useGroupPostComments';
 import type { GroupEvent } from './useGroupEvents';
+import { applyRemoteReactionDelta } from '@/lib/chat/reactions';
 
 /**
  * Granular realtime: patch React Query caches in place instead of invalidating.
@@ -63,18 +64,18 @@ export function useGroupRealtime(groupId: string | undefined) {
             if (idx >= 0) {
               const next = [...prev];
               const author = prev.find((m) => m.user_id === row.user_id)?.profile;
-              next[idx] = { ...row, profile: author, _status: 'sent' };
+              next[idx] = { ...row, profile: author, reactions: [], _status: 'sent' };
               return next;
             }
             const author = prev.find((m) => m.user_id === row.user_id)?.profile;
-            return [...prev, { ...row, profile: author, _status: 'sent' }];
+            return [...prev, { ...row, profile: author, reactions: [], _status: 'sent' }];
           });
           return;
         }
         const profile = await hydrateProfile(row.user_id);
         queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) => {
           if (prev.some((m) => m.id === row.id)) return prev;
-          return [...prev, { ...row, profile, _status: 'sent' }];
+          return [...prev, { ...row, profile, reactions: [], _status: 'sent' }];
         });
       })
       .on('postgres_changes', {
@@ -96,6 +97,32 @@ export function useGroupRealtime(groupId: string | undefined) {
         const oldRow = payload.old as any;
         queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
           prev.filter((m) => m.id !== oldRow.id),
+        );
+      })
+
+      // Message reactions are patched independently so a busy chat does not
+      // refetch its entire history whenever someone taps an emoji.
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'group_message_reactions',
+      }, (payload) => {
+        const row = (payload.new || payload.old) as {
+          message_id?: string;
+          user_id?: string;
+          emoji?: string;
+        };
+        if (!row.message_id || !row.emoji || row.user_id === currentUserId) return;
+
+        queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
+          prev.map((message) => {
+            if (message.id !== row.message_id) return message;
+            const delta = payload.eventType === 'INSERT' ? 1 : payload.eventType === 'DELETE' ? -1 : 0;
+            return delta === 0
+              ? message
+              : {
+                  ...message,
+                  reactions: applyRemoteReactionDelta(message.reactions ?? [], row.emoji!, delta),
+                };
+          }),
         );
       })
 
@@ -306,6 +333,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         filter: `group_id=eq.${groupId}`,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
+        queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       })
       .subscribe();
 

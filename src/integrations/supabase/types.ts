@@ -1834,6 +1834,7 @@ export type Database = {
           group_id: string
           id: string
           joined_at: string | null
+          last_chat_read_at: string | null
           last_read_at: string | null
           role: Database["public"]["Enums"]["group_role"]
           status: string
@@ -1844,6 +1845,7 @@ export type Database = {
           group_id: string
           id?: string
           joined_at?: string | null
+          last_chat_read_at?: string | null
           last_read_at?: string | null
           role?: Database["public"]["Enums"]["group_role"]
           status?: string
@@ -1854,6 +1856,7 @@ export type Database = {
           group_id?: string
           id?: string
           joined_at?: string | null
+          last_chat_read_at?: string | null
           last_read_at?: string | null
           role?: Database["public"]["Enums"]["group_role"]
           status?: string
@@ -1865,6 +1868,35 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -10002,6 +10034,14 @@ export type Database = {
           }
       sync_league_season_statuses: {
         Args: { p_league_id: string }
+        Returns: Json
+      }
+      toggle_group_message_reaction: {
+        Args: { p_emoji: string; p_message_id: string }
+        Returns: boolean
+      }
+      transfer_group_ownership: {
+        Args: { p_group_id: string; p_new_owner_id: string }
         Returns: Json
       }
       unschedule_ladder_week: {

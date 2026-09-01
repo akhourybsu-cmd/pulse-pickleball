@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -67,6 +67,7 @@ export function VenueStaffProvider({
   accent?: string | null;
   children: ReactNode;
 }) {
+  const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ['venue-staff', venueId],
     enabled: !!venueId,
@@ -83,6 +84,35 @@ export function VenueStaffProvider({
       return rows ?? [];
     },
   });
+
+  // Ownership and staff-role changes should repaint badges and permissions in
+  // every open venue surface. Without this, a transferred owner could remain
+  // labelled Manager (or the former owner as Owner) until the five-minute
+  // query stale time elapsed.
+  useEffect(() => {
+    if (!venueId) return;
+
+    const channel = supabase
+      .channel(`venue-staff-live-${venueId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'venue_staff',
+          filter: `venue_id=eq.${venueId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['venue-staff', venueId] });
+          void queryClient.invalidateQueries({ queryKey: ['my-venue-role', venueId] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, venueId]);
 
   const value = useMemo<VenueStaffValue>(() => {
     const byUser = new Map<string, VenueRole>();

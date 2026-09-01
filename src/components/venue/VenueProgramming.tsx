@@ -116,7 +116,11 @@ export function VenueProgramming({
                   )}
                   style={
                     active && accent
-                      ? { backgroundColor: accent, borderColor: accent, color: '#fff' }
+                      ? {
+                          backgroundColor: `${accent}18`,
+                          borderColor: `${accent}88`,
+                          color: 'hsl(var(--foreground))',
+                        }
                       : undefined
                   }
                 >
@@ -128,7 +132,7 @@ export function VenueProgramming({
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.025)]">
         {shown.map((session) => (
           <SessionRow
             key={session.id}
@@ -175,8 +179,8 @@ function SessionRow({
     <Row
       {...(onPick ? { type: 'button' as const, onClick: () => onPick(session.id) } : {})}
       className={cn(
-        'w-full rounded-xl border border-border bg-card p-3 text-left transition-colors',
-        onPick && 'hover:border-primary/40',
+        'w-full px-4 py-3.5 text-left transition-colors',
+        onPick && 'hover:bg-muted/35',
         past && 'opacity-60',
       )}
     >

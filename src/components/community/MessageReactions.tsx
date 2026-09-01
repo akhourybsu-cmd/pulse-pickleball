@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -45,10 +44,12 @@ export function MessageReactions({
             {QUICK_EMOJIS.map((emoji) => (
               <motion.button
                 key={emoji}
+                type="button"
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleReaction(emoji)}
                 className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted/50 text-base"
+                aria-label={`React with ${emoji}`}
               >
                 {emoji}
               </motion.button>
@@ -63,11 +64,13 @@ export function MessageReactions({
           {reactions.map((reaction) => (
             <motion.button
               key={reaction.emoji}
+              type="button"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => handleReaction(reaction.emoji)}
+              aria-label={`${reaction.hasReacted ? 'Remove' : 'Add'} ${reaction.emoji} reaction, ${reaction.count} total`}
               className={cn(
                 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs',
                 'bg-muted/50 hover:bg-muted transition-colors',

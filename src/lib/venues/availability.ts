@@ -124,7 +124,13 @@ export function slotBoundaries(day: Date, options: DayGridOptions): Date[] {
     const d = new Date(day);
     d.setHours(openHour, 0, 0, 0);
     d.setMinutes(d.getMinutes() + minutesFromOpen);
-    boundaries.push(d);
+    // During the spring DST jump, two different wall-clock minute offsets can
+    // normalize to the same instant (for example 2:00 and 3:00 both becoming
+    // 3:00). A duplicate boundary creates a zero-minute bookable slot, so omit
+    // it while retaining the venue's next real local boundary.
+    if (!boundaries.length || d.getTime() > boundaries[boundaries.length - 1].getTime()) {
+      boundaries.push(d);
+    }
   }
 
   return boundaries;

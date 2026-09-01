@@ -59,49 +59,57 @@ export function VenueHome({
   const today = new Date().getDay();
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_336px] lg:items-start lg:gap-6">
-      <div className="min-w-0 space-y-5">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10">
+      <div className="min-w-0 space-y-7">
         <VenueWelcome headline={welcomeHeadline} message={welcomeMessage} accent={accent} />
 
         {hasCourts && (
           <button
             type="button"
             onClick={onBook}
-            className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 text-left transition-colors hover:border-primary/40"
+            className="group flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,background-color,transform] hover:-translate-y-px hover:border-primary/40"
+            style={accent ? { borderColor: `${accent}55`, backgroundColor: `${accent}0d` } : undefined}
           >
-            <LayoutGrid
-              className="h-5 w-5 shrink-0 text-primary"
-              style={accent ? { color: accent } : undefined}
-            />
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+              style={accent ? { backgroundColor: `${accent}1a`, color: accent } : undefined}
+            >
+              <LayoutGrid className="h-[18px] w-[18px]" />
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Book a court</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm font-semibold tracking-tight">Book a court</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {freeNow > 0 ? `${freeNow} of ${courtCount} free right now` : 'See what is open today'}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </button>
         )}
 
         {nextUp.length > 0 && (
           <Section title="Coming up">
-            <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-card">
+            <div className="divide-y divide-border/70 border-y border-border/70">
               {nextUp.map((session) => (
                 <button
                   key={session.id}
                   type="button"
                   onClick={onOpenPlay}
-                  className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-muted/50"
+                  className="group flex w-full items-center gap-4 py-3 text-left transition-colors hover:bg-muted/30"
                 >
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                    style={accent ? { backgroundColor: accent } : undefined}
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{session.title}</p>
+                    <p className="truncate text-sm font-semibold tracking-tight">{session.title}</p>
                     {session.description && (
                       <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                         {session.description}
                       </p>
                     )}
                   </div>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground/75">
                     {formatSlotTime(new Date(session.start_time))}
                   </span>
                 </button>
@@ -111,9 +119,9 @@ export function VenueHome({
         )}
       </div>
 
-      <aside className="mt-5 space-y-5 lg:mt-0">
+      <aside className="mt-8 space-y-5 lg:mt-0 lg:border-l lg:border-border/70 lg:pl-8">
         <Section title="About">
-          <div className="space-y-2.5 rounded-xl border border-border bg-card p-3.5">
+          <div className="space-y-3">
             {city && (
               <ContactRow icon={MapPin}>{[city, state].filter(Boolean).join(', ')}</ContactRow>
             )}
@@ -131,8 +139,8 @@ export function VenueHome({
               </ContactRow>
             )}
 
-            <div className="border-t border-border/70 pt-2.5">
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="border-t border-border/70 pt-3">
+              <p className="mb-2 text-[11px] font-semibold text-foreground/80">
                 Hours
               </p>
               {/* Today first, so the answer most people came for is the first
@@ -166,11 +174,11 @@ export function VenueHome({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center gap-3">
-        <h2 className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+      <div className="mb-3 flex items-center gap-3">
+        <h2 className="shrink-0 text-sm font-semibold tracking-tight text-foreground">
           {title}
         </h2>
-        <span aria-hidden className="h-px flex-1 bg-border/70" />
+        <span aria-hidden className="h-px flex-1 bg-border/60" />
       </div>
       {children}
     </section>
@@ -185,8 +193,8 @@ function ContactRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Icon className="h-3.5 w-3.5 shrink-0" />
+    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-foreground/55" />
       <span className="truncate">{children}</span>
     </div>
   );

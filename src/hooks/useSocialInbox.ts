@@ -49,8 +49,11 @@ export function useSocialInbox(): SocialInboxState {
   const groupIdsKey = groupIds.join(",");
   // Re-run the fetch when either the set of groups OR any group's read
   // marker changes, so the unread-chat counts stay in sync after a user
-  // opens a group and its last_read_at advances.
-  const lastReadKey = myGroups.map((g) => `${g.id}:${g.membership?.last_read_at ?? ""}`).join(",");
+  // opens chat and its dedicated marker advances. Feed visits use
+  // last_read_at and must not clear unseen messages.
+  const lastReadKey = myGroups
+    .map((g) => `${g.id}:${g.membership?.last_chat_read_at ?? g.membership?.last_read_at ?? ""}`)
+    .join(",");
 
   useEffect(() => {
     let cancelled = false;
@@ -80,11 +83,14 @@ export function useSocialInbox(): SocialInboxState {
       const latest = new Map<string, typeof rows[number]>();
       for (const r of rows) if (!latest.has(r.group_id)) latest.set(r.group_id, r);
 
-      // Unread CHAT messages per group = messages after my last_read_at that
+      // Unread CHAT messages per group = messages after my chat marker that
       // I didn't send. This is the correct badge for a chat inbox (the
       // group's own unread_count counts community-feed posts, not messages).
       const lastReadByGroup = new Map(
-        myGroups.map((g) => [g.id, g.membership?.last_read_at ?? null] as const),
+        myGroups.map((g) => [
+          g.id,
+          g.membership?.last_chat_read_at ?? g.membership?.last_read_at ?? null,
+        ] as const),
       );
       const unread = new Map<string, number>();
       for (const r of rows) {

@@ -580,7 +580,8 @@ export default function GroupDetail() {
                 onlineCount={onlineCount}
                 isConnected={isConnected}
                 isAdmin={isAdmin}
-                lastReadAt={membership?.last_read_at ?? null}
+                lastReadAt={membership?.last_chat_read_at ?? membership?.last_read_at ?? null}
+                isActive={activeTab === 'chat'}
               />
             )}
           </TabsContent>

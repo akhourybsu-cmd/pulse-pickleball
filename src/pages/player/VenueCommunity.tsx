@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, CalendarClock, CalendarDays, LayoutGrid,
-  MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone, Gauge,
+  MapPin, MessageSquare, MoreHorizontal, Settings, Users, Gauge,
   Ticket, ChevronRight, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,8 @@ import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
+import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
+import { initialVenueCommunityTab } from '@/lib/venues/navigation';
 
 /**
  * A venue's community.
@@ -50,6 +51,8 @@ import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBa
 export default function VenueCommunity() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { group, membership, loading } = useGroupDetail(groupId);
   const [day, setDay] = useState(() => {
@@ -58,20 +61,41 @@ export default function VenueCommunity() {
     return d;
   });
 
-  const [activeTab, setActiveTab] = useState('home');
+  // Social inbox rows deep-link with ?tab=chat. The venue shell previously
+  // ignored that parameter and always opened Home, making the row feel broken.
+  const initialTab = initialVenueCommunityTab(searchParams);
+  const [activeTab, setActiveTab] = useState(initialTab);
   // Chat and feed are expensive and subscribe to realtime, so they mount only
   // once visited and then stay mounted — remounting a chat loses its scroll
   // position and re-runs its queries every time you glance at another tab.
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['home']));
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([initialTab]));
 
   const openTab = (tab: string) => {
     setActiveTab(tab);
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'chat') next.set('tab', 'chat');
+    else next.delete('tab');
+    setSearchParams(next, { replace: true });
   };
+
+  // Also honor a chat deep link that arrives while React Router reuses this
+  // mounted route (for example, moving between group rows without a reload).
+  useEffect(() => {
+    if (searchParams.get('tab') !== 'chat') return;
+    setActiveTab('chat');
+    setVisitedTabs((seen) => (seen.has('chat') ? seen : new Set([...seen, 'chat'])));
+  }, [searchParams]);
+
+  // A fixed pane sized to window.visualViewport is what keeps the composer
+  // immediately above an overlay keyboard in Capacitor/iOS/Android WebViews.
+  // It is applied only to the immersive chat state; the venue's other tabs
+  // remain a normally scrolling page.
+  const chatPaneStyle = useVisualViewportPane();
 
   // One presence subscription for the page, shared with chat. Two would
   // double-count who is online.
-  const { onlineCount, isConnected } = useGroupPresence(groupId);
+  const { onlineCount, isConnected, isOnline } = useGroupPresence(groupId);
   useGroupRealtime(groupId);
 
   // The feed's composer. Without this the venue feed rendered its post CTAs
@@ -118,10 +142,11 @@ export default function VenueCommunity() {
   // chat's unread divider reflects where they actually left off.
   const lastReadRef = useRef<string | null>(null);
   useEffect(() => {
-    if (lastReadRef.current === null && membership?.last_read_at) {
-      lastReadRef.current = membership.last_read_at;
+    const chatMarker = membership?.last_chat_read_at ?? membership?.last_read_at;
+    if (lastReadRef.current === null && chatMarker) {
+      lastReadRef.current = chatMarker;
     }
-  }, [membership?.last_read_at]);
+  }, [membership?.last_chat_read_at, membership?.last_read_at]);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
@@ -164,19 +189,61 @@ export default function VenueCommunity() {
     .filter((p) => new Date(p.start_time) >= new Date())
     .slice(0, 3);
 
+  // Chat is a conversation, not a card in the middle of a venue brochure.
+  // Give it the whole visible viewport so focusing the composer cannot move
+  // the hero, tab strip, or document around it. The normal venue shell remains
+  // mounted only for Home/Book/Play/Feed/More.
+  if (activeTab === 'chat') {
+    const cameFromSocial = Boolean(
+      (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox,
+    );
+    const closeChat = () => {
+      if (cameFromSocial) navigate(-1);
+      else openTab('home');
+    };
+
+    return (
+      <VenueStaffProvider
+        venueId={group.venue_id}
+        venueName={venue?.name ?? null}
+        accent={chrome?.accentHex}
+      >
+        <div
+          className="z-40 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background"
+          style={chatPaneStyle}
+        >
+          <GroupChat
+            groupId={groupId!}
+            currentUserId={membership?.user_id ?? null}
+            onlineCount={onlineCount}
+            isConnected={isConnected}
+            isAdmin={isAdmin}
+            lastReadAt={lastReadRef.current}
+            isActive
+            title={venue?.name ?? group.name}
+            subtitle="Venue chat"
+            avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
+            onBack={closeChat}
+            immersive
+          />
+        </div>
+      </VenueStaffProvider>
+    );
+  }
+
   return (
     <VenueStaffProvider
       venueId={group.venue_id}
       venueName={venue?.name ?? null}
       accent={chrome?.accentHex}
     >
-    <div className="flex min-h-[100dvh] flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-muted/[0.16]">
       {/* Venue hero — a facility masthead, not the community's ink band. The
           cover carries the identity, the stats carry the answer most people
           arrived for. */}
       <header className="relative shrink-0 overflow-hidden">
         <div
-          className="relative h-40 sm:h-52"
+          className="relative h-44 sm:h-56"
           style={{
             backgroundImage: venue?.cover_image_url
               ? `url(${venue.cover_image_url})`
@@ -195,6 +262,15 @@ export default function VenueCommunity() {
                 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 100%)',
             }}
           />
+          {chrome?.bloom && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{
+                background: `radial-gradient(circle at 78% 18%, ${chrome.bloom} 0%, transparent 34%)`,
+              }}
+            />
+          )}
 
           <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-[calc(0.6rem+env(safe-area-inset-top))]">
             <Button
@@ -236,17 +312,24 @@ export default function VenueCommunity() {
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-4 pb-3">
-            {venue?.logo_url && (
+          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1400px] items-end gap-3 px-4 pb-4 sm:px-6">
+            {venue?.logo_url ? (
               <img
                 src={venue.logo_url}
-                alt=""
-                className="h-14 w-14 shrink-0 rounded-xl object-cover ring-2 ring-white/25"
+                alt={`${venue.name} logo`}
+                className="h-14 w-14 shrink-0 rounded-xl bg-white/10 object-cover shadow-lg ring-1 ring-white/30 sm:h-16 sm:w-16"
               />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-xl font-bold text-white shadow-lg backdrop-blur-sm sm:h-16 sm:w-16 sm:text-2xl"
+              >
+                {(venue?.name ?? group.name).trim().slice(0, 1).toUpperCase()}
+              </div>
             )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <h1 className="truncate text-xl font-bold leading-tight text-white sm:text-2xl">
+                <h1 className="truncate text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl">
                   {venue?.name ?? group.name}
                 </h1>
                 {group.is_venue_verified && (
@@ -254,36 +337,43 @@ export default function VenueCommunity() {
                 )}
               </div>
               {venue?.tagline && (
-                <p className="truncate text-xs text-white/80">{venue.tagline}</p>
+                <p className="mt-1 truncate text-sm text-white/78">{venue.tagline}</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Stat strip — the court-reservation answer, above everything else. */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2.5">
-          <Stat
-            icon={LayoutGrid}
-            label={hasCourts ? `${freeNow} of ${courts.length} free` : 'No courts yet'}
-            accent={chrome?.accentHex}
-          />
-          <Stat icon={Users} label={`${group.member_count ?? 0} members`} />
-          {nextUp[0] && (
+        <div className="border-b border-border/70 bg-card">
+          <div className="mx-auto flex max-w-[1400px] items-center overflow-x-auto px-4 py-3 sm:px-6">
             <Stat
-              icon={CalendarClock}
-              label={`Next: ${formatSlotTime(new Date(nextUp[0].start_time))}`}
+              icon={LayoutGrid}
+              label={hasCourts ? `${freeNow} of ${courts.length} free` : 'No courts yet'}
+              accent={chrome?.accentHex}
             />
-          )}
+            <Stat icon={Users} label={`${group.member_count ?? 0} members`} />
+            {nextUp[0] && (
+              <Stat
+                icon={CalendarClock}
+                label={`Next at ${formatSlotTime(new Date(nextUp[0].start_time))}`}
+              />
+            )}
+          </div>
         </div>
       </header>
 
-      <Tabs value={activeTab} onValueChange={openTab} className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={openTab}
+        className="flex min-h-0 flex-1 flex-col"
+        style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
+      >
         {/* A scrolling strip rather than a squeezed row: six destinations do not
             fit a phone at a readable size, and shrinking them all to fit is how
             tab bars become unreadable. */}
-        <div className="border-b border-border bg-card">
+        <div className="border-b border-border/70 bg-card">
           <div className="mx-auto max-w-[1400px] overflow-x-auto px-2 sm:px-4">
-            <TabsList className="h-auto w-max justify-start gap-1 rounded-none border-0 bg-transparent p-1.5">
+            <TabsList className="h-auto w-max justify-start gap-0 rounded-none border-0 bg-transparent p-0">
               <VenueTab value="home" icon={MapPin}>Home</VenueTab>
               {hasCourts && <VenueTab value="book" icon={LayoutGrid}>Book</VenueTab>}
               <VenueTab value="play" icon={CalendarDays}>Play</VenueTab>
@@ -295,7 +385,7 @@ export default function VenueCommunity() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
+          <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
             <TabsContent value="home" className="mt-0">
               <VenueHome
                 welcomeHeadline={venue?.welcome_headline ?? null}
@@ -380,7 +470,7 @@ export default function VenueCommunity() {
               forceMount={visitedTabs.has('chat') ? true : undefined}
             >
               {visitedTabs.has('chat') && (
-                <div className="h-[70dvh] min-h-[420px] overflow-hidden rounded-xl border border-border bg-card">
+                <div className="h-[70dvh] min-h-[420px] overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_10px_32px_rgba(0,0,0,0.06)]">
                   <GroupChat
                     groupId={groupId!}
                     currentUserId={membership?.user_id ?? null}
@@ -388,6 +478,7 @@ export default function VenueCommunity() {
                     isConnected={isConnected}
                     isAdmin={isAdmin}
                     lastReadAt={lastReadRef.current}
+                    isActive={activeTab === 'chat'}
                   />
                 </div>
               )}
@@ -418,7 +509,9 @@ export default function VenueCommunity() {
                 <GroupMembers
                   groupId={groupId!}
                   isAdmin={isAdmin}
+                  isOwner={membership?.role === 'owner'}
                   currentUserId={membership?.user_id ?? null}
+                  isOnline={isOnline}
                 />
               </div>
             </TabsContent>
@@ -445,7 +538,7 @@ export default function VenueCommunity() {
         onOpenChange={setQuickPostOpen}
         initialType={quickPostType}
         groupId={groupId || ''}
-        onSubmit={async (data: any) => !!(await createPost(data))}
+        onSubmit={async (data) => !!(await createPost(data))}
       />
 
       {group.venue_id && (
@@ -486,7 +579,7 @@ function VenueTab({
   return (
     <TabsTrigger
       value={value}
-      className="gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+      className="relative gap-1.5 rounded-none border-0 bg-transparent px-3 py-3 text-xs font-semibold text-muted-foreground shadow-none after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-accent)] after:transition-transform data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:scale-x-100"
     >
       <Icon className="h-3.5 w-3.5" />
       {children}
@@ -504,14 +597,13 @@ function Stat({
   accent?: string | null;
 }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn('shrink-0 gap-1.5 whitespace-nowrap px-2.5 py-1 text-xs font-semibold')}
-      style={accent ? { borderColor: `${accent}55`, color: accent } : undefined}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </Badge>
+    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap px-3 first:pl-0 [&+&]:border-l [&+&]:border-border/70">
+      <Icon
+        className="h-3.5 w-3.5 text-muted-foreground"
+        style={accent ? { color: accent } : undefined}
+      />
+      <span className="text-xs font-semibold text-foreground/80">{label}</span>
+    </div>
   );
 }
 
