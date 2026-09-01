@@ -81,24 +81,40 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
 
   const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+  const monthEventCount = useMemo(
+    () => events.filter((e) => isSameMonth(parseISO(e.start_time), pivot)).length,
+    [events, pivot],
+  );
+
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-3 sm:p-4">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-3 backdrop-blur-sm shadow-[0_12px_36px_-26px_hsl(var(--foreground)/0.5)] sm:p-4">
+      {/* Ambient bloom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-16 -right-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+      />
+
       {/* Header — month label + nav */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-3">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 rounded-full border border-border/50"
           onClick={() => setPivot((p) => subMonths(p, 1))}
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="text-sm font-semibold tracking-tight">{monthLabel}</div>
+        <div className="flex flex-col items-center">
+          <div className="text-sm font-bold uppercase tracking-[0.14em]">{monthLabel}</div>
+          <div className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+            {monthEventCount} {monthEventCount === 1 ? 'event' : 'events'}
+          </div>
+        </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 rounded-full border border-border/50"
           onClick={() => setPivot((p) => addMonths(p, 1))}
           aria-label="Next month"
         >
@@ -107,11 +123,11 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
       </div>
 
       {/* Weekday header row */}
-      <div className="grid grid-cols-7 mb-1.5">
+      <div className="relative grid grid-cols-7 mb-1.5 border-b border-border/40 pb-1.5">
         {weekdays.map((w, i) => (
           <div
             key={i}
-            className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-center"
+            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 text-center"
           >
             {w}
           </div>
@@ -119,7 +135,7 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
       </div>
 
       {/* Day grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="relative grid grid-cols-7 gap-1">
         {days.map((day, idx) => {
           const key = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDay.get(key) ?? [];
@@ -140,16 +156,19 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
                 else onSelectDate(day);
               }}
               className={cn(
-                'relative aspect-square rounded-md flex flex-col items-center justify-center',
-                'text-xs transition-all duration-150',
+                'relative aspect-square rounded-lg flex flex-col items-center justify-center',
+                'text-xs transition-all duration-150 border border-transparent',
                 'hover:bg-muted/60 active:scale-95',
-                !inMonth && 'text-muted-foreground/40',
+                !inMonth && 'text-muted-foreground/35',
                 inMonth && !isSelected && !today && 'text-foreground',
-                today && !isSelected && 'ring-1 ring-primary/40 text-primary font-semibold',
-                isSelected && 'bg-primary text-primary-foreground font-semibold shadow-sm',
+                inMonth && hasEvents && !isSelected && 'bg-muted/40 border-border/40',
+                today && !isSelected && 'ring-1 ring-primary/50 text-primary font-bold',
+                isSelected &&
+                  'bg-primary text-primary-foreground font-bold shadow-[0_6px_18px_-8px_hsl(var(--primary)/0.9)] border-primary',
               )}
               aria-label={`${format(day, 'MMMM d')}${hasEvents ? ` — ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ''}`}
             >
+
               <span className="leading-none">{format(day, 'd')}</span>
               {hasEvents && (
                 <div className="flex items-center gap-0.5 mt-1">
@@ -180,16 +199,46 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
         })}
       </div>
 
-      {selectedDate && (
-        <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs">
+      <div className="relative mt-3 pt-3 border-t border-border/40 flex items-center justify-between gap-2 text-xs">
+        {selectedDate ? (
           <span className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{format(selectedDate, 'EEE, MMM d')}</span>
+            Showing{' '}
+            <span className="font-semibold text-foreground">
+              {format(selectedDate, 'EEE, MMM d')}
+            </span>
           </span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onSelectDate(null)}>
-            Clear
+        ) : (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            Tap a day to filter
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-full px-3 text-xs font-semibold"
+            onClick={() => {
+              const now = new Date();
+              setPivot(startOfMonth(now));
+              onSelectDate(now);
+            }}
+          >
+            Today
           </Button>
+          {selectedDate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full px-3 text-xs text-muted-foreground"
+              onClick={() => onSelectDate(null)}
+            >
+              Clear
+            </Button>
+          )}
         </div>
-      )}
+      </div>
+
     </div>
   );
 }
