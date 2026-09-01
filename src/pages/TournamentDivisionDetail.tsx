@@ -65,8 +65,8 @@ export default function TournamentDivisionDetail() {
       .from("tournaments_matches")
       .select(`
         *,
-        team1:tournaments_teams!tournaments_matches_team1_id_fkey(team_name),
-        team2:tournaments_teams!tournaments_matches_team2_id_fkey(team_name)
+        team1:tournaments_teams!tournaments_matches_team1_id_fkey(team_name, seed_number),
+        team2:tournaments_teams!tournaments_matches_team2_id_fkey(team_name, seed_number)
       `)
       .eq("division_id", divisionId)
       .order("round_number")
