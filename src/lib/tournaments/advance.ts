@@ -9,14 +9,6 @@ import {
 import { bracketSizeFor } from './seeding';
 
 /**
- * `bracket` is added by migration 20260901120000 and won't appear in the
- * generated Supabase types until they're regenerated against the live DB.
- * Same pattern the repo already uses for profiles_public / send_friend_request:
- * cast at the call site and drop the cast once types catch up.
- */
-const db = supabase as any;
-
-/**
  * Winner (and loser) advancement for elimination draws.
  *
  * Nothing in the codebase advanced anyone — a bracket was frozen after the
@@ -49,7 +41,7 @@ async function placeInSlot(
   dest: Destination,
   teamId: string,
 ): Promise<{ found: boolean; wasCompleted: boolean }> {
-  let q = db
+  let q = supabase
     .from('tournaments_matches')
     .select('id, status, team1_id, team2_id')
     .eq('division_id', divisionId)
@@ -71,7 +63,7 @@ async function placeInSlot(
   const current = dest.side === 'A' ? target.team1_id : target.team2_id;
   if (current === teamId) return { found: true, wasCompleted: false };
 
-  const { error } = await db
+  const { error } = await supabase
     .from('tournaments_matches')
     .update({ [column]: teamId })
     .eq('id', target.id);
@@ -97,7 +89,7 @@ export async function advanceWinner(params: {
 
   // Derive position/format from the match itself — the various score-entry
   // surfaces pass differently-shaped match objects around.
-  const { data: source } = await db
+  const { data: source } = await supabase
     .from('tournaments_matches')
     .select('division_id, round_number, match_number, bracket')
     .eq('id', matchId)

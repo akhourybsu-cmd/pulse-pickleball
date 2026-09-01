@@ -6940,6 +6940,7 @@ export type Database = {
         Row: {
           actual_duration_minutes: number | null
           auto_confirmed: boolean | null
+          bracket: string | null
           completed_at: string | null
           court_id: string | null
           created_at: string
@@ -6972,6 +6973,7 @@ export type Database = {
         Insert: {
           actual_duration_minutes?: number | null
           auto_confirmed?: boolean | null
+          bracket?: string | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
@@ -7004,6 +7006,7 @@ export type Database = {
         Update: {
           actual_duration_minutes?: number | null
           auto_confirmed?: boolean | null
+          bracket?: string | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string

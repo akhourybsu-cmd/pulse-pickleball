@@ -113,10 +113,7 @@ export function BracketGenerationDialog({
       status: "scheduled",
     }));
 
-    // Insert matches. Cast: the `bracket` column lands with migration
-    // 20260901120000 and isn't in the generated types until they're
-    // regenerated against the live database.
-    const { error: insertError } = await (supabase as any)
+    const { error: insertError } = await supabase
       .from("tournaments_matches")
       .insert(matches);
 
