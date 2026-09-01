@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award, ListOrdered, ArrowLeft } from "lucide-react";
+import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award, ListOrdered, ArrowLeft, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CreateTeamDialog } from "@/components/tournament/CreateTeamDialog";
 import { EditDivisionDialog } from "@/components/tournament/EditDivisionDialog";
 import { BracketGenerationDialog } from "@/components/tournament/BracketGenerationDialog";
+import { PoolPlayDialog } from "@/components/tournament/PoolPlayDialog";
+import { PoolsPanel } from "@/components/tournament/PoolsPanel";
 import { TeamsPanel } from "@/components/tournament/TeamsPanel";
 import { MatchesPanel } from "@/components/tournament/MatchesPanel";
 import { StandingsPanel } from "@/components/tournament/StandingsPanel";
@@ -32,6 +34,8 @@ interface Division {
   scoring_ruleset_id: string | null;
   max_teams: number | null;
   status: string;
+  pool_count: number | null;
+  advancers_per_pool: number | null;
   tournaments_events: {
     name: string;
   };
@@ -46,6 +50,7 @@ export default function TournamentDivisionDetail() {
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [isBracketDialogOpen, setIsBracketDialogOpen] = useState(false);
+  const [isPoolDialogOpen, setIsPoolDialogOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [teamCount, setTeamCount] = useState(0);
@@ -215,6 +220,14 @@ export default function TournamentDivisionDetail() {
       return;
     }
 
+    // Pool play draws pools first; the bracket is generated later, from the
+    // pool results. This used to fall through to the round-robin path below,
+    // which ignored pools entirely.
+    if (division.format === "pool_play") {
+      setIsPoolDialogOpen(true);
+      return;
+    }
+
     setGenerating(true);
 
     // Get all teams in division
@@ -330,6 +343,14 @@ export default function TournamentDivisionDetail() {
 
   if (!division) return null;
 
+  const isElimination =
+    division.format === "single_elimination" || division.format === "double_elimination";
+  // Pool play ends in a bracket too, but only earns the tab once that stage
+  // has actually been drawn from the pool results.
+  const showsBracket =
+    isElimination ||
+    (division.format === "pool_play" && matches.some((m) => m.bracket !== null));
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
@@ -424,7 +445,11 @@ export default function TournamentDivisionDetail() {
                 ) : (
                   <Shuffle className="mr-2 h-4 w-4" />
                 )}
-                {division.format === "round_robin" ? "Generate Matches" : "Generate Bracket"}
+                {division.format === "round_robin"
+                  ? "Generate Matches"
+                  : division.format === "pool_play"
+                    ? "Draw Pools"
+                    : "Generate Bracket"}
               </Button>
             )}
           </div>
@@ -445,9 +470,15 @@ export default function TournamentDivisionDetail() {
               <ListOrdered className="h-4 w-4 mr-1" />
               Seeding
             </TabsTrigger>
+            {division.format === "pool_play" && (
+              <TabsTrigger value="pools" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="h-4 w-4 mr-1" />
+                Pools
+              </TabsTrigger>
+            )}
             <TabsTrigger value="matches" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Matches</TabsTrigger>
             <TabsTrigger value="standings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Standings</TabsTrigger>
-            {(division.format === "single_elimination" || division.format === "double_elimination") && (
+            {showsBracket && (
               <TabsTrigger value="bracket" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Bracket</TabsTrigger>
             )}
           </TabsList>
@@ -479,11 +510,36 @@ export default function TournamentDivisionDetail() {
             <StandingsPanel divisionId={divisionId!} refreshKey={refreshKey} />
           </TabsContent>
 
-          {(division.format === "single_elimination" || division.format === "double_elimination") && (
+          {division.format === "pool_play" && (
+            <TabsContent value="pools" className="mt-6">
+              <PoolsPanel
+                divisionId={divisionId!}
+                advancersPerPool={division.advancers_per_pool ?? 2}
+                refreshKey={refreshKey}
+                onBracketGenerated={() => setRefreshKey((prev) => prev + 1)}
+              />
+            </TabsContent>
+          )}
+
+          {showsBracket && (
             <TabsContent value="bracket" className="mt-6">
               <BracketView
-                matches={matches}
-                format={division.format as "single_elimination" | "double_elimination"}
+                // Pool play finishes in a single-elimination draw, so its
+                // bracket stage renders on the same ladder — but only the
+                // bracket matches, not the pool round robin beneath them.
+                // Elimination divisions pass everything through, since draws
+                // generated before the discriminator existed carry a NULL
+                // bracket and would otherwise vanish.
+                matches={
+                  division.format === "pool_play"
+                    ? matches.filter((m) => m.bracket !== null)
+                    : matches
+                }
+                format={
+                  division.format === "double_elimination"
+                    ? "double_elimination"
+                    : "single_elimination"
+                }
                 onMatchClick={(match) => {
                   setSelectedMatch(match);
                   setIsScoreEntryOpen(true);
@@ -511,6 +567,14 @@ export default function TournamentDivisionDetail() {
           onSave={handleUpdateDivision}
         />
       )}
+
+      <PoolPlayDialog
+        open={isPoolDialogOpen}
+        onOpenChange={setIsPoolDialogOpen}
+        divisionId={divisionId!}
+        teamCount={teamCount}
+        onSuccess={() => setRefreshKey((prev) => prev + 1)}
+      />
 
       <BracketGenerationDialog
         open={isBracketDialogOpen}

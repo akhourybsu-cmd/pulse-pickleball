@@ -6741,6 +6741,7 @@ export type Database = {
       }
       tournaments_divisions: {
         Row: {
+          advancers_per_pool: number | null
           age_group: string | null
           age_max: number | null
           age_min: number | null
@@ -6757,6 +6758,7 @@ export type Database = {
           min_teams: number | null
           name: string
           play_type: string | null
+          pool_count: number | null
           registration_fee: number | null
           scheduled_day: number | null
           scheduled_start_time: string | null
@@ -6767,6 +6769,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advancers_per_pool?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -6783,6 +6786,7 @@ export type Database = {
           min_teams?: number | null
           name: string
           play_type?: string | null
+          pool_count?: number | null
           registration_fee?: number | null
           scheduled_day?: number | null
           scheduled_start_time?: string | null
@@ -6793,6 +6797,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advancers_per_pool?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -6809,6 +6814,7 @@ export type Database = {
           min_teams?: number | null
           name?: string
           play_type?: string | null
+          pool_count?: number | null
           registration_fee?: number | null
           scheduled_day?: number | null
           scheduled_start_time?: string | null
@@ -6958,6 +6964,7 @@ export type Database = {
           opponent_confirmed_at: string | null
           player_score_submitted_at: string | null
           player_score_submitted_by: string | null
+          pool: string | null
           round_number: number
           scheduled_time: string | null
           score_edited_at: string | null
@@ -6991,6 +6998,7 @@ export type Database = {
           opponent_confirmed_at?: string | null
           player_score_submitted_at?: string | null
           player_score_submitted_by?: string | null
+          pool?: string | null
           round_number: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -7024,6 +7032,7 @@ export type Database = {
           opponent_confirmed_at?: string | null
           player_score_submitted_at?: string | null
           player_score_submitted_by?: string | null
+          pool?: string | null
           round_number?: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -7111,6 +7120,7 @@ export type Database = {
           id: string
           player1_id: string | null
           player2_id: string | null
+          pool: string | null
           seed_locked: boolean | null
           seed_number: number | null
           seed_source: string | null
@@ -7123,6 +7133,7 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
+          pool?: string | null
           seed_locked?: boolean | null
           seed_number?: number | null
           seed_source?: string | null
@@ -7135,6 +7146,7 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
+          pool?: string | null
           seed_locked?: boolean | null
           seed_number?: number | null
           seed_source?: string | null

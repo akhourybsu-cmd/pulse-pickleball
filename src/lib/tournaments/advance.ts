@@ -46,7 +46,11 @@ async function placeInSlot(
     .select('id, status, team1_id, team2_id')
     .eq('division_id', divisionId)
     .eq('round_number', dest.round)
-    .eq('match_number', dest.matchNumber);
+    .eq('match_number', dest.matchNumber)
+    // A bracket slot is never a pool match. Without this, the legacy-NULL
+    // fallback below would happily match a pool-play round robin match that
+    // shares a round and match number, and advance a team into it.
+    .is('pool', null);
 
   // Only constrain on bracket for multi-bracket draws; single-elim rows
   // generated before the discriminator existed carry NULL.
@@ -107,15 +111,28 @@ export async function advanceWinner(params: {
     .single();
 
   const format = division?.format;
-  if (format !== 'single_elimination' && format !== 'double_elimination') {
+
+  // Pool play finishes in a single-elimination draw, so its BRACKET matches
+  // advance exactly like one. Its pool matches are a round robin and advance
+  // nowhere, which `bracket === null` distinguishes.
+  const isPoolPlayBracket = format === 'pool_play' && source.bracket !== null;
+
+  if (
+    format !== 'single_elimination' &&
+    format !== 'double_elimination' &&
+    !isPoolPlayBracket
+  ) {
     return { advanced: false, reason: 'not_elimination' };
   }
 
   // ---------- single elimination ----------
-  if (format === 'single_elimination') {
+  if (format === 'single_elimination' || isPoolPlayBracket) {
     const { data: deepest } = await supabase
       .from('tournaments_matches')
       .select('round_number')
+      // Pool rounds are numbered below the bracket, so they must not be
+      // mistaken for the deepest round of the draw.
+      .is('pool', null)
       .eq('division_id', divisionId)
       .order('round_number', { ascending: false })
       .limit(1)

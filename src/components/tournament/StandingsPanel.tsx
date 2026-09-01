@@ -5,164 +5,64 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-interface Standing {
-  team_id: string;
-  team_name: string;
-  wins: number;
-  losses: number;
-  points_for: number;
-  points_against: number;
-  point_diff: number;
-  head_to_head?: number; // For tie-breaking display
-}
+import { computeStandings, type Standing } from "@/lib/tournaments/standings";
 
 interface StandingsPanelProps {
   divisionId: string;
   refreshKey?: number;
 }
 
+/**
+ * Ranking lives in lib/tournaments/standings so it can be unit-tested and
+ * reused by the pool tables. This component previously carried its own copy,
+ * which passed head-to-head straight into Array.sort — a non-transitive
+ * comparator whose output depends on the order sort happens to compare in.
+ */
 export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) {
   const { toast } = useToast();
   const [standings, setStandings] = useState<Standing[]>([]);
-  const [tiebreakInfo, setTiebreakInfo] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    calculateStandings();
-  }, [divisionId, refreshKey]);
+    let cancelled = false;
 
-  const calculateStandings = async () => {
-    setLoading(true);
+    const load = async () => {
+      setLoading(true);
 
-    // Get all teams
-    const { data: teams, error: teamsError } = await supabase
-      .from("tournaments_teams")
-      .select("id, team_name")
-      .eq("division_id", divisionId);
+      const [teamsRes, matchesRes] = await Promise.all([
+        supabase
+          .from("tournaments_teams")
+          .select("id, team_name, pool")
+          .eq("division_id", divisionId),
+        supabase
+          .from("tournaments_matches")
+          .select("team1_id, team2_id, team1_score, team2_score, status")
+          .eq("division_id", divisionId)
+          .eq("status", "completed"),
+      ]);
 
-    if (teamsError) {
-      toast({
-        title: "Error loading teams",
-        description: teamsError.message,
-        variant: "destructive",
-      });
+      if (cancelled) return;
+
+      const error = teamsRes.error ?? matchesRes.error;
+      if (error) {
+        toast({
+          title: "Error loading standings",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      setStandings(computeStandings(teamsRes.data ?? [], matchesRes.data ?? []));
       setLoading(false);
-      return;
-    }
+    };
 
-    // Get all completed matches
-    const { data: matches, error: matchesError } = await supabase
-      .from("tournaments_matches")
-      .select("*")
-      .eq("division_id", divisionId)
-      .eq("status", "completed")
-      .not("team1_score", "is", null)
-      .not("team2_score", "is", null);
-
-    if (matchesError) {
-      toast({
-        title: "Error loading matches",
-        description: matchesError.message,
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    // Calculate standings
-    const standingsMap = new Map<string, Standing>();
-
-    teams?.forEach((team) => {
-      standingsMap.set(team.id, {
-        team_id: team.id,
-        team_name: team.team_name,
-        wins: 0,
-        losses: 0,
-        points_for: 0,
-        points_against: 0,
-        point_diff: 0,
-      });
-    });
-
-    matches?.forEach((match) => {
-      const team1Standing = standingsMap.get(match.team1_id);
-      const team2Standing = standingsMap.get(match.team2_id);
-
-      if (team1Standing && team2Standing && match.team1_score !== null && match.team2_score !== null) {
-        team1Standing.points_for += match.team1_score;
-        team1Standing.points_against += match.team2_score;
-        team2Standing.points_for += match.team2_score;
-        team2Standing.points_against += match.team1_score;
-
-        if (match.team1_score > match.team2_score) {
-          team1Standing.wins++;
-          team2Standing.losses++;
-        } else {
-          team2Standing.wins++;
-          team1Standing.losses++;
-        }
-
-        team1Standing.point_diff = team1Standing.points_for - team1Standing.points_against;
-        team2Standing.point_diff = team2Standing.points_for - team2Standing.points_against;
-      }
-    });
-
-    // Sort with proper tie-breaking: wins → head-to-head → point differential
-    const tiebreakReasons = new Map<string, string>();
-    const sortedStandings = Array.from(standingsMap.values()).sort((a, b) => {
-      // 1. Sort by wins (descending)
-      if (b.wins !== a.wins) return b.wins - a.wins;
-
-      // 2. If tied in wins, check head-to-head
-      const h2hResult = calculateHeadToHead(a.team_id, b.team_id, matches || []);
-      if (h2hResult !== 0) {
-        tiebreakReasons.set(a.team_id, h2hResult < 0 ? `Won H2H vs ${b.team_name}` : `Lost H2H vs ${b.team_name}`);
-        return h2hResult;
-      }
-
-      // 3. If still tied, use point differential
-      if (b.point_diff !== a.point_diff) {
-        tiebreakReasons.set(a.team_id, `Point diff: ${a.point_diff > 0 ? '+' : ''}${a.point_diff}`);
-      }
-      return b.point_diff - a.point_diff;
-    });
-
-    setTiebreakInfo(tiebreakReasons);
-    setStandings(sortedStandings);
-    setLoading(false);
-  };
-
-  // Calculate head-to-head record between two teams
-  // Returns: -1 if team A should rank higher, 1 if team B, 0 if tied
-  const calculateHeadToHead = (teamAId: string, teamBId: string, matches: any[]): number => {
-    let teamAWins = 0;
-    let teamBWins = 0;
-
-    matches.forEach(match => {
-      const isTeamAvsB = 
-        (match.team1_id === teamAId && match.team2_id === teamBId) ||
-        (match.team1_id === teamBId && match.team2_id === teamAId);
-
-      if (!isTeamAvsB) return;
-
-      // Determine winner
-      if (match.team1_id === teamAId && match.team1_score > match.team2_score) {
-        teamAWins++;
-      } else if (match.team1_id === teamBId && match.team1_score > match.team2_score) {
-        teamBWins++;
-      } else if (match.team2_id === teamAId && match.team2_score > match.team1_score) {
-        teamAWins++;
-      } else if (match.team2_id === teamBId && match.team2_score > match.team1_score) {
-        teamBWins++;
-      }
-    });
-
-    // Return -1 if A should rank higher, 1 if B should rank higher
-    if (teamAWins > teamBWins) return -1;
-    if (teamBWins > teamAWins) return 1;
-    return 0;
-  };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [divisionId, refreshKey, toast]);
 
   if (loading) {
     return (
@@ -176,7 +76,9 @@ export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) 
     <Card>
       <CardHeader>
         <CardTitle>Standings</CardTitle>
-        <CardDescription>Current tournament rankings</CardDescription>
+        <CardDescription>
+          Ranked on win percentage, then head-to-head, then point differential.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {standings.length === 0 ? (
@@ -184,51 +86,53 @@ export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) 
             No standings available yet. Complete some matches to see rankings.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">#</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead className="text-center">W</TableHead>
-                <TableHead className="text-center">L</TableHead>
-                <TableHead className="text-center">PF</TableHead>
-                <TableHead className="text-center">PA</TableHead>
-                <TableHead className="text-center">Diff</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {standings.map((standing, index) => (
-                <TableRow key={standing.team_id}>
-                  <TableCell className="font-medium">{index + 1}</TableCell>
-                  <TableCell className="font-medium">
-                    {standing.team_name}
-                    {tiebreakInfo.has(standing.team_id) && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 inline ml-1.5 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-sm">{tiebreakInfo.get(standing.team_id)}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">{standing.wins}</TableCell>
-                  <TableCell className="text-center">{standing.losses}</TableCell>
-                  <TableCell className="text-center">{standing.points_for}</TableCell>
-                  <TableCell className="text-center">{standing.points_against}</TableCell>
-                  <TableCell className="text-center">
-                    <span className={standing.point_diff >= 0 ? "text-green-600" : "text-red-600"}>
-                      {standing.point_diff > 0 ? "+" : ""}
-                      {standing.point_diff}
-                    </span>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">#</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead className="text-center">W</TableHead>
+                  <TableHead className="text-center">L</TableHead>
+                  <TableHead className="text-center">PF</TableHead>
+                  <TableHead className="text-center">PA</TableHead>
+                  <TableHead className="text-center">Diff</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {standings.map((standing) => (
+                  <TableRow key={standing.teamId}>
+                    <TableCell className="font-medium">{standing.rank}</TableCell>
+                    <TableCell className="font-medium">
+                      {standing.teamName}
+                      {standing.tiebreak && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 inline ml-1.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm">Tiebreak: {standing.tiebreak}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">{standing.wins}</TableCell>
+                    <TableCell className="text-center">{standing.losses}</TableCell>
+                    <TableCell className="text-center">{standing.pointsFor}</TableCell>
+                    <TableCell className="text-center">{standing.pointsAgainst}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={standing.pointDiff >= 0 ? "text-green-600" : "text-red-600"}>
+                        {standing.pointDiff > 0 ? "+" : ""}
+                        {standing.pointDiff}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
