@@ -6,9 +6,12 @@ import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { ChatMessage } from '@/components/community/ChatMessage';
+import { GroupFeed } from '@/components/community/GroupFeed';
+import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { parseVenueHours } from '@/lib/venues/hours';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import type { GroupMessage } from '@/hooks/useGroupChat';
+import type { GroupPost } from '@/hooks/useGroupPosts';
 
 /**
  * Design harness for the venue surfaces.
@@ -112,8 +115,110 @@ const CHAT_MESSAGES = [
   chatMessage('m4', 'jordan', 16, 'Perfect — I’ll join too. See everyone tonight!', 'Jordan Lee'),
 ];
 
+function feedPost(
+  id: string,
+  userId: string,
+  minute: number,
+  overrides: Partial<GroupPost>,
+): GroupPost {
+  const createdAt = at(13, minute).toISOString();
+  const displayName = userId === 'staff' ? 'ELEVENO Team' : userId === 'me' ? 'Taylor Reed' : 'Alex Morgan';
+  return {
+    id,
+    group_id: 'eleveno',
+    user_id: userId,
+    type: 'feed',
+    title: null,
+    content: null,
+    pinned: false,
+    session_date: null,
+    session_time: null,
+    max_players: null,
+    image_url: null,
+    poll_options: null,
+    last_activity_at: createdAt,
+    created_at: createdAt,
+    updated_at: createdAt,
+    profile: {
+      id: userId,
+      display_name: displayName,
+      full_name: displayName,
+      avatar_url: null,
+      current_rating: userId === 'staff' ? null : 3.8,
+    },
+    reactions: [],
+    comment_count: 0,
+    participant_count: 0,
+    user_joined: false,
+    ...overrides,
+  };
+}
+
+const FEED_POSTS: GroupPost[] = [
+  feedPost('p1', 'staff', 48, {
+    type: 'announcement',
+    title: 'Friday evening court update',
+    content: 'Courts 5 and 6 will reopen at 5:30 PM after line maintenance. All other courts are running on schedule.',
+    pinned: true,
+    reactions: [{ emoji: '👍', count: 12, user_reacted: false }],
+    comment_count: 3,
+  }),
+  feedPost('p2', 'alex', 26, {
+    type: 'lfg',
+    title: 'One more for competitive doubles',
+    content: 'Looking for a 3.75–4.0 player. We have Court 4 and will rotate partners.',
+    session_date: DAY.toISOString().slice(0, 10),
+    session_time: '18:30:00',
+    max_players: 1,
+    participant_count: 0,
+    comment_count: 2,
+  }),
+  feedPost('p3', 'me', 8, {
+    content: 'Great energy at open play this morning. Thanks to everyone who made the new players feel welcome.',
+    image_url: '/pulse-og.png',
+    reactions: [
+      { emoji: '❤️', count: 8, user_reacted: true },
+      { emoji: '🔥', count: 3, user_reacted: false },
+    ],
+    comment_count: 4,
+  }),
+  feedPost('p4', 'staff', 2, {
+    type: 'poll',
+    title: 'Which Saturday clinic should we add next?',
+    content: 'We are opening one more weekly slot in October.',
+    poll_options: [
+      { idx: 0, text: 'Beginner fundamentals' },
+      { idx: 1, text: 'Third-shot drop workshop' },
+      { idx: 2, text: 'Competitive drilling' },
+    ],
+    poll_vote_counts: [11, 18, 14],
+    poll_my_vote: 1,
+  }),
+];
+
 export default function VenuePreview() {
   const [day, setDay] = useState(DAY);
+  const previewMode = new URLSearchParams(window.location.search).get('preview');
+
+  if (previewMode === 'phone') {
+    return (
+      <div className="flex min-h-screen justify-center bg-muted/50 p-4">
+        <iframe
+          title="Phone-sized venue feed preview"
+          src="/__venue-preview?preview=feed"
+          className="h-[844px] w-[390px] rounded-[26px] border-0 bg-background shadow-[0_24px_70px_-28px_rgba(0,0,0,0.45)]"
+        />
+      </div>
+    );
+  }
+
+  if (previewMode === 'feed') {
+    return (
+      <main className="min-h-screen bg-muted/[0.16] px-4 py-5">
+        <VenueFeedPreview />
+      </main>
+    );
+  }
 
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
     openHour: 8,
@@ -155,6 +260,10 @@ export default function VenuePreview() {
       />
 
       <div className="mx-auto max-w-[1400px] space-y-8 px-4 py-5 sm:px-6">
+        <Section title="Venue feed (player-facing)">
+          <VenueFeedPreview />
+        </Section>
+
         <Section title="Venue chat (player-facing)">
           <div className="mx-auto max-w-[420px] overflow-hidden rounded-2xl border border-border/80 bg-background shadow-[0_16px_48px_-28px_rgba(0,0,0,0.35)]">
             <div className="flex items-center gap-2.5 border-b border-border/60 px-3 py-3">
@@ -242,7 +351,40 @@ export default function VenuePreview() {
           />
         </Section>
       </div>
+
     </>
+  );
+}
+
+function VenueFeedPreview() {
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerType, setComposerType] = useState<PostType>('post');
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <GroupFeed
+        groupId=""
+        groupName="ELEVENO"
+        isAdmin
+        currentUserId="me"
+        venueMode
+        previewPosts={FEED_POSTS}
+        onOpenQuickPost={(type) => {
+          setComposerType(type);
+          setComposerOpen(true);
+        }}
+      />
+      <QuickPostComposer
+        open={composerOpen}
+        onOpenChange={setComposerOpen}
+        initialType={composerType}
+        groupId="eleveno-preview"
+        contextName="ELEVENO"
+        venueMode
+        canPostAnnouncements
+        onSubmit={async () => true}
+      />
+    </div>
   );
 }
 

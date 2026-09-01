@@ -456,6 +456,7 @@ export default function VenueCommunity() {
                   groupName={venue?.name ?? group.name}
                   isAdmin={isAdmin}
                   currentUserId={membership?.user_id ?? null}
+                  venueMode
                   onOpenQuickPost={(type) => openQuickPost(type as PostType)}
                   onSwitchToEvents={() => openTab('play')}
                 />
@@ -530,6 +531,8 @@ export default function VenueCommunity() {
           onPhotoClick={() => openQuickPost('photo')}
           avatarUrl={profile?.avatar_url}
           displayName={profile?.display_name || profile?.full_name}
+          contextName={venue?.name ?? group.name}
+          venueMode
         />
       )}
 
@@ -538,6 +541,9 @@ export default function VenueCommunity() {
         onOpenChange={setQuickPostOpen}
         initialType={quickPostType}
         groupId={groupId || ''}
+        contextName={venue?.name ?? group.name}
+        venueMode
+        canPostAnnouncements={isAdmin}
         onSubmit={async (data) => !!(await createPost(data))}
       />
 

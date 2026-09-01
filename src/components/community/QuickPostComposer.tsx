@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Send, Image, BarChart3, Gamepad2, Plus, X } from 'lucide-react';
+import {
+  BarChart3,
+  Camera,
+  LockKeyhole,
+  Megaphone,
+  MessageSquareText,
+  Plus,
+  UsersRound,
+  X,
+} from 'lucide-react';
 import {
   Drawer,
   DrawerContent,
@@ -16,33 +25,83 @@ import { Progress } from '@/components/ui/progress';
 import { ImageDropzone } from './ImageDropzone';
 import { useImageUpload } from '@/hooks/useImageUpload';
 
-export type PostType = 'post' | 'photo' | 'poll' | 'event' | 'lfg' | 'result';
+export type PostType = 'post' | 'photo' | 'poll' | 'event' | 'lfg' | 'result' | 'announcement';
+export type ComposerPostType = 'post' | 'photo' | 'poll' | 'lfg' | 'announcement';
+
+interface PostSubmission {
+  type: 'feed' | 'lfg' | 'poll' | 'announcement';
+  content?: string;
+  title?: string;
+  session_date?: string;
+  session_time?: string;
+  max_players?: number;
+  image_url?: string;
+  poll_options?: { idx: number; text: string }[];
+}
 
 interface QuickPostComposerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialType?: PostType;
   groupId: string;
-  onSubmit: (data: {
-    type: string;
-    content?: string;
-    title?: string;
-    session_date?: string;
-    session_time?: string;
-    max_players?: number;
-    image_url?: string;
-    poll_options?: { idx: number; text: string }[];
-  }) => Promise<boolean>;
+  contextName?: string;
+  venueMode?: boolean;
+  canPostAnnouncements?: boolean;
+  onSubmit: (data: PostSubmission) => Promise<boolean>;
 }
+
+const COMPOSER_TYPES: Array<{
+  value: ComposerPostType;
+  label: string;
+  description: string;
+  icon: typeof MessageSquareText;
+}> = [
+  {
+    value: 'post',
+    label: 'Update',
+    description: 'Share news or start a conversation',
+    icon: MessageSquareText,
+  },
+  {
+    value: 'announcement',
+    label: 'Announcement',
+    description: 'Publish an official venue update',
+    icon: Megaphone,
+  },
+  {
+    value: 'lfg',
+    label: 'Find players',
+    description: 'Fill open spots for a game',
+    icon: UsersRound,
+  },
+  {
+    value: 'poll',
+    label: 'Poll',
+    description: 'Let the community choose',
+    icon: BarChart3,
+  },
+  {
+    value: 'photo',
+    label: 'Photo',
+    description: 'Share a moment from the venue',
+    icon: Camera,
+  },
+];
 
 export function QuickPostComposer({ 
   open, 
   onOpenChange, 
   initialType = 'post',
   groupId,
+  contextName = 'this community',
+  venueMode = false,
+  canPostAnnouncements = false,
   onSubmit 
 }: QuickPostComposerProps) {
-  const [activeTab, setActiveTab] = useState<PostType>(initialType);
+  const [activeTab, setActiveTab] = useState<ComposerPostType>(
+    initialType === 'announcement' ? 'announcement' :
+      initialType === 'photo' || initialType === 'poll' || initialType === 'lfg' ? initialType : 'post',
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form state
@@ -67,9 +126,17 @@ export function QuickPostComposer({
   // Update active tab when initialType changes
   useEffect(() => {
     if (open) {
-      setActiveTab(initialType);
+      setActiveTab(
+        initialType === 'announcement' ? 'announcement' :
+          initialType === 'photo' || initialType === 'poll' || initialType === 'lfg' ? initialType : 'post',
+      );
     }
   }, [initialType, open]);
+
+  const visibleTypes = COMPOSER_TYPES.filter(
+    (type) => type.value !== 'announcement' || canPostAnnouncements,
+  );
+  const activeType = COMPOSER_TYPES.find((type) => type.value === activeTab) ?? COMPOSER_TYPES[0];
 
   // Update preview when image is selected
   useEffect(() => {
@@ -109,7 +176,7 @@ export function QuickPostComposer({
       }
     }
     
-    let data: any = {};
+    let data: PostSubmission;
     
     switch (activeTab) {
       case 'post':
@@ -145,17 +212,30 @@ export function QuickPostComposer({
         };
         break;
       }
+      case 'announcement':
+        data = {
+          type: 'announcement',
+          title: title.trim(),
+          content: content.trim(),
+        };
+        break;
       default:
         data = { type: 'feed', content: content.trim() };
     }
 
-    const success = await onSubmit(data);
-    
-    if (success) {
-      resetForm();
-      onOpenChange(false);
+    try {
+      const success = await onSubmit(data);
+      if (success) {
+        resetForm();
+        onOpenChange(false);
+      }
+    } catch (error) {
+      // The data hook owns the user-facing error toast. The composer still
+      // needs to recover its controls when a mutation rejects.
+      console.error('Post submission failed:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleRemoveImage = () => {
@@ -178,112 +258,147 @@ export function QuickPostComposer({
           title.trim().length > 0 &&
           pollOptions.filter((o) => o.trim().length > 0).length >= 2
         );
+      case 'announcement':
+        return title.trim().length > 0 && content.trim().length > 0;
       default:
         return content.trim().length > 0;
     }
   };
 
+  const submitLabel: Record<ComposerPostType, string> = {
+    post: 'Share update',
+    photo: 'Post photo',
+    poll: 'Publish poll',
+    lfg: 'Find players',
+    announcement: 'Publish update',
+  };
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[85svh] max-h-[85svh] flex flex-col p-0 gap-0">
-        <DrawerHeader className="px-4 pt-4 pb-2 shrink-0">
-          <DrawerTitle>Create Post</DrawerTitle>
+      <DrawerContent className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[28px] border-border/70 p-0">
+        <DrawerHeader className="shrink-0 border-b border-border/60 px-0 pb-4 pt-4 text-left">
+          <div className="mx-auto w-full max-w-xl px-4 sm:px-6">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <LockKeyhole className="h-3 w-3" aria-hidden />
+              Visible to {contextName} members
+            </div>
+            <DrawerTitle className="text-xl font-semibold tracking-[-0.025em]">
+              {venueMode ? `Share with ${contextName}` : 'Create a post'}
+            </DrawerTitle>
+            <p className="mt-1 text-sm text-muted-foreground">{activeType.description}</p>
+          </div>
         </DrawerHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PostType)} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="post" className="gap-1 text-xs">
-                <Send className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Post</span>
-              </TabsTrigger>
-              <TabsTrigger value="lfg" className="gap-1 text-xs">
-                <Gamepad2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">LFG</span>
-              </TabsTrigger>
-              <TabsTrigger value="poll" className="gap-1 text-xs">
-                <BarChart3 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Poll</span>
-              </TabsTrigger>
-              <TabsTrigger value="photo" className="gap-1 text-xs">
-                <Image className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Photo</span>
-              </TabsTrigger>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto w-full max-w-xl px-4 py-4 sm:px-6">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ComposerPostType)} className="w-full">
+            <TabsList className="-mx-4 flex h-auto w-[calc(100%+2rem)] justify-start gap-2 overflow-x-auto rounded-none bg-transparent px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:w-full sm:px-0">
+              {visibleTypes.map(({ value, label, icon: Icon }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="h-10 shrink-0 gap-1.5 rounded-full border border-border/70 bg-card px-3.5 text-xs font-semibold text-muted-foreground shadow-none data-[state=active]:border-foreground data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-sm"
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             {/* Post Tab */}
-            <TabsContent value="post" className="space-y-4 mt-4">
+            <TabsContent value="post" className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label>What's on your mind?</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="venue-post-content" className="text-sm font-semibold">Your update</Label>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">{content.length}/2000</span>
+                </div>
                 <Textarea
-                  placeholder="Share an update with the group..."
+                  id="venue-post-content"
+                  placeholder={`What should ${contextName} know?`}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[120px] resize-none"
-                  autoFocus
+                  maxLength={2000}
+                  className="min-h-[180px] resize-none rounded-2xl border-border/70 bg-muted/20 px-4 py-3 text-base leading-6 shadow-none focus-visible:bg-background"
                 />
               </div>
             </TabsContent>
 
             {/* LFG Tab */}
-            <TabsContent value="lfg" className="space-y-4 mt-4">
+            <TabsContent value="lfg" className="mt-5 space-y-5">
               <div className="space-y-2">
-                <Label>Title *</Label>
+                <Label htmlFor="lfg-title" className="text-sm font-semibold">What are you playing?</Label>
                 <Input
-                  placeholder="e.g., Need 1 more for doubles"
+                  id="lfg-title"
+                  placeholder="Need one more for doubles"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  maxLength={100}
+                  className="h-12 rounded-xl border-border/70 bg-background px-3.5 text-base shadow-none"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Details</Label>
+                <Label htmlFor="lfg-details" className="text-sm font-semibold">Details</Label>
                 <Textarea
-                  placeholder="Skill level, format, etc."
+                  id="lfg-details"
+                  placeholder="Skill level, format, court, or anything players should know"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
+                  maxLength={1000}
+                  className="min-h-[110px] resize-none rounded-2xl border-border/70 bg-muted/20 px-4 py-3 text-base leading-6 shadow-none"
                 />
               </div>
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Date</Label>
+              <div className="rounded-2xl bg-muted/35 p-3.5">
+                <p className="mb-3 text-sm font-semibold">When and how many</p>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="lfg-date" className="text-xs text-muted-foreground">Date</Label>
                   <Input
+                    id="lfg-date"
                     type="date"
                     value={sessionDate}
                     onChange={(e) => setSessionDate(e.target.value)}
+                    className="h-11 rounded-xl border-border/70 bg-background shadow-none"
                   />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Time</Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="lfg-time" className="text-xs text-muted-foreground">Time</Label>
                     <Input
+                      id="lfg-time"
                       type="time"
                       value={sessionTime}
                       onChange={(e) => setSessionTime(e.target.value)}
+                      className="h-11 rounded-xl border-border/70 bg-background shadow-none"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Spots</Label>
+                    <Label htmlFor="lfg-spots" className="text-xs text-muted-foreground">Spots available</Label>
                     <Input
+                      id="lfg-spots"
                       type="number"
                       min="1"
                       max="20"
                       value={maxPlayers}
                       onChange={(e) => setMaxPlayers(e.target.value)}
+                      className="h-11 rounded-xl border-border/70 bg-background shadow-none"
                     />
                   </div>
+                </div>
                 </div>
               </div>
             </TabsContent>
 
             {/* Poll Tab */}
-            <TabsContent value="poll" className="space-y-4 mt-4">
+            <TabsContent value="poll" className="mt-5 space-y-5">
               <div className="space-y-2">
-                <Label>Question *</Label>
+                <Label htmlFor="poll-question" className="text-sm font-semibold">Question</Label>
                 <Input
-                  placeholder="e.g., Who's in for Saturday 9am?"
+                  id="poll-question"
+                  placeholder="Which clinic time works best?"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  maxLength={120}
+                  className="h-12 rounded-xl border-border/70 bg-background px-3.5 text-base shadow-none"
                 />
               </div>
 
@@ -291,14 +406,21 @@ export function QuickPostComposer({
                   ignores blank rows when packing into poll_options so users
                   can add then ignore without manually pruning. */}
               <div className="space-y-2">
-                <Label>Options ({pollOptions.filter((o) => o.trim()).length}/4)</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-sm font-semibold">Choices</Label>
+                  <span className="text-[11px] text-muted-foreground">{pollOptions.filter((o) => o.trim()).length}/4</span>
+                </div>
                 <div className="space-y-2">
                   {pollOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                        {i + 1}
+                      </span>
                       <Input
                         placeholder={`Option ${i + 1}`}
                         value={opt}
                         maxLength={80}
+                        className="h-11 rounded-xl border-border/70 bg-background shadow-none"
                         onChange={(e) => {
                           const next = [...pollOptions];
                           next[i] = e.target.value;
@@ -310,7 +432,7 @@ export function QuickPostComposer({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          className="h-9 w-9 flex-shrink-0 rounded-full text-muted-foreground hover:text-destructive"
                           aria-label={`Remove option ${i + 1}`}
                           onClick={() => {
                             setPollOptions(pollOptions.filter((_, j) => j !== i));
@@ -327,7 +449,7 @@ export function QuickPostComposer({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-primary h-8 -ml-2"
+                    className="-ml-2 h-9 rounded-full text-primary"
                     onClick={() => setPollOptions([...pollOptions, ''])}
                   >
                     <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -337,25 +459,29 @@ export function QuickPostComposer({
               </div>
 
               <div className="space-y-2">
-                <Label>Additional details</Label>
+                <Label htmlFor="poll-details" className="text-sm font-semibold">Helpful context <span className="font-normal text-muted-foreground">(optional)</span></Label>
                 <Textarea
-                  placeholder="Any context for the poll..."
+                  id="poll-details"
+                  placeholder="Add a little context for members"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
+                  maxLength={1000}
+                  className="min-h-[100px] resize-none rounded-2xl border-border/70 bg-muted/20 px-4 py-3 text-base leading-6 shadow-none"
                 />
               </div>
             </TabsContent>
 
             {/* Photo Tab */}
-            <TabsContent value="photo" className="space-y-4 mt-4">
+            <TabsContent value="photo" className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label>Caption</Label>
+                <Label htmlFor="photo-caption" className="text-sm font-semibold">Caption <span className="font-normal text-muted-foreground">(optional)</span></Label>
                 <Textarea
-                  placeholder="Add a caption..."
+                  id="photo-caption"
+                  placeholder={`Say something about this moment at ${contextName}`}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
+                  maxLength={1000}
+                  className="min-h-[100px] resize-none rounded-2xl border-border/70 bg-muted/20 px-4 py-3 text-base leading-6 shadow-none"
                 />
               </div>
               
@@ -376,25 +502,69 @@ export function QuickPostComposer({
                 </div>
               )}
             </TabsContent>
+
+            {canPostAnnouncements && (
+              <TabsContent value="announcement" className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-3.5 py-3">
+                  <div className="flex items-start gap-2.5">
+                    <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+                    <div>
+                      <p className="text-sm font-semibold">Official venue update</p>
+                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                        This will be clearly marked as an announcement from {contextName}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="announcement-title" className="text-sm font-semibold">Headline</Label>
+                  <Input
+                    id="announcement-title"
+                    placeholder="Court closure, schedule change, or venue news"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={120}
+                    className="h-12 rounded-xl border-border/70 bg-background px-3.5 text-base shadow-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="announcement-content" className="text-sm font-semibold">Details</Label>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{content.length}/2000</span>
+                  </div>
+                  <Textarea
+                    id="announcement-content"
+                    placeholder="Give members the details they need"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    maxLength={2000}
+                    className="min-h-[180px] resize-none rounded-2xl border-border/70 bg-muted/20 px-4 py-3 text-base leading-6 shadow-none"
+                  />
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
+          </div>
         </div>
 
-        <DrawerFooter className="flex-row gap-2 px-4 pt-3 pb-3 border-t shrink-0 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
-            disabled={isSubmitting || uploading}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={!canSubmit() || isSubmitting || uploading}
-            className="flex-1"
-          >
-            {uploading ? 'Uploading...' : isSubmitting ? 'Posting...' : 'Post'}
-          </Button>
+        <DrawerFooter className="shrink-0 border-t border-border/60 bg-background/95 p-0 backdrop-blur [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto flex w-full max-w-xl items-center gap-2 px-4 pt-3 sm:px-6">
+            <Button
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting || uploading}
+              className="h-11 rounded-xl px-4 text-muted-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSubmit() || isSubmitting || uploading}
+              className="h-11 flex-1 rounded-xl text-sm font-semibold shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.8)]"
+            >
+              {uploading ? 'Uploading…' : isSubmitting ? 'Posting…' : submitLabel[activeTab]}
+            </Button>
+          </div>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

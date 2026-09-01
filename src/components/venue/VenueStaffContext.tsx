@@ -36,6 +36,7 @@ interface VenueStaffValue {
 }
 
 const VenueStaffContext = createContext<VenueStaffValue | null>(null);
+const EMPTY_STAFF_IDS = new Set<string>();
 
 /**
  * Deliberately generic wording. "Owner" and "Manager" are worth distinguishing
@@ -149,6 +150,19 @@ export function useStaffBadge(userId: string | null | undefined): StaffBadge | n
 /** The venue accent, for tinting badges. Null outside a venue. */
 export function useVenueStaffAccent(): string | null {
   return useContext(VenueStaffContext)?.accent ?? null;
+}
+
+/**
+ * The venue staff IDs as a stable read-only set.
+ *
+ * Feed-level organization needs to group staff updates before it renders an
+ * individual StaffBadge. Exposing the existing context map here avoids a
+ * second request and keeps the definition of "venue staff" in one place.
+ */
+// Context hooks intentionally live beside the provider whose private map they read.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useVenueStaffUserIds(): ReadonlySet<string> {
+  return useContext(VenueStaffContext)?.byUser ?? EMPTY_STAFF_IDS;
 }
 
 /**

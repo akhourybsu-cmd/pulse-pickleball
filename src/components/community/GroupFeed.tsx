@@ -1,21 +1,33 @@
 import { useState, useCallback, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Pin, Trash2, MoreVertical, Image as ImageIcon } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarDays,
+  Check,
+  Clock3,
+  Images,
+  LayoutList,
+  Megaphone,
+  MessageSquare,
+  MoreVertical,
+  Pin,
+  Plus,
+  Trash2,
+  UserPlus,
+  UsersRound,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { GroupEmptyState } from './GroupEmptyState';
 import { GroupWelcomeCard } from './GroupWelcomeCard';
 import { GroupFeedPlaceholder } from './GroupFeedPlaceholder';
 import { CommunityPulse } from './CommunityPulse';
-import { ComposerQuickActions } from './ComposerQuickActions';
 import { ImageLightbox } from './ImageLightbox';
 import { PollCard } from './PollCard';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,13 +49,18 @@ import { useGroupEvents } from '@/hooks/useGroupEvents';
 import { cn } from '@/lib/utils';
 import { RoundRobinPostCard } from '@/components/community/posts/RoundRobinPostCard';
 import { StaffBadge, useStaffEmphasis } from '@/components/venue/StaffBadge';
+import { useVenueStaffUserIds } from '@/components/venue/VenueStaffContext';
+import { isInVenueFilter, type VenueFeedFilter } from '@/lib/venues/feed';
 
 interface GroupFeedProps {
   groupId: string;
   groupName?: string;
   isAdmin: boolean;
   currentUserId: string | null;
-  onOpenQuickPost?: (type: 'post' | 'poll' | 'lfg') => void;
+  venueMode?: boolean;
+  /** Static data for the DEV design harness; normal app surfaces omit it. */
+  previewPosts?: GroupPost[];
+  onOpenQuickPost?: (type: 'post' | 'photo' | 'poll' | 'lfg' | 'announcement') => void;
   onSwitchToEvents?: () => void;
 }
 
@@ -74,6 +91,18 @@ const REACTION_EMOJIS = [
   { emoji: '🔥', label: 'Fire' },
 ];
 
+const VENUE_FEED_FILTERS: Array<{
+  value: VenueFeedFilter;
+  label: string;
+  icon: typeof LayoutList;
+}> = [
+  { value: 'all', label: 'All', icon: LayoutList },
+  { value: 'venue', label: 'Venue updates', icon: Megaphone },
+  { value: 'players', label: 'Find players', icon: UsersRound },
+  { value: 'polls', label: 'Polls', icon: BarChart3 },
+  { value: 'photos', label: 'Photos', icon: Images },
+];
+
 // Date separator component
 function DateSeparator({ label }: { label: string }) {
   return (
@@ -99,17 +128,28 @@ export function GroupFeed({
   groupName = 'this group',
   isAdmin, 
   currentUserId,
+  venueMode = false,
+  previewPosts,
   onOpenQuickPost,
   onSwitchToEvents,
 }: GroupFeedProps) {
-  const { posts, loading, createPost, deletePost, toggleReaction, togglePin, castPollVote } = useGroupPosts(groupId);
+  const {
+    posts: queriedPosts,
+    loading: postsLoading,
+    deletePost,
+    toggleReaction,
+    togglePin,
+    joinLfgPost,
+    leaveLfgPost,
+    castPollVote,
+  } = useGroupPosts(groupId);
+  const posts = previewPosts ?? queriedPosts;
   const { events } = useGroupEvents(groupId);
-  const [newPostContent, setNewPostContent] = useState('');
-  const [isPosting, setIsPosting] = useState(false);
   const [deleteDialogPost, setDeleteDialogPost] = useState<GroupPost | null>(null);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
-  const [composerFocused, setComposerFocused] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [venueFilter, setVenueFilter] = useState<VenueFeedFilter>('all');
+  const staffUserIds = useVenueStaffUserIds();
 
   // Calculate activity stats
   const activeTodayCount = posts.filter(p => {
@@ -120,21 +160,6 @@ export function GroupFeed({
   
   const sessionsThisWeek = events.length;
 
-  const handleCreatePost = async () => {
-    if (!newPostContent.trim()) return;
-    
-    setIsPosting(true);
-    const result = await createPost({
-      type: 'feed',
-      content: newPostContent.trim(),
-    });
-    
-    if (result) {
-      setNewPostContent('');
-    }
-    setIsPosting(false);
-  };
-
   const handleDeletePost = async () => {
     if (!deleteDialogPost) return;
     await deletePost(deleteDialogPost.id);
@@ -142,8 +167,8 @@ export function GroupFeed({
   };
 
   const focusComposer = useCallback(() => {
-    document.querySelector<HTMLTextAreaElement>('textarea')?.focus();
-  }, []);
+    onOpenQuickPost?.('post');
+  }, [onOpenQuickPost]);
 
   // Memoized handlers
   const handleToggleReaction = useCallback((postId: string, emoji: string) => {
@@ -158,9 +183,21 @@ export function GroupFeed({
     castPollVote(postId, optionIdx);
   }, [castPollVote]);
 
-  // Group posts by date
-  const pinnedPosts = useMemo(() => posts.filter(p => p.pinned), [posts]);
-  const regularPosts = useMemo(() => posts.filter(p => !p.pinned), [posts]);
+  const handleToggleParticipation = useCallback((post: GroupPost) => {
+    return post.user_joined ? leaveLfgPost(post.id) : joinLfgPost(post.id);
+  }, [joinLfgPost, leaveLfgPost]);
+
+  const filteredPosts = useMemo(
+    () => venueMode
+      ? posts.filter((post) => isInVenueFilter(post, venueFilter, staffUserIds))
+      : posts,
+    [posts, staffUserIds, venueFilter, venueMode],
+  );
+
+  // Group posts by date after filtering so the section labels never describe
+  // content that is currently hidden.
+  const pinnedPosts = useMemo(() => filteredPosts.filter(p => p.pinned), [filteredPosts]);
+  const regularPosts = useMemo(() => filteredPosts.filter(p => !p.pinned), [filteredPosts]);
 
   // Render the feed in windows so a long history doesn't mount hundreds of
   // heavy PostCards at once. All posts are already fetched; this only bounds
@@ -192,7 +229,7 @@ export function GroupFeed({
     return groups;
   }, [visibleRegular]);
 
-  if (loading) {
+  if (postsLoading && !previewPosts) {
     // Use the post-shaped placeholder (avatar + name + content + reaction
     // row) instead of three generic flat skeleton blocks — the prior
     // heights (28 / 48 / 48) didn't match real post heights, causing a
@@ -202,29 +239,102 @@ export function GroupFeed({
 
   return (
     <div className="space-y-5 pb-20">
-      {/* Anchored Community Status Bar */}
-      <CommunityPulse
-        activeTodayCount={activeTodayCount}
-        sessionsThisWeek={sessionsThisWeek}
-      />
+      {venueMode ? (
+        <section className="space-y-4" aria-labelledby="venue-feed-heading">
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h2
+                id="venue-feed-heading"
+                className="text-xl font-semibold tracking-[-0.025em] text-foreground"
+              >
+                Venue feed
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                Updates from {groupName} and the players who play here.
+              </p>
+            </div>
+            {activeTodayCount > 0 && (
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                {activeTodayCount} new today
+              </span>
+            )}
+          </div>
+
+          <div
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0"
+            aria-label="Filter venue posts"
+          >
+            {VENUE_FEED_FILTERS.map(({ value, label, icon: Icon }) => {
+              const selected = venueFilter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setVenueFilter(value);
+                    setVisibleCount(FEED_PAGE);
+                  }}
+                  className={cn(
+                    'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors',
+                    selected
+                      ? 'border-foreground bg-foreground text-background shadow-sm'
+                      : 'border-border/70 bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {onOpenQuickPost && (
+            <button
+              type="button"
+              onClick={() => onOpenQuickPost('post')}
+              className="group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3 text-left shadow-[0_1px_2px_hsl(var(--foreground)/0.04)] transition-colors hover:border-primary/35"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                <Plus className="h-4 w-4" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-foreground">Share with {groupName}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  Post an update, photo, poll, or find players
+                </span>
+              </span>
+            </button>
+          )}
+        </section>
+      ) : (
+        <CommunityPulse
+          activeTodayCount={activeTodayCount}
+          sessionsThisWeek={sessionsThisWeek}
+        />
+      )}
 
       {/* Pinned Posts Section */}
       {pinnedPosts.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 px-1 text-primary">
             <Pin className="h-3 w-3" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em]">Pinned</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em]">
+              {venueMode ? 'Important' : 'Pinned'}
+            </span>
           </div>
-          <div className="space-y-5">
+          <div className={cn(venueMode ? 'space-y-3' : 'space-y-5')}>
             {pinnedPosts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
+                venueMode={venueMode}
                 onDelete={() => setDeleteDialogPost(post)}
                 onToggleReaction={handleToggleReaction}
                 onTogglePin={handleTogglePin}
+                onToggleParticipation={handleToggleParticipation}
                 onOpenComments={() => setCommentsPostId(post.id)}
                 onImageClick={setLightboxImage}
                 onPollVote={handlePollVote}
@@ -237,14 +347,37 @@ export function GroupFeed({
       {/* Regular Posts or Empty State */}
       {posts.length === 0 ? (
         <div className="space-y-4">
-          <GroupWelcomeCard
-            groupName={groupName}
-            onPostUpdate={focusComposer}
-            onScheduleSession={() => onSwitchToEvents?.()}
-            onAskQuestion={focusComposer}
-          />
-          <GroupFeedPlaceholder />
+          {venueMode ? (
+            <GroupEmptyState
+              icon={MessageSquare}
+              title="Start the venue conversation"
+              description={`Share the first update with the ${groupName} community.`}
+              actions={onOpenQuickPost ? [{ label: 'Create a post', onClick: focusComposer, icon: Plus }] : []}
+              size="sm"
+            />
+          ) : (
+            <>
+              <GroupWelcomeCard
+                groupName={groupName}
+                onPostUpdate={focusComposer}
+                onScheduleSession={() => onSwitchToEvents?.()}
+                onAskQuestion={focusComposer}
+              />
+              <GroupFeedPlaceholder />
+            </>
+          )}
         </div>
+      ) : filteredPosts.length === 0 ? (
+        <GroupEmptyState
+          icon={MessageSquare}
+          title="Nothing in this view yet"
+          description="Try another filter or create the first post here."
+          actions={[
+            { label: 'Show all', onClick: () => setVenueFilter('all'), variant: 'outline' },
+          ]}
+          variant="compact"
+          size="sm"
+        />
       ) : regularPosts.length === 0 && pinnedPosts.length > 0 ? (
         <GroupEmptyState
           icon={MessageSquare}
@@ -254,23 +387,25 @@ export function GroupFeed({
           size="sm"
         />
       ) : (
-        <div className="space-y-6">
-          {groupedPosts.map((group, groupIndex) => (
+        <div className={cn(venueMode ? 'space-y-5' : 'space-y-6')}>
+          {groupedPosts.map((group) => (
             <div key={group.label}>
               {/* Date separator - only show if more than one group or not "Today" */}
               {(groupedPosts.length > 1 || group.label !== 'Today') && (
                 <DateSeparator label={group.label} />
               )}
-              <div className="space-y-5">
+              <div className={cn(venueMode ? 'space-y-3' : 'space-y-5')}>
                 {group.posts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
+                    venueMode={venueMode}
                     onDelete={() => setDeleteDialogPost(post)}
                     onToggleReaction={handleToggleReaction}
                     onTogglePin={handleTogglePin}
+                    onToggleParticipation={handleToggleParticipation}
                     onOpenComments={() => setCommentsPostId(post.id)}
                     onImageClick={setLightboxImage}
                     onPollVote={handlePollVote}
@@ -338,9 +473,11 @@ interface PostCardProps {
   post: GroupPost;
   currentUserId: string | null;
   isAdmin: boolean;
+  venueMode?: boolean;
   onDelete: () => void;
   onToggleReaction: (postId: string, emoji: string) => void;
   onTogglePin: (postId: string, pinned: boolean) => void;
+  onToggleParticipation?: (post: GroupPost) => Promise<boolean>;
   onOpenComments: () => void;
   onImageClick?: (imageUrl: string) => void;
   onPollVote?: (postId: string, optionIdx: number) => void;
@@ -350,9 +487,11 @@ const PostCard = memo(function PostCard({
   post,
   currentUserId,
   isAdmin,
+  venueMode = false,
   onDelete,
   onToggleReaction,
   onTogglePin,
+  onToggleParticipation,
   onOpenComments,
   onImageClick,
   onPollVote,
@@ -362,6 +501,11 @@ const PostCard = memo(function PostCard({
   const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
   const isAuthor = currentUserId === post.user_id;
   const canManage = isAuthor || isAdmin;
+  const { isStaff, ringStyle } = useStaffEmphasis(post.user_id);
+  const [participationPending, setParticipationPending] = useState(false);
+  const isFull = Boolean(
+    post.max_players && (post.participant_count ?? 0) >= post.max_players && !post.user_joined,
+  );
   const initials = (post.profile?.display_name || post.profile?.full_name || 'U')
     .split(' ')
     .map(n => n[0])
@@ -373,39 +517,59 @@ const PostCard = memo(function PostCard({
     if (post.user_id) navigate(`/profile/${post.user_id}`);
   };
 
+  const toggleParticipation = async () => {
+    if (!onToggleParticipation || participationPending || isFull) return;
+    setParticipationPending(true);
+    try {
+      await onToggleParticipation(post);
+    } finally {
+      setParticipationPending(false);
+    }
+  };
+
+  const sessionDateLabel = post.session_date
+    ? format(new Date(`${post.session_date}T00:00:00`), 'EEE, MMM d')
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      style={isStaff ? ringStyle : undefined}
       className={cn(
-        // Each post is its own distinct slab: full-strength border, a real
-        // lifted shadow, and a type-colored spine on the left edge.
-        'relative overflow-hidden rounded-2xl bg-card p-4 transition-shadow',
-        'border border-border/70 border-l-[4px]',
-        'shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.14)] hover:shadow-[0_10px_28px_-16px_hsl(var(--foreground)/0.28)]',
-        post.pinned
-          ? 'border-primary/45 border-l-primary bg-primary/[0.06]'
-          : typeAccent,
+        'relative overflow-hidden bg-card p-4 transition-shadow',
+        venueMode
+          ? 'rounded-[18px] border border-border/70 shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_10px_30px_-24px_hsl(var(--foreground)/0.25)] hover:shadow-[0_10px_32px_-20px_hsl(var(--foreground)/0.22)] sm:p-5'
+          : 'rounded-2xl border border-border/70 border-l-[4px] shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.14)] hover:shadow-[0_10px_28px_-16px_hsl(var(--foreground)/0.28)]',
+        post.pinned && 'border-primary/45 bg-primary/[0.035]',
+        !venueMode && (post.pinned ? 'border-l-primary' : typeAccent),
+        venueMode && isStaff && 'bg-gradient-to-br from-card via-card to-primary/[0.025]',
       )}
     >
+      {venueMode && (post.pinned || isStaff) && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-[2px] bg-primary/70"
+        />
+      )}
       {/* Header - Mobile Optimized */}
-      <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+      <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
         <div className="flex items-start gap-2 sm:gap-2.5 flex-1 min-w-0">
           <button onClick={goToProfile} className="flex-shrink-0" aria-label="View profile">
-            <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+            <Avatar className={cn('h-9 w-9', venueMode && 'ring-1 ring-border/60 sm:h-10 sm:w-10')}>
               <AvatarImage src={post.profile?.avatar_url || undefined} />
               <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
             </Avatar>
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <button onClick={goToProfile} className="font-medium text-sm truncate max-w-[120px] sm:max-w-none hover:underline text-left">
+              <button onClick={goToProfile} className="max-w-[145px] truncate text-left text-sm font-semibold tracking-[-0.01em] hover:underline sm:max-w-none">
                 {post.profile?.display_name || post.profile?.full_name || 'Someone'}
               </button>
               {/* Renders nothing outside a venue, so ordinary communities are
                   unchanged. */}
               <StaffBadge userId={post.user_id} />
-              <span className="text-xs text-muted-foreground/70">
+              <span className="text-[11px] text-muted-foreground/75 sm:text-xs">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>
             </div>
@@ -418,7 +582,11 @@ const PostCard = memo(function PostCard({
                     typeInfo.className,
                   )}
                 >
-                  {typeInfo.label}
+                  {venueMode && post.type === 'announcement'
+                    ? 'Venue update'
+                    : venueMode && post.type === 'lfg'
+                      ? 'Find players'
+                      : typeInfo.label}
                 </Badge>
               )}
             </div>
@@ -432,7 +600,7 @@ const PostCard = memo(function PostCard({
                   target) to 36px in a corner cluster where 40px would
                   feel too heavy. The dropdown items themselves are
                   comfortable touch targets. */}
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Post options">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -458,23 +626,68 @@ const PostCard = memo(function PostCard({
       {/* Content */}
       <div className="mb-3">
         {post.title && (
-          <h3 className="font-medium text-base mb-2">{post.title}</h3>
+          <h3 className={cn('mb-2 font-semibold text-foreground', venueMode ? 'text-[17px] leading-6 tracking-[-0.018em]' : 'text-base')}>
+            {post.title}
+          </h3>
         )}
         {post.content && (
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+          <p className={cn(
+            'whitespace-pre-wrap',
+            venueMode ? 'text-[15px] leading-6 text-foreground/[0.82]' : 'text-sm leading-relaxed text-muted-foreground',
+          )}>
             {post.content}
           </p>
+        )}
+
+        {post.type === 'lfg' && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-muted/45 px-3 py-2.5 text-xs text-foreground/75">
+            {sessionDateLabel && (
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden />
+                {sessionDateLabel}
+              </span>
+            )}
+            {post.session_time && (
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Clock3 className="h-3.5 w-3.5 text-primary" aria-hidden />
+                {format(new Date(`2000-01-01T${post.session_time}`), 'h:mm a')}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <UsersRound className="h-3.5 w-3.5 text-primary" aria-hidden />
+              {post.participant_count ?? 0}{post.max_players ? ` of ${post.max_players}` : ''} joined
+            </span>
+            {currentUserId && onToggleParticipation && (
+              <Button
+                type="button"
+                size="sm"
+                variant={post.user_joined ? 'outline' : 'default'}
+                disabled={participationPending || isFull}
+                onClick={toggleParticipation}
+                className="ml-auto h-8 rounded-lg px-3 text-xs font-semibold"
+              >
+                {post.user_joined ? (
+                  <><Check className="mr-1.5 h-3.5 w-3.5" />Joined</>
+                ) : (
+                  <><UserPlus className="mr-1.5 h-3.5 w-3.5" />{isFull ? 'Full' : 'Join'}</>
+                )}
+              </Button>
+            )}
+          </div>
         )}
         
         {/* Post Image */}
         {post.image_url && (
-          <div className="mt-3 -mx-1">
+          <div className={cn('mt-4', !venueMode && '-mx-1')}>
             <img
               src={post.image_url}
               alt=""
               loading="lazy"
               decoding="async"
-              className="w-full rounded-lg object-cover max-h-80 cursor-pointer hover:opacity-95 transition-opacity"
+              className={cn(
+                'max-h-96 w-full cursor-pointer object-cover transition-opacity hover:opacity-95',
+                venueMode ? 'rounded-xl ring-1 ring-border/50' : 'rounded-lg',
+              )}
               onClick={() => onImageClick?.(post.image_url!)}
             />
           </div>
@@ -500,9 +713,12 @@ const PostCard = memo(function PostCard({
       </div>
 
       {/* Footer with Enhanced Reactions - Mobile Optimized */}
-      <div className="mt-1 flex items-center justify-between border-t border-border/50 pt-2.5">
+      <div className={cn('mt-1 flex items-center justify-between border-t border-border/50 pt-2.5', venueMode && 'pt-3')}>
         {/* Grouped reaction rail — glassy pill with a hairline ring. */}
-        <div className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/50 px-0.5 py-0.5 shadow-inner sm:px-1">
+        <div className={cn(
+          'flex items-center gap-0.5 rounded-full px-0.5 py-0.5 sm:px-1',
+          venueMode ? 'bg-muted/[0.55]' : 'border border-border/60 bg-muted/50 shadow-inner',
+        )}>
           {REACTION_EMOJIS.map(({ emoji }) => {
             const reactionData = post.reactions?.find(r => r.emoji === emoji);
             const hasReacted = reactionData?.user_reacted;
