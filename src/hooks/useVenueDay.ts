@@ -92,15 +92,38 @@ export function useVenueDay(
       if (courtsRes.error) throw courtsRes.error;
       if (sessionsRes.error) throw sessionsRes.error;
 
+      const sessions = (sessionsRes.data ?? []) as VenueDaySession[];
+
+      // Sign-up counts for the programming only. Reservations and closures
+      // have no spots to run out of, so counting them would mean a round trip
+      // for numbers nothing displays.
+      const joinable = sessions.filter((s) => !isReservation(s) && s.event_format !== 'maintenance');
+      let going: Record<string, number> = {};
+
+      if (joinable.length > 0) {
+        const { data: rsvps } = await supabase
+          .from('group_event_rsvps')
+          .select('event_id')
+          .in('event_id', joinable.map((s) => s.id))
+          .eq('status', 'going');
+
+        going = (rsvps ?? []).reduce<Record<string, number>>((acc, r) => {
+          acc[r.event_id] = (acc[r.event_id] ?? 0) + 1;
+          return acc;
+        }, {});
+      }
+
       return {
         courts: (courtsRes.data ?? []) as Court[],
-        sessions: (sessionsRes.data ?? []) as VenueDaySession[],
+        sessions,
+        going,
       };
     },
   });
 
   const courts = query.data?.courts ?? [];
   const sessions = useMemo(() => query.data?.sessions ?? [], [query.data]);
+  const going = useMemo(() => query.data?.going ?? {}, [query.data]);
 
   const grid = useMemo(
     () => buildDayGrid(courts, sessions, day, gridOptions),
@@ -108,8 +131,15 @@ export function useVenueDay(
     [query.data, day, gridOptions], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  /** Programming — open play, clinics, leagues. Everything that isn't a court hold. */
-  const programming = useMemo(() => sessions.filter((s) => !isReservation(s)), [sessions]);
+  /**
+   * Programming — open play, clinics, round robins. Anything people can join.
+   * Excludes court holds AND closures: a court taken out of service is not an
+   * event, and advertising "Resurfacing" on the Play tab would be absurd.
+   */
+  const programming = useMemo(
+    () => sessions.filter((s) => !isReservation(s) && s.event_format !== 'maintenance'),
+    [sessions],
+  );
 
   const freeNow = useMemo(() => courtsFreeAt(courts, sessions, new Date()), [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,6 +150,7 @@ export function useVenueDay(
   return {
     courts,
     sessions,
+    going,
     programming,
     grid,
     freeNow,

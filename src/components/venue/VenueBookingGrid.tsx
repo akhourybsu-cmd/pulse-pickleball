@@ -1,11 +1,21 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Grid3x3, Rows3, Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Grid3x3, Rows3, Lock, X, MoonStar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { formatSlotTime, type CourtColumn, type Slot } from '@/lib/venues/availability';
+import {
+  formatSlotTime,
+  isSelected,
+  selectionRange,
+  timeList,
+  toggleSlot,
+  type CourtColumn,
+  type SlotSelection,
+  type Slot,
+} from '@/lib/venues/availability';
+import { DayStrip } from './DayStrip';
 
 /**
  * The court grid.
@@ -30,7 +40,8 @@ interface VenueBookingGridProps {
   canBook: boolean;
   accent?: string | null;
   onDayChange: (day: Date) => void;
-  onPickSlot: (courtId: string, start: Date) => void;
+  /** `minutes` is the length of the range the viewer selected. */
+  onPickSlot: (courtId: string, start: Date, minutes: number) => void;
   /**
    * Staff only. When given, an OCCUPIED cell becomes actionable too, which is
    * the whole difference between a player's booking grid and an operator's day
@@ -62,56 +73,26 @@ export function VenueBookingGrid({
     setModeTouched(true);
   };
 
-  const shiftDay = (delta: number) => {
-    const next = new Date(day);
-    next.setDate(next.getDate() + delta);
-    next.setHours(0, 0, 0, 0);
-    onDayChange(next);
-  };
+  const [selection, setSelection] = useState<SlotSelection | null>(null);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const isToday = day.getTime() === today.getTime();
-  const isPast = day < today;
+  // A selection is only meaningful against the grid it was made on. Clearing on
+  // day change stops a stale range following the viewer to another date.
+  useEffect(() => {
+    setSelection(null);
+  }, [day]);
+
+  const range = selectionRange(grid, selection);
+  // The grid can refresh under a selection — if a slot inside it just got taken,
+  // selectionRange returns null and the action bar drops rather than offering a
+  // booking the database will refuse.
+  const selectedCourt = grid.find((c) => c.court.id === selection?.courtId)?.court ?? null;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center rounded-lg border border-border bg-card">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-l-lg rounded-r-none"
-            onClick={() => shiftDay(-1)}
-            disabled={isPast}
-            aria-label="Previous day"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[7.5rem] px-2 text-center text-sm font-semibold">
-            {isToday
-              ? 'Today'
-              : day.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-r-lg rounded-l-none"
-            onClick={() => shiftDay(1)}
-            aria-label="Next day"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      <DayStrip value={day} onChange={onDayChange} accent={accent} />
 
-        {!isToday && (
-          <Button variant="ghost" size="sm" className="h-9" onClick={() => onDayChange(today)}>
-            <CalendarDays className="mr-1.5 h-4 w-4" />
-            Today
-          </Button>
-        )}
-
-        <div className="ml-auto inline-flex rounded-lg border border-border bg-card p-0.5">
+      <div className="flex items-center justify-end">
+        <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
           <ViewButton
             active={effectiveMode === 'times'}
             onClick={() => setModeExplicit('times')}
@@ -150,15 +131,59 @@ export function VenueBookingGrid({
           </p>
         </div>
       ) : effectiveMode === 'times' ? (
-        <TimesView grid={grid} canBook={canBook} accent={accent} onPickSlot={onPickSlot} />
+        <TimesView
+          grid={grid}
+          canBook={canBook}
+          accent={accent}
+          selection={selection}
+          onToggle={(courtId, index) =>
+            setSelection((sel) => toggleSlot(sel, courtId, index))
+          }
+        />
       ) : (
         <CourtsView
           grid={grid}
           canBook={canBook}
           accent={accent}
-          onPickSlot={onPickSlot}
+          onPickSlot={(courtId, start) => onPickSlot(courtId, start, 0)}
           onPickSession={onPickSession}
         />
+      )}
+
+      {/* Selection bar — appears only when a range is live, and states the exact
+          court and span being booked so nothing is guessed in the dialog. */}
+      {range && selectedCourt && canBook && (
+        <div className="sticky bottom-3 z-10 flex items-center gap-2 rounded-xl border border-primary/40 bg-card p-2.5 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setSelection(null)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            aria-label="Clear selection"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">
+              {selectedCourt.name ?? `Court ${selectedCourt.court_number}`}
+            </p>
+            <p className="truncate text-xs tabular-nums text-muted-foreground">
+              {formatSlotTime(range.start)}–{formatSlotTime(range.end)} ·{' '}
+              {range.minutes >= 60
+                ? `${range.minutes / 60}h${range.minutes % 60 ? ` ${range.minutes % 60}m` : ''}`
+                : `${range.minutes}m`}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              onPickSlot(selectedCourt.id, range.start, range.minutes);
+              setSelection(null);
+            }}
+          >
+            Book
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -202,73 +227,89 @@ function TimesView({
   grid,
   canBook,
   accent,
-  onPickSlot,
+  selection,
+  onToggle,
 }: {
   grid: CourtColumn[];
   canBook: boolean;
   accent?: string | null;
-  onPickSlot: (courtId: string, start: Date) => void;
+  selection: SlotSelection | null;
+  onToggle: (courtId: string, index: number) => void;
 }) {
-  const slotCount = grid[0]?.slots.length ?? 0;
-
-  const rows = Array.from({ length: slotCount }, (_, i) => {
-    const start = grid[0].slots[i].start;
-    const free = grid.filter((col) => col.slots[i]?.bookable);
-    const taken = grid.filter((col) => col.slots[i]?.reservation);
-    return { start, free, taken, index: i };
-  });
-
-  const anyOpen = rows.some((r) => r.free.length > 0);
+  const entries = timeList(grid);
+  const anyOpen = entries.some((e) => e.kind === 'slots');
 
   return (
     <div className="space-y-1.5">
-      {!anyOpen && (
+      {!anyOpen && entries.length === 0 && (
         <p className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
-          Nothing open on this day.
+          Nothing scheduled on this day.
         </p>
       )}
 
-      {rows.map((row) => (
-        <div
-          key={row.index}
-          className={cn(
-            'flex items-start gap-3 rounded-lg border px-3 py-2.5',
-            row.free.length > 0 ? 'border-border bg-card' : 'border-border/50 bg-muted/25',
-          )}
-        >
-          <span className="w-16 shrink-0 pt-1 text-sm font-semibold tabular-nums">
-            {formatSlotTime(row.start)}
-          </span>
-
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            {row.free.length === 0 ? (
-              <span className="pt-1 text-xs text-muted-foreground">
-                {row.taken.length > 0 ? 'Fully booked' : 'Closed'}
-              </span>
-            ) : (
-              row.free.map((col) => (
-                <button
-                  key={col.court.id}
-                  type="button"
-                  disabled={!canBook}
-                  onClick={() => onPickSlot(col.court.id, row.start)}
-                  className={cn(
-                    'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
-                    canBook
-                      ? 'border-border bg-background hover:border-primary/50 hover:bg-primary/5'
-                      : 'border-border/60 bg-background text-muted-foreground',
-                  )}
-                  style={
-                    canBook && accent ? { borderColor: `${accent}55`, color: accent } : undefined
-                  }
-                >
-                  {col.court.name ?? `Court ${col.court.court_number}`}
-                </button>
-              ))
-            )}
+      {entries.map((entry) =>
+        entry.kind === 'unavailable' ? (
+          // One band instead of a run of identical empty rows. A venue booked
+          // solid 6-8pm should say so once.
+          <div
+            key={`gap-${entry.fromIndex}`}
+            className="rounded-lg border border-border/50 bg-muted/30 px-3 py-3 text-center"
+          >
+            <p className="text-sm font-semibold tabular-nums text-muted-foreground">
+              {formatSlotTime(entry.start)} – {formatSlotTime(entry.end)}
+            </p>
+            <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              {!entry.booked && <MoonStar className="h-3 w-3" />}
+              {entry.booked ? 'No courts available' : 'Closed'}
+            </p>
           </div>
-        </div>
-      ))}
+        ) : (
+          <div
+            key={entry.index}
+            className="flex items-start gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+          >
+            <span className="w-16 shrink-0 pt-1 text-sm font-semibold tabular-nums">
+              {formatSlotTime(entry.start)}
+            </span>
+
+            <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+              {entry.free.map((col) => {
+                const picked = isSelected(selection, col.court.id, entry.index);
+                return (
+                  <button
+                    key={col.court.id}
+                    type="button"
+                    disabled={!canBook}
+                    aria-pressed={picked}
+                    onClick={() => onToggle(col.court.id, entry.index)}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                      !canBook && 'border-border/60 bg-background text-muted-foreground',
+                      canBook && !picked && 'border-border bg-background hover:border-primary/50 hover:bg-primary/5',
+                      canBook && picked && 'border-primary bg-primary text-primary-foreground',
+                    )}
+                    style={
+                      canBook && accent
+                        ? picked
+                          ? { backgroundColor: accent, borderColor: accent, color: '#fff' }
+                          : { borderColor: `${accent}55`, color: accent }
+                        : undefined
+                    }
+                  >
+                    {col.court.name ?? `Court ${col.court.court_number}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ),
+      )}
+
+      {canBook && anyOpen && !selection && (
+        <p className="px-1 pt-1 text-xs text-muted-foreground">
+          Tap a court to hold it. Tap the next hour on the same court to extend.
+        </p>
+      )}
     </div>
   );
 }

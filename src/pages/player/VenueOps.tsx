@@ -52,6 +52,7 @@ export default function VenueOps() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [bookCourtId, setBookCourtId] = useState<string | null>(null);
   const [bookStart, setBookStart] = useState<Date | null>(null);
+  const [bookMinutes, setBookMinutes] = useState<number | null>(null);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
@@ -231,9 +232,10 @@ export default function VenueOps() {
             canBook
             accent={chrome?.accentHex}
             onDayChange={setDay}
-            onPickSlot={(courtId, start) => {
+            onPickSlot={(courtId, start, minutes) => {
               setBookCourtId(courtId);
               setBookStart(start);
+              setBookMinutes(minutes || null);
             }}
             onPickSession={setSessionId}
           />
@@ -260,6 +262,7 @@ export default function VenueOps() {
               if (!o) {
                 setBookCourtId(null);
                 setBookStart(null);
+                setBookMinutes(null);
               }
             }}
             groupId={groupId!}
@@ -267,6 +270,7 @@ export default function VenueOps() {
             court={bookCourt}
             start={bookStart}
             slotMinutes={DEFAULT_GRID.slotMinutes}
+            presetMinutes={bookMinutes}
             dayEnd={dayEnd}
             onBooked={refresh}
           />

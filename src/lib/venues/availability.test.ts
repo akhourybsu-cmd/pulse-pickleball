@@ -7,7 +7,10 @@ import {
   openSlots,
   overlaps,
   reservationAt,
+  selectionRange,
   slotBoundaries,
+  timeList,
+  toggleSlot,
   type Court,
   type Reservation,
 } from './availability';
@@ -210,5 +213,133 @@ describe('courtsFreeAt', () => {
 
   it('counts every active court when nothing is booked', () => {
     expect(courtsFreeAt(courts, [], at(9))).toBe(2);
+  });
+});
+
+describe('timeList', () => {
+  const courts = [court('c1', 1), court('c2', 2)];
+
+  it('emits one row per slot when courts are free', () => {
+    const list = timeList(buildDayGrid(courts, [], DAY, GRID));
+    expect(list).toHaveLength(4);
+    expect(list.every((e) => e.kind === 'slots')).toBe(true);
+  });
+
+  it('collapses a solidly booked stretch into a single band', () => {
+    const grid = buildDayGrid(
+      courts,
+      [booking('a', 'c1', 9, 11), booking('b', 'c2', 9, 11)],
+      DAY,
+      GRID,
+    );
+    const list = timeList(grid);
+
+    // 8-9 open, 9-11 one band, 11-12 open.
+    expect(list.map((e) => e.kind)).toEqual(['slots', 'unavailable', 'slots']);
+    const band = list[1] as Extract<typeof list[number], { kind: 'unavailable' }>;
+    expect(band.start.getHours()).toBe(9);
+    expect(band.end.getHours()).toBe(11);
+    expect(band.booked).toBe(true);
+  });
+
+  it('keeps a row when even one court is still free', () => {
+    const grid = buildDayGrid(courts, [booking('a', 'c1', 9, 10)], DAY, GRID);
+    const list = timeList(grid);
+    expect(list.every((e) => e.kind === 'slots')).toBe(true);
+    const nine = list.find((e) => e.kind === 'slots' && e.start.getHours() === 9);
+    expect(nine && nine.kind === 'slots' && nine.free.map((c) => c.court.id)).toEqual(['c2']);
+  });
+
+  /**
+   * A stretch that is closed (already past) and one that is fully booked mean
+   * different things to a player, so they must not merge into one band.
+   */
+  it('does not merge a past stretch with a booked one', () => {
+    const grid = buildDayGrid(
+      courts,
+      [booking('a', 'c1', 10, 12), booking('b', 'c2', 10, 12)],
+      DAY,
+      { ...GRID, now: at(10) },
+    );
+    const list = timeList(grid);
+    const bands = list.filter((e) => e.kind === 'unavailable');
+    expect(bands).toHaveLength(2);
+    expect(bands.map((b) => b.kind === 'unavailable' && b.booked)).toEqual([false, true]);
+  });
+
+  it('handles an empty grid', () => {
+    expect(timeList([])).toEqual([]);
+  });
+});
+
+describe('toggleSlot', () => {
+  it('starts a selection on a fresh tap', () => {
+    expect(toggleSlot(null, 'c1', 2)).toEqual({ courtId: 'c1', from: 2, to: 2 });
+  });
+
+  it('extends forwards from the end', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 2, to: 2 }, 'c1', 3)).toEqual({
+      courtId: 'c1', from: 2, to: 3,
+    });
+  });
+
+  it('extends backwards from the start', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 2, to: 3 }, 'c1', 1)).toEqual({
+      courtId: 'c1', from: 1, to: 3,
+    });
+  });
+
+  it('trims to the tapped slot when tapping inside the range', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 1, to: 4 }, 'c1', 2)).toEqual({
+      courtId: 'c1', from: 1, to: 2,
+    });
+  });
+
+  it('clears when the only selected slot is tapped again', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 2, to: 2 }, 'c1', 2)).toBeNull();
+  });
+
+  it('starts over on a different court', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 2, to: 3 }, 'c2', 5)).toEqual({
+      courtId: 'c2', from: 5, to: 5,
+    });
+  });
+
+  /** A booking cannot have a hole in it. */
+  it('starts a new range when the tap is not contiguous', () => {
+    expect(toggleSlot({ courtId: 'c1', from: 0, to: 1 }, 'c1', 5)).toEqual({
+      courtId: 'c1', from: 5, to: 5,
+    });
+  });
+});
+
+describe('selectionRange', () => {
+  const courts = [court('c1', 1)];
+
+  it('spans the whole selection', () => {
+    const grid = buildDayGrid(courts, [], DAY, GRID);
+    const range = selectionRange(grid, { courtId: 'c1', from: 0, to: 2 })!;
+    expect(range.start.getHours()).toBe(8);
+    expect(range.end.getHours()).toBe(11);
+    expect(range.minutes).toBe(180);
+  });
+
+  it('is null when nothing is selected', () => {
+    expect(selectionRange(buildDayGrid(courts, [], DAY, GRID), null)).toBeNull();
+  });
+
+  /**
+   * The grid refreshes under a stale selection and somebody has taken a slot in
+   * the middle of it. Booking that range would be rejected by the database, so
+   * it must not be offered.
+   */
+  it('is null when a slot inside the selection stopped being bookable', () => {
+    const grid = buildDayGrid(courts, [booking('a', 'c1', 9, 10)], DAY, GRID);
+    expect(selectionRange(grid, { courtId: 'c1', from: 0, to: 2 })).toBeNull();
+  });
+
+  it('is null for a court that is no longer in the grid', () => {
+    const grid = buildDayGrid(courts, [], DAY, GRID);
+    expect(selectionRange(grid, { courtId: 'gone', from: 0, to: 0 })).toBeNull();
   });
 });

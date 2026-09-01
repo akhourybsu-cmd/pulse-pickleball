@@ -14,10 +14,11 @@ import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
 import { DEFAULT_GRID, formatSlotTime } from '@/lib/venues/availability';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
+import { VenueProgramming } from '@/components/venue/VenueProgramming';
+import { DayStrip } from '@/components/venue/DayStrip';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
 import { GroupFeed } from '@/components/community/GroupFeed';
-import { GroupSchedule } from '@/components/community/GroupSchedule';
 import { GroupMembers } from '@/components/community/GroupMembers';
 
 /**
@@ -49,11 +50,12 @@ export default function VenueCommunity() {
 
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
+  const [bookingMinutes, setBookingMinutes] = useState<number | null>(null);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
 
-  const { courts, programming, grid, freeNow, loading: dayLoading, refresh, hasCourts } =
+  const { courts, programming, going, grid, freeNow, loading: dayLoading, refresh, hasCourts } =
     useVenueDay(group?.venue_id, groupId, day, DEFAULT_GRID);
 
   const isMember = membership?.status === 'active';
@@ -265,19 +267,25 @@ export default function VenueCommunity() {
                 canBook={canBook}
                 accent={chrome?.accentHex}
                 onDayChange={setDay}
-                onPickSlot={(courtId, start) => {
+                onPickSlot={(courtId, start, minutes) => {
                   setBookingCourtId(courtId);
                   setBookingStart(start);
+                  setBookingMinutes(minutes || null);
                 }}
               />
             </TabsContent>
           )}
 
-          <TabsContent value="play" className="mt-0">
-            <GroupSchedule
-              groupId={groupId!}
-              isAdmin={isAdmin}
-              currentUserId={membership?.user_id ?? null}
+          <TabsContent value="play" className="mt-0 space-y-3">
+            {/* Same day model as Book, so moving between the two tabs keeps
+                the viewer on the day they were already looking at. */}
+            <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
+            <VenueProgramming
+              sessions={programming}
+              going={going}
+              loading={dayLoading}
+              venueName={venue?.name ?? null}
+              accent={chrome?.accentHex}
             />
           </TabsContent>
 
@@ -303,6 +311,7 @@ export default function VenueCommunity() {
             if (!o) {
               setBookingCourtId(null);
               setBookingStart(null);
+              setBookingMinutes(null);
             }
           }}
           groupId={groupId!}
@@ -310,6 +319,7 @@ export default function VenueCommunity() {
           court={bookingCourt}
           start={bookingStart}
           slotMinutes={DEFAULT_GRID.slotMinutes}
+          presetMinutes={bookingMinutes}
           dayEnd={dayEnd}
           onBooked={refresh}
         />

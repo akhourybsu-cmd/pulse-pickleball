@@ -215,3 +215,150 @@ export function courtsFreeAt(
 export function formatSlotTime(d: Date): string {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
+
+/* ------------------------------------------------------------------ *
+ * Time-first rows
+ *
+ * The phone view is a list of times, not a grid. Two things make that list
+ * readable rather than a wall:
+ *
+ *   • Consecutive slots where nothing is available collapse into ONE band.
+ *     A venue booked solid 6-8pm should say "6:00–8:00pm · No courts", not
+ *     print four identical empty rows the eye has to check one at a time.
+ *   • A selection can span consecutive slots on ONE court, so booking
+ *     4:00–6:00 is two taps rather than a duration dropdown guess.
+ * ------------------------------------------------------------------ */
+
+export interface TimeRow {
+  kind: 'slots';
+  index: number;
+  start: Date;
+  end: Date;
+  /** Courts free in this slot, in court order. */
+  free: CourtColumn[];
+}
+
+export interface UnavailableBand {
+  kind: 'unavailable';
+  /** Slot indices this band covers, for keying. */
+  fromIndex: number;
+  toIndex: number;
+  start: Date;
+  end: Date;
+  /** True when something is booked; false when the venue simply isn't open//past. */
+  booked: boolean;
+}
+
+export type TimeListEntry = TimeRow | UnavailableBand;
+
+/**
+ * Collapse a day grid into the time-first list.
+ *
+ * Adjacent unavailable slots merge only when they are genuinely contiguous —
+ * a gap in the boundaries (which a DST day can produce) starts a new band
+ * rather than silently spanning the discontinuity.
+ */
+export function timeList(grid: CourtColumn[]): TimeListEntry[] {
+  const slotCount = grid[0]?.slots.length ?? 0;
+  const entries: TimeListEntry[] = [];
+  let band: UnavailableBand | null = null;
+
+  const flush = () => {
+    if (band) entries.push(band);
+    band = null;
+  };
+
+  for (let i = 0; i < slotCount; i++) {
+    const start = grid[0].slots[i].start;
+    const end = grid[0].slots[i].end;
+    const free = grid.filter((col) => col.slots[i]?.bookable);
+
+    if (free.length > 0) {
+      flush();
+      entries.push({ kind: 'slots', index: i, start, end, free });
+      continue;
+    }
+
+    const booked = grid.some((col) => col.slots[i]?.reservation);
+
+    if (band && band.end.getTime() === start.getTime() && band.booked === booked) {
+      band.toIndex = i;
+      band.end = end;
+    } else {
+      flush();
+      band = { kind: 'unavailable', fromIndex: i, toIndex: i, start, end, booked };
+    }
+  }
+  flush();
+
+  return entries;
+}
+
+export interface SlotSelection {
+  courtId: string;
+  /** Inclusive slot indices. */
+  from: number;
+  to: number;
+}
+
+/**
+ * Apply a tap to the current selection.
+ *
+ * The rules are the ones that make a range feel physical rather than modal:
+ * tapping a different court starts over, tapping either edge of the current
+ * range extends it, tapping inside it trims to that point, and tapping the
+ * only selected slot clears it. Anything non-contiguous starts a new range,
+ * because a booking cannot have a hole in it.
+ */
+export function toggleSlot(
+  selection: SlotSelection | null,
+  courtId: string,
+  index: number,
+): SlotSelection | null {
+  if (!selection || selection.courtId !== courtId) {
+    return { courtId, from: index, to: index };
+  }
+
+  const { from, to } = selection;
+
+  if (index === from && index === to) return null;
+  if (index === to + 1) return { courtId, from, to: index };
+  if (index === from - 1) return { courtId, from: index, to };
+  if (index >= from && index <= to) return { courtId, from, to: index };
+
+  return { courtId, from: index, to: index };
+}
+
+/** True when a court/slot pair is inside the current selection. */
+export function isSelected(
+  selection: SlotSelection | null,
+  courtId: string,
+  index: number,
+): boolean {
+  if (!selection || selection.courtId !== courtId) return false;
+  return index >= selection.from && index <= selection.to;
+}
+
+/**
+ * The real time range a selection covers, or null if any slot in it is not
+ * actually bookable — which happens if the grid refreshes under a stale
+ * selection and something got booked in the middle of it.
+ */
+export function selectionRange(
+  grid: CourtColumn[],
+  selection: SlotSelection | null,
+): { start: Date; end: Date; minutes: number } | null {
+  if (!selection) return null;
+  const column = grid.find((c) => c.court.id === selection.courtId);
+  if (!column) return null;
+
+  for (let i = selection.from; i <= selection.to; i++) {
+    if (!column.slots[i]?.bookable) return null;
+  }
+
+  const start = column.slots[selection.from]?.start;
+  const end = column.slots[selection.to]?.end;
+  if (!start || !end) return null;
+
+  return { start, end, minutes: Math.round((end.getTime() - start.getTime()) / 60000) };
+}

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Clock } from 'lucide-react';
 import { formatSlotTime, type Court } from '@/lib/venues/availability';
+import { cn } from '@/lib/utils';
 
 /**
  * Hold a court.
@@ -40,6 +41,13 @@ interface BookCourtDialogProps {
   start: Date | null;
   /** Slot length, used to seed the duration picker. */
   slotMinutes: number;
+  /**
+   * Length the viewer already chose by selecting a range on the grid. When set,
+   * the dialog confirms that span instead of asking again — re-asking after
+   * someone has just dragged out 4:00-6:00 is the kind of double work that
+   * makes booking flows feel bureaucratic.
+   */
+  presetMinutes?: number | null;
   /** Latest end the venue allows, so a booking can't run past closing. */
   dayEnd: Date | null;
   onBooked: () => void;
@@ -53,6 +61,7 @@ export function BookCourtDialog({
   court,
   start,
   slotMinutes,
+  presetMinutes,
   dayEnd,
   onBooked,
 }: BookCourtDialogProps) {
@@ -64,9 +73,11 @@ export function BookCourtDialog({
   useEffect(() => {
     if (open) {
       setTitle('');
-      setMinutes(slotMinutes);
+      setMinutes(presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes);
     }
-  }, [open, slotMinutes]);
+  }, [open, slotMinutes, presetMinutes]);
+
+  const spanChosen = !!presetMinutes && presetMinutes > 0;
 
   // Only offer durations that actually fit before closing — a picker that
   // lets you choose 2 hours at 9pm and then fails on save is worse than one
@@ -157,7 +168,7 @@ export function BookCourtDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className={cn('space-y-2', spanChosen && 'hidden')}>
             <Label htmlFor="booking-duration">Duration</Label>
             <Select value={String(minutes)} onValueChange={(v) => setMinutes(Number(v))}>
               <SelectTrigger id="booking-duration">
