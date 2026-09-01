@@ -147,13 +147,13 @@ export function VenueHoursSection({ venueId }: { venueId: string }) {
               <div
                 key={DAY_NAMES[i]}
                 className={cn(
-                  'flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2',
+                  'grid grid-cols-[40px_auto_minmax(0,1fr)] items-center gap-2 rounded-xl border border-border/70 px-3 py-2.5',
                   !open && 'bg-muted/40',
                 )}
               >
                 <span
                   className={cn(
-                    'w-10 shrink-0 text-sm font-semibold',
+                    'text-sm font-semibold',
                     !open && 'text-muted-foreground',
                   )}
                 >
@@ -177,10 +177,10 @@ export function VenueHoursSection({ venueId }: { venueId: string }) {
                 />
 
                 {open ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                     <Input
                       type="time"
-                      className="h-9 w-[110px]"
+                      className="h-9 min-w-0 w-full px-2 text-xs sm:text-sm"
                       value={formatTime(day.openMinutes)}
                       aria-label={`${DAY_NAMES[i]} opening time`}
                       onChange={(e) => {
@@ -191,7 +191,7 @@ export function VenueHoursSection({ venueId }: { venueId: string }) {
                     <span className="text-xs text-muted-foreground">to</span>
                     <Input
                       type="time"
-                      className="h-9 w-[110px]"
+                      className="h-9 min-w-0 w-full px-2 text-xs sm:text-sm"
                       value={formatTime(day.closeMinutes)}
                       aria-label={`${DAY_NAMES[i]} closing time`}
                       onChange={(e) => {
@@ -208,12 +208,12 @@ export function VenueHoursSection({ venueId }: { venueId: string }) {
           })}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={applyToAll}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" size="sm" onClick={applyToAll} className="w-full sm:w-auto">
             <Copy className="mr-1.5 h-3.5 w-3.5" />
             Apply to every open day
           </Button>
-          <Button size="sm" onClick={save} disabled={saving}>
+          <Button size="sm" onClick={save} disabled={saving} className="w-full sm:w-auto">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save hours
           </Button>

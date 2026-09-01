@@ -48,6 +48,8 @@ interface GroupChatProps {
   onBack?: () => void;
   /** Enables safe-area header treatment and focus/viewport locking. */
   immersive?: boolean;
+  /** False when venue/community settings make the thread read-only for this viewer. */
+  canSendMessages?: boolean;
 }
 
 export const GroupChat = memo(function GroupChat({
@@ -63,6 +65,7 @@ export const GroupChat = memo(function GroupChat({
   avatarUrl,
   onBack,
   immersive = false,
+  canSendMessages = true,
 }: GroupChatProps) {
   const {
     messages, loading, sending, hasOlder, loadingOlder, loadOlder,
@@ -286,6 +289,7 @@ export const GroupChat = memo(function GroupChat({
   }, [atBottom, isActive, markChatRead]);
 
   const handleSend = async () => {
+    if (!canSendMessages) return;
     const trimmed = newMessage.trim();
     if ((!trimmed && !pendingImage) || uploading) return;
 
@@ -561,6 +565,7 @@ export const GroupChat = memo(function GroupChat({
       {/* Typing Indicator */}
       <TypingIndicator typingUsers={typingUsers} className="border-t border-border/10" />
 
+      {canSendMessages ? (
       <div className="relative z-20 shrink-0 border-t border-border/60 bg-background/95 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-8px_24px_-20px_hsl(var(--foreground)/0.45)] backdrop-blur-sm">
         {/* Pending-image preview chip — sits above the textarea while a
             file is staged. Cancel removes it without sending. */}
@@ -652,6 +657,11 @@ export const GroupChat = memo(function GroupChat({
           </motion.div>
         </div>
       </div>
+      ) : (
+        <div className="relative z-20 shrink-0 border-t border-border/60 bg-muted/25 px-4 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-3 text-center">
+          <p className="text-xs font-medium text-muted-foreground">Chat is read-only for members right now.</p>
+        </div>
+      )}
 
       {/* Lightbox for tapped chat images. */}
       <ImageLightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { VenueCourtsSection } from './VenueCourtsSection';
 import { VenueHoursSection } from './VenueHoursSection';
 
@@ -21,10 +22,9 @@ import { VenueHoursSection } from './VenueHoursSection';
  * was created, with nothing able to write to it. This is the editor for the
  * subset that actually changes how the community looks and reads.
  *
- * Images go in the existing `groups` storage bucket under the group's id,
- * because that bucket's RLS already keys on the first path segment being the
- * group UUID. A separate venue bucket would mean a second set of storage
- * policies for no gain.
+ * Images go in the venue-logos bucket under the venue id. Its policies grant
+ * owners and managers access, whereas the groups bucket is intentionally
+ * limited to community owners/moderators.
  */
 
 interface AdminVenueTabProps {
@@ -32,6 +32,7 @@ interface AdminVenueTabProps {
   venueId: string;
   /** Whether an admin has verified this venue — drives the badge, not access. */
   isVerified: boolean;
+  mode?: 'profile' | 'facility' | 'all';
 }
 
 interface VenueForm {
@@ -78,7 +79,7 @@ function isHex(value: string): boolean {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
-export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabProps) {
+export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueTabProps) {
   const { toast } = useToast();
   const [form, setForm] = useState<VenueForm>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -155,18 +156,18 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
     setUploading(kind);
     try {
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      // First path segment must be the group id — that's what the bucket's
+      // First path segment must be the venue id — that's what the bucket's
       // RLS checks.
-      const path = `${groupId}/venue-${kind}-${Date.now()}.${ext}`;
+      const path = `${venueId}/venue-${kind}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('groups')
+        .from('venue-logos')
         .upload(path, file, { upsert: true, contentType: file.type });
       if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from('groups').getPublicUrl(path);
+      } = supabase.storage.from('venue-logos').getPublicUrl(path);
 
       const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
       const { error: updateError } = await supabase
@@ -177,10 +178,10 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
 
       set(column as 'logo_url' | 'cover_image_url', publicUrl);
       toast({ title: kind === 'logo' ? 'Logo updated' : 'Cover updated' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Upload failed',
-        description: error.message || 'Could not upload image',
+        description: getErrorMessage(error, 'Could not upload image'),
         variant: 'destructive',
       });
     } finally {
@@ -260,8 +261,13 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
     );
   }
 
+  const showProfile = mode === 'profile' || mode === 'all';
+  const showFacility = mode === 'facility' || mode === 'all';
+
   return (
     <div className="space-y-5">
+      {showProfile && (
+        <>
       <Card className="border-border/60">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -537,16 +543,21 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
         </CardContent>
       </Card>
 
-      <VenueCourtsSection venueId={venueId} />
+          <div className="flex justify-end">
+            <Button onClick={save} disabled={saving || uploading !== null}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save venue profile
+            </Button>
+          </div>
+        </>
+      )}
 
-      <VenueHoursSection venueId={venueId} />
-
-      <div className="flex justify-end">
-        <Button onClick={save} disabled={saving || uploading !== null}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save venue
-        </Button>
-      </div>
+      {showFacility && (
+        <>
+          <VenueCourtsSection venueId={venueId} />
+          <VenueHoursSection venueId={venueId} />
+        </>
+      )}
     </div>
   );
 }

@@ -48,6 +48,7 @@ interface QuickPostComposerProps {
   contextName?: string;
   venueMode?: boolean;
   canPostAnnouncements?: boolean;
+  canPostLfg?: boolean;
   onSubmit: (data: PostSubmission) => Promise<boolean>;
 }
 
@@ -97,6 +98,7 @@ export function QuickPostComposer({
   contextName = 'this community',
   venueMode = false,
   canPostAnnouncements = false,
+  canPostLfg = true,
   onSubmit 
 }: QuickPostComposerProps) {
   const [activeTab, setActiveTab] = useState<ComposerPostType>(
@@ -127,15 +129,17 @@ export function QuickPostComposer({
   // Update active tab when initialType changes
   useEffect(() => {
     if (open) {
-      setActiveTab(
+      const requestedType =
         initialType === 'announcement' ? 'announcement' :
-          initialType === 'photo' || initialType === 'poll' || initialType === 'lfg' ? initialType : 'post',
-      );
+          initialType === 'photo' || initialType === 'poll' || initialType === 'lfg' ? initialType : 'post';
+      setActiveTab(requestedType === 'lfg' && !canPostLfg ? 'post' : requestedType);
     }
-  }, [initialType, open]);
+  }, [canPostLfg, initialType, open]);
 
   const visibleTypes = COMPOSER_TYPES.filter(
-    (type) => type.value !== 'announcement' || canPostAnnouncements,
+    (type) =>
+      (type.value !== 'announcement' || canPostAnnouncements) &&
+      (type.value !== 'lfg' || canPostLfg),
   );
   const activeType = COMPOSER_TYPES.find((type) => type.value === activeTab) ?? COMPOSER_TYPES[0];
 

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Crown, Loader2, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -46,6 +46,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [surface, setSurface] = useState<string>(SURFACES[0]);
+  const [premium, setPremium] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +81,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
       name: name.trim() || `Court ${nextNumber}`,
       surface_type: surface,
       is_active: true,
+      is_premium: premium,
     });
 
     setAdding(false);
@@ -89,6 +91,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
       return;
     }
     setName('');
+    setPremium(false);
     toast({ title: 'Court added' });
     void load();
   };
@@ -104,6 +107,18 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
       return;
     }
     setCourts((cs) => cs.map((c) => (c.id === court.id ? { ...c, is_active: active } : c)));
+  };
+
+  const setPremiumCourt = async (court: VenueCourt, nextPremium: boolean) => {
+    const { error } = await supabase
+      .from('venue_courts')
+      .update({ is_premium: nextPremium })
+      .eq('id', court.id);
+    if (error) {
+      toast({ title: 'Could not update court', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setCourts((rows) => rows.map((row) => row.id === court.id ? { ...row, is_premium: nextPremium } : row));
   };
 
   const remove = async (court: VenueCourt) => {
@@ -143,7 +158,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
               <li
                 key={court.id}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg border border-border px-3 py-2',
+                  'flex flex-col gap-3 rounded-xl border border-border/70 px-3 py-3 sm:flex-row sm:items-center',
                   court.is_active === false && 'bg-muted/40',
                 )}
               >
@@ -163,12 +178,24 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center justify-between gap-2 pl-0 sm:w-auto sm:justify-start">
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <Switch
+                      checked={court.is_premium === true}
+                      onCheckedChange={(value) => void setPremiumCourt(court, value)}
+                      aria-label={`${court.name ?? 'Court'} premium`}
+                    />
+                    <Crown className="h-3.5 w-3.5" /> Premium
+                  </label>
+                  <span className="h-5 w-px bg-border/70" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <Switch
                     checked={court.is_active !== false}
                     onCheckedChange={(v) => setActive(court, v)}
                     aria-label={`${court.name ?? 'Court'} available`}
                   />
+                    Available
+                  </label>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -184,7 +211,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
           </ul>
         )}
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <div className="grid gap-3 rounded-xl border border-dashed border-border/80 bg-muted/15 p-3 lg:grid-cols-[minmax(0,1fr)_160px_auto_auto] lg:items-end">
           <div className="space-y-2">
             <Label htmlFor="court-name">Court name</Label>
             <Input
@@ -198,7 +225,7 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
           <div className="space-y-2">
             <Label htmlFor="court-surface">Surface</Label>
             <Select value={surface} onValueChange={setSurface}>
-              <SelectTrigger id="court-surface" className="sm:w-[150px]">
+              <SelectTrigger id="court-surface" className="w-full lg:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -210,6 +237,10 @@ export function VenueCourtsSection({ venueId }: { venueId: string }) {
               </SelectContent>
             </Select>
           </div>
+          <label className="flex h-10 items-center gap-2 text-sm font-medium lg:mb-0">
+            <Switch checked={premium} onCheckedChange={setPremium} />
+            <Crown className="h-4 w-4 text-amber-500" /> Premium
+          </label>
           <Button onClick={addCourt} disabled={adding}>
             {adding ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

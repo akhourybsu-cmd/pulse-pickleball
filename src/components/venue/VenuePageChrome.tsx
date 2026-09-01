@@ -29,12 +29,13 @@ const NAV_ITEMS: Array<{
   mobileLabel: string;
   icon: typeof MapPin;
   needsCourts?: boolean;
+  needsChat?: boolean;
 }> = [
   { value: 'home', label: 'Overview', mobileLabel: 'Home', icon: MapPin },
   { value: 'book', label: 'Book a court', mobileLabel: 'Book', icon: LayoutGrid, needsCourts: true },
   { value: 'play', label: 'Play & programs', mobileLabel: 'Play', icon: CalendarDays },
   { value: 'feed', label: 'Venue feed', mobileLabel: 'Feed', icon: MessageSquare },
-  { value: 'chat', label: 'Venue chat', mobileLabel: 'Chat', icon: MessageCircle },
+  { value: 'chat', label: 'Venue chat', mobileLabel: 'Chat', icon: MessageCircle, needsChat: true },
   { value: 'more', label: 'Members & more', mobileLabel: 'More', icon: MoreHorizontal },
 ];
 
@@ -206,12 +207,14 @@ export function VenueMasthead({
 }
 
 /** Phone/tablet navigation remains a compact horizontal strip. */
-export function VenueMobileTabs({ hasCourts }: { hasCourts: boolean }) {
+export function VenueMobileTabs({ hasCourts, chatEnabled = true }: { hasCourts: boolean; chatEnabled?: boolean }) {
   return (
     <div className="border-b border-border/70 bg-card lg:hidden">
       <div className="mx-auto max-w-[1480px] overflow-x-auto px-2 sm:px-4">
         <TabsList className="h-auto w-max justify-start gap-0 rounded-none border-0 bg-transparent p-0">
-          {NAV_ITEMS.filter((item) => !item.needsCourts || hasCourts).map((item) => (
+          {NAV_ITEMS.filter(
+            (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
+          ).map((item) => (
             <MobileTab key={item.value} {...item} />
           ))}
         </TabsList>
@@ -223,12 +226,14 @@ export function VenueMobileTabs({ hasCourts }: { hasCourts: boolean }) {
 /** Desktop navigation uses the left edge for orientation instead of another top bar. */
 export function VenueDesktopNavigation({
   hasCourts,
+  chatEnabled = true,
   isOperator,
   isAdmin,
   onOperations,
   onSettings,
 }: {
   hasCourts: boolean;
+  chatEnabled?: boolean;
   isOperator: boolean;
   isAdmin: boolean;
   onOperations: () => void;
@@ -242,7 +247,9 @@ export function VenueDesktopNavigation({
             Venue
           </p>
           <TabsList className="flex h-auto w-full flex-col items-stretch gap-1 rounded-none bg-transparent p-0">
-            {NAV_ITEMS.filter((item) => !item.needsCourts || hasCourts).map((item) => (
+            {NAV_ITEMS.filter(
+              (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
+            ).map((item) => (
               <DesktopTab key={item.value} {...item} />
             ))}
           </TabsList>
@@ -286,6 +293,7 @@ interface VenueDesktopRailProps {
   courtCount: number;
   memberCount: number;
   onlineCount: number;
+  chatEnabled?: boolean;
   nextUp: VenueHomeSession[];
   hours: VenueHours;
   accent?: string | null;
@@ -302,6 +310,7 @@ export function VenueDesktopRail({
   courtCount,
   memberCount,
   onlineCount,
+  chatEnabled = true,
   nextUp,
   hours,
   accent,
@@ -388,7 +397,7 @@ export function VenueDesktopRail({
           {activeTab !== 'play' && (
             <RailAction icon={CalendarDays} label="Browse programs" onClick={() => onOpenTab('play')} />
           )}
-          {activeTab !== 'chat' && (
+          {chatEnabled && activeTab !== 'chat' && (
             <RailAction icon={MessageCircle} label="Open venue chat" onClick={() => onOpenTab('chat')} />
           )}
           <RailAction icon={Ticket} label="My bookings" onClick={onBookings} />

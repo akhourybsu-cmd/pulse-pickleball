@@ -25,6 +25,7 @@ import { QuickPostComposer, type PostType } from '@/components/community/QuickPo
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 import { initialVenueCommunityTab } from '@/lib/venues/navigation';
+import { parseGroupSettings } from '@/types/groupSettings';
 import {
   VenueDesktopNavigation,
   VenueDesktopRail,
@@ -172,17 +173,33 @@ export default function VenueCommunity() {
   } = useVenueDay(group?.venue_id, groupId, day, hours);
 
   const isMember = membership?.status === 'active';
+  const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
   // Venue authority comes from venue_staff, not from community moderation —
   // running the courts and moderating the conversation are different jobs.
-  const isAdmin = canManageVenue(venueRole) || membership?.role === 'owner';
+  const isCommunityAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
+  const canManageSettings = canManageVenue(venueRole) || isCommunityAdmin;
   const isOperator = canOperateVenue(venueRole) || membership?.role === 'owner';
+  const chatEnabled = groupSettings.chat_enabled;
+  const canSendChat = isCommunityAdmin || (isMember && groupSettings.allow_member_chat);
+  const canCreatePosts = isCommunityAdmin || (isMember && groupSettings.allow_member_posts);
+  const canCreateLfg = isCommunityAdmin || (isMember && groupSettings.allow_member_lfg);
   // Members may book unless the group has turned member-created events off —
   // the same setting that gates every other kind of session, so a venue has one
   // switch to think about rather than two.
   const canBook =
     isMember &&
-    (isAdmin ||
+    (canManageSettings ||
       (group?.settings as Record<string, unknown> | null)?.allow_member_events !== false);
+
+  useEffect(() => {
+    const invalidChat = activeTab === 'chat' && !chatEnabled;
+    const invalidBook = activeTab === 'book' && !hasCourts;
+    if (!invalidChat && !invalidBook) return;
+    setActiveTab('home');
+    const next = new URLSearchParams(searchParams);
+    next.delete('tab');
+    setSearchParams(next, { replace: true });
+  }, [activeTab, chatEnabled, hasCourts, searchParams, setSearchParams]);
 
   if (loading || !group) {
     return (
@@ -211,7 +228,7 @@ export default function VenueCommunity() {
   // Give it the whole visible viewport so focusing the composer cannot move
   // the hero, tab strip, or document around it. The normal venue shell remains
   // mounted only for Home/Book/Play/Feed/More.
-  if (activeTab === 'chat' && !isDesktopLayout) {
+  if (activeTab === 'chat' && chatEnabled && !isDesktopLayout) {
     const cameFromSocial = Boolean(
       (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox,
     );
@@ -235,7 +252,7 @@ export default function VenueCommunity() {
             currentUserId={membership?.user_id ?? null}
             onlineCount={onlineCount}
             isConnected={isConnected}
-            isAdmin={isAdmin}
+            isAdmin={isCommunityAdmin}
             lastReadAt={lastReadRef.current}
             isActive
             title={venue?.name ?? group.name}
@@ -243,6 +260,7 @@ export default function VenueCommunity() {
             avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
             onBack={closeChat}
             immersive
+            canSendMessages={canSendChat}
           />
         </div>
       </VenueStaffProvider>
@@ -271,7 +289,7 @@ export default function VenueCommunity() {
         memberCount={group.member_count ?? 0}
         nextStart={nextUp[0]?.start_time}
         isOperator={isOperator}
-        isAdmin={isAdmin}
+        isAdmin={canManageSettings}
         onBack={() => navigate('/player/community')}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
@@ -283,7 +301,7 @@ export default function VenueCommunity() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        <VenueMobileTabs hasCourts={hasCourts} />
+        <VenueMobileTabs hasCourts={hasCourts} chatEnabled={chatEnabled} />
 
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
@@ -295,8 +313,9 @@ export default function VenueCommunity() {
             >
               <VenueDesktopNavigation
                 hasCourts={hasCourts}
+                chatEnabled={chatEnabled}
                 isOperator={isOperator}
-                isAdmin={isAdmin}
+                isAdmin={canManageSettings}
                 onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
                 onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
               />
@@ -366,10 +385,10 @@ export default function VenueCommunity() {
                     <GroupFeed
                       groupId={groupId!}
                       groupName={venue?.name ?? group.name}
-                      isAdmin={isAdmin}
+                      isAdmin={isCommunityAdmin}
                       currentUserId={membership?.user_id ?? null}
                       venueMode
-                      onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                      onOpenQuickPost={canCreatePosts ? (type) => openQuickPost(type as PostType) : undefined}
                       onSwitchToEvents={() => openTab('play')}
                     />
                   )}
@@ -387,12 +406,13 @@ export default function VenueCommunity() {
                         currentUserId={membership?.user_id ?? null}
                         onlineCount={onlineCount}
                         isConnected={isConnected}
-                        isAdmin={isAdmin}
+                        isAdmin={isCommunityAdmin}
                         lastReadAt={lastReadRef.current}
                         isActive={activeTab === 'chat'}
                         title={venue?.name ?? group.name}
                         subtitle="Venue chat"
                         avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
+                        canSendMessages={canSendChat}
                       />
                     </div>
                   )}
@@ -420,7 +440,7 @@ export default function VenueCommunity() {
 
                     <GroupMembers
                       groupId={groupId!}
-                      isAdmin={isAdmin}
+                      isAdmin={isCommunityAdmin}
                       isOwner={membership?.role === 'owner'}
                       currentUserId={membership?.user_id ?? null}
                       isOnline={isOnline}
@@ -438,6 +458,7 @@ export default function VenueCommunity() {
                   courtCount={courts.length}
                   memberCount={group.member_count ?? 0}
                   onlineCount={onlineCount}
+                  chatEnabled={chatEnabled}
                   nextUp={nextUp}
                   hours={hours}
                   accent={chrome?.accentHex}
@@ -452,7 +473,7 @@ export default function VenueCommunity() {
 
       {/* Keep the fixed composer as a thumb-reachable mobile affordance. On
           desktop the feed's in-column Share card is the clearer entry point. */}
-      {activeTab === 'feed' && isMember && (
+      {activeTab === 'feed' && canCreatePosts && (
         <CollapsedComposerBar
           className="lg:hidden"
           onExpand={() => openQuickPost('post')}
@@ -471,7 +492,8 @@ export default function VenueCommunity() {
         groupId={groupId || ''}
         contextName={venue?.name ?? group.name}
         venueMode
-        canPostAnnouncements={isAdmin}
+        canPostAnnouncements={isCommunityAdmin}
+        canPostLfg={canCreateLfg}
         onSubmit={async (data) => !!(await createPost(data))}
       />
 

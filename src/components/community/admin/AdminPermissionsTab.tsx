@@ -1,12 +1,13 @@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Shield, MessageSquare, FolderOpen } from 'lucide-react';
+import { Users, Shield, MessageSquare } from 'lucide-react';
 import { GroupSettings } from '@/types/groupSettings';
 
 interface AdminPermissionsTabProps {
   settings: GroupSettings;
   saving: boolean;
+  venueMode?: boolean;
   onSettingChange: <K extends keyof GroupSettings>(key: K, value: GroupSettings[K]) => void;
 }
 
@@ -21,36 +22,37 @@ interface PermissionRowProps {
 
 function PermissionRow({ id, label, description, checked, disabled, onChange }: PermissionRowProps) {
   return (
-    <div className="flex items-center justify-between py-3 border-b last:border-0">
-      <div className="flex-1 pr-4">
-        <Label htmlFor={id} className="font-medium cursor-pointer">{label}</Label>
-        <p className="text-sm text-muted-foreground">{description}</p>
+    <div className="flex items-start justify-between gap-4 border-b border-border/60 py-4 last:border-0">
+      <div className="min-w-0 flex-1">
+        <Label htmlFor={id} className="cursor-pointer text-sm font-semibold">{label}</Label>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{description}</p>
       </div>
       <Switch
         id={id}
         checked={checked}
         onCheckedChange={onChange}
         disabled={disabled}
+        className="mt-0.5 shrink-0"
       />
     </div>
   );
 }
 
-export function AdminPermissionsTab({ settings, saving, onSettingChange }: AdminPermissionsTabProps) {
+export function AdminPermissionsTab({ settings, saving, venueMode = false, onSettingChange }: AdminPermissionsTabProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Member Permissions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Member Permissions
+      <Card className="overflow-hidden border-border/70 shadow-[0_14px_40px_-34px_hsl(var(--foreground)/0.4)]">
+        <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4 text-primary" />
+            Member activity
           </CardTitle>
           <CardDescription>
-            Control what regular members can do in the group.
+            {venueMode ? 'Choose what members can publish in the venue feed.' : 'Control what regular members can do in the group.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="divide-y">
+        <CardContent className="px-5 py-0">
           <PermissionRow
             id="allow_member_posts"
             label="Allow member posts"
@@ -59,45 +61,49 @@ export function AdminPermissionsTab({ settings, saving, onSettingChange }: Admin
             disabled={saving}
             onChange={(checked) => onSettingChange('allow_member_posts', checked)}
           />
-          <PermissionRow
-            id="require_post_approval"
-            label="Require post approval"
-            description="Posts from members need admin approval before appearing"
-            checked={settings.require_post_approval}
-            disabled={saving || !settings.allow_member_posts}
-            onChange={(checked) => onSettingChange('require_post_approval', checked)}
-          />
-          <PermissionRow
-            id="allow_member_events"
-            label="Allow member events"
-            description="Members can create group events"
-            checked={settings.allow_member_events}
-            disabled={saving}
-            onChange={(checked) => onSettingChange('allow_member_events', checked)}
-          />
+          {!venueMode && (
+            <>
+              <PermissionRow
+                id="require_post_approval"
+                label="Require post approval"
+                description="Posts from members need admin approval before appearing"
+                checked={settings.require_post_approval}
+                disabled={saving || !settings.allow_member_posts}
+                onChange={(checked) => onSettingChange('require_post_approval', checked)}
+              />
+              <PermissionRow
+                id="allow_member_events"
+                label="Allow member events"
+                description="Members can create group events"
+                checked={settings.allow_member_events}
+                disabled={saving}
+                onChange={(checked) => onSettingChange('allow_member_events', checked)}
+              />
+            </>
+          )}
           <PermissionRow
             id="allow_member_lfg"
-            label="Allow member LFG posts"
-            description="Members can create Looking for Game posts"
+            label="Allow Find Players posts"
+            description="Members can organize games and fill open player spots"
             checked={settings.allow_member_lfg}
-            disabled={saving}
+            disabled={saving || !settings.allow_member_posts}
             onChange={(checked) => onSettingChange('allow_member_lfg', checked)}
           />
         </CardContent>
       </Card>
 
       {/* Chat & Files */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Chat & Files
+      <Card className="overflow-hidden border-border/70 shadow-[0_14px_40px_-34px_hsl(var(--foreground)/0.4)]">
+        <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            {venueMode ? 'Venue chat' : 'Chat & Files'}
           </CardTitle>
           <CardDescription>
-            Control chat and file sharing features.
+            {venueMode ? 'Control whether chat is visible and whether members can reply.' : 'Control chat and file sharing features.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="divide-y">
+        <CardContent className="px-5 py-0">
           <PermissionRow
             id="chat_enabled"
             label="Enable chat"
@@ -114,27 +120,31 @@ export function AdminPermissionsTab({ settings, saving, onSettingChange }: Admin
             disabled={saving || !settings.chat_enabled}
             onChange={(checked) => onSettingChange('allow_member_chat', checked)}
           />
-          <PermissionRow
-            id="files_enabled"
-            label="Enable files"
-            description="Show the files tab in the group"
-            checked={settings.files_enabled}
-            disabled={saving}
-            onChange={(checked) => onSettingChange('files_enabled', checked)}
-          />
-          <PermissionRow
-            id="allow_member_uploads"
-            label="Allow member uploads"
-            description="Members can upload files to the group"
-            checked={settings.allow_member_uploads}
-            disabled={saving || !settings.files_enabled}
-            onChange={(checked) => onSettingChange('allow_member_uploads', checked)}
-          />
+          {!venueMode && (
+            <>
+              <PermissionRow
+                id="files_enabled"
+                label="Enable files"
+                description="Show the files tab in the group"
+                checked={settings.files_enabled}
+                disabled={saving}
+                onChange={(checked) => onSettingChange('files_enabled', checked)}
+              />
+              <PermissionRow
+                id="allow_member_uploads"
+                label="Allow member uploads"
+                description="Members can upload files to the group"
+                checked={settings.allow_member_uploads}
+                disabled={saving || !settings.files_enabled}
+                onChange={(checked) => onSettingChange('allow_member_uploads', checked)}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
       {/* Moderator Capabilities */}
-      <Card>
+      {!venueMode && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -186,7 +196,7 @@ export function AdminPermissionsTab({ settings, saving, onSettingChange }: Admin
             onChange={(checked) => onSettingChange('moderators_can_manage_files', checked)}
           />
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

@@ -1,4 +1,16 @@
 import { useState } from 'react';
+import {
+  AlertTriangle,
+  Clock3,
+  LayoutDashboard,
+  LayoutGrid,
+  Lock,
+  Palette,
+  Settings,
+  Shield,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { buildDayGrid, type Court } from '@/lib/venues/availability';
 import { courtStatuses, daySummary } from '@/lib/venues/ops';
 import { upcomingGaps } from '@/lib/venues/ops';
@@ -16,9 +28,18 @@ import {
 import { ChatMessage } from '@/components/community/ChatMessage';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
+import {
+  VenueAdminShell,
+  type VenueAdminNavItem,
+} from '@/components/community/admin/VenueAdminShell';
+import { VenueAdminOverview } from '@/components/community/admin/VenueAdminOverview';
+import { AdminPermissionsTab } from '@/components/community/admin/AdminPermissionsTab';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { parseVenueHours } from '@/lib/venues/hours';
 import { cn } from '@/lib/utils';
+import { DEFAULT_GROUP_SETTINGS } from '@/types/groupSettings';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 import type { GroupPost } from '@/hooks/useGroupPosts';
@@ -34,6 +55,7 @@ import type { GroupPost } from '@/hooks/useGroupPosts';
 // Mirrors the ELEVENO test venue so visual work is judged against the same
 // brand palette and operating hours used in staging.
 const ACCENT = '#C5AD11';
+const ADMIN_COUNTS = { courts: 5, staff: 4, upcoming: 7, posts: 18 };
 const VENUE_HOURS = parseVenueHours({
   slotMinutes: 60,
   days: {
@@ -234,6 +256,18 @@ export default function VenuePreview() {
     );
   }
 
+  if (previewMode === 'admin-phone') {
+    return (
+      <div className="flex min-h-screen justify-center bg-[#0f1115] p-4">
+        <iframe
+          title="Phone-sized venue admin preview"
+          src="/__venue-preview?preview=admin"
+          className="h-[844px] w-[390px] rounded-[28px] border-0 bg-background shadow-[0_28px_80px_-30px_rgba(0,0,0,0.75)]"
+        />
+      </div>
+    );
+  }
+
   if (previewMode === 'feed') {
     return (
       <main className="min-h-screen bg-muted/[0.16] px-4 py-5">
@@ -244,6 +278,10 @@ export default function VenuePreview() {
 
   if (previewMode === 'desktop') {
     return <VenueDesktopPagePreview />;
+  }
+
+  if (previewMode === 'admin') {
+    return <VenueAdminPagePreview />;
   }
 
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
@@ -369,6 +407,124 @@ export default function VenuePreview() {
 
     </>
   );
+}
+
+const ADMIN_ITEMS: VenueAdminNavItem[] = [
+  { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' },
+  { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' },
+  { value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' },
+  { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' },
+  { value: 'general', label: 'Community profile', shortLabel: 'Community', description: 'Name, description, and identity', icon: Settings, section: 'community' },
+  { value: 'permissions', label: 'Member permissions', shortLabel: 'Permissions', description: 'Venue posting and chat controls', icon: Shield, section: 'community' },
+  { value: 'privacy', label: 'Access & privacy', shortLabel: 'Access', description: 'Visibility, joining, and invite codes', icon: Lock, section: 'community' },
+  { value: 'roles', label: 'Community roles', shortLabel: 'Roles', description: 'Owner and moderator authority', icon: Users, section: 'community' },
+  { value: 'danger', label: 'Danger zone', shortLabel: 'Danger', description: 'Leave or permanently remove the space', icon: AlertTriangle, section: 'advanced' },
+];
+
+function VenueAdminPagePreview() {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  return (
+    <VenueAdminShell
+      venueName="ELEVENO"
+      verified
+      roleLabel="Owner"
+      accent={ACCENT}
+      activeTab={activeTab}
+      items={ADMIN_ITEMS}
+      onTabChange={setActiveTab}
+      onBack={() => {}}
+      onViewVenue={() => {}}
+      onOperations={() => {}}
+    >
+      {activeTab === 'overview' ? (
+        <VenueAdminOverview
+          venueId="eleveno-preview"
+          groupId="eleveno-preview"
+          venueName="ELEVENO"
+          memberCount={284}
+          accent={ACCENT}
+          canManageCommunity
+          chatEnabled
+          countsOverride={ADMIN_COUNTS}
+          onOpenTab={setActiveTab}
+          onOperations={() => {}}
+          onOpenVenueTab={() => {}}
+        />
+      ) : activeTab === 'permissions' ? (
+        <AdminPermissionsTab
+          settings={DEFAULT_GROUP_SETTINGS}
+          saving={false}
+          venueMode
+          onSettingChange={() => {}}
+        />
+      ) : activeTab === 'staff' ? (
+        <VenueStaffPreview />
+      ) : activeTab === 'facility' ? (
+        <VenueFacilityPreview />
+      ) : (
+        <AdminPreviewPlaceholder item={ADMIN_ITEMS.find((item) => item.value === activeTab)} />
+      )}
+    </VenueAdminShell>
+  );
+}
+
+function VenueStaffPreview() {
+  const staff = [
+    ['AR', 'Anthony Rossi', 'Owner'],
+    ['JM', 'Jordan Miller', 'Manager'],
+    ['SC', 'Sam Chen', 'Organizer'],
+    ['TR', 'Taylor Reed', 'Staff'],
+  ];
+  return (
+    <div className="space-y-5">
+      <div className="rounded-[22px] border border-border/70 bg-card p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="h-5 w-5" /></span>
+          <div><h3 className="text-lg font-semibold">Venue staff access</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Facility roles stay separate from community moderation, with clear authority for every teammate.</p></div>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-4"><div><p className="text-sm font-semibold">Team</p><p className="mt-1 text-xs text-muted-foreground">People authorized to represent and operate ELEVENO.</p></div><Badge variant="secondary">4</Badge></div>
+        <div className="divide-y divide-border/60">
+          {staff.map(([initials, name, role]) => (
+            <div key={name} className="flex items-center gap-3 px-4 py-4 sm:px-5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{initials}</span>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">{role === 'Owner' ? 'Full venue and community authority' : `${role} access`}</p></div>
+              <Badge variant={role === 'Owner' ? 'outline' : 'secondary'}>{role}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Button className="w-full rounded-xl sm:w-auto"><ShieldCheck className="mr-2 h-4 w-4" />Add a teammate</Button>
+    </div>
+  );
+}
+
+function VenueFacilityPreview() {
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+        <div className="border-b border-border/60 bg-muted/20 px-5 py-4"><p className="text-sm font-semibold">Courts</p><p className="mt-1 text-xs text-muted-foreground">Five active courts power the member booking grid.</p></div>
+        <div className="divide-y divide-border/60">
+          {['Court 1', 'Court 2', 'Court 3', 'Court 4', 'Court 5'].map((court, index) => (
+            <div key={court} className="flex items-center gap-3 px-5 py-4"><LayoutGrid className="h-4 w-4 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{court}</p><p className="text-xs text-muted-foreground">Indoor · Cushioned</p></div>{index === 1 && <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">Premium</Badge>}<Badge variant="outline">Available</Badge></div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border/70 bg-card p-5">
+        <div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-primary" /><p className="text-sm font-semibold">Operating hours</p></div>
+        <div className="mt-4 space-y-3 text-sm">
+          {['Monday – Thursday', 'Friday', 'Saturday – Sunday'].map((label, index) => <div key={label} className="flex items-center justify-between gap-3 border-b border-border/60 pb-3 last:border-0"><span className="text-muted-foreground">{label}</span><span className="font-semibold">{index === 1 ? '9 AM – 11 PM' : '9 AM – 10 PM'}</span></div>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPreviewPlaceholder({ item }: { item?: VenueAdminNavItem }) {
+  const Icon = item?.icon ?? Settings;
+  return <div className="rounded-[22px] border border-border/70 bg-card p-6 sm:p-8"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span><h3 className="mt-5 text-xl font-semibold">{item?.label}</h3><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{item?.description}. This preview keeps the production panel shell visible while authenticated data remains private.</p></div>;
 }
 
 function VenueDesktopPagePreview() {
