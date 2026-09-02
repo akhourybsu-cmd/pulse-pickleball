@@ -207,17 +207,18 @@ export default function DashboardPreview() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="flex items-center justify-around py-2.5">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-22px_hsl(var(--foreground)/0.65)] backdrop-blur-xl md:hidden">
+        <div className="flex items-center justify-around px-1 py-2">
           {[
             { label: "Home", icon: Home, active: true },
             { label: "Matches", icon: Trophy },
             { label: "Leagues", icon: Swords },
             { label: "Social", icon: MessageCircle },
             { label: "Community", icon: Users },
+            { label: "Profile", icon: User },
           ].map(({ label, icon: Icon, active }) => (
-            <button key={label} type="button" className={cn("flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] font-medium", active ? "text-primary" : "text-muted-foreground/70")}>
-              <Icon className="h-[22px] w-[22px]" /><span className="max-w-full truncate">{label}</span>
+            <button key={label} type="button" className={cn("flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-0.5 font-medium transition-transform active:scale-95", active ? "text-primary" : "text-muted-foreground/75")}>
+              <span className={cn("flex h-8 w-10 items-center justify-center rounded-xl", active && "bg-primary/10")}><Icon className="h-[21px] w-[21px]" /></span><span className="max-w-full truncate text-[clamp(8px,2.55vw,10px)] tracking-[-0.035em]">{label}</span>
             </button>
           ))}
         </div>

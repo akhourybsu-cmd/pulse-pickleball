@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { Plus, QrCode, Users, Search, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
 import { SocialHero, SocialEmptyState } from '@/components/social/_shared';
+import { PlayerSegmentedControl } from '@/components/layout/PlayerSegmentedControl';
 import { useGroups } from '@/hooks/useGroups';
 
 type View = 'mine' | 'explore';
@@ -26,7 +25,6 @@ export default function Community() {
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [view, setView] = useState<View>('mine');
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
-  const reduced = useReducedMotion();
 
   const handleJoinPublicGroup = async (groupId: string) => {
     setJoiningGroupId(groupId);
@@ -38,38 +36,25 @@ export default function Community() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      <SocialHero eyebrow="Community" title={view === 'mine' ? 'My Communities' : 'Explore'}>
+      <SocialHero eyebrow="Groups" title="Community">
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div
-            className="inline-flex rounded-xl border border-border/60 bg-card/70 p-1 backdrop-blur-sm shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.35)]"
-            role="tablist"
-            aria-label="Community views"
-          >
-            <SegButton
-              active={view === 'mine'}
-              onClick={() => setView('mine')}
-              icon={Users}
-              reduced={reduced}
-              count={myGroups.length}
-            >
-              Mine
-            </SegButton>
-            <SegButton
-              active={view === 'explore'}
-              onClick={() => setView('explore')}
-              icon={Compass}
-              reduced={reduced}
-              count={joinableCount}
-            >
-              Explore
-            </SegButton>
-          </div>
+          <PlayerSegmentedControl
+            value={view}
+            onValueChange={setView}
+            options={[
+              { value: 'mine', label: 'Mine', icon: Users, count: myGroups.length },
+              { value: 'explore', label: 'Explore', icon: Compass, count: joinableCount, accentCount: true },
+            ]}
+            ariaLabel="Community views"
+            layoutId="community-seg-active"
+            className="min-w-[190px] flex-1"
+          />
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:gap-1.5">
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full border border-border/60 bg-card/70 backdrop-blur-sm shadow-sm hover:bg-card"
+              className="h-11 w-11 rounded-xl border border-border/60 bg-card/80 shadow-sm transition-transform hover:bg-card active:scale-95 focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Join with code"
               onClick={() => setJoinDialogOpen(true)}
             >
@@ -78,7 +63,7 @@ export default function Community() {
             <Button
               onClick={() => setCreateDialogOpen(true)}
               size="sm"
-              className="h-10 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] btn-premium"
+              className="h-11 flex-1 rounded-xl px-4 text-[11px] font-bold uppercase tracking-[0.12em] btn-premium active:scale-[0.98] sm:flex-none"
             >
               <Plus className="h-4 w-4 mr-1.5" />
               Create
@@ -87,7 +72,7 @@ export default function Community() {
         </div>
       </SocialHero>
 
-      <div className="flex-1 min-h-0 container mx-auto max-w-3xl px-4 sm:px-6 pt-4 pb-8">
+      <div className="container mx-auto min-h-0 max-w-3xl flex-1 px-4 pb-10 pt-4 sm:px-6">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -164,50 +149,5 @@ export default function Community() {
         onJoin={joinGroupByCode}
       />
     </div>
-  );
-}
-
-function SegButton({
-  active, onClick, icon: Icon, reduced, count, children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: typeof Users;
-  reduced: boolean | null;
-  count?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        'relative inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors',
-        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-      )}
-    >
-      {active && (
-        <motion.span
-          layoutId="community-seg-active"
-          aria-hidden
-          className="absolute inset-0 rounded-lg bg-background shadow-sm ring-1 ring-border/60"
-          transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
-        />
-      )}
-      <Icon className="relative h-4 w-4" />
-      <span className="relative">{children}</span>
-      {typeof count === 'number' && count > 0 && (
-        <span
-          className={cn(
-            'relative rounded-full px-1.5 py-[1px] text-[10px] font-bold tabular-nums',
-            active ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
-          )}
-        >
-          {count}
-        </span>
-      )}
-    </button>
   );
 }

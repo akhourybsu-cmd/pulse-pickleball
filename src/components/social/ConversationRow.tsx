@@ -50,7 +50,7 @@ export function ConversationRow({
       layout
       whileTap={{ scale: 0.99 }}
       className={cn(
-        "group relative flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-sm transition-colors",
+        "group relative flex min-h-[76px] items-center gap-2.5 rounded-2xl border p-3 transition-[background-color,border-color]",
         "shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)]",
         hasUnread
           ? "bg-card/85 border-primary/35 shadow-[0_2px_18px_-10px_hsl(var(--primary)/0.45)]"
@@ -63,7 +63,7 @@ export function ConversationRow({
 
       <button
         onClick={open}
-        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}`}
       >
         <div className="relative shrink-0">
@@ -123,7 +123,7 @@ export function ConversationRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-60 hover:opacity-100"
+              className="h-10 w-10 opacity-60 hover:opacity-100 active:scale-95"
               aria-label={`Actions for ${c.title}`}
               onClick={(e) => e.stopPropagation()}
             >

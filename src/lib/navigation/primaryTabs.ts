@@ -1,5 +1,5 @@
 /**
- * The single authoritative definition of PULSE's five primary bottom-nav
+ * The single authoritative definition of PULSE's six primary bottom-nav
  * tabs and the directional logic that drives horizontal tab transitions.
  *
  * Everything about "which tab is this route" and "which way do we slide"
@@ -63,7 +63,7 @@ function tabOwns(tabPath: string, pathname: string): boolean {
 
 /**
  * Index of the primary tab that owns `pathname`, or -1 when the route is
- * not one of the five primary areas (detail pages, leagues, play, etc.).
+ * not one of the six primary areas (detail pages, play, etc.).
  */
 export function primaryTabIndex(pathname: string): number {
   for (let i = 0; i < PRIMARY_TABS.length; i++) {

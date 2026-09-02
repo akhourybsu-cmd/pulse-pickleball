@@ -25,11 +25,15 @@ import {
   ListOrdered,
   Gauge,
   Trash2,
+  Trophy,
+  MapPin,
 } from 'lucide-react';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/layout/SectionHeader';
 import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
+import { SocialHero, SocialStatTile, GlassPanel } from '@/components/social/_shared';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ProfileSummary {
   id: string;
@@ -244,10 +248,17 @@ export default function PlayerProfile() {
   };
 
   const locationStr = [profile?.town, profile?.state].filter(Boolean).join(', ') || null;
+  const profileName = profile?.display_name || profile?.full_name || (loading ? 'Profile' : 'Your profile');
+  const profileInitials = profileName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   const renderLinkGroup = (links: HubLink[], delayMs: number) => (
-    <div
-      className="space-y-2 opacity-0 animate-fade-up"
+    <GlassPanel
+      className="opacity-0 animate-fade-up"
       style={{ animationDelay: `${delayMs}ms`, animationFillMode: 'forwards' }}
     >
       {links.map((link) => {
@@ -256,39 +267,67 @@ export default function PlayerProfile() {
           <button
             key={link.to}
             onClick={() => navigate(link.to)}
+            type="button"
             className={cn(
-              'w-full flex items-center gap-4 rounded-xl border border-border/60 bg-card px-4 py-3.5',
-              'hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all text-left',
-              'group',
+              'group flex min-h-[68px] w-full items-center gap-3.5 px-3.5 py-3 text-left transition-[transform,background-color] hover:bg-accent/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transform-none',
+              link.to === '/delete-account' && 'hover:bg-destructive/5',
             )}
           >
-            <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+            <div className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15",
+              link.to === '/delete-account' && 'bg-destructive/10 text-destructive group-hover:bg-destructive/15',
+            )}>
               <Icon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium leading-tight">{link.label}</div>
-              <div className="text-xs text-muted-foreground truncate mt-0.5">{link.description}</div>
+              <div className={cn('font-semibold leading-tight', link.to === '/delete-account' && 'text-destructive')}>{link.label}</div>
+              <div className="mt-0.5 truncate text-xs text-muted-foreground">{link.description}</div>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
           </button>
         );
       })}
-    </div>
+    </GlassPanel>
   );
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-5 max-w-3xl space-y-7 pb-12">
-        {/* Centered identity — the name gets a gold gradient so it reads as the
-            top of the profile and pops. The full stats card lives on Home. */}
-        <div className="text-center pt-2">
-          <h1 className="inline-block text-[26px] font-extrabold tracking-tight leading-tight bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-            {profile?.display_name || profile?.full_name || (loading ? '' : 'Your profile')}
-          </h1>
-          {locationStr && (
-            <p className="text-sm text-muted-foreground mt-1">{locationStr}</p>
-          )}
+      <SocialHero
+        eyebrow="Player"
+        title={profileName}
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => navigate('/player/profile/edit')}
+            className="h-10 w-10 rounded-xl border-border/60 bg-card/80 active:scale-95"
+            aria-label="Edit profile"
+          >
+            <Pencil className="h-[18px] w-[18px]" />
+          </Button>
+        }
+      >
+        {locationStr && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            {locationStr}
+          </p>
+        )}
+        <div className="mt-3 flex items-stretch gap-2.5">
+          <Avatar className="h-[58px] w-[58px] shrink-0 rounded-2xl border-2 border-primary/30 shadow-sm">
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+            <AvatarFallback className="rounded-2xl bg-primary/15 font-bold text-primary">{profileInitials}</AvatarFallback>
+          </Avatar>
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 sm:gap-2">
+            <SocialStatTile icon={Gauge} label="Rating" value={profile?.current_rating ? profile.current_rating.toFixed(2) : '—'} accent />
+            <SocialStatTile icon={Trophy} label="Matches" value={String(profile?.total_matches || 0)} />
+            <SocialStatTile icon={ClipboardList} label="Record" value={`${profile?.wins || 0}–${profile?.losses || 0}`} />
+          </div>
         </div>
+      </SocialHero>
+
+      <div className="container mx-auto max-w-3xl space-y-7 px-4 pb-12 pt-4 sm:px-6">
 
         {/* Skill assessment — hero CTA at the top of the profile. */}
         <SkillAssessmentCTA userId={userId} />
@@ -301,7 +340,7 @@ export default function PlayerProfile() {
           <Button
             onClick={handleShare}
             variant="outline"
-            className="w-full h-12 gap-2 text-base font-semibold"
+            className="h-12 w-full gap-2 rounded-2xl border-border/60 bg-card/80 text-base font-semibold shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.5)] active:scale-[0.99]"
             disabled={loading || !profile?.id}
           >
             <Share2 className="h-4 w-4" />

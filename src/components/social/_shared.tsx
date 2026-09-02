@@ -1,14 +1,13 @@
+import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Shared premium presentation primitives for the Social surfaces (Social hub,
- * Friends, inbox, pickers). Mirrors the Round Robin / League "Emerald Prestige"
- * language: ambient primary bloom, court-line texture, accent-ruled eyebrow,
- * scoreboard stat tiles and glassy rows. Presentation only.
+ * Shared premium presentation primitives for the player-facing social surfaces.
+ * The hero is also used by sibling tabs so mobile page identity stays uniform.
  */
 
-/** Ambient bloom + court-line texture band used behind Social page titles. */
+/** Restrained mobile-first title band used across the primary player tabs. */
 export function SocialHero({
   eyebrow,
   title,
@@ -25,34 +24,30 @@ export function SocialHero({
   return (
     <section
       className={cn(
-        "relative overflow-hidden border-b border-border/50 bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background",
+        "relative overflow-hidden border-b border-border/50 bg-card/35",
         className,
       )}
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
-        style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+        className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full blur-3xl opacity-[0.10]"
+        style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 68%)" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
-        }}
+        className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-primary/35"
       />
-      <div className="relative container mx-auto max-w-3xl px-4 pt-4 pb-3 sm:pt-5 sm:pb-4">
+      <div className="relative container mx-auto max-w-3xl px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="relative min-w-0 pl-3.5">
             <span
               aria-hidden
-              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
+              className="absolute bottom-1 left-0 top-1 w-[3px] rounded-full bg-primary"
             />
-            <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+            <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/80">
               {eyebrow}
             </div>
-            <h1 className="text-[22px] sm:text-[26px] font-extrabold leading-[1.05] tracking-[-0.02em] text-foreground">
+            <h1 className="text-[23px] font-extrabold leading-[1.05] tracking-[-0.025em] text-foreground sm:text-[27px]">
               {title}
             </h1>
           </div>
@@ -77,7 +72,7 @@ export function SocialStatTile({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 px-2.5 py-2 backdrop-blur-sm shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+    <div className="min-w-0 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
       <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         <Icon className={cn("h-3 w-3", accent ? "text-primary" : "text-primary/80")} />
         {label}
@@ -99,18 +94,21 @@ export function GlassPanel({
   children,
   className,
   divided = true,
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
   divided?: boolean;
+  style?: CSSProperties;
 }) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_8px_30px_-20px_hsl(var(--foreground)/0.35)]",
+        "overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-[0_8px_30px_-22px_hsl(var(--foreground)/0.35)]",
         divided && "divide-y divide-border/50",
         className,
       )}
+      style={style}
     >
       {children}
     </div>
@@ -119,8 +117,8 @@ export function GlassPanel({
 
 /** Standalone glass row — used where rows sit in a grid instead of a panel. */
 export const glassRow =
-  "flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 backdrop-blur-sm " +
-  "shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.35)] transition-colors hover:bg-card";
+  "flex min-h-[68px] items-center gap-3 rounded-2xl border border-border/60 bg-card/80 p-3 " +
+  "shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.35)] transition-[transform,background-color,border-color] hover:border-primary/20 hover:bg-card active:scale-[0.99] motion-reduce:transform-none";
 
 /** Premium empty state with an accent tile and optional CTA. */
 export function SocialEmptyState({

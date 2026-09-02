@@ -60,21 +60,21 @@ export function SocialInbox() {
   return (
     <div className="flex flex-col">
       {/* Toolbar: search + compose icon */}
-      <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+      <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search chats…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-9 pl-9 rounded-xl border-border/60 bg-card/70 backdrop-blur-sm"
+            className="h-11 rounded-xl border-border/60 bg-card/80 pl-9"
             aria-label="Search chats"
           />
         </div>
         <Button
           size="icon"
           onClick={() => setPickerOpen(true)}
-          className="h-9 w-9 shrink-0 rounded-full btn-premium"
+          className="h-11 w-11 shrink-0 rounded-xl btn-premium active:scale-95"
           aria-label="New message"
         >
           <PenSquare className="h-4 w-4" />
@@ -82,7 +82,7 @@ export function SocialInbox() {
       </div>
 
       {/* Compact filters */}
-      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 pb-3 sm:px-6">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label="All" count={conversations.length} />
         <FilterChip active={filter === "unread"} onClick={() => setFilter("unread")} label="Unread" count={unreadCount} accent />
         <FilterChip active={filter === "muted"} onClick={() => setFilter("muted")} label="Muted" count={mutedCount} />
@@ -98,7 +98,7 @@ export function SocialInbox() {
 
       <div className="flex-1 pb-6">
         {loading ? (
-          <div className="space-y-2 px-4">
+          <div className="space-y-2 px-4 sm:px-6">
             {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[68px] w-full rounded-2xl" />)}
           </div>
         ) : visible.length === 0 ? (
@@ -107,7 +107,7 @@ export function SocialInbox() {
             isFiltered={conversations.length > 0}
           />
         ) : (
-          <div className="px-4 space-y-5">
+          <div className="space-y-5 px-4 sm:px-6">
             {sections.map((section) => (
               <section key={section.label}>
                 <h2 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -148,7 +148,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={cn(
-        "h-8 px-3 rounded-full text-[11px] font-bold uppercase tracking-[0.08em] transition-colors flex items-center gap-1.5 shrink-0 border backdrop-blur-sm",
+        "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] transition-[transform,color,background-color,border-color] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none",
         active
           ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.6)]"
           : "bg-card/70 text-muted-foreground border-border/50 hover:text-foreground hover:bg-card",

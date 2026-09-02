@@ -32,6 +32,8 @@ import { toLocaleDateStringEST } from "@/lib/utils";
 import { Footer } from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
+import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedControl";
+import { SocialHero } from "@/components/social/_shared";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
 import { RoundRobinMatchGroup, type RoundRobinGroup } from "@/components/matches/RoundRobinMatchGroup";
 import { cn } from "@/lib/utils";
@@ -339,7 +341,7 @@ const MatchHistory = () => {
         new Set((rrLinks || []).map(l => l.event_id).filter(Boolean))
       );
 
-      let eventsById = new Map<string, { id: string; name: string; date: string }>();
+      const eventsById = new Map<string, { id: string; name: string; date: string }>();
       if (eventIds.length > 0) {
         const { data: rrEvents, error: rrEventsError } = await supabase
           .from('round_robin_events')
@@ -647,17 +649,17 @@ const MatchHistory = () => {
     // visually jump when matches arrive.
     return (
       <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-        <div className="border-b bg-gradient-to-b from-primary/10 via-background to-background">
-          <div className="container mx-auto px-4 py-5 md:py-6 flex items-start justify-between gap-4">
+        <div className="border-b border-border/50 bg-card/35">
+          <div className="container mx-auto flex max-w-3xl items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
             <div className="min-w-0 space-y-2">
               <Skeleton className="h-7 w-32" />
               <Skeleton className="h-4 w-64" />
             </div>
-            <Skeleton className="h-9 w-28 flex-shrink-0" />
+            <Skeleton className="h-10 w-24 flex-shrink-0 rounded-xl" />
           </div>
         </div>
-        <div className="container mx-auto px-4 py-6 space-y-4">
-          <Skeleton className="h-10 w-full max-w-md" />
+        <div className="container mx-auto max-w-3xl space-y-4 px-4 pb-10 pt-4 sm:px-6">
+          <Skeleton className="h-11 w-full rounded-2xl" />
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-44 w-full rounded-2xl" />
           ))}
@@ -668,10 +670,8 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      {/* Header only when viewing ANOTHER player's matches (it has a real
-          title then). On your own Matches tab the title would just repeat the
-          bottom-nav label, so we skip the band and put "Record" inline with
-          the tabs below — no empty top strip. */}
+      {/* Other-player history keeps its contextual header; the primary Matches
+          destination uses the same title band as the rest of the mobile tabs. */}
       {playerId && (
         <PlayerPageHeader
           icon={History}
@@ -680,7 +680,28 @@ const MatchHistory = () => {
         />
       )}
 
-      <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">
+      {!playerId && (
+        <SocialHero
+          eyebrow="Performance"
+          title="Matches"
+          action={
+            <Button
+              onClick={() => navigate("/player/matches/new")}
+              size="sm"
+              className="h-10 rounded-xl px-3.5 btn-premium active:scale-[0.98]"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Record
+            </Button>
+          }
+        >
+          <p className="mt-2 max-w-sm text-sm leading-snug text-muted-foreground">
+            Track results, confirm scores, and follow your PULSE record.
+          </p>
+        </SocialHero>
+      )}
+
+      <div className="container mx-auto max-w-3xl space-y-6 px-4 pb-10 pt-4 sm:px-6">
         {/* Ranked-vs-all record. Only splits into two columns when the player
             actually has non-ranked games — otherwise a single record, no
             clutter. "won" is score-based so it's correct for every match. */}
@@ -690,7 +711,7 @@ const MatchHistory = () => {
           const rankedWins = ranked.filter((m) => m.won).length;
           const hasUnranked = ranked.length < matches.length;
           return (
-            <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card px-4 py-3">
+            <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 px-4 py-3.5 shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.45)]">
               <div>
                 <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   {hasUnranked ? "PULSE ranked" : "Record"}
@@ -721,65 +742,19 @@ const MatchHistory = () => {
           );
         })()}
 
-        {/* Tabs — custom strip with a sliding primary underline indicator
-            (matches PlayerShell's bottom-nav animation language). Default
-            shadcn TabsList swap was a "pill" treatment that felt visually
-            heavier; this is cleaner and signals "ledger view" instead. */}
-        {!playerId && (() => {
-          const tabs: { value: "all" | "pending" | "verified"; label: string; count?: number }[] = [
-            { value: "all", label: "All" },
-            { value: "pending", label: "Pending", count: pendingMatches.length || undefined },
-            { value: "verified", label: "Verified", count: matches.length || undefined },
-          ];
-          const activeIndex = tabs.findIndex((t) => t.value === activeTab);
-          return (
-            <div className="flex items-end justify-between gap-3">
-              <div className="relative border-b border-border/40 flex-1 max-w-md">
-              <div className="grid grid-cols-3">
-                {tabs.map((tab) => {
-                  const isActive = tab.value === activeTab;
-                  return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      className={cn(
-                        "relative py-2.5 text-sm font-medium transition-colors duration-200",
-                        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span>{tab.label}</span>
-                      {tab.count != null && (
-                        <span className={cn(
-                          "ml-1.5 text-xs font-semibold tabular-nums transition-colors",
-                          isActive ? "text-primary" : "text-muted-foreground/70"
-                        )}>
-                          {tab.count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Sliding underline indicator */}
-              <div
-                className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
-                style={{
-                  width: `${100 / tabs.length}%`,
-                  left: `${(100 / tabs.length) * activeIndex}%`,
-                }}
-              />
-              </div>
-              <Button
-                onClick={() => navigate("/player/matches/new")}
-                size="sm"
-                className="h-9 rounded-full btn-premium shrink-0 mb-1"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Record
-              </Button>
-            </div>
-          );
-        })()}
+        {!playerId && (
+          <PlayerSegmentedControl
+            value={activeTab}
+            onValueChange={setActiveTab}
+            options={[
+              { value: "all", label: "All" },
+              { value: "pending", label: "Pending", count: pendingMatches.length, accentCount: true },
+              { value: "verified", label: "Verified", count: matches.length },
+            ]}
+            ariaLabel="Match views"
+            layoutId="matches-seg-active"
+          />
+        )}
 
         {/* Per-tab body — keyed so tab switches retrigger the fade-up animation
             (the new content slides up + fades in for a satisfying transition
@@ -788,7 +763,7 @@ const MatchHistory = () => {
 
         {/* Empty state for the Pending tab when there's nothing pending */}
         {!playerId && activeTab === "pending" && pendingMatches.length === 0 && (
-          <Card className="rounded-2xl border-2 border-border shadow-lg">
+          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
             <CardContent className="p-8 text-center">
               <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-green-500" />
               <p className="font-semibold text-lg mb-1">All caught up</p>
@@ -934,7 +909,7 @@ const MatchHistory = () => {
         {/* Per-tab empty states (only when viewing your own matches).
             Each tab gets honest copy + a useful CTA — no blank screens. */}
         {!playerId && activeTab === "all" && matches.length === 0 && pendingMatches.length === 0 && (
-          <Card className="rounded-2xl border-2 border-border shadow-lg">
+          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
             <CardContent className="p-8 text-center">
               <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
               <p className="font-semibold text-lg mb-1">No matches yet</p>
@@ -955,7 +930,7 @@ const MatchHistory = () => {
         )}
 
         {!playerId && activeTab === "verified" && matches.length === 0 && (
-          <Card className="rounded-2xl border-2 border-border shadow-lg">
+          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
             <CardContent className="p-8 text-center">
               <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
               <p className="font-semibold text-lg mb-1">No verified matches yet</p>

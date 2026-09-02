@@ -191,14 +191,14 @@ export function PlayerShell() {
           non-immersive player route. */}
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
-          <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+          <div className="mx-auto flex h-[64px] w-full max-w-[1400px] items-center justify-between px-4 py-3 sm:h-[72px] lg:px-8">
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
                 instead of a pasted cream rectangle. Gold pulse beat stays
                 gold for brand recognition. */}
             <NavLink
               to="/player/dashboard"
-              className="ml-1 text-secondary-foreground hover:opacity-90 transition-opacity"
+              className="ml-1 rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Go to dashboard"
             >
               <Logo className="h-[52px] sm:h-[65px] w-auto" />
@@ -212,7 +212,7 @@ export function PlayerShell() {
                 type="button"
                 onClick={() => navigate('/player/messages')}
                 aria-label={dmUnread > 0 ? `Messages, ${dmUnread} unread` : 'Messages'}
-                className="relative inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full text-secondary-foreground hover:bg-secondary-foreground/10 transition-colors"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary-foreground transition-[transform,background-color] hover:bg-secondary-foreground/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <MessageSquare className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
                 {dmUnread > 0 && (
@@ -224,15 +224,19 @@ export function PlayerShell() {
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
                   which surprised users expecting to land in their own hub). */}
-              <Avatar
-                className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-primary/40 cursor-pointer hover:border-primary/60 transition-all hover:scale-105"
+              <button
+                type="button"
                 onClick={() => navigate('/player/profile')}
+                className="rounded-full transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label="Open profile"
               >
-                <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
-                <AvatarFallback className="text-[10px] sm:text-xs font-bold bg-primary/20 text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+                <Avatar className="h-9 w-9 cursor-pointer border-2 border-primary/40 transition-all hover:scale-105 hover:border-primary/60">
+                  <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
+                  <AvatarFallback className="bg-primary/20 text-[10px] font-bold text-primary sm:text-xs">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
             </div>
           </div>
         </header>
@@ -311,7 +315,7 @@ export function PlayerShell() {
 
       {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card md:hidden pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 shadow-[0_-10px_30px_-26px_hsl(var(--foreground)/0.55)] backdrop-blur-xl md:hidden pb-[env(safe-area-inset-bottom)]">
           {/* Sliding active indicator - refined */}
           <div
             className="absolute top-0 h-[2.5px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
@@ -320,7 +324,7 @@ export function PlayerShell() {
               left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.25}%`,
             }}
           />
-          <div className="flex items-center justify-around py-2.5">
+          <div className="flex items-center justify-around px-1 py-2">
             {navItems.map((item, index) => {
               const isActive = activeIndex === index;
 
@@ -334,14 +338,17 @@ export function PlayerShell() {
                     // columns that never overflow (the sliding indicator's
                     // 100/N math assumes equal widths) — matters now that a
                     // sixth tab (Leagues) shares a small phone's width.
-                    'flex flex-1 min-w-0 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg',
-                    'transition-all duration-[240ms] ease-out',
+                    'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-0.5 py-1',
+                    'transition-all duration-[240ms] ease-out active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none',
                     isActive
                       ? 'text-primary'
-                      : 'text-muted-foreground/70 hover:text-foreground active:scale-95'
+                      : 'text-muted-foreground/70 hover:text-foreground'
                   )}
                 >
-                  <span className="relative">
+                  <span className={cn(
+                    "relative flex h-8 w-10 items-center justify-center rounded-xl transition-colors",
+                    isActive && "bg-primary/10",
+                  )}>
                     <item.icon className={cn(
                       'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
                       isActive ? 'text-primary' : 'stroke-[1.5]'
@@ -353,10 +360,10 @@ export function PlayerShell() {
                     )}
                   </span>
                   <span className={cn(
-                    // Explicit 11px + truncate (not .nav-label's 12px): keeps
+                    // Fluid type + truncate (not .nav-label's 12px): keeps
                     // the longest label ("Community") inside its equal column
                     // at six tabs on a small phone instead of overflowing.
-                    'block max-w-full truncate text-[11px] tracking-tight',
+                    'block max-w-full truncate text-[clamp(8px,2.55vw,10px)] tracking-[-0.035em]',
                     isActive ? 'text-primary font-semibold' : 'font-medium'
                   )}>{item.label}</span>
                 </NavLink>

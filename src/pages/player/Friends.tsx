@@ -235,8 +235,8 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         {/* Secondary underline tabs — deliberately lighter than the primary
             Chats/Friends switch in the Social hero so the hierarchy reads. */}
-        <div className="px-4 sm:px-6 pt-1 flex items-center gap-2 border-b border-border/40">
-          <TabsList className="flex-1 h-auto bg-transparent p-0 gap-5 justify-start rounded-none">
+        <div className="flex items-center gap-2 border-b border-border/40 px-4 pt-1 sm:px-6">
+          <TabsList className="no-scrollbar h-auto flex-1 justify-start gap-5 overflow-x-auto rounded-none bg-transparent p-0">
             <UnderlineTab value="friends" label="Friends" count={friends.length > 0 ? friends.length : undefined} />
             <UnderlineTab value="requests" label="Requests" count={totalRequests > 0 ? totalRequests : undefined} accent />
             <UnderlineTab value="suggestions" label="Suggestions" />
@@ -246,7 +246,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               variant="ghost"
               size="icon"
               onClick={() => setConnectOpen(true)}
-              className="h-8 w-8 shrink-0 text-primary -mb-px"
+              className="-mb-px h-10 w-10 shrink-0 rounded-xl text-primary active:scale-95"
               aria-label="Add friend"
             >
               <UserPlus className="h-[18px] w-[18px]" />
@@ -312,7 +312,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                               {personMeta(f.profile.current_rating, isOnline)}
                             </div>
                           </button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => openDM(f.profile.id)} aria-label={`Message ${name}`}>
+                           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl active:scale-95" onClick={() => openDM(f.profile.id)} aria-label={`Message ${name}`}>
                             <MessageCircle className="h-4 w-4" />
                           </Button>
                           <DropdownMenu>
@@ -320,7 +320,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9 text-muted-foreground shrink-0"
+                                 className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground active:scale-95"
                                 aria-label={`More actions for ${name}`}
                               >
                                 <MoreVertical className="h-4 w-4" />
@@ -551,7 +551,7 @@ function UnderlineTab({
     <TabsTrigger
       value={value}
       className={cn(
-        "relative h-10 px-0 rounded-none bg-transparent shadow-none text-sm font-medium text-muted-foreground",
+         "relative h-11 px-0 rounded-none bg-transparent shadow-none text-sm font-medium text-muted-foreground",
         "data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground",
         "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
         "after:opacity-0 after:transition-opacity motion-reduce:after:transition-none data-[state=active]:after:opacity-100",

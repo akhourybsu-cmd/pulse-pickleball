@@ -90,8 +90,9 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
   };
 
   return (
-    <button 
-      className="w-full text-left p-3 rounded-xl bg-card hover:bg-muted/30 transition-colors border border-border/30 active:scale-[0.99]"
+    <button
+      type="button"
+      className="group w-full min-h-[72px] rounded-2xl border border-border/60 bg-card/80 p-3 text-left shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.45)] transition-[transform,background-color,border-color] hover:border-primary/25 hover:bg-card active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       onClick={() => navigate(`/player/community/group/${group.id}`)}
       onMouseEnter={handleMouseEnter}
     >
@@ -99,7 +100,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
         {/* Avatar - smaller, more refined */}
         <div
           className={cn(
-            'h-11 w-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0',
+            'h-11 w-11 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0',
             group.icon_url ? '' : avatarColors[colorIndex]
           )}
           style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
@@ -151,7 +152,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
             <Button
               size="sm"
               variant="default"
-              className="h-7 text-xs px-3"
+              className="h-9 rounded-xl px-3 text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onJoin(group.id);
@@ -161,7 +162,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
               {isJoining ? '...' : group.join_method === 'request_to_join' ? 'Request' : 'Join'}
             </Button>
           )}
-          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" />
         </div>
       </div>
     </button>
