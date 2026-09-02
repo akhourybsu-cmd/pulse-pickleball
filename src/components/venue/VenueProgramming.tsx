@@ -1,5 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Gauge, LayoutGrid, MapPin, Shuffle, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronRight,
+  Gauge,
+  GraduationCap,
+  LayoutGrid,
+  MapPin,
+  Shuffle,
+  Sparkles,
+  Target,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -36,6 +48,15 @@ const FORMAT_LABEL: Record<string, string> = {
   other: 'Event',
 };
 
+const FORMAT_ICON: Record<string, typeof Users> = {
+  open_play: Users,
+  clinic: GraduationCap,
+  practice: Target,
+  round_robin: Trophy,
+  social: Sparkles,
+  other: CalendarDays,
+};
+
 const ROTATION_LABEL: Record<string, string> = {
   paddle_stack: 'Paddle stack',
   timed_rotation: 'Timed rotation',
@@ -55,6 +76,7 @@ interface VenueProgrammingProps {
   venueName?: string | null;
   accent?: string | null;
   onPick?: (sessionId: string) => void;
+  viewerRsvpByEvent?: Record<string, string | null | undefined>;
 }
 
 export function VenueProgramming({
@@ -64,6 +86,7 @@ export function VenueProgramming({
   venueName,
   accent,
   onPick,
+  viewerRsvpByEvent = {},
 }: VenueProgrammingProps) {
   const [filter, setFilter] = useState<string>('all');
 
@@ -140,7 +163,7 @@ export function VenueProgramming({
         </div>
       )}
 
-      <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.025)]">
+      <div className="space-y-2">
         {shown.map((session) => (
           <SessionRow
             key={session.id}
@@ -149,6 +172,7 @@ export function VenueProgramming({
             venueName={venueName}
             accent={accent}
             onPick={onPick}
+            viewerRsvp={viewerRsvpByEvent[session.id]}
           />
         ))}
       </div>
@@ -162,12 +186,14 @@ function SessionRow({
   venueName,
   accent,
   onPick,
+  viewerRsvp,
 }: {
   session: VenueDaySession;
   going: number;
   venueName?: string | null;
   accent?: string | null;
   onPick?: (sessionId: string) => void;
+  viewerRsvp?: string | null;
 }) {
   const start = new Date(session.start_time);
   const end = session.end_time ? new Date(session.end_time) : null;
@@ -177,87 +203,119 @@ function SessionRow({
   const past = (end ?? start) < new Date();
 
   const formatLabel = FORMAT_LABEL[session.event_format] ?? 'Event';
-  const titleStatesFormat = session.title
-    .toLowerCase()
-    .includes(formatLabel.toLowerCase());
-
   const Row = onPick ? 'button' : 'div';
+  const FormatIcon = FORMAT_ICON[session.event_format] ?? CalendarDays;
+  const rsvpLabel =
+    viewerRsvp === 'going'
+      ? "You're in"
+      : viewerRsvp === 'waitlist'
+        ? 'Waitlisted'
+        : viewerRsvp === 'maybe'
+          ? 'Maybe'
+          : null;
 
   return (
     <Row
       {...(onPick ? { type: 'button' as const, onClick: () => onPick(session.id) } : {})}
       className={cn(
-        'w-full px-4 py-3.5 text-left transition-colors',
-        onPick && 'hover:bg-muted/35',
+        'group w-full rounded-[18px] border border-border/75 bg-card px-3.5 py-3.5 text-left shadow-[0_12px_32px_-28px_hsl(var(--foreground)/0.55)] transition-[border-color,background-color,transform] sm:px-4',
+        onPick && 'hover:-translate-y-px hover:border-primary/35 hover:bg-card/95',
         past && 'opacity-60',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-muted-foreground">
-          <span
-            aria-hidden
-            className="h-1.5 w-1.5 rounded-full bg-primary"
-            style={accent ? { backgroundColor: accent } : undefined}
-          />
-          {formatSlotTime(start)}
-          {end ? ` – ${formatSlotTime(end)}` : ''}
+      <div className="flex items-start gap-3">
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+          style={accent ? { backgroundColor: `${accent}16`, color: accent } : undefined}
+        >
+          <FormatIcon className="h-[18px] w-[18px]" />
         </span>
 
-        {full ? (
-          <Badge variant="outline" className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em]">
-            {session.waitlist_enabled ? 'Waitlist' : 'Full'}
-          </Badge>
-        ) : urgent ? (
-          <Badge className="shrink-0 bg-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
-            {spotsLeft} left
-          </Badge>
-        ) : null}
-      </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+              {formatLabel}
+            </span>
+            <span className="h-1 w-1 rounded-full bg-border" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-foreground/75">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-primary"
+                style={accent ? { backgroundColor: accent } : undefined}
+              />
+              {formatSlotTime(start)}
+              {end ? ` – ${formatSlotTime(end)}` : ''}
+            </span>
+          </div>
 
-      <p className="mt-1 truncate text-base font-bold leading-tight">{session.title}</p>
+          <p className="mt-1 truncate text-[15px] font-extrabold leading-tight tracking-tight sm:text-base">
+            {session.title}
+          </p>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {/* The kind chip is dropped when the title already says it — "Open Play"
-            twice on one row is clutter, not information. */}
-        {!titleStatesFormat && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
-            {FORMAT_LABEL[session.event_format] ?? 'Event'}
-          </span>
-        )}
-        {venueName && (
-          <span className="inline-flex min-w-0 items-center gap-1">
-            <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{venueName}</span>
-          </span>
-        )}
-        {session.capacity != null && (
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <Users className="h-3 w-3" />
-            {going}/{session.capacity}
-          </span>
-        )}
-        {(session.skill_level_min != null || session.skill_level_max != null) && (
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <Gauge className="h-3 w-3" />
-            {session.skill_level_min != null && session.skill_level_max != null
-              ? `${session.skill_level_min.toFixed(1)}–${session.skill_level_max.toFixed(1)}`
-              : session.skill_level_min != null
-                ? `${session.skill_level_min.toFixed(1)}+`
-                : `≤ ${session.skill_level_max!.toFixed(1)}`}
-          </span>
-        )}
-        {session.rr_courts != null && session.rr_courts > 0 && (
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <LayoutGrid className="h-3 w-3" />
-            {session.rr_courts} court{session.rr_courts === 1 ? '' : 's'}
-          </span>
-        )}
-        {session.rotation_style && ROTATION_LABEL[session.rotation_style] && (
-          <span className="inline-flex items-center gap-1">
-            <Shuffle className="h-3 w-3" />
-            {ROTATION_LABEL[session.rotation_style]}
-          </span>
-        )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground sm:text-xs">
+            {venueName && (
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{venueName}</span>
+              </span>
+            )}
+            {session.capacity != null && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Users className="h-3 w-3" />
+                {going}/{session.capacity}
+              </span>
+            )}
+            {(session.skill_level_min != null || session.skill_level_max != null) && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Gauge className="h-3 w-3" />
+                {session.skill_level_min != null && session.skill_level_max != null
+                  ? `${session.skill_level_min.toFixed(1)}–${session.skill_level_max.toFixed(1)}`
+                  : session.skill_level_min != null
+                    ? `${session.skill_level_min.toFixed(1)}+`
+                    : `≤ ${session.skill_level_max!.toFixed(1)}`}
+              </span>
+            )}
+            {session.rr_courts != null && session.rr_courts > 0 && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <LayoutGrid className="h-3 w-3" />
+                {session.rr_courts} court{session.rr_courts === 1 ? '' : 's'}
+              </span>
+            )}
+            {session.rotation_style && ROTATION_LABEL[session.rotation_style] && (
+              <span className="inline-flex items-center gap-1">
+                <Shuffle className="h-3 w-3" />
+                {ROTATION_LABEL[session.rotation_style]}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {rsvpLabel ? (
+            <Badge
+              variant="outline"
+              className={cn(
+                'whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.09em]',
+                viewerRsvp === 'going' && 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+              )}
+            >
+              {rsvpLabel}
+            </Badge>
+          ) : full ? (
+            <Badge variant="outline" className="whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.09em]">
+              {session.waitlist_enabled ? 'Join waitlist' : 'Full'}
+            </Badge>
+          ) : urgent ? (
+            <Badge className="whitespace-nowrap bg-primary text-[9px] font-bold uppercase tracking-[0.09em] text-primary-foreground">
+              {spotsLeft} left
+            </Badge>
+          ) : spotsLeft != null ? (
+            <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{spotsLeft} spots</span>
+          ) : null}
+          {onPick && (
+            <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          )}
+        </div>
       </div>
     </Row>
   );

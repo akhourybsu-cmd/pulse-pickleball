@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-type GroupRsvpStatus = 'going' | 'maybe' | 'not_going' | 'waitlist';
+export type GroupRsvpStatus = 'going' | 'maybe' | 'not_going' | 'waitlist';
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -376,6 +376,7 @@ export function useGroupEvents(groupId: string | undefined) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      return finalStatus as GroupRsvpStatus;
     } catch (error: unknown) {
       // Roll back the optimistic change to the last known-good snapshot.
       if (prev) queryClient.setQueryData(key, prev);
@@ -385,6 +386,7 @@ export function useGroupEvents(groupId: string | undefined) {
         description: errorMessage(error, 'Failed to update RSVP'),
         variant: 'destructive',
       });
+      return undefined;
     }
   };
 

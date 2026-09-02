@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
+import { Building2, Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,14 @@ import { DayStrip } from '@/components/venue/DayStrip';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
+import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
+import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
@@ -153,6 +155,7 @@ export default function VenueCommunity() {
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
   const [bookingMinutes, setBookingMinutes] = useState<number | null>(null);
   const [eventCreatorOpen, setEventCreatorOpen] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
 
   // Snapshot the viewer's last-read marker BEFORE anything updates it, so the
   // chat's unread divider reflects where they actually left off.
@@ -174,6 +177,57 @@ export default function VenueCommunity() {
     courts, programming, going, grid, closed, slotMinutes, freeNow,
     loading: dayLoading, refresh, hasCourts,
   } = useVenueDay(group?.venue_id, groupId, day, hours);
+  const {
+    events: groupEvents,
+    updateRsvp,
+    refetch: refetchGroupEvents,
+  } = useGroupEvents(groupId);
+
+  const selectedProgram = useMemo<GroupEvent | null>(() => {
+    const fullEvent = groupEvents.find((event) => event.id === selectedProgramId);
+    if (fullEvent) return fullEvent;
+
+    // Venue calendars can include programming hosted by another community.
+    // Keep those sessions tappable too, using the venue-day record as the
+    // player-facing fallback while RSVP still goes through the shared RPC.
+    const session = programming.find((event) => event.id === selectedProgramId);
+    if (!session) return null;
+    return {
+      id: session.id,
+      group_id: session.group_id,
+      title: session.title,
+      description: session.description,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      location_type: 'venue',
+      court_id: null,
+      venue_court_id: session.venue_court_id,
+      venue_id: group?.venue_id ?? null,
+      parent_event_id: session.parent_event_id,
+      custom_location: null,
+      capacity: session.capacity,
+      skill_level_min: session.skill_level_min ?? null,
+      skill_level_max: session.skill_level_max ?? null,
+      is_recurring: false,
+      recurring_rule: null,
+      event_format: session.event_format as GroupEvent['event_format'],
+      waitlist_enabled: session.waitlist_enabled,
+      waitlist_limit: null,
+      series_id: null,
+      rr_courts: session.rr_courts ?? null,
+      rr_games_per_player: null,
+      rotation_style: session.rotation_style ?? null,
+      created_by: session.created_by,
+      created_at: session.start_time,
+      updated_at: session.start_time,
+      rsvps: { going: going[session.id] ?? 0, maybe: 0, not_going: 0, waitlist: 0 },
+      user_rsvp: null,
+    };
+  }, [going, group?.venue_id, groupEvents, programming, selectedProgramId]);
+  const viewerRsvpByEvent = useMemo(
+    () => Object.fromEntries(groupEvents.map((event) => [event.id, event.user_rsvp])),
+    [groupEvents],
+  );
 
   const isMember = membership?.status === 'active';
   const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
@@ -376,18 +430,23 @@ export default function VenueCommunity() {
                 )}
 
                 <TabsContent value="play" className="mt-0">
-                  <div className="max-w-3xl space-y-3">
-                    <div className="flex items-end justify-between gap-3">
+                  <div className="max-w-3xl space-y-4">
+                    <div className="flex items-center justify-between gap-3 rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)]">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                          Venue programming
+                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                          Programs at {venue?.name ?? group.name}
                         </p>
-                        <h2 className="mt-0.5 text-xl font-extrabold tracking-tight">Play at {venue?.name ?? group.name}</h2>
+                        <h2 className="mt-1 text-xl font-extrabold tracking-[-0.02em]">Find your next session</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {programming.length > 0
+                            ? `${programming.length} option${programming.length === 1 ? '' : 's'} on this day · tap for details and registration`
+                            : 'Choose another day to browse open play, clinics, and venue events'}
+                        </p>
                       </div>
                       {canCreateProgram && (
                         <Button
                           size="sm"
-                          className="h-9 shrink-0 gap-1.5 rounded-lg px-3 font-semibold"
+                          className="h-10 shrink-0 gap-1.5 rounded-xl px-3 font-bold shadow-[0_10px_24px_-18px_hsl(var(--primary)/0.9)]"
                           onClick={() => setEventCreatorOpen(true)}
                         >
                           <CalendarPlus className="h-4 w-4" />
@@ -403,6 +462,8 @@ export default function VenueCommunity() {
                       loading={dayLoading}
                       venueName={venue?.name ?? null}
                       accent={chrome?.accentHex}
+                      viewerRsvpByEvent={viewerRsvpByEvent}
+                      onPick={setSelectedProgramId}
                     />
                   </div>
                 </TabsContent>
@@ -451,10 +512,24 @@ export default function VenueCommunity() {
 
                 <TabsContent value="more" className="mt-0">
                   <div className="max-w-[820px] space-y-4">
+                    <div className="rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)]">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                          style={chrome?.accentHex ? { backgroundColor: `${chrome.accentHex}16`, color: chrome.accentHex } : undefined}
+                        >
+                          <Building2 className="h-[18px] w-[18px]" />
+                        </span>
+                        <div>
+                          <p className="text-base font-extrabold tracking-tight">Venue info</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">Your bookings and the people who play here</p>
+                        </div>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => navigate('/player/bookings')}
-                      className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
+                      className="group flex w-full items-center gap-3 rounded-[18px] border border-border/75 bg-card px-4 py-3.5 text-left shadow-[0_12px_30px_-28px_hsl(var(--foreground)/0.55)] transition-[border-color,transform] hover:-translate-y-px hover:border-primary/40"
                     >
                       <Ticket
                         className="h-4 w-4 shrink-0 text-primary"
@@ -466,7 +541,7 @@ export default function VenueCommunity() {
                           Courts you're holding and sessions you've joined
                         </p>
                       </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                     </button>
 
                     <GroupMembers
@@ -556,7 +631,25 @@ export default function VenueCommunity() {
             venueName={venue?.name ?? group.name}
             courts={courts}
             initialDate={day}
-            onCreated={refresh}
+            onCreated={() => {
+              refresh();
+              void refetchGroupEvents();
+            }}
+          />
+          <VenueProgramDialog
+            event={selectedProgram}
+            venueName={venue?.name ?? group.name}
+            open={!!selectedProgram}
+            onOpenChange={(open) => {
+              if (!open) setSelectedProgramId(null);
+            }}
+            canRsvp={isMember}
+            accent={chrome?.accentHex}
+            onRsvp={async (eventId, status) => {
+              const finalStatus = await updateRsvp(eventId, status);
+              refresh();
+              return finalStatus;
+            }}
           />
         </>
       )}

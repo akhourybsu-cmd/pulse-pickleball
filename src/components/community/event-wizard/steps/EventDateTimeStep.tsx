@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format } from 'date-fns';
+import { AlertCircle } from 'lucide-react';
 import { RECURRING_OPTIONS, type RecurringFrequency } from '../types';
 import { Button } from '@/components/ui/button';
 
@@ -42,6 +43,7 @@ export function EventDateTimeStep({
 }: EventDateTimeStepProps) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const isRecurring = recurringFrequency !== 'none';
+  const invalidWindow = !!startTime && !!endTime && endTime <= startTime;
 
   const setDuration = (minutes: number) => {
     if (!startTime) return;
@@ -114,6 +116,12 @@ export function EventDateTimeStep({
               </Button>
             ))}
           </div>
+        )}
+        {invalidWindow && (
+          <p className="flex items-center gap-1.5 rounded-xl border border-destructive/25 bg-destructive/[0.06] px-3 py-2 text-[11px] font-medium text-destructive">
+            <AlertCircle className="h-3.5 w-3.5" />
+            End time must be later than the start time.
+          </p>
         )}
       </div>
 

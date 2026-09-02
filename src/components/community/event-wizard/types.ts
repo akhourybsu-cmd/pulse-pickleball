@@ -112,12 +112,12 @@ export const EVENT_TYPE_OPTIONS: {
   tagline: string;
   icon: string;
 }[] = [
-  { value: 'open_play',   label: 'Open Play',   tagline: 'Drop-in rotation, casual games', icon: '🏓' },
-  { value: 'round_robin', label: 'Round Robin', tagline: 'Structured rounds & courts',      icon: '🔄' },
-  { value: 'practice',    label: 'Practice',    tagline: 'Drills and skills work',          icon: '🎯' },
-  { value: 'clinic',      label: 'Clinic',      tagline: 'Coach-led instruction',           icon: '📣' },
-  { value: 'social',      label: 'Social',      tagline: 'Food, hangs, off-court',          icon: '🎉' },
-  { value: 'other',       label: 'Other',       tagline: 'Anything else on the calendar',   icon: '📅' },
+  { value: 'open_play',   label: 'Open Play',   tagline: 'Drop-in games with a player rotation', icon: '🏓' },
+  { value: 'round_robin', label: 'Round Robin', tagline: 'Structured rounds and matchups',      icon: '🔄' },
+  { value: 'practice',    label: 'Practice',    tagline: 'Dedicated drills and skills work',    icon: '🎯' },
+  { value: 'clinic',      label: 'Clinic',      tagline: 'Coach-led instruction and training',  icon: '📣' },
+  { value: 'social',      label: 'Social',      tagline: 'Community play and off-court time',   icon: '🎉' },
+  { value: 'other',       label: 'Other',       tagline: 'A custom program or venue event',     icon: '📅' },
 ];
 
 export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {

@@ -43,7 +43,7 @@ export function VenueEventDialog({
 }: VenueEventDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bottom-0 left-0 top-auto max-h-[96dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[24px] border-border/80 p-0 sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[92dvh] sm:max-w-[620px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[24px] [&>button]:hidden">
+      <DialogContent className="bottom-0 left-0 top-auto max-h-[96dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-b-none rounded-t-[26px] border-border/80 p-0 sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[92dvh] sm:max-w-[900px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[26px] [&>button]:hidden">
         <DialogHeader className="sr-only">
           <DialogTitle>Create venue program</DialogTitle>
           <DialogDescription>

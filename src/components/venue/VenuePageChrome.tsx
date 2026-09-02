@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   BadgeCheck,
+  Building2,
   CalendarClock,
   CalendarDays,
   ChevronRight,
@@ -9,7 +10,6 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
-  MoreHorizontal,
   Settings,
   Ticket,
   Users,
@@ -31,12 +31,12 @@ const NAV_ITEMS: Array<{
   needsCourts?: boolean;
   needsChat?: boolean;
 }> = [
-  { value: 'home', label: 'Overview', mobileLabel: 'Home', icon: MapPin },
+  { value: 'home', label: 'Venue home', mobileLabel: 'Home', icon: MapPin },
   { value: 'book', label: 'Book a court', mobileLabel: 'Book', icon: LayoutGrid, needsCourts: true },
-  { value: 'play', label: 'Play & programs', mobileLabel: 'Play', icon: CalendarDays },
-  { value: 'feed', label: 'Venue feed', mobileLabel: 'Feed', icon: MessageSquare },
+  { value: 'play', label: 'Programs & play', mobileLabel: 'Play', icon: CalendarDays },
+  { value: 'feed', label: 'Venue updates', mobileLabel: 'Updates', icon: MessageSquare },
   { value: 'chat', label: 'Venue chat', mobileLabel: 'Chat', icon: MessageCircle, needsChat: true },
-  { value: 'more', label: 'Members & more', mobileLabel: 'More', icon: MoreHorizontal },
+  { value: 'more', label: 'Venue info', mobileLabel: 'Info', icon: Building2 },
 ];
 
 interface VenueMastheadProps {
@@ -202,10 +202,14 @@ export function VenueMasthead({
         </div>
 
         <div className="border-b border-border/70 bg-card lg:border-b-0">
-          <div className="flex items-center overflow-x-auto px-4 py-3 sm:px-6 lg:px-8 lg:py-3.5">
+          <div
+            className="grid w-full px-3 py-2.5 sm:px-6 lg:flex lg:items-center lg:px-8 lg:py-3.5"
+            style={{ gridTemplateColumns: `repeat(${nextStart ? 3 : 2}, minmax(0, 1fr))` }}
+          >
             <MastheadStat
               icon={LayoutGrid}
               label={hasCourts ? `${freeNow} of ${courtCount} courts free` : 'No courts yet'}
+              mobileLabel={hasCourts ? `${freeNow} / ${courtCount} courts` : 'No courts'}
               accent={accent}
             />
             <MastheadStat icon={Users} label={`${memberCount} members`} />
@@ -213,6 +217,7 @@ export function VenueMasthead({
               <MastheadStat
                 icon={CalendarClock}
                 label={`Next program at ${formatSlotTime(new Date(nextStart))}`}
+                mobileLabel={`${formatSlotTime(new Date(nextStart))} next`}
               />
             )}
           </div>
@@ -224,13 +229,18 @@ export function VenueMasthead({
 
 /** Phone/tablet navigation remains a compact horizontal strip. */
 export function VenueMobileTabs({ hasCourts, chatEnabled = true }: { hasCourts: boolean; chatEnabled?: boolean }) {
+  const items = NAV_ITEMS.filter(
+    (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
+  );
+
   return (
-    <div className="border-b border-border/70 bg-card lg:hidden">
-      <div className="mx-auto max-w-[1480px] overflow-x-auto px-2 sm:px-4">
-        <TabsList className="h-auto w-max justify-start gap-0 rounded-none border-0 bg-transparent p-0">
-          {NAV_ITEMS.filter(
-            (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
-          ).map((item) => (
+    <div className="z-30 border-b border-border/70 bg-card/95 px-1.5 py-1.5 shadow-[0_8px_26px_-24px_hsl(var(--foreground)/0.7)] backdrop-blur-xl lg:hidden">
+      <div className="mx-auto max-w-[1480px]">
+        <TabsList
+          className="grid h-auto w-full gap-1 rounded-2xl border border-border/60 bg-muted/35 p-1"
+          style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+        >
+          {items.map((item) => (
             <MobileTab key={item.value} {...item} />
           ))}
         </TabsList>
@@ -257,10 +267,10 @@ export function VenueDesktopNavigation({
 }) {
   return (
     <aside className="hidden lg:block">
-      <div className="sticky top-6 space-y-5">
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-            Venue
+      <div className="sticky top-6 space-y-4">
+        <div className="rounded-[20px] border border-border/65 bg-card/60 p-2 shadow-[0_14px_40px_-34px_hsl(var(--foreground)/0.55)] backdrop-blur-sm">
+          <p className="mb-1 px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Player space
           </p>
           <TabsList className="flex h-auto w-full flex-col items-stretch gap-1 rounded-none bg-transparent p-0">
             {NAV_ITEMS.filter(
@@ -272,14 +282,14 @@ export function VenueDesktopNavigation({
         </div>
 
         {isOperator && (
-          <div className="border-t border-border/70 pt-4">
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="rounded-[20px] border border-border/65 bg-card/45 p-2">
+            <p className="mb-1 px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               Staff
             </p>
             <button
               type="button"
               onClick={onOperations}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
             >
               <Gauge className="h-4 w-4" />
               Operations
@@ -288,7 +298,7 @@ export function VenueDesktopNavigation({
               <button
                 type="button"
                 onClick={onSettings}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
               >
                 <Settings className="h-4 w-4" />
                 Venue settings
@@ -427,10 +437,10 @@ function MobileTab({ value, mobileLabel, icon: Icon }: (typeof NAV_ITEMS)[number
   return (
     <TabsTrigger
       value={value}
-      className="relative gap-1.5 rounded-none border-0 bg-transparent px-3 py-3 text-xs font-semibold text-muted-foreground shadow-none after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-accent)] after:transition-transform data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:scale-x-100"
+      className="min-w-0 flex-col gap-0.5 rounded-xl border-0 bg-transparent px-1 py-2 text-[9.5px] font-bold leading-none text-muted-foreground shadow-none transition-all [&>svg]:text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_5px_16px_-12px_hsl(var(--foreground)/0.9)] data-[state=active]:[&>svg]:text-[var(--venue-accent)] sm:flex-row sm:gap-1.5 sm:px-2 sm:text-[11px]"
     >
-      <Icon className="h-3.5 w-3.5" />
-      {mobileLabel}
+      <Icon className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
+      <span className="max-w-full truncate">{mobileLabel}</span>
     </TabsTrigger>
   );
 }
@@ -441,8 +451,8 @@ function DesktopTab({ value, label, icon: Icon }: (typeof NAV_ITEMS)[number]) {
       value={value}
       className={cn(
         'relative w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground shadow-none',
-        'before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:scale-y-0 before:rounded-full before:bg-[var(--venue-accent)] before:transition-transform',
-        'hover:bg-card/70 hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] data-[state=active]:before:scale-y-100',
+        'before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:scale-y-0 before:rounded-full before:bg-[var(--venue-accent)] before:transition-transform',
+        'hover:bg-background/75 hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-[0_8px_22px_-18px_hsl(var(--foreground)/0.55)] data-[state=active]:before:scale-y-100 data-[state=active]:[&>svg]:text-[var(--venue-accent)]',
       )}
     >
       <Icon className="h-4 w-4" />
@@ -454,16 +464,21 @@ function DesktopTab({ value, label, icon: Icon }: (typeof NAV_ITEMS)[number]) {
 function MastheadStat({
   icon: Icon,
   label,
+  mobileLabel,
   accent,
 }: {
   icon: typeof MapPin;
   label: string;
+  mobileLabel?: string;
   accent?: string | null;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap px-3 first:pl-0 [&+&]:border-l [&+&]:border-border/70 lg:px-5">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground" style={accent ? { color: accent } : undefined} />
-      <span className="text-xs font-semibold text-foreground/80">{label}</span>
+    <div className="flex min-w-0 items-center justify-center gap-1.5 border-l border-border/70 px-2 first:border-l-0 lg:shrink-0 lg:justify-start lg:gap-2 lg:px-5 lg:first:pl-0">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" style={accent ? { color: accent } : undefined} />
+      <span className="min-w-0 truncate text-[10px] font-semibold text-foreground/80 sm:text-xs lg:hidden" title={label}>
+        {mobileLabel ?? label}
+      </span>
+      <span className="hidden whitespace-nowrap text-xs font-semibold text-foreground/80 lg:inline">{label}</span>
     </div>
   );
 }

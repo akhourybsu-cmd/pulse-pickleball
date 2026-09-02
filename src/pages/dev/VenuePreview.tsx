@@ -20,6 +20,7 @@ import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
+import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import {
   VenueDesktopNavigation,
   VenueDesktopRail,
@@ -45,6 +46,7 @@ import { DEFAULT_GROUP_SETTINGS } from '@/types/groupSettings';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 import type { GroupPost } from '@/hooks/useGroupPosts';
+import type { GroupEvent } from '@/hooks/useGroupEvents';
 
 /**
  * Design harness for the venue surfaces.
@@ -291,6 +293,10 @@ export default function VenuePreview() {
     return <VenueEventPreview />;
   }
 
+  if (previewMode === 'program') {
+    return <VenueProgramPreview />;
+  }
+
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
     openHour: 8,
     closeHour: 22,
@@ -410,6 +416,7 @@ export default function VenuePreview() {
             loading={false}
             venueName="ELEVENO"
             accent={ACCENT}
+            onPick={() => {}}
           />
         </Section>
       </div>
@@ -435,6 +442,56 @@ function VenueEventPreview() {
         initialEnd={at(20)}
         initialCourtIds={['c1', 'c2']}
         onCreated={() => {}}
+      />
+    </main>
+  );
+}
+
+function VenueProgramPreview() {
+  const [open, setOpen] = useState(true);
+  const event: GroupEvent = {
+    id: 'p1',
+    group_id: 'eleveno-preview',
+    title: 'Open Play · All Levels',
+    description: 'A welcoming evening session with staff-managed paddle stacks. Check in ten minutes early and bring your own paddle.',
+    start_time: at(18).toISOString(),
+    end_time: at(20).toISOString(),
+    location_type: 'venue',
+    court_id: null,
+    venue_court_id: null,
+    venue_id: 'eleveno-preview',
+    parent_event_id: null,
+    custom_location: null,
+    capacity: 16,
+    skill_level_min: 2.5,
+    skill_level_max: 4,
+    is_recurring: false,
+    recurring_rule: null,
+    event_format: 'open_play',
+    waitlist_enabled: true,
+    waitlist_limit: 8,
+    series_id: null,
+    rr_courts: 2,
+    rr_games_per_player: null,
+    rotation_style: 'paddle_stack',
+    created_by: 'staff',
+    created_at: NOW.toISOString(),
+    updated_at: NOW.toISOString(),
+    rsvps: { going: 13, maybe: 2, not_going: 0, waitlist: 0 },
+    user_rsvp: null,
+  };
+
+  return (
+    <main className="min-h-screen bg-muted/30 p-4">
+      {!open && <Button onClick={() => setOpen(true)}>Open program details</Button>}
+      <VenueProgramDialog
+        event={event}
+        venueName="ELEVENO"
+        open={open}
+        onOpenChange={setOpen}
+        canRsvp
+        accent={ACCENT}
+        onRsvp={() => {}}
       />
     </main>
   );
@@ -753,6 +810,7 @@ function VenueDesktopPagePreview() {
                     loading={false}
                     venueName="ELEVENO"
                     accent={ACCENT}
+                    onPick={() => {}}
                   />
                 </TabsContent>
 
