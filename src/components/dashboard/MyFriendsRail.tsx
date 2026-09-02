@@ -32,7 +32,7 @@ export function MyFriendsRail() {
     return (
       <Link
         to="/player/friends"
-        className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/30 bg-card/60 p-4 backdrop-blur-sm transition-colors hover:bg-card"
+        className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-dashed border-primary/30 bg-card/60 p-4 transition-[transform,background-color,border-color] hover:border-primary/45 hover:bg-card active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <UserPlus className="h-5 w-5" />
@@ -54,7 +54,7 @@ export function MyFriendsRail() {
       {hasPending && (
         <Link
           to="/player/friends?tab=requests"
-          className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-primary/25 bg-primary/10 p-3 backdrop-blur-sm shadow-[0_2px_16px_-10px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/15"
+          className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-primary/25 bg-primary/10 p-3 shadow-[0_2px_16px_-10px_hsl(var(--primary)/0.5)] transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-primary/15 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
         >
           <div className="relative">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 text-primary">
@@ -87,7 +87,7 @@ export function MyFriendsRail() {
           <Link
             key={f.id}
             to="/player/friends"
-            className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-border/60 bg-card/70 p-3 backdrop-blur-sm shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)] transition-colors hover:bg-card"
+            className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)] transition-[transform,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
           >
             <Avatar className="h-14 w-14 rounded-2xl ring-1 ring-border/60">
               <AvatarImage src={f.profile.avatar_url || undefined} alt={name} />
@@ -104,7 +104,7 @@ export function MyFriendsRail() {
 
       <Link
         to="/player/friends"
-        className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 p-3 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-card hover:text-foreground"
+        className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 p-3 text-muted-foreground transition-[transform,color,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card hover:text-foreground active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
           <UserPlus className="h-5 w-5" />

@@ -210,7 +210,7 @@ export function MyRoundRobinsCard({ userId }: MyRoundRobinsCardProps) {
               entry.status === "live"
                 ? "border-primary/40 bg-primary/[0.03]"
                 : "border-border/60",
-              "hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all text-left",
+              "min-h-[68px] hover:bg-accent/40 hover:border-primary/25 active:scale-[0.985] transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transform-none",
               "group",
             )}
           >

@@ -38,6 +38,23 @@ interface ActivityModuleProps {
   userId: string | undefined;
 }
 
+interface ActivityMatch {
+  id: string;
+  match_date: string;
+  team1_score: number;
+  team2_score: number;
+  verified_by: string[] | null;
+  created_at?: string;
+  updated_at: string;
+}
+
+interface ActivityEvent {
+  id: string;
+  name: string;
+  date: string;
+  start_time?: string | null;
+}
+
 export const ActivityModule = ({ userId }: ActivityModuleProps) => {
   const navigate = useNavigate();
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
@@ -76,7 +93,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
       if (pendingMatches) {
         for (const p of pendingMatches) {
-          const match = p.match as any;
+          const match = p.match as unknown as ActivityMatch;
           // Check if user hasn't verified yet
           const verifiedBy = match.verified_by || [];
           if (!verifiedBy.includes(userId)) {
@@ -116,7 +133,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
       if (upcomingRREvents) {
         for (const reg of upcomingRREvents) {
-          const event = reg.event as any;
+          const event = reg.event as unknown as ActivityEvent;
           const eventDate = new Date(event.date);
           const hoursUntil = differenceInHours(eventDate, now);
           
@@ -163,7 +180,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
       if (recentApprovedMatches) {
         for (const p of recentApprovedMatches) {
-          const match = p.match as any;
+          const match = p.match as unknown as ActivityMatch;
           updates.push({
             id: `approved-${match.id}`,
             type: "match_recorded",
@@ -195,7 +212,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
       if (recentEventRegs) {
         for (const reg of recentEventRegs) {
-          const event = reg.event as any;
+          const event = reg.event as unknown as ActivityEvent;
           if (event) {
             updates.push({
               id: `reg-${reg.id}`,
@@ -231,9 +248,11 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
   if (!hasContent) {
     return (
-      <div className="text-center py-8">
-        <CheckCircle2 className="w-10 h-10 text-primary/50 mx-auto mb-3" />
-        <p className="text-sm font-medium text-foreground">All caught up!</p>
+      <div className="px-3 py-8 text-center">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-6 w-6 text-primary" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">All caught up</p>
         <p className="text-xs text-muted-foreground mt-1">
           No pending actions or upcoming events
         </p>
@@ -279,7 +298,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               <button
                 key={item.id}
                 onClick={() => handleActionClick(item)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 transition-colors text-left"
+                className="group flex min-h-14 w-full items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-left transition-[transform,background-color,border-color] hover:bg-destructive/10 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transform-none"
               >
                 <div className="w-9 h-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
                   <AlertCircle className="w-4 h-4 text-destructive" />
@@ -288,7 +307,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
                   <p className="text-sm font-medium text-foreground">{item.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-destructive flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-destructive transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" />
               </button>
             ))}
           </div>
@@ -307,7 +326,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.link)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-border/30 transition-colors text-left"
+                className="group flex min-h-14 w-full items-center gap-3 rounded-xl border border-border/40 bg-primary/5 p-3 text-left transition-[transform,background-color,border-color] hover:border-primary/25 hover:bg-primary/10 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transform-none"
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-4 h-4 text-primary" />
@@ -316,7 +335,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
                   <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
                   <p className="text-xs text-muted-foreground">{item.description}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" />
               </button>
             ))}
           </div>
@@ -335,7 +354,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               <button
                 key={update.id}
                 onClick={() => update.link && navigate(update.link)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                className="group flex min-h-12 w-full items-center gap-3 rounded-xl p-2.5 text-left transition-[transform,background-color] hover:bg-muted/50 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
               >
                 <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                   {update.type === "match_recorded" && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}

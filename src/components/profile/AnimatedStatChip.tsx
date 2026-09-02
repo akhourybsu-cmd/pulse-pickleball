@@ -25,20 +25,19 @@ export const AnimatedStatChip = ({
   return (
     <div 
       className={cn(
-        "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all duration-200",
-        "bg-muted/30 dark:bg-muted/20 border border-border/30",
+        "flex min-h-[58px] flex-col items-center justify-center rounded-xl border border-border/35 bg-muted/25 p-2.5 transition-colors duration-200 dark:bg-muted/20 lg:min-h-[64px]",
         isPrimary && "bg-primary/5 dark:bg-primary/10 border-primary/20",
         "opacity-0 animate-fade-up cursor-default",
         className
       )}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'forwards' }}
     >
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+      <p className="mb-1 whitespace-nowrap text-[9px] font-medium uppercase tracking-wider text-muted-foreground min-[390px]:text-[10px]">
         {label}
       </p>
       <p 
         className={cn(
-          "text-lg font-display font-bold",
+          "whitespace-nowrap font-display text-base font-bold leading-none min-[390px]:text-lg",
           isPrimary && "text-primary"
         )}
       >

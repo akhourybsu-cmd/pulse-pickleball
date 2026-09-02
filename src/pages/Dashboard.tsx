@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -146,7 +146,11 @@ const Dashboard = () => {
   const locationStr = [profile?.town, profile?.state].filter(Boolean).join(", ") || null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.07),transparent_44%)]"
+      />
       {user && (
         <OnboardingWelcome
           isOpen={showOnboardingWelcome}
@@ -197,7 +201,7 @@ const Dashboard = () => {
           on desktop. The previous Performance/Activity tab toggle on mobile
           was removed in favor of always showing Activity at the top (when
           there's action to take) followed by the player-first stack. */}
-      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 lg:py-6">
+      <div className="relative mx-auto w-full max-w-[1400px] px-4 pb-10 pt-4 lg:px-8 lg:pb-14 lg:pt-5">
 
         {/* Getting started — durable first-run orientation (shown until the
             steps are done or dismissed). Above the layout split so it leads on
@@ -205,8 +209,8 @@ const Dashboard = () => {
         <GettingStartedCard userId={user?.id} profile={profile} />
 
         {/* Desktop: Two-column — action stack left, sticky activity right */}
-        <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          <div className="lg:col-span-7 space-y-8">
+        <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-7 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-9">
+          <div className="space-y-9 xl:space-y-10">
             <EnablePushBanner />
             {/* Quick Actions — primary action surface (Record Match etc.) */}
             <div
@@ -231,7 +235,7 @@ const Dashboard = () => {
                 action={
                   <Link
                     to="/player/round-robins"
-                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     View all →
                   </Link>
@@ -246,61 +250,38 @@ const Dashboard = () => {
             <MyLeaguesSection />
             <UpNextLeagueMatchesSection />
 
-            {/* My communities — quick-tap rail to any group the user is in */}
-            <div
-              className="opacity-0 animate-fade-up"
-              style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
-            >
-              <SectionHeader
-                label="My communities"
-                action={
-                  <Link
-                    to="/player/community"
-                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-                  >
-                    See all →
-                  </Link>
-                }
-              />
-              <MyCommunitiesRail />
-            </div>
+            {/* Social surfaces share a balanced desktop row instead of creating
+                two full-width rails with large pockets of unused space. */}
+            <div className="grid grid-cols-2 gap-4">
+              <div
+                className="min-w-0 rounded-[22px] border border-border/60 bg-card/80 p-4 opacity-0 shadow-[0_14px_36px_-32px_hsl(var(--foreground)/0.5)] animate-fade-up"
+                style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+              >
+                <SectionHeader
+                  label="My communities"
+                  action={
+                    <Link to="/player/community" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      See all →
+                    </Link>
+                  }
+                />
+                <MyCommunitiesRail />
+              </div>
 
-            {/* My friends — quick-tap rail of accepted friends + pending requests */}
-            <div
-              className="opacity-0 animate-fade-up"
-              style={{ animationDelay: '190ms', animationFillMode: 'forwards' }}
-            >
-              <SectionHeader
-                label="My friends"
-                action={
-                  <Link
-                    to="/player/friends"
-                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-                  >
-                    View all →
-                  </Link>
-                }
-              />
-              <MyFriendsRail />
-            </div>
-
-            {/* Up next — upcoming registered play */}
-            <div
-              className="opacity-0 animate-fade-up"
-              style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
-            >
-              <SectionHeader
-                label="Up next"
-                action={
-                  <Link
-                    to="/player/play"
-                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-                  >
-                    Find more →
-                  </Link>
-                }
-              />
-              <UpcomingEventsPreview userId={user?.id} />
+              <div
+                className="min-w-0 rounded-[22px] border border-border/60 bg-card/80 p-4 opacity-0 shadow-[0_14px_36px_-32px_hsl(var(--foreground)/0.5)] animate-fade-up"
+                style={{ animationDelay: '190ms', animationFillMode: 'forwards' }}
+              >
+                <SectionHeader
+                  label="My friends"
+                  action={
+                    <Link to="/player/friends" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      View all →
+                    </Link>
+                  }
+                />
+                <MyFriendsRail />
+              </div>
             </div>
 
             {/* Recent form — match history + court stats */}
@@ -313,7 +294,7 @@ const Dashboard = () => {
                 action={
                   <Link
                     to="/player/matches"
-                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     All matches →
                   </Link>
@@ -328,16 +309,31 @@ const Dashboard = () => {
                 cards linked to the now-removed /court/board. */}
           </div>
 
-          {/* Right Column — Activity (action items, sticky) */}
-          <aside className="lg:col-span-5">
+          {/* Right column stays glanceable and gives upcoming play a natural home. */}
+          <aside>
             <div
-              className="sticky top-6 opacity-0 animate-fade-up"
+              className="sticky top-[92px] space-y-7 opacity-0 animate-fade-up"
               style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
             >
-              <SectionHeader label="Needs attention" />
-              <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-4">
-                  <ActivityModule userId={user?.id} />
+              <div>
+                <SectionHeader label="Needs attention" />
+                <div className="overflow-hidden rounded-[22px] border border-border/60 bg-card shadow-[0_14px_36px_-32px_hsl(var(--foreground)/0.55)]">
+                  <div className="max-h-[min(46vh,480px)] overflow-y-auto p-[18px]">
+                    <ActivityModule userId={user?.id} />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <SectionHeader
+                  label="Up next"
+                  action={
+                    <Link to="/player/play" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      Find more →
+                    </Link>
+                  }
+                />
+                <div className="shadow-[0_14px_36px_-32px_hsl(var(--foreground)/0.55)]">
+                  <UpcomingEventsPreview userId={user?.id} />
                 </div>
               </div>
             </div>
@@ -347,14 +343,16 @@ const Dashboard = () => {
         {/* Mobile: single linear flow. Activity at top (action items first),
             then the player-first stack. Quick Actions already render inside
             ProfileHero above on mobile. */}
-        <div className="lg:hidden space-y-7 mt-4">
+        <div className="mt-5 space-y-8 lg:hidden">
           <EnablePushBanner />
           <div
             className="opacity-0 animate-fade-up"
             style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
           >
             <SectionHeader label="Needs attention" />
-            <ActivityModule userId={user?.id} />
+            <div className="rounded-[20px] border border-border/60 bg-card p-4 shadow-[0_12px_30px_-28px_hsl(var(--foreground)/0.5)]">
+              <ActivityModule userId={user?.id} />
+            </div>
           </div>
 
           {/* My round robins — see desktop comment above for rationale. */}
@@ -365,7 +363,7 @@ const Dashboard = () => {
             <SectionHeader
               label="My round robins"
               action={
-                <Link to="/player/round-robins" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                <Link to="/player/round-robins" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   View all →
                 </Link>
               }
@@ -386,7 +384,7 @@ const Dashboard = () => {
             <SectionHeader
               label="My communities"
               action={
-                <Link to="/player/community" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                <Link to="/player/community" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   See all →
                 </Link>
               }
@@ -402,7 +400,7 @@ const Dashboard = () => {
             <SectionHeader
               label="My friends"
               action={
-                <Link to="/player/friends" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                <Link to="/player/friends" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   View all →
                 </Link>
               }
@@ -418,7 +416,7 @@ const Dashboard = () => {
             <SectionHeader
               label="Up next"
               action={
-                <Link to="/player/play" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                <Link to="/player/play" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   Find more →
                 </Link>
               }
@@ -434,7 +432,7 @@ const Dashboard = () => {
             <SectionHeader
               label="Recent form"
               action={
-                <Link to="/player/matches" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                <Link to="/player/matches" className="inline-flex min-h-8 items-center rounded-full px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   All matches →
                 </Link>
               }

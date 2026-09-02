@@ -10,6 +10,17 @@ interface UpcomingEventsPreviewProps {
   userId: string | undefined;
 }
 
+interface DashboardEventRegistration {
+  id: string;
+  venue_name?: string | null;
+  event?: {
+    id: string;
+    event_type?: string;
+    start_time: string;
+    title: string;
+  } | null;
+}
+
 export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
   const navigate = useNavigate();
   const { data: registrations, isLoading } = useUpcomingRegisteredEvents(userId, 3);
@@ -34,13 +45,12 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
   // entirely. Players shouldn't be able to discover or register for new
   // tournaments while the venue/tournament surfaces are hidden, but legacy
   // registrations in the DB could still bubble up here.
-  const visibleRegistrations = (registrations || []).filter(
-    (r: { event?: { event_type?: string } }) => r.event?.event_type !== 'tournament',
-  );
+  const visibleRegistrations = ((registrations || []) as unknown as DashboardEventRegistration[])
+    .filter((registration) => registration.event?.event_type !== "tournament");
   const hasEvents = visibleRegistrations.length > 0;
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
+    <div className="overflow-hidden rounded-[20px] border border-border/60 bg-card">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -64,7 +74,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
       <div className="p-3">
         {hasEvents ? (
           <div className="space-y-2">
-            {visibleRegistrations.map((registration: any) => {
+            {visibleRegistrations.map((registration) => {
               const event = registration.event;
               if (!event) return null;
 
@@ -83,7 +93,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
                       navigate(`/events/${event.id}`);
                     }
                   }}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                  className="group flex min-h-[64px] w-full items-center gap-3 rounded-xl border border-transparent bg-muted/45 p-2.5 text-left transition-[transform,background-color,border-color] hover:border-border/70 hover:bg-muted active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
                 >
                   {/* Date Badge */}
                   <div className={cn(
@@ -115,7 +125,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
                     </p>
                   </div>
 
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" />
                 </button>
               );
             })}

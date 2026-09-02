@@ -164,6 +164,9 @@ const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const VenuePreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/VenuePreview"))
   : null;
+const DashboardPreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/DashboardPreview"))
+  : null;
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -325,6 +328,9 @@ const AppContent = () => {
               production build, so it cannot ship. */}
           {VenuePreview && (
             <Route path="/__venue-preview" element={<VenuePreview />} />
+          )}
+          {DashboardPreview && (
+            <Route path="/__dashboard-preview" element={<DashboardPreview />} />
           )}
           {/* Public routes */}
           <Route path="/" element={<Index />} />

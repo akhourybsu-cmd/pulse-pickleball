@@ -24,7 +24,7 @@ export function MyCommunitiesRail() {
     return (
       <Link
         to="/player/community"
-        className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 p-4 transition-colors hover:bg-card"
+        className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 p-4 transition-[transform,background-color,border-color] hover:border-primary/35 hover:bg-card active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Users className="h-5 w-5" />
@@ -55,7 +55,7 @@ export function MyCommunitiesRail() {
           <Link
             key={g.id}
             to={`/player/community/group/${g.id}`}
-            className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl bg-card p-3 transition-colors hover:bg-card/80"
+            className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-transparent bg-card p-3 transition-[transform,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/20 hover:bg-card/80 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
           >
             <div className="relative">
               <Avatar className="h-14 w-14 rounded-2xl">
@@ -82,7 +82,7 @@ export function MyCommunitiesRail() {
 
       <Link
         to="/player/community"
-        className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-3 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+        className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-3 text-muted-foreground transition-[transform,color,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card hover:text-foreground active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
           <Plus className="h-5 w-5" />

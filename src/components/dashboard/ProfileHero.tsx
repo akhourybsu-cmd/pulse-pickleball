@@ -38,7 +38,7 @@ export const ProfileHero = ({
   losses = 0,
 }: ProfileHeroProps) => {
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5">
+    <div className="mx-auto w-full max-w-[1400px] px-4 pb-2 pt-4 sm:pt-5 lg:px-8 lg:pb-3 lg:pt-7">
       <PlayerIdentityCard
         userId={userId}
         fullName={fullName}
@@ -54,7 +54,7 @@ export const ProfileHero = ({
       {/* Quick Actions — mobile-only here. Desktop renders QuickActionsBar
           inside the left column of the body grid (under the "Quick actions"
           SectionHeader). */}
-      <div className="lg:hidden mt-4">
+      <div className="mt-3.5 lg:hidden">
         <QuickActionsBar />
       </div>
     </div>
