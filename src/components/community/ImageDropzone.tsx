@@ -76,7 +76,7 @@ export function ImageDropzone({
         <img
           src={preview}
           alt="Preview"
-          className="w-full h-48 object-cover"
+          className="h-48 w-full bg-muted/30 object-contain"
         />
         {onRemove && (
           <Button

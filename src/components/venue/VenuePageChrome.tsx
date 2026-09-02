@@ -44,6 +44,10 @@ interface VenueMastheadProps {
   tagline?: string | null;
   logoUrl?: string | null;
   coverImageUrl?: string | null;
+  logoImageFit?: 'cover' | 'contain' | null;
+  coverImageFit?: 'cover' | 'contain' | null;
+  logoShape?: 'circle' | 'square' | null;
+  coverFocalPoint?: 'top' | 'center' | null;
   fallbackBackground?: string | null;
   bloom?: string | null;
   accent?: string | null;
@@ -66,6 +70,10 @@ export function VenueMasthead({
   tagline,
   logoUrl,
   coverImageUrl,
+  logoImageFit = 'cover',
+  coverImageFit = 'cover',
+  logoShape = 'square',
+  coverFocalPoint = 'center',
   fallbackBackground,
   bloom,
   accent,
@@ -91,8 +99,12 @@ export function VenueMasthead({
               ? `url(${coverImageUrl})`
               : fallbackBackground ??
                 'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 100%)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            backgroundSize: coverImageUrl ? (coverImageFit ?? 'cover') : 'cover',
+            backgroundPosition: coverFocalPoint === 'top' ? 'center top' : 'center',
+            backgroundRepeat: 'no-repeat',
+            // A deliberate dark matte keeps `contain` covers looking finished
+            // instead of exposing the page background around the image.
+            backgroundColor: '#171a1f',
           }}
         >
           <div
@@ -156,7 +168,11 @@ export function VenueMasthead({
               <img
                 src={logoUrl}
                 alt={`${venueName} logo`}
-                className="h-14 w-14 shrink-0 rounded-xl bg-white/10 object-cover shadow-xl ring-1 ring-white/30 sm:h-16 sm:w-16 lg:h-20 lg:w-20 lg:rounded-2xl"
+                className={cn(
+                  'h-14 w-14 shrink-0 bg-white/10 shadow-xl ring-1 ring-white/30 sm:h-16 sm:w-16 lg:h-20 lg:w-20',
+                  logoShape === 'circle' ? 'rounded-full' : 'rounded-xl lg:rounded-2xl',
+                )}
+                style={{ objectFit: logoImageFit ?? 'cover' }}
               />
             ) : (
               <div

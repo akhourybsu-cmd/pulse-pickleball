@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X, BadgeCheck, ShieldQuestion } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import {
+  IMAGE_FILE_ACCEPT,
+  prepareImageForUpload,
+  storagePathFromPublicUrl,
+  type ImageFit,
+} from '@/lib/images/prepareImageUpload';
 import { VenueCourtsSection } from './VenueCourtsSection';
 import { VenueHoursSection } from './VenueHoursSection';
 
@@ -44,6 +51,10 @@ interface VenueForm {
   secondary_color: string;
   logo_url: string | null;
   cover_image_url: string | null;
+  logo_shape: 'circle' | 'square';
+  cover_focal_point: 'top' | 'center';
+  logo_image_fit: ImageFit;
+  cover_image_fit: ImageFit;
   website_url: string;
   phone: string;
   email: string;
@@ -65,6 +76,10 @@ const EMPTY: VenueForm = {
   secondary_color: DEFAULT_SECONDARY,
   logo_url: null,
   cover_image_url: null,
+  logo_shape: 'square',
+  cover_focal_point: 'center',
+  logo_image_fit: 'cover',
+  cover_image_fit: 'cover',
   website_url: '',
   phone: '',
   email: '',
@@ -79,8 +94,9 @@ function isHex(value: string): boolean {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
-export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueTabProps) {
+export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: AdminVenueTabProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<VenueForm>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,7 +114,8 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
         .from('venues')
         .select(
           'name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, ' +
-            'logo_url, cover_image_url, website_url, phone, email, city, state, ' +
+            'logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, ' +
+            'website_url, phone, email, city, state, ' +
             'instagram_url, facebook_url',
         )
         .eq('id', venueId)
@@ -115,21 +132,26 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
       } else if (data) {
         setForm({
           ...EMPTY,
-          ...Object.fromEntries(
-            Object.entries(data).map(([k, v]) => [
-              k,
-              // Colours need a real value for the colour input; everything else
-              // is happier as an empty string than as null.
-              v ?? (k === 'primary_color'
-                ? DEFAULT_PRIMARY
-                : k === 'secondary_color'
-                  ? DEFAULT_SECONDARY
-                  : k.endsWith('_url') && (k === 'logo_url' || k === 'cover_image_url')
-                    ? null
-                    : ''),
-            ]),
-          ),
-        } as VenueForm);
+          ...data,
+          primary_color: data.primary_color ?? DEFAULT_PRIMARY,
+          secondary_color: data.secondary_color ?? DEFAULT_SECONDARY,
+          logo_url: data.logo_url ?? null,
+          cover_image_url: data.cover_image_url ?? null,
+          logo_shape: data.logo_shape ?? 'square',
+          cover_focal_point: data.cover_focal_point ?? 'center',
+          logo_image_fit: data.logo_image_fit ?? 'cover',
+          cover_image_fit: data.cover_image_fit ?? 'cover',
+          tagline: data.tagline ?? '',
+          welcome_headline: data.welcome_headline ?? '',
+          welcome_message: data.welcome_message ?? '',
+          website_url: data.website_url ?? '',
+          phone: data.phone ?? '',
+          email: data.email ?? '',
+          city: data.city ?? '',
+          state: data.state ?? '',
+          instagram_url: data.instagram_url ?? '',
+          facebook_url: data.facebook_url ?? '',
+        });
       }
       setLoading(false);
     })();
@@ -144,25 +166,27 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
   }, []);
 
   const upload = async (kind: 'logo' | 'cover', file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Not an image', description: 'Choose an image file.', variant: 'destructive' });
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      toast({ title: 'Image too large', description: 'Keep it under 4MB.', variant: 'destructive' });
-      return;
-    }
-
     setUploading(kind);
     try {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const prepared = await prepareImageForUpload(file, {
+        maxInputMB: 12,
+        maxOutputMB: 8,
+        maxDimension: kind === 'cover' ? 2560 : 1600,
+        minWidth: kind === 'cover' ? 1200 : 320,
+        minHeight: kind === 'cover' ? 400 : 320,
+        quality: 0.92,
+      });
       // First path segment must be the venue id — that's what the bucket's
       // RLS checks.
-      const path = `${venueId}/venue-${kind}-${Date.now()}.${ext}`;
+      const path = `${venueId}/venue-${kind}-${Date.now()}.${prepared.extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from('venue-logos')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, prepared.blob, {
+          upsert: false,
+          contentType: prepared.blob.type,
+          cacheControl: '31536000',
+        });
       if (uploadError) throw uploadError;
 
       const {
@@ -170,14 +194,25 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
       } = supabase.storage.from('venue-logos').getPublicUrl(path);
 
       const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
+      const previousPath = storagePathFromPublicUrl(form[column], 'venue-logos');
       const { error: updateError } = await supabase
         .from('venues')
         .update({ [column]: publicUrl })
         .eq('id', venueId);
-      if (updateError) throw updateError;
+      if (updateError) {
+        await supabase.storage.from('venue-logos').remove([path]);
+        throw updateError;
+      }
 
       set(column as 'logo_url' | 'cover_image_url', publicUrl);
-      toast({ title: kind === 'logo' ? 'Logo updated' : 'Cover updated' });
+      if (previousPath && previousPath !== path) {
+        void supabase.storage.from('venue-logos').remove([previousPath]);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      toast({
+        title: kind === 'logo' ? 'Logo updated' : 'Cover updated',
+        description: `Optimized at ${prepared.width}×${prepared.height}px.`,
+      });
     } catch (error: unknown) {
       toast({
         title: 'Upload failed',
@@ -191,6 +226,7 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
 
   const removeImage = async (kind: 'logo' | 'cover') => {
     const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
+    const previousPath = storagePathFromPublicUrl(form[column], 'venue-logos');
     const { error } = await supabase
       .from('venues')
       .update({ [column]: null })
@@ -201,6 +237,8 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
       return;
     }
     set(column as 'logo_url' | 'cover_image_url', null);
+    if (previousPath) void supabase.storage.from('venue-logos').remove([previousPath]);
+    void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
   };
 
   const save = async () => {
@@ -240,6 +278,10 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
         state: blankToNull(form.state),
         instagram_url: blankToNull(form.instagram_url),
         facebook_url: blankToNull(form.facebook_url),
+        logo_shape: form.logo_shape,
+        cover_focal_point: form.cover_focal_point,
+        logo_image_fit: form.logo_image_fit,
+        cover_image_fit: form.cover_image_fit,
       })
       .eq('id', venueId);
 
@@ -249,6 +291,7 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;
     }
+    void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
     toast({ title: 'Venue updated' });
   };
 
@@ -311,8 +354,12 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
                 {form.cover_image_url && (
                   <img
                     src={form.cover_image_url}
-                    alt=""
-                    className="h-full w-full object-cover"
+                    alt="Venue cover preview"
+                    className="h-full w-full"
+                    style={{
+                      objectFit: form.cover_image_fit,
+                      objectPosition: form.cover_focal_point === 'top' ? 'center top' : 'center',
+                    }}
                   />
                 )}
                 <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
@@ -329,11 +376,19 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
                 type="button"
                 onClick={() => logoInput.current?.click()}
                 disabled={uploading !== null}
-                className="group absolute bottom-3 left-3 h-16 w-16 overflow-hidden rounded-xl ring-2 ring-background bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className={cn(
+                  'group absolute bottom-3 left-3 h-16 w-16 overflow-hidden ring-2 ring-background bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  form.logo_shape === 'circle' ? 'rounded-full' : 'rounded-xl',
+                )}
                 aria-label="Upload logo"
               >
                 {form.logo_url ? (
-                  <img src={form.logo_url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={form.logo_url}
+                    alt="Venue logo preview"
+                    className="h-full w-full"
+                    style={{ objectFit: form.logo_image_fit }}
+                  />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
                     {(form.name || 'V').slice(0, 2).toUpperCase()}
@@ -349,6 +404,53 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
                 )}
               </button>
             </div>
+
+            {(form.cover_image_url || form.logo_url) && (
+              <div className="mt-4 grid gap-4 rounded-xl border border-border/70 bg-muted/20 p-4 sm:grid-cols-2">
+                {form.cover_image_url && (
+                  <div className="space-y-2.5">
+                    <div>
+                      <p className="text-sm font-semibold">Cover display</p>
+                      <p className="text-xs text-muted-foreground">Fill the header or keep every edge visible.</p>
+                    </div>
+                    <ChoiceButtons
+                      label="Cover image fit"
+                      value={form.cover_image_fit}
+                      choices={[['cover', 'Fill frame'], ['contain', 'Show full photo']]}
+                      onChange={(value) => set('cover_image_fit', value as ImageFit)}
+                    />
+                    {form.cover_image_fit === 'cover' && (
+                      <ChoiceButtons
+                        label="Cover focus"
+                        value={form.cover_focal_point}
+                        choices={[['center', 'Center'], ['top', 'Top']]}
+                        onChange={(value) => set('cover_focal_point', value as 'top' | 'center')}
+                      />
+                    )}
+                  </div>
+                )}
+                {form.logo_url && (
+                  <div className="space-y-2.5">
+                    <div>
+                      <p className="text-sm font-semibold">Logo display</p>
+                      <p className="text-xs text-muted-foreground">Works for both photo avatars and full brand marks.</p>
+                    </div>
+                    <ChoiceButtons
+                      label="Logo image fit"
+                      value={form.logo_image_fit}
+                      choices={[['cover', 'Fill frame'], ['contain', 'Show full logo']]}
+                      onChange={(value) => set('logo_image_fit', value as ImageFit)}
+                    />
+                    <ChoiceButtons
+                      label="Logo shape"
+                      value={form.logo_shape}
+                      choices={[['square', 'Rounded square'], ['circle', 'Circle']]}
+                      onChange={(value) => set('logo_shape', value as 'circle' | 'square')}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-2 flex flex-wrap gap-2">
               {form.logo_url && (
@@ -366,7 +468,7 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
             <input
               ref={logoInput}
               type="file"
-              accept="image/*"
+              accept={IMAGE_FILE_ACCEPT}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -377,7 +479,7 @@ export function AdminVenueTab({ venueId, isVerified, mode = 'all' }: AdminVenueT
             <input
               ref={coverInput}
               type="file"
-              accept="image/*"
+              accept={IMAGE_FILE_ACCEPT}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -599,6 +701,39 @@ function ColorField({
         />
       </div>
       <p className="text-xs text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+function ChoiceButtons({
+  label,
+  value,
+  choices,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  choices: Array<[value: string, label: string]>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex max-w-full rounded-lg border border-border bg-background p-1">
+      {choices.map(([choiceValue, choiceLabel]) => (
+        <button
+          key={choiceValue}
+          type="button"
+          onClick={() => onChange(choiceValue)}
+          aria-pressed={value === choiceValue}
+          className={cn(
+            'min-w-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3',
+            value === choiceValue
+              ? 'bg-foreground text-background shadow-sm'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          {choiceLabel}
+        </button>
+      ))}
     </div>
   );
 }

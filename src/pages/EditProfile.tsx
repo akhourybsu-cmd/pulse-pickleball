@@ -26,6 +26,12 @@ import { PlayStyleTab } from "@/components/profile/PlayStyleTab";
 import { TournamentReadinessCard } from "@/components/profile/TournamentReadinessCard";
 
 import { calculateProfileCompleteness } from "@/lib/profileCompleteness";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import {
+  prepareImageForUpload,
+  storagePathFromPublicUrl,
+  type ImageFit,
+} from "@/lib/images/prepareImageUpload";
 
 
 interface ProfileData {
@@ -64,6 +70,7 @@ const EditProfile = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [avatarFit, setAvatarFit] = useState<ImageFit>('contain');
   const [resettingPassword, setResettingPassword] = useState(false);
   const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
   const [confirmingName, setConfirmingName] = useState(false);
@@ -164,31 +171,26 @@ const EditProfile = () => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      return;
-    }
-    if (file.size > 5242880) {
-      toast.error("Image must be less than 5MB");
-      return;
-    }
-
     setUploading(true);
     try {
-      if (formData.avatar_url) {
-        const oldPath = formData.avatar_url.split("/").pop();
-        if (oldPath) {
-          await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`]);
-        }
-      }
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const prepared = await prepareImageForUpload(file, {
+        maxInputMB: 12,
+        maxOutputMB: 5,
+        maxDimension: 1024,
+        minWidth: 320,
+        minHeight: 320,
+        quality: 0.92,
+        squareFit: avatarFit,
+      });
+      const fileName = `${Date.now()}.${prepared.extension}`;
       const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file);
+        .upload(filePath, prepared.blob, {
+          contentType: prepared.blob.type,
+          cacheControl: '31536000',
+        });
 
       if (uploadError) throw uploadError;
 
@@ -196,16 +198,30 @@ const EditProfile = () => {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
-
       // Persist avatar immediately
-      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
-      toast.success("Profile picture updated");
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+      if (updateError) {
+        await supabase.storage.from('avatars').remove([filePath]);
+        throw updateError;
+      }
+
+      const previousPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
+      setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
+      if (previousPath && previousPath !== filePath) {
+        void supabase.storage.from('avatars').remove([previousPath]);
+      }
+      toast.success(
+        `Profile picture updated · ${avatarFit === 'contain' ? 'full photo shown' : 'frame filled'}`,
+      );
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      toast.error("Failed to upload profile picture");
+      toast.error(getErrorMessage(error, "Failed to upload profile picture"));
     } finally {
       setUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -409,6 +425,8 @@ const EditProfile = () => {
                 onFileUpload={handleFileUpload}
                 onRemoveAvatar={handleRemoveAvatar}
                 uploading={uploading}
+                avatarFit={avatarFit}
+                onAvatarFitChange={setAvatarFit}
                 nameLocked={formData.name_locked}
               />
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   AlertTriangle,
+  Camera,
   Clock3,
   LayoutDashboard,
   LayoutGrid,
@@ -462,10 +463,92 @@ function VenueAdminPagePreview() {
         <VenueStaffPreview />
       ) : activeTab === 'facility' ? (
         <VenueFacilityPreview />
+      ) : activeTab === 'profile' ? (
+        <VenueBrandPreview />
       ) : (
         <AdminPreviewPlaceholder item={ADMIN_ITEMS.find((item) => item.value === activeTab)} />
       )}
     </VenueAdminShell>
+  );
+}
+
+function VenueBrandPreview() {
+  const [coverFit, setCoverFit] = useState<'cover' | 'contain'>('cover');
+  const [logoFit, setLogoFit] = useState<'cover' | 'contain'>('contain');
+  const [coverFocus, setCoverFocus] = useState<'center' | 'top'>('center');
+  const [logoShape, setLogoShape] = useState<'square' | 'circle'>('square');
+
+  const Choice = ({
+    label,
+    value,
+    choices,
+    onChange,
+  }: {
+    label: string;
+    value: string;
+    choices: Array<[string, string]>;
+    onChange: (value: string) => void;
+  }) => (
+    <div role="group" aria-label={label} className="inline-flex max-w-full rounded-lg border border-border bg-background p-1">
+      {choices.map(([choiceValue, choiceLabel]) => (
+        <button
+          key={choiceValue}
+          type="button"
+          aria-pressed={value === choiceValue}
+          onClick={() => onChange(choiceValue)}
+          className={cn(
+            'rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3',
+            value === choiceValue
+              ? 'bg-foreground text-background shadow-sm'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          {choiceLabel}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="rounded-[22px] border border-border/70 bg-card p-4 sm:p-6">
+      <div>
+        <h3 className="text-lg font-semibold">Venue identity</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Preview and frame cover art and logo imagery before saving.</p>
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-xl ring-1 ring-border">
+        <div className="relative h-40 bg-[#202329]">
+          <img
+            src="/pulse-og.png"
+            alt="ELEVENO cover preview"
+            className="h-full w-full"
+            style={{ objectFit: coverFit, objectPosition: coverFocus === 'top' ? 'center top' : 'center' }}
+          />
+          <span className="absolute right-3 top-3 flex h-9 items-center gap-2 rounded-full bg-black/55 px-3 text-xs font-semibold text-white backdrop-blur">
+            <Camera className="h-3.5 w-3.5" /> Change cover
+          </span>
+          <div className={cn(
+            'absolute bottom-3 left-3 h-20 w-20 overflow-hidden bg-white shadow-xl ring-2 ring-background',
+            logoShape === 'circle' ? 'rounded-full' : 'rounded-2xl',
+          )}>
+            <img src="/pulse-icon-512.png" alt="ELEVENO logo preview" className="h-full w-full" style={{ objectFit: logoFit }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 rounded-xl border border-border/70 bg-muted/20 p-4 sm:grid-cols-2">
+        <div className="space-y-2.5">
+          <div><p className="text-sm font-semibold">Cover display</p><p className="text-xs text-muted-foreground">Fill the header or keep every edge visible.</p></div>
+          <Choice label="Cover image fit" value={coverFit} choices={[["cover", "Fill frame"], ["contain", "Show full photo"]]} onChange={(value) => setCoverFit(value as 'cover' | 'contain')} />
+          {coverFit === 'cover' && <Choice label="Cover focus" value={coverFocus} choices={[["center", "Center"], ["top", "Top"]]} onChange={(value) => setCoverFocus(value as 'center' | 'top')} />}
+        </div>
+        <div className="space-y-2.5">
+          <div><p className="text-sm font-semibold">Logo display</p><p className="text-xs text-muted-foreground">Works for photos and complete brand marks.</p></div>
+          <Choice label="Logo image fit" value={logoFit} choices={[["cover", "Fill frame"], ["contain", "Show full logo"]]} onChange={(value) => setLogoFit(value as 'cover' | 'contain')} />
+          <Choice label="Logo shape" value={logoShape} choices={[["square", "Rounded square"], ["circle", "Circle"]]} onChange={(value) => setLogoShape(value as 'square' | 'circle')} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -556,6 +639,12 @@ function VenueDesktopPagePreview() {
       <VenueMasthead
         venueName="ELEVENO"
         tagline="Premium pickleball, thoughtfully played"
+        logoUrl="/pulse-icon-512.png"
+        coverImageUrl="/pulse-og.png"
+        logoImageFit="contain"
+        coverImageFit="cover"
+        logoShape="square"
+        coverFocalPoint="center"
         fallbackBackground="linear-gradient(145deg, #202329 0%, #141619 58%, #090a0c 100%)"
         bloom="rgba(197, 173, 17, 0.28)"
         accent={ACCENT}

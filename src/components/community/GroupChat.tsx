@@ -575,7 +575,7 @@ export const GroupChat = memo(function GroupChat({
               <img
                 src={pendingImagePreview}
                 alt="Pending attachment"
-                className="h-14 w-14 rounded-lg object-cover border border-border/40"
+                className="h-14 w-14 rounded-lg border border-border/40 bg-muted/30 object-contain"
               />
               <button
                 type="button"

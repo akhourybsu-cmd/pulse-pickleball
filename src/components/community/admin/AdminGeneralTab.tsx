@@ -9,6 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Camera, Loader2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
+import {
+  IMAGE_FILE_ACCEPT,
+  prepareImageForUpload,
+  storagePathFromPublicUrl,
+  type ImageFit,
+} from '@/lib/images/prepareImageUpload';
+import { cn } from '@/lib/utils';
 
 export type GroupType = 'crew' | 'league' | 'open_play' | 'tournament' | 'venue_official' | 'club';
 
@@ -44,6 +52,7 @@ export function AdminGeneralTab({
   onIconUrlChange,
 }: AdminGeneralTabProps) {
   const [uploading, setUploading] = useState(false);
+  const [avatarFit, setAvatarFit] = useState<ImageFit>('contain');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -55,27 +64,27 @@ export function AdminGeneralTab({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid file', description: 'Please select an image file', variant: 'destructive' });
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Image must be under 2MB', variant: 'destructive' });
-      return;
-    }
-
     setUploading(true);
     try {
-      const fileExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const prepared = await prepareImageForUpload(file, {
+        maxInputMB: 12,
+        maxOutputMB: 5,
+        maxDimension: 1024,
+        minWidth: 320,
+        minHeight: 320,
+        quality: 0.92,
+        squareFit: avatarFit,
+      });
       // IMPORTANT: storage RLS expects the first folder segment to be the groupId UUID.
-      const filePath = `${groupId}/avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${groupId}/avatar-${Date.now()}.${prepared.extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from('groups')
-        .upload(filePath, file, { upsert: true, contentType: file.type });
+        .upload(filePath, prepared.blob, {
+          upsert: false,
+          contentType: prepared.blob.type,
+          cacheControl: '31536000',
+        });
 
       if (uploadError) throw uploadError;
 
@@ -84,18 +93,32 @@ export function AdminGeneralTab({
         .getPublicUrl(filePath);
 
       // Update group icon_url in database
+      const previousPath = storagePathFromPublicUrl(iconUrl, 'groups');
       const { error: updateError } = await supabase
         .from('groups')
         .update({ icon_url: publicUrl })
         .eq('id', groupId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        await supabase.storage.from('groups').remove([filePath]);
+        throw updateError;
+      }
 
       onIconUrlChange(publicUrl);
-      toast({ title: 'Avatar updated' });
-    } catch (error: any) {
+      if (previousPath && previousPath !== filePath) {
+        void supabase.storage.from('groups').remove([previousPath]);
+      }
+      toast({
+        title: 'Avatar updated',
+        description: `${avatarFit === 'contain' ? 'Full image shown' : 'Frame filled'} at ${prepared.width}×${prepared.height}px.`,
+      });
+    } catch (error: unknown) {
       console.error('Error uploading avatar:', error);
-      toast({ title: 'Upload failed', description: error.message || 'Failed to upload image', variant: 'destructive' });
+      toast({
+        title: 'Upload failed',
+        description: getErrorMessage(error, 'Failed to upload image'),
+        variant: 'destructive',
+      });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -105,6 +128,7 @@ export function AdminGeneralTab({
   const handleRemoveAvatar = async () => {
     setUploading(true);
     try {
+      const previousPath = storagePathFromPublicUrl(iconUrl, 'groups');
       const { error } = await supabase
         .from('groups')
         .update({ icon_url: null })
@@ -113,8 +137,9 @@ export function AdminGeneralTab({
       if (error) throw error;
 
       onIconUrlChange(null);
+      if (previousPath) void supabase.storage.from('groups').remove([previousPath]);
       toast({ title: 'Avatar removed' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing avatar:', error);
       toast({ title: 'Error', description: 'Failed to remove avatar', variant: 'destructive' });
     } finally {
@@ -174,14 +199,35 @@ export function AdminGeneralTab({
                   </Button>
                 )}
               </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">Frame the next upload</p>
+                <div role="group" aria-label="Avatar image fit" className="inline-flex rounded-lg border border-border bg-background p-1">
+                  {([['contain', 'Show full image'], ['cover', 'Fill frame']] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAvatarFit(value)}
+                      aria-pressed={avatarFit === value}
+                      className={cn(
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                        avatarFit === value
+                          ? 'bg-foreground text-background shadow-sm'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
-                JPG, PNG or GIF · Max 2MB · Recommended 512×512
+                JPG, PNG or WebP · Up to 12MB · At least 320×320px
               </p>
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_FILE_ACCEPT}
               className="hidden"
               onChange={handleFileChange}
             />

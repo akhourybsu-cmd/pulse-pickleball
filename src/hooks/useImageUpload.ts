@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface UseImageUploadOptions {
   bucket: string;
@@ -26,6 +27,9 @@ async function compressImage(
     const img = new Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    const url = URL.createObjectURL(file);
+
+    const cleanUp = () => URL.revokeObjectURL(url);
 
     img.onload = () => {
       let { width, height } = img;
@@ -45,6 +49,7 @@ async function compressImage(
       canvas.height = height;
 
       if (!ctx) {
+        cleanUp();
         reject(new Error('Could not get canvas context'));
         return;
       }
@@ -53,20 +58,31 @@ async function compressImage(
 
       canvas.toBlob(
         (blob) => {
+          cleanUp();
           if (blob) {
             resolve(blob);
           } else {
             reject(new Error('Could not compress image'));
           }
         },
-        'image/jpeg',
+        file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
         quality
       );
     };
 
-    img.onerror = () => reject(new Error('Could not load image'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      cleanUp();
+      reject(new Error('Could not load image'));
+    };
+    img.src = url;
   });
+}
+
+function extensionForMimeType(type: string): string {
+  if (type === 'image/png') return 'png';
+  if (type === 'image/webp') return 'webp';
+  if (type === 'image/gif') return 'gif';
+  return 'jpg';
 }
 
 export function useImageUpload(options: UseImageUploadOptions) {
@@ -111,7 +127,9 @@ export function useImageUpload(options: UseImageUploadOptions) {
     try {
       // Compress image if larger than 1MB
       let uploadBlob: Blob = file;
-      if (file.size > 1024 * 1024) {
+      // Animated GIFs must remain byte-for-byte intact; drawing them to a
+      // canvas would silently flatten the animation to one frame.
+      if (file.size > 1024 * 1024 && file.type !== 'image/gif') {
         setProgress(30);
         uploadBlob = await compressImage(file, maxDimension, compressionQuality);
         setProgress(50);
@@ -122,7 +140,7 @@ export function useImageUpload(options: UseImageUploadOptions) {
       // Generate unique filename
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
-      const extension = file.type === 'image/png' ? 'png' : 'jpg';
+      const extension = extensionForMimeType(uploadBlob.type || file.type);
       const fileName = `${timestamp}-${random}.${extension}`;
       const filePath = folder ? `${folder}/${fileName}` : fileName;
 
@@ -151,11 +169,11 @@ export function useImageUpload(options: UseImageUploadOptions) {
         url: urlData.publicUrl,
         path: data.path,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',
-        description: error.message || 'Failed to upload image',
+        description: getErrorMessage(error, 'Failed to upload image'),
         variant: 'destructive',
       });
       return null;
@@ -173,7 +191,7 @@ export function useImageUpload(options: UseImageUploadOptions) {
 
       if (error) throw error;
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete error:', error);
       return false;
     }

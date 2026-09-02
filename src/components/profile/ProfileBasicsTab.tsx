@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, UserCog, Lock, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { IMAGE_FILE_ACCEPT, type ImageFit } from "@/lib/images/prepareImageUpload";
 
 import { US_STATE_CODES } from "@/lib/us-states";
 
@@ -26,6 +28,8 @@ interface IdentitySectionProps {
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveAvatar: () => void;
   uploading: boolean;
+  avatarFit: ImageFit;
+  onAvatarFitChange: (fit: ImageFit) => void;
   /** When true, first/last name are frozen and rendered read-only. */
   nameLocked?: boolean;
 }
@@ -36,6 +40,8 @@ export function ProfileIdentitySection({
   onFileUpload,
   onRemoveAvatar,
   uploading,
+  avatarFit,
+  onAvatarFitChange,
   nameLocked = false,
 }: IdentitySectionProps) {
   return (
@@ -80,12 +86,30 @@ export function ProfileIdentitySection({
           <Input
             id="avatar-upload"
             type="file"
-            accept="image/*"
+            accept={IMAGE_FILE_ACCEPT}
             className="hidden"
             onChange={onFileUpload}
             disabled={uploading}
           />
-          <p className="text-xs text-muted-foreground mt-2">JPG, PNG, or WebP. Max 5MB.</p>
+          <div className="mt-2 inline-flex rounded-lg border border-border bg-background p-1" role="group" aria-label="Profile photo fit">
+            {([['contain', 'Show full photo'], ['cover', 'Fill frame']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onAvatarFitChange(value)}
+                aria-pressed={avatarFit === value}
+                className={cn(
+                  'rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors',
+                  avatarFit === value
+                    ? 'bg-foreground text-background shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">JPG, PNG, or WebP. Up to 12MB; optimized automatically.</p>
         </div>
       </div>
 

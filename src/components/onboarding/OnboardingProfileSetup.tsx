@@ -10,6 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { User, Upload, MapPin, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import {
+  IMAGE_FILE_ACCEPT,
+  prepareImageForUpload,
+  storagePathFromPublicUrl,
+  type ImageFit,
+} from "@/lib/images/prepareImageUpload";
 
 import { US_STATE_CODES } from "@/lib/us-states";
 
@@ -37,31 +44,33 @@ export const OnboardingProfileSetup = ({
     initial_self_rating: null as number | null,
   });
   const [uploading, setUploading] = useState(false);
+  const [avatarFit, setAvatarFit] = useState<ImageFit>('contain');
   const [saving, setSaving] = useState(false);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !userId) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error("Please upload an image file");
-      return;
-    }
-
-    if (file.size > 5242880) {
-      toast.error("Image must be less than 5MB");
-      return;
-    }
-
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const prepared = await prepareImageForUpload(file, {
+        maxInputMB: 12,
+        maxOutputMB: 5,
+        maxDimension: 1024,
+        minWidth: 320,
+        minHeight: 320,
+        quality: 0.92,
+        squareFit: avatarFit,
+      });
+      const fileName = `${Date.now()}.${prepared.extension}`;
       const filePath = `${userId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, prepared.blob, {
+          contentType: prepared.blob.type,
+          cacheControl: '31536000',
+        });
 
       if (uploadError) throw uploadError;
 
@@ -69,13 +78,18 @@ export const OnboardingProfileSetup = ({
         .from('avatars')
         .getPublicUrl(filePath);
 
+      const previousPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-      toast.success("Photo uploaded!");
+      if (previousPath && previousPath !== filePath) {
+        void supabase.storage.from('avatars').remove([previousPath]);
+      }
+      toast.success(avatarFit === 'contain' ? "Photo uploaded · full image shown" : "Photo uploaded · frame filled");
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      toast.error("Failed to upload photo");
+      toast.error(getErrorMessage(error, "Failed to upload photo"));
     } finally {
       setUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -189,12 +203,31 @@ export const OnboardingProfileSetup = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={IMAGE_FILE_ACCEPT}
                 className="hidden"
                 onChange={handleFileUpload}
                 disabled={uploading}
               />
             </div>
+            <div className="inline-flex rounded-lg border border-border bg-background p-1" role="group" aria-label="Profile photo fit">
+              {([['contain', 'Show full photo'], ['cover', 'Fill frame']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setAvatarFit(value)}
+                  aria-pressed={avatarFit === value}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                    avatarFit === value
+                      ? 'bg-foreground text-background shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">At least 320×320px. Large photos are optimized automatically.</p>
           </div>
 
           {/* Location */}

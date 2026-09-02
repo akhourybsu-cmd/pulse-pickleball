@@ -8539,6 +8539,7 @@ export type Database = {
           cover_focal_point:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
+          cover_image_fit: "cover" | "contain"
           cover_image_url: string | null
           created_at: string
           cta_primary_label: string | null
@@ -8554,6 +8555,7 @@ export type Database = {
           is_published: boolean | null
           is_searchable: boolean | null
           logo_shape: Database["public"]["Enums"]["venue_logo_shape"] | null
+          logo_image_fit: "cover" | "contain"
           logo_url: string | null
           name: string
           onboarding_completed: boolean | null
@@ -8605,6 +8607,7 @@ export type Database = {
           cover_focal_point?:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
+          cover_image_fit?: "cover" | "contain"
           cover_image_url?: string | null
           created_at?: string
           cta_primary_label?: string | null
@@ -8620,6 +8623,7 @@ export type Database = {
           is_published?: boolean | null
           is_searchable?: boolean | null
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
+          logo_image_fit?: "cover" | "contain"
           logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
@@ -8671,6 +8675,7 @@ export type Database = {
           cover_focal_point?:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
+          cover_image_fit?: "cover" | "contain"
           cover_image_url?: string | null
           created_at?: string
           cta_primary_label?: string | null
@@ -8686,6 +8691,7 @@ export type Database = {
           is_published?: boolean | null
           is_searchable?: boolean | null
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
+          logo_image_fit?: "cover" | "contain"
           logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null

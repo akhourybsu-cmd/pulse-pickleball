@@ -279,6 +279,10 @@ export default function VenueCommunity() {
         tagline={venue?.tagline}
         logoUrl={venue?.logo_url ?? group.icon_url}
         coverImageUrl={venue?.cover_image_url}
+        logoImageFit={venue?.logo_image_fit}
+        coverImageFit={venue?.cover_image_fit}
+        logoShape={venue?.logo_shape}
+        coverFocalPoint={venue?.cover_focal_point}
         fallbackBackground={chrome?.backgroundImage}
         bloom={chrome?.bloom}
         accent={chrome?.accentHex}
