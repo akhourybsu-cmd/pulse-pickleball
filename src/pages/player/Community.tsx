@@ -47,7 +47,7 @@ export default function Community() {
             ]}
             ariaLabel="Community views"
             layoutId="community-seg-active"
-            className="min-w-[190px] flex-1"
+            className="min-w-[190px] flex-1 lg:max-w-sm lg:flex-none"
           />
 
           <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:gap-1.5">
@@ -72,10 +72,10 @@ export default function Community() {
         </div>
       </SocialHero>
 
-      <div className="container mx-auto min-h-0 max-w-3xl flex-1 px-4 pb-10 pt-4 sm:px-6">
+      <div className="container mx-auto min-h-0 max-w-[1400px] flex-1 px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-2xl" />
             ))}
           </div>
@@ -104,7 +104,7 @@ export default function Community() {
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               Public groups you can join
             </p>
-            <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {publicGroups.map((group) => {
                 const isAlreadyMember = myGroups.some((g) => g.id === group.id);
                 return (

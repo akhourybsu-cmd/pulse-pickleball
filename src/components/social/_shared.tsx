@@ -37,7 +37,7 @@ export function SocialHero({
         aria-hidden
         className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-primary/35"
       />
-      <div className="relative container mx-auto max-w-3xl px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+      <div className="relative container mx-auto max-w-[1400px] px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5 lg:px-8 lg:pb-6 lg:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="relative min-w-0 pl-3.5">
             <span
@@ -47,7 +47,7 @@ export function SocialHero({
             <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/80">
               {eyebrow}
             </div>
-            <h1 className="text-[23px] font-extrabold leading-[1.05] tracking-[-0.025em] text-foreground sm:text-[27px]">
+            <h1 className="text-[23px] font-extrabold leading-[1.05] tracking-[-0.025em] text-foreground sm:text-[27px] lg:text-[32px]">
               {title}
             </h1>
           </div>

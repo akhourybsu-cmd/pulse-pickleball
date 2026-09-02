@@ -163,7 +163,7 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
 // Reordering can come back as a long-press affordance later if needed.
 export function ReorderableGroupList({ groups }: ReorderableGroupListProps) {
   return (
-    <div className="space-y-2.5">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {groups.map((group) => (
         <GroupRow key={group.id} group={group} />
       ))}

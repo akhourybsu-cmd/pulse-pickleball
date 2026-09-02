@@ -101,10 +101,10 @@ export default function PlayerLeagues() {
         </div>
       </SocialHero>
 
-      <div className="container mx-auto max-w-3xl space-y-6 px-4 pb-10 pt-4 sm:px-6">
+      <div className="container mx-auto max-w-[1400px] space-y-7 px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
 
         {loading ? (
-          <div className="space-y-3 animate-pulse">
+          <div className="grid animate-pulse gap-3 lg:grid-cols-2">
             <div className="h-24 rounded-2xl bg-muted/50" />
             <div className="h-24 rounded-2xl bg-muted/50" />
           </div>
@@ -131,7 +131,7 @@ export default function PlayerLeagues() {
         ) : (
           <div className="space-y-3">
             <SectionHeader label="Your leagues" />
-            <ul className="space-y-2.5">
+            <ul className="grid gap-3 lg:grid-cols-2">
               {rows.map(({ league, membership, season }, i) => {
                 const isOrganizer = membership.role !== "player";
                 return (
@@ -205,7 +205,7 @@ export default function PlayerLeagues() {
               Public leagues you can join with an invite code
             </p>
 
-            <ul className="space-y-2.5">
+            <ul className="grid gap-3 lg:grid-cols-2">
               {browseable.map((league) => {
                 return (
                   <li key={league.id}>
@@ -289,7 +289,7 @@ export default function PlayerLeagues() {
             </button>
 
             {showArchived && (
-              <ul className="space-y-2 mt-2">
+              <ul className="mt-2 grid gap-3 lg:grid-cols-2">
                 {archivedRows.map(({ league, membership, season }) => (
                   <li key={membership.id}>
                     <button

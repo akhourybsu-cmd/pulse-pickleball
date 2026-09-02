@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { isToday, isThisWeek } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  MessageCircle, Search, AlertCircle, PenSquare,
+  MessageCircle, Search, AlertCircle, PenSquare, Inbox, VolumeX, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,9 +58,10 @@ export function SocialInbox() {
   }, [visible]);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-8 lg:px-8 lg:py-6 xl:grid-cols-[minmax(0,820px)_minmax(280px,1fr)]">
+      <div className="min-w-0 lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-border/60 lg:bg-card/55 lg:pb-6 lg:shadow-[0_18px_45px_-38px_hsl(var(--foreground)/0.5)]">
       {/* Toolbar: search + compose icon */}
-      <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
+      <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6 lg:pt-5">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -135,6 +136,46 @@ export function SocialInbox() {
           </div>
         )}
       </div>
+      </div>
+
+      <aside className="hidden space-y-5 lg:block">
+        <div className="sticky top-[96px] space-y-5">
+          <div className="rounded-[24px] border border-border/60 bg-card/75 p-5 shadow-[0_18px_45px_-38px_hsl(var(--foreground)/0.5)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/80">At a glance</p>
+                <h2 className="mt-1 text-lg font-bold tracking-tight">Your inbox</h2>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Inbox className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              {[
+                { label: 'Chats', value: conversations.length, icon: MessageCircle },
+                { label: 'Unread', value: unreadCount, icon: Zap },
+                { label: 'Muted', value: mutedCount, icon: VolumeX },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="rounded-2xl border border-border/50 bg-background/65 p-3">
+                  <Icon className="h-4 w-4 text-primary/80" />
+                  <p className="mt-3 text-xl font-bold tabular-nums">{value}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+            <Button onClick={() => setPickerOpen(true)} className="mt-4 h-11 w-full rounded-xl btn-premium">
+              <PenSquare className="mr-2 h-4 w-4" />Start a conversation
+            </Button>
+          </div>
+
+          <div className="rounded-[24px] border border-border/60 bg-muted/30 p-5">
+            <p className="text-sm font-semibold">Keep plans moving</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              Direct messages and community chats stay together here, ordered by the latest activity.
+            </p>
+          </div>
+        </div>
+      </aside>
 
       <MessageFriendPickerSheet open={pickerOpen} onOpenChange={setPickerOpen} />
     </div>

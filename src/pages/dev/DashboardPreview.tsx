@@ -144,8 +144,25 @@ export default function DashboardPreview() {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.07),transparent_44%)]" />
 
       <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-4 lg:h-[72px] lg:px-8">
+        <div className="mx-auto grid h-16 w-full max-w-[1400px] grid-cols-[auto_1fr_auto] items-center gap-5 px-4 lg:h-[72px] lg:px-8">
           <Logo className="h-[52px] w-auto text-secondary-foreground lg:h-[65px]" />
+          <nav aria-label="Preview primary navigation" className="hidden items-center justify-center lg:flex">
+            <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1">
+              {[
+                { label: "Home", icon: Home, active: true },
+                { label: "Matches", icon: Trophy },
+                { label: "Leagues", icon: Swords },
+                { label: "Social", icon: MessageCircle },
+                { label: "Community", icon: Users },
+                { label: "Profile", icon: User },
+              ].map(({ label, icon: Icon, active }) => (
+                <button key={label} type="button" className={cn("flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium xl:px-4", active ? "bg-background/95 text-foreground shadow-sm" : "text-secondary-foreground/70")}>
+                  <Icon className={cn("hidden h-[17px] w-[17px] xl:block", active && "text-primary")} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
           <div className="flex items-center gap-1.5 text-secondary-foreground">
             {[Moon, MessageCircle, Bell, User].map((Icon, index) => (
               <button key={index} type="button" aria-label="Preview navigation control" className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-secondary-foreground/10 active:scale-95">
@@ -207,7 +224,7 @@ export default function DashboardPreview() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-22px_hsl(var(--foreground)/0.65)] backdrop-blur-xl md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-22px_hsl(var(--foreground)/0.65)] backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-around px-1 py-2">
           {[
             { label: "Home", icon: Home, active: true },

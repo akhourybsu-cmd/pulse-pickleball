@@ -42,7 +42,7 @@ export default function Social() {
         />
       </SocialHero>
 
-      <div className="flex-1 min-h-0 container mx-auto max-w-3xl px-0">
+      <div className="container mx-auto min-h-0 max-w-[1400px] flex-1 px-0">
         {view === "chats" ? <SocialInbox /> : <Friends embedded />}
       </div>
     </div>

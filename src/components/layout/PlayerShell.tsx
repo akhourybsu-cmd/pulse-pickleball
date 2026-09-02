@@ -49,11 +49,15 @@ const prefetchMap: Record<string, () => Promise<unknown>> = {
  *  loader (which would blank the whole shell). */
 function TabContentFallback() {
   return (
-    <div className="container mx-auto px-4 py-6 max-w-3xl space-y-4" aria-hidden>
-      <Skeleton className="h-8 w-1/2" />
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-24 w-full rounded-2xl" />
+    <div className="container mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8" aria-hidden>
+      <Skeleton className="h-8 w-1/2 max-w-md" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
+        <Skeleton className="h-56 w-full rounded-2xl" />
+      </div>
     </div>
   );
 }
@@ -191,7 +195,7 @@ export function PlayerShell() {
           non-immersive player route. */}
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto flex h-[64px] w-full max-w-[1400px] items-center justify-between px-4 py-3 sm:h-[72px] lg:px-8">
+          <div className="mx-auto grid h-[64px] w-full max-w-[1400px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 sm:h-[72px] sm:px-6 lg:gap-5 lg:px-8">
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
                 instead of a pasted cream rectangle. Gold pulse beat stays
@@ -203,6 +207,42 @@ export function PlayerShell() {
             >
               <Logo className="h-[52px] sm:h-[65px] w-auto" />
             </NavLink>
+
+            {/* Desktop navigation lives where desktop users expect it: in the
+                persistent app bar. Tablet and mobile retain the thumb-first
+                bottom navigation below. */}
+            <nav aria-label="Primary" className="hidden min-w-0 items-center justify-center lg:flex">
+              <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1 shadow-[inset_0_1px_0_hsl(var(--secondary-foreground)/0.06)]">
+                {navItems.map((item, index) => {
+                  const isActive = activeIndex === index;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onMouseEnter={() => handlePrefetch(item.to)}
+                      className={cn(
+                        'relative flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-[transform,color,background-color,box-shadow] xl:px-4',
+                        'active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none',
+                        isActive
+                          ? 'bg-background/95 text-foreground shadow-sm'
+                          : 'text-secondary-foreground/70 hover:bg-secondary-foreground/[0.07] hover:text-secondary-foreground',
+                      )}
+                    >
+                      <span className="relative">
+                        <item.icon className={cn('hidden h-[17px] w-[17px] xl:block', isActive && 'text-primary')} />
+                        {item.to === '/player/social' && dmUnread > 0 && (
+                          <span className="absolute -right-2.5 -top-2 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[8px] font-bold text-primary-foreground">
+                            {dmUnread > 9 ? '9+' : dmUnread}
+                          </span>
+                        )}
+                      </span>
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </nav>
+
             <div className="flex items-center gap-1.5 sm:gap-2">
               <ThemeToggle />
               {/* Messages — one-tap entry to /player/messages from any
@@ -265,7 +305,7 @@ export function PlayerShell() {
       <main
         ref={mainRef}
         tabIndex={-1}
-        className={cn("focus:outline-none", isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20")}
+        className={cn("focus:outline-none", isImmersiveRoute ? "flex-1" : "flex-1 pb-24 lg:pb-0")}
       >
         <Suspense fallback={<TabContentFallback />}>
           <ShellContentTransition immersive={isImmersiveRoute} />
@@ -304,7 +344,7 @@ export function PlayerShell() {
               'fixed right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg',
               'h-14 pl-5 pr-6 font-semibold text-sm',
               'hover:bg-primary/90 active:scale-95 transition-all',
-              'bottom-[88px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
+              'bottom-[88px] lg:bottom-6 pb-[env(safe-area-inset-bottom)]'
             )}
           >
             <Plus className="h-5 w-5" strokeWidth={2.5} />
@@ -315,7 +355,7 @@ export function PlayerShell() {
 
       {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 shadow-[0_-10px_30px_-26px_hsl(var(--foreground)/0.55)] backdrop-blur-xl md:hidden pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 shadow-[0_-10px_30px_-26px_hsl(var(--foreground)/0.55)] backdrop-blur-xl lg:hidden pb-[env(safe-area-inset-bottom)]">
           {/* Sliding active indicator - refined */}
           <div
             className="absolute top-0 h-[2.5px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
@@ -373,60 +413,6 @@ export function PlayerShell() {
         </nav>
       )}
 
-      {/* Desktop Horizontal Nav - Premium Polish */}
-      {!isImmersiveRoute && (
-        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card">
-          <div className="container mx-auto px-4 relative">
-            {/* Sliding active indicator for desktop - refined */}
-            <div
-              className="absolute top-0 left-1/2 h-[2.5px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
-              style={{
-                width: '48px',
-                marginLeft: '-24px',
-                // (n-1)/2 centers the stride for any tab count (identical to the
-                // old floor(n/2) for the previous odd 5, correct for 6).
-                transform: `translateX(${(activeIndex - (navItems.length - 1) / 2) * 116}px)`,
-              }}
-            />
-            <div className="flex items-center justify-center gap-6 py-2.5">
-              {navItems.map((item, index) => {
-                const isActive = activeIndex === index;
-
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onMouseEnter={() => handlePrefetch(item.to)}
-                    className={cn(
-                      'flex items-center gap-2 px-4 py-2 rounded-lg',
-                      'transition-all duration-[200ms] ease-out',
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground/70 hover:text-foreground hover:bg-muted/50'
-                    )}
-                  >
-                    <span className="relative">
-                      <item.icon className={cn(
-                        'h-4 w-4 transition-all duration-[200ms] ease-out',
-                        !isActive && 'stroke-[1.5]'
-                      )} />
-                      {item.to === '/player/social' && dmUnread > 0 && (
-                        <span className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center tabular-nums">
-                          {dmUnread > 9 ? '9+' : dmUnread}
-                        </span>
-                      )}
-                    </span>
-                    <span className={cn(
-                      'text-sm nav-label',
-                      isActive ? 'font-semibold' : 'font-medium'
-                    )}>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          </div>
-        </nav>
-      )}
     </div>
     </FriendsPresenceProvider>
   );

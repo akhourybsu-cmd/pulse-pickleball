@@ -650,7 +650,7 @@ const MatchHistory = () => {
     return (
       <div className="min-h-screen bg-[hsl(var(--page-bg))]">
         <div className="border-b border-border/50 bg-card/35">
-          <div className="container mx-auto flex max-w-3xl items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
+          <div className="container mx-auto flex max-w-[1400px] items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
             <div className="min-w-0 space-y-2">
               <Skeleton className="h-7 w-32" />
               <Skeleton className="h-4 w-64" />
@@ -658,11 +658,13 @@ const MatchHistory = () => {
             <Skeleton className="h-10 w-24 flex-shrink-0 rounded-xl" />
           </div>
         </div>
-        <div className="container mx-auto max-w-3xl space-y-4 px-4 pb-10 pt-4 sm:px-6">
-          <Skeleton className="h-11 w-full rounded-2xl" />
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
-          ))}
+        <div className="container mx-auto grid max-w-[1400px] gap-5 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8 lg:pt-6">
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-52 w-full rounded-2xl" />
         </div>
       </div>
     );
@@ -701,7 +703,8 @@ const MatchHistory = () => {
         </SocialHero>
       )}
 
-      <div className="container mx-auto max-w-3xl space-y-6 px-4 pb-10 pt-4 sm:px-6">
+      <div className="container mx-auto grid max-w-[1400px] gap-6 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:px-8 lg:pt-6 xl:gap-8">
+        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-[96px]">
         {/* Ranked-vs-all record. Only splits into two columns when the player
             actually has non-ranked games — otherwise a single record, no
             clutter. "won" is score-based so it's correct for every match. */}
@@ -755,11 +758,23 @@ const MatchHistory = () => {
             layoutId="matches-seg-active"
           />
         )}
+        {!playerId && (
+          <div className="hidden rounded-2xl border border-border/60 bg-card/65 p-4 lg:block">
+            <p className="text-sm font-semibold">Your match workspace</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              Confirm pending scores first, then review verified results and rating movement without losing your place.
+            </p>
+            <Button variant="outline" className="mt-4 h-10 w-full rounded-xl" onClick={() => navigate('/player/play')}>
+              Find your next game
+            </Button>
+          </div>
+        )}
+        </aside>
 
         {/* Per-tab body — keyed so tab switches retrigger the fade-up animation
             (the new content slides up + fades in for a satisfying transition
             instead of swapping abruptly). */}
-        <div key={activeTab} className="space-y-6 animate-fade-up">
+        <div key={activeTab} className="min-w-0 space-y-6 animate-fade-up lg:order-1">
 
         {/* Empty state for the Pending tab when there's nothing pending */}
         {!playerId && activeTab === "pending" && pendingMatches.length === 0 && (

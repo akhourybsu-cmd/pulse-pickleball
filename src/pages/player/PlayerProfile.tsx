@@ -314,7 +314,7 @@ export default function PlayerProfile() {
             {locationStr}
           </p>
         )}
-        <div className="mt-3 flex items-stretch gap-2.5">
+        <div className="mt-3 flex max-w-2xl items-stretch gap-2.5">
           <Avatar className="h-[58px] w-[58px] shrink-0 rounded-2xl border-2 border-primary/30 shadow-sm">
             <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
             <AvatarFallback className="rounded-2xl bg-primary/15 font-bold text-primary">{profileInitials}</AvatarFallback>
@@ -327,7 +327,9 @@ export default function PlayerProfile() {
         </div>
       </SocialHero>
 
-      <div className="container mx-auto max-w-3xl space-y-7 px-4 pb-12 pt-4 sm:px-6">
+      <div className="container mx-auto max-w-[1400px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(460px,1.18fr)] lg:items-start xl:gap-10">
+          <div className="space-y-7">
 
         {/* Skill assessment — hero CTA at the top of the profile. */}
         <SkillAssessmentCTA userId={userId} />
@@ -360,6 +362,9 @@ export default function PlayerProfile() {
           <SectionHeader label="Community" />
           {renderLinkGroup(COMMUNITY_LINKS, 240)}
         </div>
+
+          </div>
+          <div className="space-y-7">
 
         {/* Account group */}
         <div>
@@ -422,7 +427,7 @@ export default function PlayerProfile() {
 
         {/* Demoted sign-out */}
         <div
-          className="pt-4 opacity-0 animate-fade-up"
+          className="opacity-0 animate-fade-up"
           style={{ animationDelay: '420ms', animationFillMode: 'forwards' }}
         >
           <Button
@@ -433,6 +438,8 @@ export default function PlayerProfile() {
             <LogOut className="h-4 w-4 mr-2" />
             Sign out
           </Button>
+        </div>
+          </div>
         </div>
       </div>
     </div>

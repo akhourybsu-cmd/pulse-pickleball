@@ -256,9 +256,9 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
 
         <div className="flex-1 overflow-y-auto">
           {/* Friends list */}
-          <TabsContent value="friends" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-3">
+          <TabsContent value="friends" className="m-0 space-y-3 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[68px] w-full rounded-xl" />)}
               </div>
             ) : friends.length === 0 ? (
@@ -294,7 +294,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                     description="No friends match that search."
                   />
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {windowedFriends.map(f => {
                       const isOnline = onlineFriends.has(f.profile.id);
                       const name = f.profile.display_name || f.profile.full_name || 'Player';
@@ -363,7 +363,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
           </TabsContent>
 
           {/* Requests */}
-          <TabsContent value="requests" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-6">
+          <TabsContent value="requests" className="m-0 space-y-6 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Received {pendingRequests.length > 0 && `(${pendingRequests.length})`}
@@ -371,7 +371,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               {pendingRequests.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No incoming requests.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   <AnimatePresence initial={false}>
                     {pendingRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
@@ -411,7 +411,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               {sentRequests.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No pending sent requests.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   <AnimatePresence initial={false}>
                     {sentRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
@@ -443,7 +443,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
           </TabsContent>
 
           {/* Suggestions */}
-          <TabsContent value="suggestions" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-3">
+          <TabsContent value="suggestions" className="m-0 space-y-3 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
             {suggestionsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
@@ -455,7 +455,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                 description="Play matches or join groups — we'll suggest people you might know."
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {suggestions.map(s => {
                   const name = s.display_name || s.full_name || 'Player';
                   const reason = realReason(s.reason);
