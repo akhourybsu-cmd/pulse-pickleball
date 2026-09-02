@@ -1,5 +1,5 @@
 import {
-  ChevronLeft, ChevronRight, MoreHorizontal, Settings, Wrench, Plus,
+  CalendarPlus, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Wrench, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,9 +45,11 @@ export interface OpsDashboardProps {
   grid: CourtColumn[];
   accent?: string | null;
   canManage: boolean;
+  canCreateProgram: boolean;
   onBack: () => void;
   onSettings: () => void;
   onCloseCourt: () => void;
+  onCreateProgram: () => void;
   onPickCourt: (courtId: string) => void;
   onDayChange: (day: Date) => void;
   onPickSlot: (courtId: string, start: Date, minutes: number) => void;
@@ -68,9 +70,11 @@ export function OpsDashboard({
   grid,
   accent,
   canManage,
+  canCreateProgram,
   onBack,
   onSettings,
   onCloseCourt,
+  onCreateProgram,
   onPickCourt,
   onDayChange,
   onPickSlot,
@@ -120,9 +124,19 @@ export function OpsDashboard({
             </span>
           )}
 
-          <Button size="sm" className="h-9 shrink-0 rounded-lg px-3" onClick={onCloseCourt}>
-            <Wrench className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Close court</span>
+          <Button
+            size="sm"
+            className="h-9 shrink-0 rounded-lg px-3"
+            onClick={canCreateProgram ? onCreateProgram : onCloseCourt}
+          >
+            {canCreateProgram ? (
+              <CalendarPlus className="h-4 w-4 sm:mr-1.5" />
+            ) : (
+              <Wrench className="h-4 w-4 sm:mr-1.5" />
+            )}
+            <span className="hidden sm:inline">
+              {canCreateProgram ? 'New program' : 'Close court'}
+            </span>
           </Button>
 
           {/* Secondary actions collapse rather than competing for the toolbar.
@@ -144,6 +158,12 @@ export function OpsDashboard({
                 <Wrench className="mr-2 h-4 w-4" />
                 Close a court
               </DropdownMenuItem>
+              {canCreateProgram && (
+                <DropdownMenuItem onClick={onCreateProgram}>
+                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  New program
+                </DropdownMenuItem>
+              )}
               {canManage && (
                 <DropdownMenuItem onClick={onSettings}>
                   <Settings className="mr-2 h-4 w-4" />

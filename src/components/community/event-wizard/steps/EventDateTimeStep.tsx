@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { RECURRING_OPTIONS, type RecurringFrequency } from '../types';
+import { Button } from '@/components/ui/button';
 
 interface EventDateTimeStepProps {
   date: string;
@@ -21,6 +22,7 @@ interface EventDateTimeStepProps {
   onEndTimeChange: (time: string) => void;
   onRecurringFrequencyChange: (freq: RecurringFrequency) => void;
   onRecurringCountChange: (count: number) => void;
+  venueMode?: boolean;
 }
 
 const COUNT_OPTIONS = [2, 4, 6, 8, 10, 12];
@@ -36,13 +38,31 @@ export function EventDateTimeStep({
   onEndTimeChange,
   onRecurringFrequencyChange,
   onRecurringCountChange,
+  venueMode = false,
 }: EventDateTimeStepProps) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const isRecurring = recurringFrequency !== 'none';
 
+  const setDuration = (minutes: number) => {
+    if (!startTime) return;
+    const [hours, mins] = startTime.split(':').map(Number);
+    const total = hours * 60 + mins + minutes;
+    const endHours = Math.floor(total / 60);
+    const endMinutes = total % 60;
+    if (endHours >= 24) return;
+    onEndTimeChange(`${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`);
+  };
+
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">When is it?</h3>
+      <div>
+        <h3 className="text-lg font-semibold">When is it?</h3>
+        {venueMode && (
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Set the full court window. Repeating programs create independently manageable dates.
+          </p>
+        )}
+      </div>
 
       <div className="space-y-3">
         <div>
@@ -65,7 +85,9 @@ export function EventDateTimeStep({
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">End time (optional)</Label>
+            <Label className="text-xs text-muted-foreground mb-1 block">
+              End time {venueMode ? '' : '(optional)'}
+            </Label>
             <Input
               type="time"
               value={endTime}
@@ -73,6 +95,26 @@ export function EventDateTimeStep({
             />
           </div>
         </div>
+
+        {venueMode && startTime && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Duration
+            </span>
+            {[60, 90, 120, 180].map((minutes) => (
+              <Button
+                key={minutes}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-full px-2.5 text-[11px]"
+                onClick={() => setDuration(minutes)}
+              >
+                {minutes < 60 ? `${minutes}m` : minutes % 60 ? `${Math.floor(minutes / 60)}h 30m` : `${minutes / 60}h`}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recurring section — defaults to "Does not repeat" so the

@@ -1,14 +1,18 @@
-import { Calendar, Clock, MapPin, Users, Repeat, ListOrdered, LayoutGrid } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Repeat, ListOrdered, LayoutGrid, Gauge, Shuffle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
   EventWizardFormData,
   EVENT_TYPE_OPTIONS,
   RECURRING_OPTIONS,
   generateOccurrenceStarts,
+  ROTATION_LABELS,
+  type VenueEventCourt,
 } from '../types';
 
 interface EventReviewStepProps {
   formData: EventWizardFormData;
+  venueName?: string | null;
+  courts?: VenueEventCourt[];
 }
 
 function Row({
@@ -31,10 +35,11 @@ function Row({
   );
 }
 
-export function EventReviewStep({ formData }: EventReviewStepProps) {
+export function EventReviewStep({ formData, venueName, courts = [] }: EventReviewStepProps) {
   const eventType = EVENT_TYPE_OPTIONS.find((t) => t.value === formData.eventType);
   const recurring = RECURRING_OPTIONS.find((r) => r.value === formData.recurringFrequency);
   const isRecurring = formData.recurringFrequency !== 'none';
+  const selectedCourts = courts.filter((court) => formData.selectedCourtIds.includes(court.id));
 
   const formatDate = (dateStr: string) => {
     try {
@@ -90,7 +95,18 @@ export function EventReviewStep({ formData }: EventReviewStepProps) {
               : formatTime(formData.startTime)
           }
         />
-        {formData.location && <Row icon={MapPin} label="Where" value={formData.location} />}
+        {(venueName || formData.location) && (
+          <Row icon={MapPin} label="Where" value={venueName || formData.location} />
+        )}
+        {selectedCourts.length > 0 && (
+          <Row
+            icon={LayoutGrid}
+            label="Courts"
+            value={selectedCourts
+              .map((court) => court.name ?? `Court ${court.court_number}`)
+              .join(', ')}
+          />
+        )}
         {formData.eventType === 'round_robin' && (formData.rrCourts || formData.rrGamesPerPlayer) && (
           <Row
             icon={LayoutGrid}
@@ -108,6 +124,22 @@ export function EventReviewStep({ formData }: EventReviewStepProps) {
           label="Capacity"
           value={formData.capacity ? `${formData.capacity} players` : 'Unlimited'}
         />
+        {(formData.skillLevelMin != null || formData.skillLevelMax != null) && (
+          <Row
+            icon={Gauge}
+            label="Level"
+            value={
+              formData.skillLevelMin != null && formData.skillLevelMax != null
+                ? `${formData.skillLevelMin.toFixed(1)}–${formData.skillLevelMax.toFixed(1)}`
+                : formData.skillLevelMin != null
+                  ? `${formData.skillLevelMin.toFixed(1)}+`
+                  : `Up to ${formData.skillLevelMax!.toFixed(1)}`
+            }
+          />
+        )}
+        {formData.rotationStyle && (
+          <Row icon={Shuffle} label="Rotation" value={ROTATION_LABELS[formData.rotationStyle]} />
+        )}
         {!!formData.capacity && (
           <Row
             icon={ListOrdered}

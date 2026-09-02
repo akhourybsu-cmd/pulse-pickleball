@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Ticket, ChevronRight } from 'lucide-react';
+import { Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
@@ -15,6 +16,7 @@ import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { DayStrip } from '@/components/venue/DayStrip';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueHome } from '@/components/venue/VenueHome';
+import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
@@ -150,6 +152,7 @@ export default function VenueCommunity() {
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
   const [bookingMinutes, setBookingMinutes] = useState<number | null>(null);
+  const [eventCreatorOpen, setEventCreatorOpen] = useState(false);
 
   // Snapshot the viewer's last-read marker BEFORE anything updates it, so the
   // chat's unread divider reflects where they actually left off.
@@ -190,6 +193,11 @@ export default function VenueCommunity() {
     isMember &&
     (canManageSettings ||
       (group?.settings as Record<string, unknown> | null)?.allow_member_events !== false);
+  const canCreateProgram =
+    venueRole === 'owner' ||
+    venueRole === 'manager' ||
+    venueRole === 'organizer' ||
+    membership?.role === 'owner';
 
   useEffect(() => {
     const invalidChat = activeTab === 'chat' && !chatEnabled;
@@ -369,6 +377,25 @@ export default function VenueCommunity() {
 
                 <TabsContent value="play" className="mt-0">
                   <div className="max-w-3xl space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                          Venue programming
+                        </p>
+                        <h2 className="mt-0.5 text-xl font-extrabold tracking-tight">Play at {venue?.name ?? group.name}</h2>
+                      </div>
+                      {canCreateProgram && (
+                        <Button
+                          size="sm"
+                          className="h-9 shrink-0 gap-1.5 rounded-lg px-3 font-semibold"
+                          onClick={() => setEventCreatorOpen(true)}
+                        >
+                          <CalendarPlus className="h-4 w-4" />
+                          <span className="hidden sm:inline">New program</span>
+                          <span className="sm:hidden">New</span>
+                        </Button>
+                      )}
+                    </div>
                     <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
                     <VenueProgramming
                       sessions={programming}
@@ -502,24 +529,36 @@ export default function VenueCommunity() {
       />
 
       {group.venue_id && (
-        <BookCourtDialog
-          open={!!bookingCourtId && !!bookingStart}
-          onOpenChange={(o) => {
-            if (!o) {
-              setBookingCourtId(null);
-              setBookingStart(null);
-              setBookingMinutes(null);
-            }
-          }}
-          groupId={groupId!}
-          venueId={group.venue_id}
-          court={bookingCourt}
-          start={bookingStart}
-          slotMinutes={slotMinutes}
-          presetMinutes={bookingMinutes}
-          dayEnd={dayEnd}
-          onBooked={refresh}
-        />
+        <>
+          <BookCourtDialog
+            open={!!bookingCourtId && !!bookingStart}
+            onOpenChange={(o) => {
+              if (!o) {
+                setBookingCourtId(null);
+                setBookingStart(null);
+                setBookingMinutes(null);
+              }
+            }}
+            groupId={groupId!}
+            venueId={group.venue_id}
+            court={bookingCourt}
+            start={bookingStart}
+            slotMinutes={slotMinutes}
+            presetMinutes={bookingMinutes}
+            dayEnd={dayEnd}
+            onBooked={refresh}
+          />
+          <VenueEventDialog
+            open={eventCreatorOpen}
+            onOpenChange={setEventCreatorOpen}
+            groupId={groupId!}
+            venueId={group.venue_id}
+            venueName={venue?.name ?? group.name}
+            courts={courts}
+            initialDate={day}
+            onCreated={refresh}
+          />
+        </>
       )}
     </div>
     </VenueStaffProvider>

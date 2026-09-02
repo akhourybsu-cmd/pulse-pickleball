@@ -5,13 +5,16 @@ import { cn } from '@/lib/utils';
 interface EventTypeStepProps {
   value: EventFormat | null;
   onChange: (type: EventFormat) => void;
+  venueMode?: boolean;
 }
 
-export function EventTypeStep({ value, onChange }: EventTypeStepProps) {
+export function EventTypeStep({ value, onChange, venueMode = false }: EventTypeStepProps) {
   return (
     <div className="space-y-3">
       <p className="text-[13px] text-muted-foreground">
-        Pick the format — you can add courts, capacity and a repeat schedule next.
+        {venueMode
+          ? 'Start with the program players recognize. Courts, level, rotation, and registration come next.'
+          : 'Pick the format — you can add courts, capacity and a repeat schedule next.'}
       </p>
       <div className="grid grid-cols-2 gap-2">
         {EVENT_TYPE_OPTIONS.map((option) => {

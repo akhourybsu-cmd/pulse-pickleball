@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+type GroupRsvpStatus = 'going' | 'maybe' | 'not_going' | 'waitlist';
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export interface GroupEvent {
   id: string;
   group_id: string;
@@ -11,7 +17,9 @@ export interface GroupEvent {
   end_time: string | null;
   location_type: 'court' | 'venue' | 'custom' | null;
   court_id: string | null;
+  venue_court_id: string | null;
   venue_id: string | null;
+  parent_event_id: string | null;
   custom_location: string | null;
   capacity: number | null;
   skill_level_min: number | null;
@@ -24,6 +32,7 @@ export interface GroupEvent {
   series_id: string | null;
   rr_courts: number | null;
   rr_games_per_player: number | null;
+  rotation_style: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -38,7 +47,7 @@ export interface GroupEvent {
     not_going: number;
     waitlist: number;
   };
-  user_rsvp?: 'going' | 'maybe' | 'not_going' | 'waitlist' | null;
+  user_rsvp?: GroupRsvpStatus | null;
 }
 
 async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
@@ -49,6 +58,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
     .from('group_events')
     .select('*')
     .eq('group_id', groupId)
+    .is('parent_event_id', null)
     .gte('start_time', new Date().toISOString())
     .order('start_time', { ascending: true });
 
@@ -71,7 +81,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
     .in('event_id', eventIds);
 
   // Group RSVPs by event
-  const rsvpsMap = new Map<string, { going: number; maybe: number; not_going: number; waitlist: number; user_rsvp: string | null }>();
+  const rsvpsMap = new Map<string, { going: number; maybe: number; not_going: number; waitlist: number; user_rsvp: GroupRsvpStatus | null }>();
   (eventsData || []).forEach(e => {
     rsvpsMap.set(e.id, { going: 0, maybe: 0, not_going: 0, waitlist: 0, user_rsvp: null });
   });
@@ -83,7 +93,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
       else if (r.status === 'maybe') entry.maybe++;
       else if (r.status === 'not_going') entry.not_going++;
       else if (r.status === 'waitlist') entry.waitlist++;
-      if (user && r.user_id === user.id) entry.user_rsvp = r.status;
+      if (user && r.user_id === user.id) entry.user_rsvp = r.status as GroupRsvpStatus;
     }
   });
 
@@ -100,7 +110,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
         not_going: rsvpEntry.not_going,
         waitlist: rsvpEntry.waitlist,
       } : undefined,
-      user_rsvp: rsvpEntry?.user_rsvp as any,
+      user_rsvp: rsvpEntry?.user_rsvp ?? null,
     };
   });
 }
@@ -132,6 +142,9 @@ export function useGroupEvents(groupId: string | undefined) {
       end_time?: string;
       location_type?: 'court' | 'venue' | 'custom';
       custom_location?: string;
+      venue_id?: string;
+      /** Venue programming can reserve several physical courts while remaining one public event. */
+      venue_court_ids?: string[];
       capacity?: number;
       skill_level_min?: number;
       skill_level_max?: number;
@@ -144,11 +157,12 @@ export function useGroupEvents(groupId: string | undefined) {
       waitlist_limit?: number;
       rr_courts?: number;
       rr_games_per_player?: number;
+      rotation_style?: 'paddle_stack' | 'timed_rotation' | 'winners_stay' | 'organized_games' | 'coach_led';
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { additional_starts, recurring_rule, ...base } = eventData;
+      const { additional_starts, recurring_rule, venue_court_ids, ...base } = eventData;
       const isSeries = !!recurring_rule && Array.isArray(additional_starts) && additional_starts.length > 0;
 
       // For a single event, end_time is the user-set ISO. For a series,
@@ -193,6 +207,48 @@ export function useGroupEvents(groupId: string | undefined) {
         .select();
 
       if (error) throw error;
+
+      // A public venue program stays one RSVP-able event even when it occupies
+      // several courts. Small child rows claim each playing surface so the
+      // existing database overlap constraint remains the final authority on
+      // double-booking. They are hidden from feeds and programming lists.
+      if (venue_court_ids?.length) {
+        if (!base.venue_id || data.some((event) => !event.end_time)) {
+          await supabase.from('group_events').delete().in('id', data.map((event) => event.id));
+          throw new Error('Venue programs need a venue and an end time.');
+        }
+
+        const holds = data.flatMap((event) =>
+          venue_court_ids.map((venueCourtId) => ({
+            group_id: groupId!,
+            created_by: user.id,
+            title: event.title,
+            description: event.description,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            location_type: 'venue',
+            custom_location: event.custom_location,
+            venue_id: base.venue_id,
+            venue_court_id: venueCourtId,
+            capacity: event.capacity,
+            event_format: 'program_hold',
+            waitlist_enabled: false,
+            parent_event_id: event.id,
+          })),
+        );
+
+        const { error: holdError } = await supabase.from('group_events').insert(holds);
+        if (holdError) {
+          // The hold insert is one statement, so it is all-or-nothing. Remove
+          // the public parents too, leaving no phantom program after a clash.
+          await supabase.from('group_events').delete().in('id', data.map((event) => event.id));
+          if (holdError.code === '23P01') {
+            throw new Error('One or more selected courts is already booked during this program.');
+          }
+          throw holdError;
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
@@ -204,12 +260,14 @@ export function useGroupEvents(groupId: string | undefined) {
           : 'Your event has been scheduled',
       });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      const venueId = Array.isArray(data) ? data[0]?.venue_id : null;
+      if (venueId) queryClient.invalidateQueries({ queryKey: ['venue-day', venueId] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Error creating event:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create event',
+        description: errorMessage(error, 'Failed to create event'),
         variant: 'destructive',
       });
     },
@@ -228,11 +286,11 @@ export function useGroupEvents(groupId: string | undefined) {
       toast({ title: 'Deleted', description: 'Event has been removed' });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Error deleting event:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete event',
+        description: errorMessage(error, 'Failed to delete event'),
         variant: 'destructive',
       });
     },
@@ -269,10 +327,10 @@ export function useGroupEvents(groupId: string | undefined) {
       toast({ title: 'Saved', description: 'Event settings updated' });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update event',
+        description: errorMessage(error, 'Failed to update event'),
         variant: 'destructive',
       });
     },
@@ -318,13 +376,13 @@ export function useGroupEvents(groupId: string | undefined) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Roll back the optimistic change to the last known-good snapshot.
       if (prev) queryClient.setQueryData(key, prev);
       console.error('Error updating RSVP:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update RSVP',
+        description: errorMessage(error, 'Failed to update RSVP'),
         variant: 'destructive',
       });
     }

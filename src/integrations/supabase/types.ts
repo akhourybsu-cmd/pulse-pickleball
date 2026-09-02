@@ -1657,7 +1657,9 @@ export type Database = {
           id: string
           is_recurring: boolean | null
           location_type: string | null
+          parent_event_id: string | null
           recurring_rule: string | null
+          rotation_style: string | null
           rr_courts: number | null
           rr_games_per_player: number | null
           series_id: string | null
@@ -1684,7 +1686,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           location_type?: string | null
+          parent_event_id?: string | null
           recurring_rule?: string | null
+          rotation_style?: string | null
           rr_courts?: number | null
           rr_games_per_player?: number | null
           series_id?: string | null
@@ -1711,7 +1715,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           location_type?: string | null
+          parent_event_id?: string | null
           recurring_rule?: string | null
+          rotation_style?: string | null
           rr_courts?: number | null
           rr_games_per_player?: number | null
           series_id?: string | null
@@ -1738,6 +1744,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "group_events"
             referencedColumns: ["id"]
           },
           {

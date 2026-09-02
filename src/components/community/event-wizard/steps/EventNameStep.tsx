@@ -10,6 +10,7 @@ interface EventNameStepProps {
   eventType: EventWizardFormData['eventType'];
   onTitleChange: (title: string) => void;
   onDescriptionChange: (description: string) => void;
+  venueMode?: boolean;
 }
 
 export function EventNameStep({
@@ -18,6 +19,7 @@ export function EventNameStep({
   eventType,
   onTitleChange,
   onDescriptionChange,
+  venueMode = false,
 }: EventNameStepProps) {
   const handleAutoGenerate = () => {
     onTitleChange(generateDefaultEventTitle(eventType));
@@ -25,12 +27,19 @@ export function EventNameStep({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold">Name your event</h3>
+      <div>
+        <h3 className="text-lg font-semibold">{venueMode ? 'Program details' : 'Name your event'}</h3>
+        {venueMode && (
+          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+            Use a clear, scannable name. Put what players should expect in the description.
+          </p>
+        )}
+      </div>
       
       <div className="space-y-2">
         <div className="flex gap-2">
           <Input
-            placeholder="Event name"
+            placeholder={venueMode ? 'e.g. 3.5 Evening Open Play' : 'Event name'}
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             className="flex-1"
@@ -47,10 +56,10 @@ export function EventNameStep({
         </div>
         
         <Textarea
-          placeholder="Description (optional)"
+          placeholder={venueMode ? 'Rotation, host, check-in notes, and what to bring' : 'Description (optional)'}
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
-          rows={2}
+          rows={venueMode ? 4 : 2}
           className="resize-none"
         />
       </div>

@@ -11,6 +11,7 @@ import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
 import { SessionSheet } from '@/components/venue/ops/SessionSheet';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
+import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 
 /**
  * Venue operations.
@@ -50,6 +51,10 @@ export default function VenueOps() {
   const [bookCourtId, setBookCourtId] = useState<string | null>(null);
   const [bookStart, setBookStart] = useState<Date | null>(null);
   const [bookMinutes, setBookMinutes] = useState<number | null>(null);
+  const [eventCreatorOpen, setEventCreatorOpen] = useState(false);
+  const [eventStart, setEventStart] = useState<Date | null>(null);
+  const [eventEnd, setEventEnd] = useState<Date | null>(null);
+  const [eventCourtIds, setEventCourtIds] = useState<string[]>([]);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
@@ -65,6 +70,11 @@ export default function VenueOps() {
   // The group owner keeps access as a floor so a venue can never lock itself
   // out of its own operations.
   const isStaff = canOperateVenue(venueRole) || membership?.role === 'owner';
+  const canCreateProgram =
+    venueRole === 'owner' ||
+    venueRole === 'manager' ||
+    venueRole === 'organizer' ||
+    membership?.role === 'owner';
 
   const statuses = useMemo(() => courtStatuses(courts, sessions, now), [courts, sessions, now]);
   const summary = useMemo(() => daySummary(grid, statuses, now), [grid, statuses, now]);
@@ -116,11 +126,18 @@ export default function VenueOps() {
         grid={grid}
         accent={chrome?.accentHex}
         canManage={canManageVenue(venueRole) || membership?.role === 'owner'}
+        canCreateProgram={canCreateProgram}
         onBack={() => navigate(`/player/community/group/${groupId}`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
         onCloseCourt={() => {
           setCloseCourtId(null);
           setCloseOpen(true);
+        }}
+        onCreateProgram={() => {
+          setEventStart(null);
+          setEventEnd(null);
+          setEventCourtIds([]);
+          setEventCreatorOpen(true);
         }}
         onPickCourt={(courtId) => {
           const status = statuses.find((s) => s.court.id === courtId);
@@ -144,8 +161,15 @@ export default function VenueOps() {
         }}
         onPickSession={setSessionId}
         onFillGap={(gap) => {
-          setBookCourtId(gap.court.id);
-          setBookStart(gap.start);
+          if (canCreateProgram) {
+            setEventStart(gap.start);
+            setEventEnd(gap.end);
+            setEventCourtIds([gap.court.id]);
+            setEventCreatorOpen(true);
+          } else {
+            setBookCourtId(gap.court.id);
+            setBookStart(gap.start);
+          }
         }}
       />
 
@@ -180,6 +204,19 @@ export default function VenueOps() {
             presetMinutes={bookMinutes}
             dayEnd={dayEnd}
             onBooked={refresh}
+          />
+          <VenueEventDialog
+            open={eventCreatorOpen}
+            onOpenChange={setEventCreatorOpen}
+            groupId={groupId!}
+            venueId={group.venue_id}
+            venueName={venue?.name ?? group.name}
+            courts={courts}
+            initialDate={day}
+            initialStart={eventStart}
+            initialEnd={eventEnd}
+            initialCourtIds={eventCourtIds}
+            onCreated={refresh}
           />
         </>
       )}

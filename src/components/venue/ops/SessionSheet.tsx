@@ -56,12 +56,17 @@ export function SessionSheet({
 
   const blocked = isBlock(session);
   const reservation = isReservationSession(session);
+  const programHold = session.event_format === 'program_hold' && !!session.parent_event_id;
   const start = new Date(session.start_time);
   const end = session.end_time ? new Date(session.end_time) : null;
 
   const cancel = async () => {
     setWorking(true);
-    const { error } = await supabase.from('group_events').delete().eq('id', session.id);
+    // A multi-court program is represented by one public parent plus a small
+    // hold on every selected court. Cancelling from any court removes the
+    // parent; cascading releases every court and avoids half-cancelled events.
+    const targetId = programHold ? session.parent_event_id! : session.id;
+    const { error } = await supabase.from('group_events').delete().eq('id', targetId);
     setWorking(false);
 
     if (error) {
@@ -142,7 +147,9 @@ export function SessionSheet({
                     ? 'The court becomes bookable again for that window.'
                     : reservation
                       ? "This frees the court. Whoever booked it isn't asked first, so tell them."
-                      : 'This removes the session and frees the court. Anyone signed up loses their place.'}
+                      : programHold
+                        ? 'This cancels the full program, releases every court assigned to it, and removes all registrations.'
+                        : 'This removes the session and frees the court. Anyone signed up loses their place.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

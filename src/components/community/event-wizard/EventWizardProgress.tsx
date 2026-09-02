@@ -8,6 +8,7 @@ interface EventWizardProgressProps {
   onBack: () => void;
   onClose: () => void;
   canGoBack: boolean;
+  venueMode?: boolean;
 }
 
 /**
@@ -19,12 +20,16 @@ export function EventWizardProgress({
   onBack,
   onClose,
   canGoBack,
+  venueMode = false,
 }: EventWizardProgressProps) {
   const total = EVENT_WIZARD_STEPS.length;
   const step = EVENT_WIZARD_STEPS[currentStep];
 
   return (
-    <div className="relative -mx-4 -mt-4 mb-4 overflow-hidden border-b border-border/60 bg-gradient-to-b from-primary/[0.12] via-primary/[0.04] to-transparent px-4 pb-3 pt-3">
+    <div className={cn(
+      'relative -mx-4 -mt-4 mb-4 overflow-hidden border-b border-border/60 bg-gradient-to-b from-primary/[0.12] via-primary/[0.04] to-transparent px-4 pb-3 pt-3',
+      venueMode && 'sticky top-0 z-20 bg-background/95 backdrop-blur-xl',
+    )}>
       <div
         aria-hidden
         className="pointer-events-none absolute -top-20 -left-10 h-48 w-48 rounded-full opacity-[0.18] blur-3xl"
@@ -58,7 +63,7 @@ export function EventWizardProgress({
           )}
           <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
-              New Community Event
+              {venueMode ? 'New Venue Program' : 'New Community Event'}
             </div>
             <h3 className="truncate text-[19px] font-extrabold leading-tight tracking-[-0.01em]">
               {step.label}

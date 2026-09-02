@@ -19,6 +19,7 @@ import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
+import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import {
   VenueDesktopNavigation,
   VenueDesktopRail,
@@ -105,6 +106,7 @@ function session(
     capacity,
     created_by: 'u1',
     waitlist_enabled: true,
+    parent_event_id: null,
     venue_court_id: court,
     start_time: at(from).toISOString(),
     end_time: at(to).toISOString(),
@@ -285,6 +287,10 @@ export default function VenuePreview() {
     return <VenueAdminPagePreview />;
   }
 
+  if (previewMode === 'event') {
+    return <VenueEventPreview />;
+  }
+
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
     openHour: 8,
     closeHour: 22,
@@ -314,9 +320,11 @@ export default function VenuePreview() {
         grid={grid}
         accent={ACCENT}
         canManage
+        canCreateProgram
         onBack={() => {}}
         onSettings={() => {}}
         onCloseCourt={() => {}}
+        onCreateProgram={() => {}}
         onPickCourt={() => {}}
         onDayChange={setDay}
         onPickSlot={() => {}}
@@ -407,6 +415,28 @@ export default function VenuePreview() {
       </div>
 
     </>
+  );
+}
+
+function VenueEventPreview() {
+  const [open, setOpen] = useState(true);
+  return (
+    <main className="min-h-screen bg-muted/30 p-4">
+      {!open && <Button onClick={() => setOpen(true)}>Open event creator</Button>}
+      <VenueEventDialog
+        open={open}
+        onOpenChange={setOpen}
+        groupId="eleveno-preview"
+        venueId="eleveno-preview"
+        venueName="ELEVENO"
+        courts={COURTS.filter((court) => court.is_active !== false)}
+        initialDate={DAY}
+        initialStart={at(18)}
+        initialEnd={at(20)}
+        initialCourtIds={['c1', 'c2']}
+        onCreated={() => {}}
+      />
+    </main>
   );
 }
 

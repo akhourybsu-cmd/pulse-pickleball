@@ -3,6 +3,13 @@ export type RecurringFrequency = 'none' | 'daily' | 'weekly' | 'biweekly' | 'mon
 /** Persisted on group_events.event_format. */
 export type EventFormat = 'open_play' | 'round_robin' | 'practice' | 'social' | 'clinic' | 'other';
 
+export type RotationStyle =
+  | 'paddle_stack'
+  | 'timed_rotation'
+  | 'winners_stay'
+  | 'organized_games'
+  | 'coach_led';
+
 export interface EventWizardFormData {
   eventType: EventFormat | null;
   title: string;
@@ -24,6 +31,21 @@ export interface EventWizardFormData {
   recurringFrequency: RecurringFrequency;
   /** Total occurrences including the first one, 2-12. Ignored when frequency='none'. */
   recurringCount: number;
+  /** Venue programming only — the playing surfaces blocked by this session. */
+  selectedCourtIds: string[];
+  /** Optional DUPR-style range for who the session is designed for. */
+  skillLevelMin: number | null;
+  skillLevelMax: number | null;
+  /** How players move through games during venue programming. */
+  rotationStyle: RotationStyle | null;
+}
+
+export interface VenueEventCourt {
+  id: string;
+  name: string | null;
+  court_number: number | null;
+  is_active?: boolean | null;
+  surface_type?: string | null;
 }
 
 export const RECURRING_OPTIONS: { value: RecurringFrequency; label: string; description: string }[] = [
@@ -134,4 +156,65 @@ export const INITIAL_EVENT_WIZARD_DATA: EventWizardFormData = {
   rrGamesPerPlayer: null,
   recurringFrequency: 'none',
   recurringCount: 4,
+  selectedCourtIds: [],
+  skillLevelMin: null,
+  skillLevelMax: null,
+  rotationStyle: null,
 };
+
+export const ROTATION_OPTIONS: {
+  value: RotationStyle;
+  label: string;
+  description: string;
+  formats: EventFormat[];
+}[] = [
+  {
+    value: 'paddle_stack',
+    label: 'Paddle stack',
+    description: 'Players queue and rotate onto the next open court.',
+    formats: ['open_play', 'social'],
+  },
+  {
+    value: 'timed_rotation',
+    label: 'Timed rotation',
+    description: 'All courts rotate together on a set cadence.',
+    formats: ['open_play', 'practice', 'clinic'],
+  },
+  {
+    value: 'winners_stay',
+    label: 'Winners stay',
+    description: 'Winning side stays for the next challenger.',
+    formats: ['open_play'],
+  },
+  {
+    value: 'organized_games',
+    label: 'Organized games',
+    description: 'Staff sets matchups and court assignments.',
+    formats: ['open_play', 'round_robin', 'practice'],
+  },
+  {
+    value: 'coach_led',
+    label: 'Coach-led',
+    description: 'A coach controls drills, groups, and rotations.',
+    formats: ['clinic', 'practice'],
+  },
+];
+
+export const ROTATION_LABELS: Record<RotationStyle, string> = Object.fromEntries(
+  ROTATION_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<RotationStyle, string>;
+
+export function suggestedPlayersPerCourt(eventType: EventFormat | null): number {
+  switch (eventType) {
+    case 'round_robin':
+      return 4;
+    case 'clinic':
+    case 'practice':
+      return 6;
+    case 'social':
+      return 8;
+    case 'open_play':
+    default:
+      return 8;
+  }
+}

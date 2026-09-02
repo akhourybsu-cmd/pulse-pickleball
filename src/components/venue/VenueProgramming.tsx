@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MapPin, Users } from 'lucide-react';
+import { Gauge, LayoutGrid, MapPin, Shuffle, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,14 @@ const FORMAT_LABEL: Record<string, string> = {
   round_robin: 'Round Robin',
   social: 'Social',
   other: 'Event',
+};
+
+const ROTATION_LABEL: Record<string, string> = {
+  paddle_stack: 'Paddle stack',
+  timed_rotation: 'Timed rotation',
+  winners_stay: 'Winners stay',
+  organized_games: 'Organized games',
+  coach_led: 'Coach-led',
 };
 
 /** Below this many spots left, the badge earns attention. */
@@ -226,6 +234,28 @@ function SessionRow({
           <span className="inline-flex items-center gap-1 tabular-nums">
             <Users className="h-3 w-3" />
             {going}/{session.capacity}
+          </span>
+        )}
+        {(session.skill_level_min != null || session.skill_level_max != null) && (
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <Gauge className="h-3 w-3" />
+            {session.skill_level_min != null && session.skill_level_max != null
+              ? `${session.skill_level_min.toFixed(1)}–${session.skill_level_max.toFixed(1)}`
+              : session.skill_level_min != null
+                ? `${session.skill_level_min.toFixed(1)}+`
+                : `≤ ${session.skill_level_max!.toFixed(1)}`}
+          </span>
+        )}
+        {session.rr_courts != null && session.rr_courts > 0 && (
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <LayoutGrid className="h-3 w-3" />
+            {session.rr_courts} court{session.rr_courts === 1 ? '' : 's'}
+          </span>
+        )}
+        {session.rotation_style && ROTATION_LABEL[session.rotation_style] && (
+          <span className="inline-flex items-center gap-1">
+            <Shuffle className="h-3 w-3" />
+            {ROTATION_LABEL[session.rotation_style]}
           </span>
         )}
       </div>

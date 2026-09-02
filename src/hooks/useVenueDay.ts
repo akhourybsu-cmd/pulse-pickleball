@@ -29,11 +29,21 @@ export interface VenueDaySession extends Reservation {
   capacity: number | null;
   created_by: string;
   waitlist_enabled: boolean;
+  parent_event_id: string | null;
+  rotation_style?: string | null;
+  skill_level_min?: number | null;
+  skill_level_max?: number | null;
+  rr_courts?: number | null;
 }
 
 /** A session on a court is a reservation; anything else is programming. */
 export function isReservation(s: { event_format?: string | null }): boolean {
   return s.event_format === 'reservation';
+}
+
+/** Operational child that allocates a court to one public venue program. */
+export function isProgramHold(s: { event_format?: string | null }): boolean {
+  return s.event_format === 'program_hold';
 }
 
 /** Local midnight-to-midnight bounds for a day, as ISO strings. */
@@ -81,7 +91,8 @@ export function useVenueDay(
           .from('group_events')
           .select(
             'id, group_id, title, description, event_format, capacity, created_by, ' +
-              'waitlist_enabled, start_time, end_time, venue_court_id',
+              'waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, ' +
+              'rotation_style, skill_level_min, skill_level_max, rr_courts',
           )
           .eq('venue_id', venueId!)
           .gte('start_time', from)
@@ -97,7 +108,9 @@ export function useVenueDay(
       // Sign-up counts for the programming only. Reservations and closures
       // have no spots to run out of, so counting them would mean a round trip
       // for numbers nothing displays.
-      const joinable = sessions.filter((s) => !isReservation(s) && s.event_format !== 'maintenance');
+      const joinable = sessions.filter(
+        (s) => !isReservation(s) && !isProgramHold(s) && s.event_format !== 'maintenance',
+      );
       let going: Record<string, number> = {};
 
       if (joinable.length > 0) {
@@ -143,7 +156,9 @@ export function useVenueDay(
    * event, and advertising "Resurfacing" on the Play tab would be absurd.
    */
   const programming = useMemo(
-    () => sessions.filter((s) => !isReservation(s) && s.event_format !== 'maintenance'),
+    () => sessions.filter(
+      (s) => !isReservation(s) && !isProgramHold(s) && s.event_format !== 'maintenance',
+    ),
     [sessions],
   );
 
