@@ -182,6 +182,57 @@ $$;
 
 DO $$
 DECLARE
+  exposed_storage_policies text;
+  non_public_buckets text;
+  public_asset_buckets constant text[] := ARRAY[
+    'avatars',
+    'group-files',
+    'group-message-images',
+    'group-post-images',
+    'groups',
+    'tournament-assets',
+    'venue-logos'
+  ];
+BEGIN
+  SELECT string_agg(p.policyname, ', ' ORDER BY p.policyname)
+  INTO exposed_storage_policies
+  FROM pg_policies AS p
+  WHERE p.schemaname = 'storage'
+    AND p.tablename = 'objects'
+    AND p.cmd = 'SELECT'
+    AND 'public' = ANY (p.roles)
+    AND EXISTS (
+      SELECT 1
+      FROM unnest(public_asset_buckets) AS bucket(bucket_id)
+      WHERE p.qual LIKE '%' || quote_literal(bucket.bucket_id) || '%'
+    );
+
+  IF exposed_storage_policies IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Public asset buckets still have listing policies: %',
+      exposed_storage_policies;
+  END IF;
+
+  SELECT string_agg(expected.bucket_id, ', ' ORDER BY expected.bucket_id)
+  INTO non_public_buckets
+  FROM unnest(public_asset_buckets) AS expected(bucket_id)
+  LEFT JOIN storage.buckets AS actual
+    ON actual.id = expected.bucket_id
+   AND actual.public
+  WHERE actual.id IS NULL;
+
+  IF non_public_buckets IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Expected public asset buckets missing or private: %',
+      non_public_buckets;
+  END IF;
+
+  RAISE NOTICE 'Public asset URLs preserved; anonymous bucket listing disabled';
+END;
+$$;
+
+DO $$
+DECLARE
   exposed_functions text;
 BEGIN
   SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
