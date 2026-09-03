@@ -103,6 +103,39 @@ $$;
 
 DO $$
 DECLARE
+  public_venue_inquiry_policies integer;
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('conversations', 'court_channels')
+      AND cmd = 'INSERT'
+  ) THEN
+    RAISE EXCEPTION 'Obsolete direct INSERT policy exists on conversations or court_channels';
+  END IF;
+
+  SELECT count(*)
+  INTO public_venue_inquiry_policies
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'venue_inquiries'
+    AND cmd = 'INSERT'
+    AND 'public' = ANY (roles)
+    AND coalesce(trim(both '() ' from with_check), '') = 'true';
+
+  IF public_venue_inquiry_policies <> 1 THEN
+    RAISE EXCEPTION
+      'Expected one public venue inquiry INSERT policy, found %',
+      public_venue_inquiry_policies;
+  END IF;
+
+  RAISE NOTICE 'Permissive INSERT policy invariants checked';
+END;
+$$;
+
+DO $$
+DECLARE
   exposed_functions text;
 BEGIN
   SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
