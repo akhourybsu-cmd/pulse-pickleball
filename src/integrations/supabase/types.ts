@@ -1668,8 +1668,8 @@ export type Database = {
           start_time: string
           title: string
           updated_at: string | null
-          venue_id: string | null
           venue_court_id: string | null
+          venue_id: string | null
           waitlist_enabled: boolean
           waitlist_limit: number | null
         }
@@ -1697,8 +1697,8 @@ export type Database = {
           start_time: string
           title: string
           updated_at?: string | null
-          venue_id?: string | null
           venue_court_id?: string | null
+          venue_id?: string | null
           waitlist_enabled?: boolean
           waitlist_limit?: number | null
         }
@@ -1726,8 +1726,8 @@ export type Database = {
           start_time?: string
           title?: string
           updated_at?: string | null
-          venue_id?: string | null
           venue_court_id?: string | null
+          venue_id?: string | null
           waitlist_enabled?: boolean
           waitlist_limit?: number | null
         }
@@ -1751,6 +1751,13 @@ export type Database = {
             columns: ["parent_event_id"]
             isOneToOne: false
             referencedRelation: "group_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_venue_court_id_fkey"
+            columns: ["venue_court_id"]
+            isOneToOne: false
+            referencedRelation: "venue_courts"
             referencedColumns: ["id"]
           },
           {
@@ -6789,7 +6796,6 @@ export type Database = {
       }
       tournaments_divisions: {
         Row: {
-          advancers_per_pool: number | null
           age_group: string | null
           age_max: number | null
           age_min: number | null
@@ -6806,7 +6812,6 @@ export type Database = {
           min_teams: number | null
           name: string
           play_type: string | null
-          pool_count: number | null
           registration_fee: number | null
           scheduled_day: number | null
           scheduled_start_time: string | null
@@ -6817,7 +6822,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          advancers_per_pool?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -6834,7 +6838,6 @@ export type Database = {
           min_teams?: number | null
           name: string
           play_type?: string | null
-          pool_count?: number | null
           registration_fee?: number | null
           scheduled_day?: number | null
           scheduled_start_time?: string | null
@@ -6845,7 +6848,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          advancers_per_pool?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -6862,7 +6864,6 @@ export type Database = {
           min_teams?: number | null
           name?: string
           play_type?: string | null
-          pool_count?: number | null
           registration_fee?: number | null
           scheduled_day?: number | null
           scheduled_start_time?: string | null
@@ -7012,7 +7013,6 @@ export type Database = {
           opponent_confirmed_at: string | null
           player_score_submitted_at: string | null
           player_score_submitted_by: string | null
-          pool: string | null
           round_number: number
           scheduled_time: string | null
           score_edited_at: string | null
@@ -7046,7 +7046,6 @@ export type Database = {
           opponent_confirmed_at?: string | null
           player_score_submitted_at?: string | null
           player_score_submitted_by?: string | null
-          pool?: string | null
           round_number: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -7080,7 +7079,6 @@ export type Database = {
           opponent_confirmed_at?: string | null
           player_score_submitted_at?: string | null
           player_score_submitted_by?: string | null
-          pool?: string | null
           round_number?: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -7168,7 +7166,6 @@ export type Database = {
           id: string
           player1_id: string | null
           player2_id: string | null
-          pool: string | null
           seed_locked: boolean | null
           seed_number: number | null
           seed_source: string | null
@@ -7181,7 +7178,6 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
-          pool?: string | null
           seed_locked?: boolean | null
           seed_number?: number | null
           seed_source?: string | null
@@ -7194,7 +7190,6 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
-          pool?: string | null
           seed_locked?: boolean | null
           seed_number?: number | null
           seed_source?: string | null
@@ -8552,7 +8547,7 @@ export type Database = {
           cover_focal_point:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
-          cover_image_fit: "cover" | "contain"
+          cover_image_fit: string
           cover_image_url: string | null
           created_at: string
           cta_primary_label: string | null
@@ -8567,8 +8562,8 @@ export type Database = {
           is_active: boolean | null
           is_published: boolean | null
           is_searchable: boolean | null
+          logo_image_fit: string
           logo_shape: Database["public"]["Enums"]["venue_logo_shape"] | null
-          logo_image_fit: "cover" | "contain"
           logo_url: string | null
           name: string
           onboarding_completed: boolean | null
@@ -8620,7 +8615,7 @@ export type Database = {
           cover_focal_point?:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
-          cover_image_fit?: "cover" | "contain"
+          cover_image_fit?: string
           cover_image_url?: string | null
           created_at?: string
           cta_primary_label?: string | null
@@ -8635,8 +8630,8 @@ export type Database = {
           is_active?: boolean | null
           is_published?: boolean | null
           is_searchable?: boolean | null
+          logo_image_fit?: string
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
-          logo_image_fit?: "cover" | "contain"
           logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
@@ -8688,7 +8683,7 @@ export type Database = {
           cover_focal_point?:
             | Database["public"]["Enums"]["cover_focal_point"]
             | null
-          cover_image_fit?: "cover" | "contain"
+          cover_image_fit?: string
           cover_image_url?: string | null
           created_at?: string
           cta_primary_label?: string | null
@@ -8703,8 +8698,8 @@ export type Database = {
           is_active?: boolean | null
           is_published?: boolean | null
           is_searchable?: boolean | null
+          logo_image_fit?: string
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
-          logo_image_fit?: "cover" | "contain"
           logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null
@@ -9204,6 +9199,32 @@ export type Database = {
           },
         ]
       }
+      venue_staff_public: {
+        Row: {
+          role: Database["public"]["Enums"]["venue_role"] | null
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          role?: Database["public"]["Enums"]["venue_role"] | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          role?: Database["public"]["Enums"]["venue_role"] | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_staff_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_score_ladder_batch: {
@@ -9337,6 +9358,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_venue_community: {
+        Args: {
+          p_city?: string
+          p_description?: string
+          p_join_method?: Database["public"]["Enums"]["group_join_method"]
+          p_name: string
+          p_state?: string
+          p_venue_type?: Database["public"]["Enums"]["venue_type"]
+          p_visibility?: Database["public"]["Enums"]["group_visibility"]
+        }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -9366,10 +9399,6 @@ export type Database = {
       }
       dispute_league_match: {
         Args: { p_match_id: string; p_reason?: string }
-        Returns: undefined
-      }
-      edit_group_message: {
-        Args: { p_message_id: string; p_content: string }
         Returns: undefined
       }
       enforce_rpc_rate_limit: {
@@ -9775,6 +9804,15 @@ export type Database = {
           handle: string
           id: string
         }[]
+      }
+      manage_venue_staff: {
+        Args: {
+          p_action: string
+          p_role?: Database["public"]["Enums"]["venue_role"]
+          p_user_id: string
+          p_venue_id: string
+        }
+        Returns: Json
       }
       merge_guest_players: {
         Args: { _keep_id: string; _remove_id: string }
@@ -10200,12 +10238,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10229,11 +10267,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10254,11 +10292,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10279,11 +10317,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10296,11 +10334,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
