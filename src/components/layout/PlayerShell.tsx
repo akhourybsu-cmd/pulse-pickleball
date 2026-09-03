@@ -195,23 +195,23 @@ export function PlayerShell() {
           non-immersive player route. */}
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto grid h-[64px] w-full max-w-[1400px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 sm:h-[72px] sm:px-6 lg:gap-5 lg:px-8">
+          <div className="mx-auto flex h-[68px] w-full max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
                 instead of a pasted cream rectangle. Gold pulse beat stays
                 gold for brand recognition. */}
             <NavLink
               to="/player/dashboard"
-              className="ml-1 rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="shrink-0 rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:justify-self-start"
               aria-label="Go to dashboard"
             >
-              <Logo className="h-[52px] sm:h-[65px] w-auto" />
+              <Logo className="h-[46px] w-auto sm:h-[58px] lg:h-[60px]" />
             </NavLink>
 
             {/* Desktop navigation lives where desktop users expect it: in the
                 persistent app bar. Tablet and mobile retain the thumb-first
                 bottom navigation below. */}
-            <nav aria-label="Primary" className="hidden min-w-0 items-center justify-center lg:flex">
+            <nav aria-label="Primary" className="hidden min-w-0 items-center justify-center lg:flex lg:justify-self-center">
               <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1 shadow-[inset_0_1px_0_hsl(var(--secondary-foreground)/0.06)]">
                 {navItems.map((item, index) => {
                   const isActive = activeIndex === index;
@@ -243,7 +243,7 @@ export function PlayerShell() {
               </div>
             </nav>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:justify-self-end">
               <ThemeToggle />
               {/* Messages — one-tap entry to /player/messages from any
                   page. Pre-add this was 2-3 taps deep behind Community.

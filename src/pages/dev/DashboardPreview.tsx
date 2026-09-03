@@ -144,9 +144,9 @@ export default function DashboardPreview() {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.07),transparent_44%)]" />
 
       <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="mx-auto grid h-16 w-full max-w-[1400px] grid-cols-[auto_1fr_auto] items-center gap-5 px-4 lg:h-[72px] lg:px-8">
-          <Logo className="h-[52px] w-auto text-secondary-foreground lg:h-[65px]" />
-          <nav aria-label="Preview primary navigation" className="hidden items-center justify-center lg:flex">
+        <div className="mx-auto flex h-[68px] w-full max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
+          <Logo className="h-[46px] w-auto shrink-0 text-secondary-foreground sm:h-[58px] lg:h-[60px] lg:justify-self-start" />
+          <nav aria-label="Preview primary navigation" className="hidden items-center justify-center lg:flex lg:justify-self-center">
             <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1">
               {[
                 { label: "Home", icon: Home, active: true },
@@ -163,7 +163,7 @@ export default function DashboardPreview() {
               ))}
             </div>
           </nav>
-          <div className="flex items-center gap-1.5 text-secondary-foreground">
+          <div className="flex shrink-0 items-center gap-1 text-secondary-foreground sm:gap-2 lg:justify-self-end">
             {[Moon, MessageCircle, Bell, User].map((Icon, index) => (
               <button key={index} type="button" aria-label="Preview navigation control" className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-secondary-foreground/10 active:scale-95">
                 <Icon className="h-[18px] w-[18px]" />
