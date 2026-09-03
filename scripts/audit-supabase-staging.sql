@@ -136,6 +136,52 @@ $$;
 
 DO $$
 DECLARE
+  verification_trigger_count integer;
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'user_notifications'
+      AND cmd = 'INSERT'
+      AND ('public' = ANY (roles) OR 'anon' = ANY (roles) OR 'authenticated' = ANY (roles))
+  ) THEN
+    RAISE EXCEPTION 'App-role INSERT policy exists on user_notifications';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.user_notifications', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.user_notifications', 'INSERT') THEN
+    RAISE EXCEPTION 'App role has table-level INSERT privilege on user_notifications';
+  END IF;
+
+  IF NOT has_table_privilege('service_role', 'public.user_notifications', 'INSERT') THEN
+    RAISE EXCEPTION 'Service role cannot insert user notifications';
+  END IF;
+
+  SELECT count(*)
+  INTO verification_trigger_count
+  FROM pg_trigger t
+  JOIN pg_class c ON c.oid = t.tgrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_proc p ON p.oid = t.tgfoid
+  WHERE n.nspname = 'public'
+    AND c.relname = 'match_approvals'
+    AND p.proname = 'notify_match_verification_needed'
+    AND NOT t.tgisinternal
+    AND t.tgenabled <> 'D';
+
+  IF verification_trigger_count <> 1 THEN
+    RAISE EXCEPTION
+      'Expected one enabled match verification notification trigger, found %',
+      verification_trigger_count;
+  END IF;
+
+  RAISE NOTICE 'User notification writes are server-only; match trigger checked';
+END;
+$$;
+
+DO $$
+DECLARE
   exposed_functions text;
 BEGIN
   SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
