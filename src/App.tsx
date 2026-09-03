@@ -13,7 +13,9 @@ import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
 
+import { AuthStateProvider } from "@/hooks/useAuthState";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
+import { DirectMessagesProvider } from "@/hooks/useDirectMessages";
 import { setPushNavigator, initNativePush } from "@/lib/push";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
@@ -405,7 +407,9 @@ const AppContent = () => {
           {/* Player routes with shell - require auth */}
           <Route path="/player" element={
             <AuthGuard>
-              <PlayerShell />
+              <DirectMessagesProvider>
+                <PlayerShell />
+              </DirectMessagesProvider>
             </AuthGuard>
           }>
             <Route index element={<Navigate to="/player/dashboard" replace />} />
@@ -606,9 +610,11 @@ const appTree = (
         <PulseActivityBar />
 
         <BrowserRouter>
-          <ActiveViewProvider>
-            <AppContent />
-          </ActiveViewProvider>
+          <AuthStateProvider>
+            <ActiveViewProvider>
+              <AppContent />
+            </ActiveViewProvider>
+          </AuthStateProvider>
         </BrowserRouter>
 
       </ErrorBoundary>

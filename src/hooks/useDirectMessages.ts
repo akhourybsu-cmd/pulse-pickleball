@@ -1,9 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  createContext,
+  createElement,
+  useState,
+  useEffect,
+  useCallback,
+  useContext,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getErrorMessage, getErrorCode } from '@/lib/getErrorMessage';
 import { toast } from 'sonner';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { useLocation } from 'react-router-dom';
 import { interpretDmError } from '@/lib/dmErrors';
+import { useAuthState } from '@/hooks/useAuthState';
 
 export interface ConversationParticipant {
   id: string;
@@ -38,7 +49,8 @@ export interface ConversationPreview {
   leftAt: string | null;
 }
 
-export function useDirectMessages() {
+function useDirectMessagesState(enabled = true) {
+  const { user } = useAuthState();
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +61,6 @@ export function useDirectMessages() {
   const fetchConversations = useCallback(async () => {
     try {
       setError(null);
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setConversations([]);
         setLoading(false);
@@ -73,20 +84,32 @@ export function useDirectMessages() {
       const convoIds = mine.map(m => m.conversation_id);
       const myMeta = new Map(mine.map(m => [m.conversation_id, m]));
 
-      // 2. Conversation rows
-      const { data: convos, error: convErr } = await supabase
-        .from('conversations')
-        .select('id, updated_at')
-        .in('id', convoIds)
-        .order('updated_at', { ascending: false });
+      // The remaining inbox data is independent once we have the ids. Fetch
+      // it concurrently so cold-start latency is one round trip rather than
+      // three serial waits.
+      const [conversationResult, participantResult, messageResult] = await Promise.all([
+        supabase
+          .from('conversations')
+          .select('id, updated_at')
+          .in('id', convoIds)
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', convoIds)
+          .neq('user_id', user.id),
+        supabase
+          .from('direct_messages')
+          .select('id, conversation_id, sender_id, content, created_at')
+          .in('conversation_id', convoIds)
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ]);
+
+      const { data: convos, error: convErr } = conversationResult;
       if (convErr) throw convErr;
 
-      // 3. Other participants in those conversations
-      const { data: others, error: othersErr } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, user_id')
-        .in('conversation_id', convoIds)
-        .neq('user_id', user.id);
+      const { data: others, error: othersErr } = participantResult;
       if (othersErr) throw othersErr;
       const otherByConvo = new Map<string, string>();
       for (const o of others || []) {
@@ -97,7 +120,10 @@ export function useDirectMessages() {
       const otherUserIds = Array.from(new Set(otherByConvo.values()));
 
       // 4. Profiles in one shot
-      const profileMap = new Map<string, any>();
+      const profileMap = new Map<
+        string,
+        Pick<ConversationParticipant, 'id' | 'display_name' | 'full_name' | 'avatar_url' | 'current_rating'>
+      >();
       if (otherUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles_public')
@@ -106,18 +132,13 @@ export function useDirectMessages() {
         for (const p of profiles || []) profileMap.set(p.id, p);
       }
 
-      // 5. Recent messages for those conversations (recent first);
+      // Recent messages for those conversations (recent first);
       // reduce client-side. Bounded — an unbounded fetch pulls every
       // message the user has ever exchanged just to derive previews.
       // 500 covers the last message per conversation and keeps unread
       // badges accurate for any realistic backlog (worst case a badge
       // under-counts on a 500+ message backlog, which reads as "lots").
-      const { data: allMessages, error: msgErr } = await supabase
-        .from('direct_messages')
-        .select('id, conversation_id, sender_id, content, created_at')
-        .in('conversation_id', convoIds)
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const { data: allMessages, error: msgErr } = messageResult;
       if (msgErr) throw msgErr;
 
       const lastByConvo = new Map<string, DirectMessage>();
@@ -193,29 +214,25 @@ export function useDirectMessages() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    fetchConversations();
+    if (!enabled || !user) return;
 
-    const setupSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      channelRef.current = supabase
-        .channel('dm-inbox-updates')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'direct_messages' },
-          () => { fetchConversations(); }
-        )
-        .subscribe();
-    };
-    setupSubscription();
+    void fetchConversations();
+    channelRef.current = supabase
+      .channel('dm-inbox-updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+        () => { void fetchConversations(); }
+      )
+      .subscribe();
 
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-  }, [fetchConversations]);
+  }, [enabled, fetchConversations, user]);
 
   const startConversation = useCallback(async (otherUserId: string): Promise<string | null> => {
     try {
@@ -233,7 +250,6 @@ export function useDirectMessages() {
   }, [fetchConversations]);
 
   const markRead = useCallback(async (conversationId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase
       .from('conversation_participants')
@@ -247,14 +263,13 @@ export function useDirectMessages() {
       const target = conversations.find(c => c.id === conversationId);
       return Math.max(0, prev - (target?.unreadCount || 0));
     });
-  }, [conversations]);
+  }, [conversations, user]);
 
   const setMuted = useCallback(async (conversationId: string, muted: boolean) => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     const { error: e } = await supabase
       .from('conversation_participants')
-      .update({ is_muted: muted } as any)
+      .update({ is_muted: muted })
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
     if (e) { toast.error('Failed to update mute'); return false; }
@@ -263,21 +278,20 @@ export function useDirectMessages() {
     ));
     toast.success(muted ? 'Conversation muted' : 'Conversation unmuted');
     return true;
-  }, []);
+  }, [user]);
 
   const leaveConversation = useCallback(async (conversationId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     const { error: e } = await supabase
       .from('conversation_participants')
-      .update({ left_at: new Date().toISOString() } as any)
+      .update({ left_at: new Date().toISOString() })
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
     if (e) { toast.error('Failed to leave conversation'); return false; }
     setConversations(prev => prev.filter(c => c.id !== conversationId));
     toast.success('You left the conversation');
     return true;
-  }, []);
+  }, [user]);
 
   return {
     conversations,
@@ -293,11 +307,58 @@ export function useDirectMessages() {
   };
 }
 
+type DirectMessagesValue = ReturnType<typeof useDirectMessagesState>;
+const DirectMessagesContext = createContext<DirectMessagesValue | null>(null);
+
+/** Keep one inbox query + realtime channel alive for the entire player shell. */
+export function DirectMessagesProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const isInboxRoute =
+    location.pathname === '/player/social' ||
+    location.pathname === '/player/friends' ||
+    location.pathname.startsWith('/player/messages');
+  const [ready, setReady] = useState(isInboxRoute);
+
+  useEffect(() => {
+    if (isInboxRoute) {
+      setReady(true);
+      return;
+    }
+
+    // Inbox previews are useful globally for the badge, but they should not
+    // compete with auth + dashboard data during first paint. Start them as
+    // soon as the browser is idle (or shortly after on older webviews).
+    const browserWindow = window as typeof window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (browserWindow.requestIdleCallback) {
+      const handle = browserWindow.requestIdleCallback(() => setReady(true), { timeout: 1800 });
+      return () => browserWindow.cancelIdleCallback?.(handle);
+    }
+
+    const handle = window.setTimeout(() => setReady(true), 900);
+    return () => window.clearTimeout(handle);
+  }, [isInboxRoute]);
+
+  const value = useDirectMessagesState(ready);
+  return createElement(DirectMessagesContext.Provider, { value }, children);
+}
+
+export function useDirectMessages(): DirectMessagesValue {
+  const shared = useContext(DirectMessagesContext);
+  // The disabled fallback preserves standalone use in isolated component
+  // harnesses while avoiding duplicate requests inside the player provider.
+  const standalone = useDirectMessagesState(shared === null);
+  return shared ?? standalone;
+}
+
 // How many messages to load per page. The thread opens on the newest page
 // and pulls older messages on demand (no more fetching an entire history).
 const DM_PAGE_SIZE = 40;
 
 export function useConversation(conversationId: string | null) {
+  const { user } = useAuthState();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -314,7 +375,6 @@ export function useConversation(conversationId: string | null) {
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       // Newest page (descending + limit), reversed to chronological order for
@@ -368,7 +428,7 @@ export function useConversation(conversationId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, user]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -409,15 +469,13 @@ export function useConversation(conversationId: string | null) {
             if (prev.some((m) => m.id === incoming.id)) return prev;
             return [...prev, incoming];
           });
-          supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) {
-              supabase
-                .from('conversation_participants')
-                .update({ last_read_at: new Date().toISOString() })
-                .eq('conversation_id', conversationId)
-                .eq('user_id', user.id);
-            }
-          });
+          if (user) {
+            void supabase
+              .from('conversation_participants')
+              .update({ last_read_at: new Date().toISOString() })
+              .eq('conversation_id', conversationId)
+              .eq('user_id', user.id);
+          }
         }
       )
       .subscribe();
@@ -425,7 +483,7 @@ export function useConversation(conversationId: string | null) {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-  }, [conversationId, fetchMessages]);
+  }, [conversationId, fetchMessages, user]);
 
   // Optimistic send — matches the useGroupChat pattern so DMs feel as
   // snappy as group messages. Pre-conversion the caller awaited the
@@ -440,7 +498,6 @@ export function useConversation(conversationId: string | null) {
   const sendMessage = useCallback(async (content: string): Promise<boolean> => {
     const trimmed = content.trim();
     if (!conversationId || !trimmed) return false;
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error('Not authenticated');
       return false;
@@ -485,7 +542,7 @@ export function useConversation(conversationId: string | null) {
     })();
 
     return true;
-  }, [conversationId]);
+  }, [conversationId, user]);
 
   // Retry a failed send by re-firing the network insert for an existing
   // optimistic row. Same dedupe rules apply — realtime swap finishes
@@ -494,7 +551,6 @@ export function useConversation(conversationId: string | null) {
     if (!conversationId) return;
     const target = messages.find((m) => m._clientId === clientId && m._status === 'failed');
     if (!target) return;
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     // Flip back to 'sending' for the spinner / pulse.
     setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'sending' as const } : m)));
@@ -512,7 +568,7 @@ export function useConversation(conversationId: string | null) {
       setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)));
       toast.error('Failed to send message');
     }
-  }, [conversationId, messages]);
+  }, [conversationId, messages, user]);
 
   // Pull the previous page of (older) messages and prepend them. Keyed on the
   // oldest currently-loaded real message's timestamp; dedupes by id defensively.

@@ -14,6 +14,39 @@ interface Participant {
   avatar_url: string | null;
 }
 
+interface MatchQueryRow {
+  id: string;
+  match_date: string;
+  team1_score: number;
+  team2_score: number;
+  source: string | null;
+  verified_by: string[] | null;
+  other_location: string | null;
+  court: { name: string } | null;
+}
+
+interface ParticipationQueryRow {
+  team: number;
+  rating_change: number | null;
+  match: MatchQueryRow | null;
+}
+
+interface ParticipantQueryRow {
+  match_id: string;
+  player_id: string | null;
+  guest_player_id: string | null;
+  team: number;
+  player: {
+    id: string;
+    display_name: string | null;
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  guest: { display_name: string; linked_user_id: string | null } | null;
+}
+
 interface Match {
   id: string;
   match_date: string;
@@ -46,41 +79,46 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
     const fetchMatchHistory = async () => {
       setLoading(true);
 
-      // Self profile so the my-team avatar is consistent with the rest of the app.
-      const { data: meProfile } = await supabase
-        .from("profiles_public")
-        .select("display_name, full_name, first_name, last_name, avatar_url")
-        .eq("id", userId)
-        .maybeSingle();
+      // Profile identity and match participation do not depend on each other.
+      // Fetch both together, then use the match ids for the one dependent join.
+      const [profileResult, participationResult] = await Promise.all([
+        supabase
+          .from("profiles_public")
+          .select("display_name, full_name, first_name, last_name, avatar_url")
+          .eq("id", userId)
+          .maybeSingle(),
+        supabase
+          .from("match_participants")
+          .select(`
+            team,
+            rating_change,
+            match:matches!inner (
+              id,
+              match_date,
+              team1_score,
+              team2_score,
+              status,
+              source,
+              verified_by,
+              other_location,
+              court:courts (name)
+            )
+          `)
+          .eq("player_id", userId)
+          .eq("matches.status", "approved")
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      const meProfile = profileResult.data;
       if (meProfile) {
         setMe({
-          name: resolvePlayerName(meProfile as any),
-          avatarUrl: (meProfile as any).avatar_url || null,
+          name: resolvePlayerName(meProfile),
+          avatarUrl: meProfile.avatar_url || null,
         });
       }
 
-      // Fetch approved matches only (finalized historical data)
-      const { data: participations } = await supabase
-        .from("match_participants")
-        .select(`
-          team,
-          rating_change,
-          match:matches!inner (
-            id,
-            match_date,
-            team1_score,
-            team2_score,
-            status,
-            source,
-            verified_by,
-            other_location,
-            court:courts (name)
-          )
-        `)
-        .eq("player_id", userId)
-        .eq("matches.status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(10);
+      const participations = (participationResult.data || []) as unknown as ParticipationQueryRow[];
 
       if (!participations || participations.length === 0) {
         setMatches([]);
@@ -88,9 +126,10 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         return;
       }
 
-      const matchIds = participations
-        .filter((p: any) => p.match)
-        .map((p: any) => p.match.id);
+      const validParticipations = participations.filter(
+        (row): row is ParticipationQueryRow & { match: MatchQueryRow } => Boolean(row.match),
+      );
+      const matchIds = validParticipations.map((row) => row.match.id);
 
       // Include guest_player_id + guest join so the dashboard match
       // cards show guest names instead of resolving them to "Removed
@@ -107,23 +146,23 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         `)
         .in("match_id", matchIds);
 
-      const participantsByMatch = (allParticipants || []).reduce((acc: Record<string, any[]>, p: any) => {
+      const participantRows = (allParticipants || []) as unknown as ParticipantQueryRow[];
+      const participantsByMatch = participantRows.reduce<Record<string, ParticipantQueryRow[]>>((acc, p) => {
         if (!acc[p.match_id]) acc[p.match_id] = [];
         acc[p.match_id].push(p);
         return acc;
       }, {});
 
-      const matchData: Match[] = participations
-        .filter((p: any) => p.match)
-        .map((p: any) => {
+      const matchData: Match[] = validParticipations
+        .map((p) => {
           const m = p.match;
           const parts = participantsByMatch[m.id] || [];
           const myTeam = (p.team as 1 | 2);
 
           // The joined column here is aliased `player` (not `profiles`)
           // so shape it up before the shared resolver looks at it.
-          const toParticipant = (row: any): Participant => ({
-            id: row.player?.id || row.player_id || row.guest_player_id,
+          const toParticipant = (row: ParticipantQueryRow): Participant => ({
+            id: row.player?.id || row.player_id || row.guest_player_id || '',
             name: resolveParticipantName({
               player_id: row.player_id,
               guest_player_id: row.guest_player_id,

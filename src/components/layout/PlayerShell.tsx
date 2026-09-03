@@ -14,9 +14,9 @@ import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { supabase } from '@/integrations/supabase/client';
 import { Logo } from '@/components/Logo';
 import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
+import { useAuthState } from '@/hooks/useAuthState';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
 
@@ -62,10 +62,41 @@ function TabContentFallback() {
   );
 }
 
+function HeaderMessagesButton({
+  unreadCount,
+  onOpen,
+}: {
+  unreadCount: number;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={unreadCount > 0 ? `Messages, ${unreadCount} unread` : 'Messages'}
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-secondary-foreground transition-[transform,background-color] hover:bg-secondary-foreground/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <MessageSquare className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+      {unreadCount > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold tabular-nums text-primary-foreground">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function PlayerShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ id: string; avatarUrl?: string; displayName?: string } | null>(null);
+  const { user: authUser, profile } = useAuthState();
+  const user = authUser
+    ? {
+        id: authUser.id,
+        avatarUrl: profile?.avatar_url || undefined,
+        displayName: profile?.display_name || profile?.full_name || 'Player',
+      }
+    : null;
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   
   // Real-time notifications
@@ -115,26 +146,6 @@ export function PlayerShell() {
   const activeIndex = activeRootPath
     ? navItems.findIndex((i) => i.to === activeRootPath)
     : -1;
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('avatar_url, display_name, full_name')
-          .eq('id', session.user.id)
-          .single();
-        
-        setUser({
-          id: session.user.id,
-          avatarUrl: profile?.avatar_url || undefined,
-          displayName: profile?.display_name || profile?.full_name || 'Player'
-        });
-      }
-    };
-    fetchUser();
-  }, []);
 
   // Sign-out moved to PlayerProfile (Phase 5) — no longer surfaced from
   // the shell's top header. One source of truth.
@@ -195,23 +206,32 @@ export function PlayerShell() {
           non-immersive player route. */}
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto flex h-[68px] w-full max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
+          <div className="mx-auto grid h-[68px] w-full max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-4 sm:h-[72px] sm:gap-2 sm:px-6 lg:gap-5 lg:px-8">
+            {/* Mobile uses equal-width outer columns so the wordmark remains
+                optically centered even though it shares the row with four
+                controls. The same 40px targets on each side also keep every
+                icon on one baseline at narrow phone widths. */}
+            <div className="col-start-1 row-start-1 flex items-center justify-self-start lg:hidden">
+              <ThemeToggle />
+              <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
+            </div>
+
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
                 instead of a pasted cream rectangle. Gold pulse beat stays
                 gold for brand recognition. */}
             <NavLink
               to="/player/dashboard"
-              className="shrink-0 rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:justify-self-start"
+              className="col-start-2 row-start-1 shrink-0 -translate-y-1 justify-self-center rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none lg:col-start-1 lg:translate-y-0 lg:justify-self-start"
               aria-label="Go to dashboard"
             >
-              <Logo className="h-[46px] w-auto sm:h-[58px] lg:h-[60px]" />
+              <Logo className="h-[42px] w-auto sm:h-[54px] lg:h-[60px]" />
             </NavLink>
 
             {/* Desktop navigation lives where desktop users expect it: in the
                 persistent app bar. Tablet and mobile retain the thumb-first
                 bottom navigation below. */}
-            <nav aria-label="Primary" className="hidden min-w-0 items-center justify-center lg:flex lg:justify-self-center">
+            <nav aria-label="Primary" className="hidden min-w-0 items-center justify-center lg:col-start-2 lg:row-start-1 lg:flex lg:justify-self-center">
               <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1 shadow-[inset_0_1px_0_hsl(var(--secondary-foreground)/0.06)]">
                 {navItems.map((item, index) => {
                   const isActive = activeIndex === index;
@@ -243,31 +263,20 @@ export function PlayerShell() {
               </div>
             </nav>
 
-            <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:justify-self-end">
-              <ThemeToggle />
-              {/* Messages — one-tap entry to /player/messages from any
-                  page. Pre-add this was 2-3 taps deep behind Community.
-                  Unread count mirrors useDirectMessages.totalUnread. */}
-              <button
-                type="button"
-                onClick={() => navigate('/player/messages')}
-                aria-label={dmUnread > 0 ? `Messages, ${dmUnread} unread` : 'Messages'}
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary-foreground transition-[transform,background-color] hover:bg-secondary-foreground/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <MessageSquare className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
-                {dmUnread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
-                    {dmUnread > 99 ? '99+' : dmUnread}
-                  </span>
-                )}
-              </button>
+            <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end lg:gap-1 lg:justify-self-end xl:gap-2">
+              {/* Desktop keeps all utilities together on the trailing edge;
+                  mobile renders the first two in its matching leading group. */}
+              <div className="hidden lg:contents">
+                <ThemeToggle />
+                <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
+              </div>
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
                   which surprised users expecting to land in their own hub). */}
               <button
                 type="button"
                 onClick={() => navigate('/player/profile')}
-                className="rounded-full transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label="Open profile"
               >
                 <Avatar className="h-9 w-9 cursor-pointer border-2 border-primary/40 transition-all hover:scale-105 hover:border-primary/60">

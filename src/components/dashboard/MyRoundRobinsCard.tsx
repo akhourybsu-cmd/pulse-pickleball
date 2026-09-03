@@ -70,31 +70,33 @@ export function MyRoundRobinsCard({ userId }: MyRoundRobinsCardProps) {
 
     const run = async () => {
       try {
-        // Events I'm hosting — active or upcoming, not voided.
-        const { data: hostingData } = await supabase
-          .from("round_robin_events")
-          .select("id, name, date, status, current_round, num_rounds, voided")
-          .eq("organizer_id", userId)
-          .in("status", ["draft", "live"])
-          .or("voided.is.null,voided.eq.false")
-          .order("date", { ascending: true });
-
-        // Events I'm participating in (active registration). Join through
-        // the inner relation so we only get rows where the event is
-        // draft/live (vs. completed events the player may still have a
-        // row in).
-        const { data: playingData } = await supabase
-          .from("round_robin_players")
-          .select(
-            `event_id,
-             round_robin_events!inner (
-               id, name, date, status, current_round, num_rounds,
-               organizer_id, voided
-             )`,
-          )
-          .eq("player_id", userId)
-          .eq("active", true)
-          .in("round_robin_events.status", ["draft", "live"]);
+        // Hosting and player registrations are independent views of the same
+        // dashboard card, so load them concurrently.
+        const [hostingResult, playingResult] = await Promise.all([
+          supabase
+            .from("round_robin_events")
+            .select("id, name, date, status, current_round, num_rounds, voided")
+            .eq("organizer_id", userId)
+            .in("status", ["draft", "live"])
+            .or("voided.is.null,voided.eq.false")
+            .order("date", { ascending: true }),
+          // Events I'm participating in (active registration). Join through
+          // the inner relation so completed events do not appear here.
+          supabase
+            .from("round_robin_players")
+            .select(
+              `event_id,
+               round_robin_events!inner (
+                 id, name, date, status, current_round, num_rounds,
+                 organizer_id, voided
+               )`,
+            )
+            .eq("player_id", userId)
+            .eq("active", true)
+            .in("round_robin_events.status", ["draft", "live"]),
+        ]);
+        const hostingData = hostingResult.data;
+        const playingData = playingResult.data;
 
         if (cancelled) return;
 

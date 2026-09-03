@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
+import { useAuthState } from "@/hooks/useAuthState";
 
 import { Footer } from "@/components/Footer";
 import { OnboardingWelcome } from "@/components/onboarding";
@@ -60,9 +59,12 @@ interface PartnerOpponentData {
 }
 
 const Dashboard = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile: sharedProfile, loading } = useAuthState();
+  const [profileOverrides, setProfileOverrides] = useState<Partial<Profile>>({});
+  const profile = useMemo(
+    () => sharedProfile ? ({ ...sharedProfile, ...profileOverrides } as Profile) : null,
+    [sharedProfile, profileOverrides],
+  );
   const navigate = useNavigate();
 
   // Onboarding welcome modal
@@ -72,65 +74,16 @@ const Dashboard = () => {
   const [showConfirmName, setShowConfirmName] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session?.user) {
-          console.log("No valid session, redirecting to auth");
-          navigate("/auth");
-          return;
-        }
+    if (!profile) return;
 
-        const user = session.user;
-        setUser(user);
+    // The shared auth provider already owns the profile request. This effect
+    // only derives dashboard presentation state from that cached profile.
+    const showWelcome = !profile.tutorial_completed && (profile.total_matches || 0) === 0;
+    setShowOnboardingWelcome(showWelcome);
 
-        const profileResult = await supabase.from("profiles").select("*").eq("id", user.id).single();
-
-        if (profileResult.error) {
-          console.error("Profile fetch error:", profileResult.error);
-          toast.error("Failed to load profile");
-          setLoading(false);
-          return;
-        }
-
-        setProfile(profileResult.data);
-
-        // Show onboarding welcome for new users
-        const showWelcome =
-          !profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0;
-        if (showWelcome) {
-          setShowOnboardingWelcome(true);
-        }
-
-        // Nudge existing (unlocked) users to confirm their name — but never
-        // stack it on the onboarding modal, and only once per session.
-        const dismissedThisSession =
-          sessionStorage.getItem(NAME_CONFIRM_DISMISS_KEY) === "1";
-        if (!showWelcome && !profileResult.data.name_locked && !dismissedThisSession) {
-          setShowConfirmName(true);
-        }
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Dashboard load error:", error);
-        toast.error("Failed to load dashboard");
-        navigate("/auth");
-      }
-    };
-
-    fetchUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_OUT") {
-          navigate("/auth");
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    const dismissedThisSession = sessionStorage.getItem(NAME_CONFIRM_DISMISS_KEY) === "1";
+    setShowConfirmName(!showWelcome && !profile.name_locked && !dismissedThisSession);
+  }, [profile]);
 
   // handleRefreshStats + handleShare moved to Profile (Phase 5) — they belonged
   // in HomeFooterUtilities which is no longer rendered on Home.
@@ -161,6 +114,7 @@ const Dashboard = () => {
           onSkip={async () => {
             setShowOnboardingWelcome(false);
             await supabase.from('profiles').update({ tutorial_completed: true }).eq('id', user.id);
+            setProfileOverrides((current) => ({ ...current, tutorial_completed: true }));
           }}
           hasCompletedProfile={!!(profile?.display_name || profile?.full_name)}
         />
@@ -174,7 +128,7 @@ const Dashboard = () => {
           initialLastName={profile.last_name}
           onConfirmed={() => {
             setShowConfirmName(false);
-            setProfile((prev) => (prev ? { ...prev, name_locked: true } : prev));
+            setProfileOverrides((current) => ({ ...current, name_locked: true }));
           }}
           onDismiss={() => {
             setShowConfirmName(false);

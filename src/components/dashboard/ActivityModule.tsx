@@ -72,24 +72,84 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       const actions: ActionItem[] = [];
       const timeAlerts: ActionItem[] = [];
       const updates: SystemUpdate[] = [];
+      const now = new Date();
+      const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      // 1. Fetch pending match verifications (matches where user is participant but hasn't verified)
-      const { data: pendingMatches } = await supabase
-        .from("match_participants")
-        .select(`
-          match_id,
-          match:matches!inner (
+      // These four panels are independent. Fetch them together so the module
+      // costs one network round trip instead of four sequential waits.
+      const [pendingResult, upcomingResult, approvedResult, registrationsResult] = await Promise.all([
+        supabase
+          .from("match_participants")
+          .select(`
+            match_id,
+            match:matches!inner (
+              id,
+              match_date,
+              team1_score,
+              team2_score,
+              status,
+              verified_by,
+              created_at
+            )
+          `)
+          .eq("player_id", userId)
+          .eq("matches.status", "pending"),
+        supabase
+          .from("round_robin_players")
+          .select(`
+            event:round_robin_events!inner (
+              id,
+              name,
+              date,
+              start_time,
+              location
+            )
+          `)
+          .eq("player_id", userId)
+          .eq("active", true)
+          .gte("round_robin_events.date", now.toISOString().split("T")[0])
+          .lte("round_robin_events.date", in48Hours.toISOString().split("T")[0]),
+        supabase
+          .from("match_participants")
+          .select(`
+            match:matches!inner (
+              id,
+              match_date,
+              team1_score,
+              team2_score,
+              status,
+              updated_at
+            ),
+            rating_change
+          `)
+          .eq("player_id", userId)
+          .eq("matches.status", "approved")
+          .gte("matches.updated_at", sevenDaysAgo.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("round_robin_players")
+          .select(`
             id,
-            match_date,
-            team1_score,
-            team2_score,
-            status,
-            verified_by,
-            created_at
-          )
-        `)
-        .eq("player_id", userId)
-        .eq("matches.status", "pending");
+            joined_at,
+            event:round_robin_events (
+              id,
+              name,
+              date
+            )
+          `)
+          .eq("player_id", userId)
+          .eq("active", true)
+          .gte("joined_at", sevenDaysAgo.toISOString())
+          .order("joined_at", { ascending: false })
+          .limit(3),
+      ]);
+
+      const pendingMatches = pendingResult.data;
+      const upcomingRREvents = upcomingResult.data;
+      const recentApprovedMatches = approvedResult.data;
+      const recentEventRegs = registrationsResult.data;
 
       if (pendingMatches) {
         for (const p of pendingMatches) {
@@ -110,26 +170,6 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           }
         }
       }
-
-      // 2. Fetch upcoming round robin events (within 48 hours)
-      const now = new Date();
-      const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-      
-      const { data: upcomingRREvents } = await supabase
-        .from("round_robin_players")
-        .select(`
-          event:round_robin_events!inner (
-            id,
-            name,
-            date,
-            start_time,
-            location
-          )
-        `)
-        .eq("player_id", userId)
-        .eq("active", true)
-        .gte("round_robin_events.date", now.toISOString().split("T")[0])
-        .lte("round_robin_events.date", in48Hours.toISOString().split("T")[0]);
 
       if (upcomingRREvents) {
         for (const reg of upcomingRREvents) {
@@ -156,28 +196,6 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       // 3. Venue bookings removed — venue surface archived in player beta.
 
 
-      // 4. Fetch recent system updates (last 7 days) - recently approved matches
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const { data: recentApprovedMatches } = await supabase
-        .from("match_participants")
-        .select(`
-          match:matches!inner (
-            id,
-            match_date,
-            team1_score,
-            team2_score,
-            status,
-            updated_at
-          ),
-          rating_change
-        `)
-        .eq("player_id", userId)
-        .eq("matches.status", "approved")
-        .gte("matches.updated_at", sevenDaysAgo.toISOString())
-        .order("created_at", { ascending: false })
-        .limit(5);
-
       if (recentApprovedMatches) {
         for (const p of recentApprovedMatches) {
           const match = p.match as unknown as ActivityMatch;
@@ -191,24 +209,6 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           });
         }
       }
-
-      // 5. Fetch recent event confirmations
-      const { data: recentEventRegs } = await supabase
-        .from("round_robin_players")
-        .select(`
-          id,
-          joined_at,
-          event:round_robin_events (
-            id,
-            name,
-            date
-          )
-        `)
-        .eq("player_id", userId)
-        .eq("active", true)
-        .gte("joined_at", sevenDaysAgo.toISOString())
-        .order("joined_at", { ascending: false })
-        .limit(3);
 
       if (recentEventRegs) {
         for (const reg of recentEventRegs) {

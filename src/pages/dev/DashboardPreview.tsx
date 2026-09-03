@@ -144,9 +144,16 @@ export default function DashboardPreview() {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.07),transparent_44%)]" />
 
       <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="mx-auto flex h-[68px] w-full max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
-          <Logo className="h-[46px] w-auto shrink-0 text-secondary-foreground sm:h-[58px] lg:h-[60px] lg:justify-self-start" />
-          <nav aria-label="Preview primary navigation" className="hidden items-center justify-center lg:flex lg:justify-self-center">
+        <div className="mx-auto grid h-[68px] w-full max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-4 sm:h-[72px] sm:gap-2 sm:px-6 lg:gap-5 lg:px-8">
+          <div className="col-start-1 row-start-1 flex items-center justify-self-start lg:hidden">
+            {[Moon, MessageCircle].map((Icon, index) => (
+              <button key={index} type="button" aria-label="Preview navigation control" className="flex h-10 w-10 items-center justify-center rounded-full text-secondary-foreground">
+                <Icon className="h-[18px] w-[18px]" />
+              </button>
+            ))}
+          </div>
+          <Logo className="col-start-2 row-start-1 h-[42px] w-auto shrink-0 -translate-y-1 justify-self-center text-secondary-foreground sm:h-[54px] lg:col-start-1 lg:h-[60px] lg:translate-y-0 lg:justify-self-start" />
+          <nav aria-label="Preview primary navigation" className="hidden items-center justify-center lg:col-start-2 lg:row-start-1 lg:flex lg:justify-self-center">
             <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1">
               {[
                 { label: "Home", icon: Home, active: true },
@@ -163,9 +170,14 @@ export default function DashboardPreview() {
               ))}
             </div>
           </nav>
-          <div className="flex shrink-0 items-center gap-1 text-secondary-foreground sm:gap-2 lg:justify-self-end">
-            {[Moon, MessageCircle, Bell, User].map((Icon, index) => (
-              <button key={index} type="button" aria-label="Preview navigation control" className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-secondary-foreground/10 active:scale-95">
+          <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end text-secondary-foreground lg:gap-1 xl:gap-2">
+            {[Moon, MessageCircle].map((Icon, index) => (
+              <button key={`desktop-${index}`} type="button" aria-label="Preview navigation control" className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-secondary-foreground/10 active:scale-95 lg:flex">
+                <Icon className="h-[18px] w-[18px]" />
+              </button>
+            ))}
+            {[Bell, User].map((Icon, index) => (
+              <button key={`trailing-${index}`} type="button" aria-label="Preview navigation control" className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-secondary-foreground/10 active:scale-95">
                 <Icon className="h-[18px] w-[18px]" />
               </button>
             ))}
