@@ -266,6 +266,50 @@ BEGIN
       signature,
       to_regprocedure(signature) AS function_oid
     FROM unnest(ARRAY[
+      'public.calculate_pulse_rating_change(numeric,numeric,numeric,numeric,integer,integer,boolean,text,integer)',
+      'public.calculate_pulse_rating_change(numeric,numeric,numeric,numeric,integer,integer,boolean,text,integer,numeric)',
+      'public.calculate_rating_change(numeric,numeric,numeric,numeric,boolean)',
+      'public.calculate_win_probability(numeric,numeric,numeric,numeric)'
+    ]) AS signatures(signature)
+  LOOP
+    IF item.function_oid IS NULL THEN
+      RAISE EXCEPTION 'Expected rating calculator is missing: %', item.signature;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_proc
+      WHERE oid = item.function_oid
+        AND prosecdef
+    ) THEN
+      RAISE EXCEPTION 'Rating calculator still uses SECURITY DEFINER: %', item.signature;
+    END IF;
+
+    checked := checked + 1;
+  END LOOP;
+
+  IF public.calculate_rating_change(3, 3, 3, 3, true) <> 16.00 THEN
+    RAISE EXCEPTION 'Rating calculator regression check failed';
+  END IF;
+
+  IF public.calculate_win_probability(3, 3, 3, 3) <> 0.5 THEN
+    RAISE EXCEPTION 'Win probability regression check failed';
+  END IF;
+
+  RAISE NOTICE 'Invoker rating calculators checked: %', checked;
+END;
+$$;
+
+DO $$
+DECLARE
+  item record;
+  checked integer := 0;
+BEGIN
+  FOR item IN
+    SELECT
+      signature,
+      to_regprocedure(signature) AS function_oid
+    FROM unnest(ARRAY[
       'public.apply_match_rating_incremental(uuid)',
       'public.assign_players_to_courts(uuid)',
       'public.check_and_award_badges(uuid)',
