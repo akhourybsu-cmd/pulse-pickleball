@@ -103,6 +103,31 @@ $$;
 
 DO $$
 DECLARE
+  exposed_functions text;
+BEGIN
+  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
+  INTO exposed_functions
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.prosecdef
+    AND p.prorettype = 'trigger'::regtype
+    AND (
+      has_function_privilege('public', p.oid, 'EXECUTE')
+      OR has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    );
+
+  IF exposed_functions IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY DEFINER trigger functions exposed to app roles: %', exposed_functions;
+  END IF;
+
+  RAISE NOTICE 'SECURITY DEFINER trigger functions exposed to app roles: 0';
+END;
+$$;
+
+DO $$
+DECLARE
   job_count integer;
   all_active boolean;
   all_unique boolean;
