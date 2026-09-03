@@ -128,6 +128,52 @@ $$;
 
 DO $$
 DECLARE
+  item record;
+  checked integer := 0;
+BEGIN
+  FOR item IN
+    SELECT
+      signature,
+      to_regprocedure(signature) AS function_oid
+    FROM unnest(ARRAY[
+      'public.apply_match_rating_incremental(uuid)',
+      'public.assign_players_to_courts(uuid)',
+      'public.check_and_award_badges(uuid)',
+      'public.cleanup_completed_match(uuid)',
+      'public.cleanup_expired_mfa_codes()',
+      'public.cleanup_rpc_rate_limit_log()',
+      'public.clear_all_match_history()',
+      'public.create_notification(uuid,text,text,text,text,text,text,jsonb,uuid,timestamptz)',
+      'public.enqueue_notification(uuid,text,text,text,text,text,uuid,jsonb)',
+      'public.finalize_stale_pending_matches()',
+      'public.freeze_week_ratings(date)',
+      'public.recalculate_all_player_stats()',
+      'public.recalculate_player_stats(uuid)'
+    ]) AS signatures(signature)
+  LOOP
+    IF item.function_oid IS NULL THEN
+      RAISE EXCEPTION 'Expected internal maintenance function is missing: %', item.signature;
+    END IF;
+
+    IF has_function_privilege('public', item.function_oid, 'EXECUTE')
+       OR has_function_privilege('anon', item.function_oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', item.function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Internal maintenance function exposed to app roles: %', item.signature;
+    END IF;
+
+    IF NOT has_function_privilege('service_role', item.function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Service role cannot execute maintenance function: %', item.signature;
+    END IF;
+
+    checked := checked + 1;
+  END LOOP;
+
+  RAISE NOTICE 'Internal maintenance functions checked: %, app-role exposure: 0', checked;
+END;
+$$;
+
+DO $$
+DECLARE
   job_count integer;
   all_active boolean;
   all_unique boolean;
