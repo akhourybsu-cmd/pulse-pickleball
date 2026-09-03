@@ -206,23 +206,14 @@ export function PlayerShell() {
           non-immersive player route. */}
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto grid h-[68px] w-full max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-4 sm:h-[72px] sm:gap-2 sm:px-6 lg:gap-5 lg:px-8">
-            {/* Mobile uses equal-width outer columns so the wordmark remains
-                optically centered even though it shares the row with four
-                controls. The same 40px targets on each side also keep every
-                icon on one baseline at narrow phone widths. */}
-            <div className="col-start-1 row-start-1 flex items-center justify-self-start lg:hidden">
-              <ThemeToggle />
-              <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
-            </div>
-
+          <div className="mx-auto flex h-[68px] w-full max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
                 instead of a pasted cream rectangle. Gold pulse beat stays
                 gold for brand recognition. */}
             <NavLink
               to="/player/dashboard"
-              className="col-start-2 row-start-1 shrink-0 -translate-y-1 justify-self-center rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none lg:col-start-1 lg:translate-y-0 lg:justify-self-start"
+              className="shrink-0 rounded-sm text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:col-start-1 lg:row-start-1 lg:justify-self-start"
               aria-label="Go to dashboard"
             >
               <Logo className="h-[42px] w-auto sm:h-[54px] lg:h-[60px]" />
@@ -263,13 +254,9 @@ export function PlayerShell() {
               </div>
             </nav>
 
-            <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end lg:gap-1 lg:justify-self-end xl:gap-2">
-              {/* Desktop keeps all utilities together on the trailing edge;
-                  mobile renders the first two in its matching leading group. */}
-              <div className="hidden lg:contents">
-                <ThemeToggle />
-                <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
-              </div>
+            <div className="flex shrink-0 items-center justify-self-end sm:gap-1 lg:col-start-3 lg:row-start-1 xl:gap-2">
+              <ThemeToggle />
+              <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
                   which surprised users expecting to land in their own hub). */}

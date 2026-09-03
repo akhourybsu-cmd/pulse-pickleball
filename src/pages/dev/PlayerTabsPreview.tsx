@@ -179,18 +179,15 @@ export default function PlayerTabsPreview() {
   return (
     <div className="min-h-screen bg-background pb-20 lg:pb-0">
       <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="mx-auto grid h-[68px] max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-4 sm:h-[72px] sm:gap-2 sm:px-6 lg:gap-5 lg:px-8">
-          <div className="col-start-1 row-start-1 flex items-center justify-self-start lg:hidden">
-            {[Moon, MessageCircle].map((Icon, index) => <Button key={index} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-secondary-foreground"><Icon className="h-[18px] w-[18px]" /></Button>)}
-          </div>
-          <Logo className="col-start-2 row-start-1 h-[42px] w-auto shrink-0 -translate-y-1 justify-self-center text-secondary-foreground sm:h-[54px] lg:col-start-1 lg:h-[60px] lg:translate-y-0 lg:justify-self-start" />
+        <div className="mx-auto flex h-[68px] max-w-[1400px] items-center justify-between gap-2 px-4 sm:h-[72px] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5 lg:px-8">
+          <Logo className="h-[42px] w-auto shrink-0 text-secondary-foreground sm:h-[54px] lg:col-start-1 lg:row-start-1 lg:h-[60px] lg:justify-self-start" />
           <nav className="hidden items-center justify-center lg:col-start-2 lg:row-start-1 lg:flex lg:justify-self-center">
             <div className="flex items-center gap-1 rounded-2xl border border-secondary-foreground/10 bg-secondary-foreground/[0.045] p-1">
               {navItems.map(({value,label,icon:Icon})=>{const selected=value===active;return <button key={value} type="button" onClick={()=>value!=="home"&&setActive(value)} className={cn("flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium xl:px-4",selected?"bg-background/95 text-foreground shadow-sm":"text-secondary-foreground/70")}><Icon className={cn("hidden h-[17px] w-[17px] xl:block",selected&&"text-primary")} />{label}</button>})}
             </div>
           </nav>
-          <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end text-secondary-foreground lg:gap-1 xl:gap-2">
-            {[Moon, MessageCircle].map((Icon, index) => <Button key={`desktop-${index}`} variant="ghost" size="icon" className="hidden h-10 w-10 rounded-full text-current hover:bg-secondary-foreground/10 lg:inline-flex"><Icon className="h-[18px] w-[18px]" /></Button>)}
+          <div className="flex shrink-0 items-center justify-self-end text-secondary-foreground sm:gap-1 lg:col-start-3 lg:row-start-1 xl:gap-2">
+            {[Moon, MessageCircle].map((Icon, index) => <Button key={`utility-${index}`} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-current hover:bg-secondary-foreground/10"><Icon className="h-[18px] w-[18px]" /></Button>)}
             <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-current hover:bg-secondary-foreground/10"><Bell className="h-[18px] w-[18px]" /></Button>
             <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-current hover:bg-secondary-foreground/10"><Avatar className="h-9 w-9 border border-secondary-foreground/20"><AvatarFallback className="bg-secondary-foreground/10 text-xs text-secondary-foreground">AM</AvatarFallback></Avatar></Button>
           </div>
