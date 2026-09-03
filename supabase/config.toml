@@ -1,4 +1,4 @@
-project_id = "ryxklkayezjnwwunuphn"
+project_id = "rqfqwavhtfwwtmfjnxkx"
 
 [api]
   enabled = true
@@ -13,35 +13,9 @@ project_id = "ryxklkayezjnwwunuphn"
 [edge_runtime]
   policy = "per_worker"
 
-  [[edge_runtime.cron]]
-    function_name = "send-event-reminders"
-    name = "send-event-reminders"
-    schedule = "*/10 * * * *"
-
-  [[edge_runtime.cron]]
-    function_name = "process-waitlist"
-    name = "process-waitlist"
-    schedule = "*/5 * * * *"
-
-  [[edge_runtime.cron]]
-    function_name = "cleanup-old-messages"
-    name = "cleanup-old-messages"
-    schedule = "0 */6 * * *"
-
-  [[edge_runtime.cron]]
-    function_name = "delete-old-posts"
-    name = "delete-old-posts"
-    schedule = "0 3 * * *"
-
-  # Paused while tournaments are dark behind VITE_TOURNAMENTS. This scanned
-  # tournaments_matches every 5 minutes and could emit "match starting soon"
-  # notifications for a feature nobody is supposed to see yet — the client
-  # feature flag does not reach a cron-triggered edge function. Re-enable
-  # together with the tournament launch.
-  # [[edge_runtime.cron]]
-  #   function_name = "send-tournament-reminders"
-  #   name = "send-tournament-reminders"
-  #   schedule = "*/5 * * * *"
+# Hosted schedules are installed with pg_cron by the external Supabase
+# bootstrap migration. The official Supabase CLI does not deploy custom
+# [[edge_runtime.cron]] entries from config.toml.
 
 [functions]
   [functions.auth-email]
@@ -61,8 +35,10 @@ project_id = "ryxklkayezjnwwunuphn"
   [functions.notify-contested-match]
     verify_jwt = false
   [functions.process-email-queue]
-    verify_jwt = true
+    verify_jwt = false
   [functions.process-waitlist]
+    verify_jwt = false
+  [functions.purchase-division-slot]
     verify_jwt = false
   [functions.send-court-assignment]
     verify_jwt = true
@@ -84,10 +60,15 @@ project_id = "ryxklkayezjnwwunuphn"
     verify_jwt = false
 
 [functions.send-transactional-email]
-verify_jwt = true
+# Server-only: the handler validates managed service/secret keys explicitly.
+verify_jwt = false
+
+[functions.push-send]
+# Database-triggered requests authenticate with x-dispatch-secret in the handler.
+verify_jwt = false
 
 [functions.preview-transactional-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.handle-email-unsubscribe]
 verify_jwt = false

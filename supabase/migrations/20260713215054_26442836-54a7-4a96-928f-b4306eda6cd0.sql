@@ -8,6 +8,14 @@ DECLARE
   v_john_g uuid := 'd287820c-4bda-4031-a398-cf7b7a03bea9';
   v_kurt uuid;
 BEGIN
+  -- This is a correction for one historical production event. A fresh
+  -- project has none of these rows, so leave its empty dataset untouched.
+  IF NOT EXISTS (SELECT 1 FROM public.round_robin_events WHERE id = v_event)
+     OR NOT EXISTS (SELECT 1 FROM auth.users WHERE id = v_organizer)
+     OR NOT EXISTS (SELECT 1 FROM public.guest_players WHERE id = v_john_g) THEN
+    RETURN;
+  END IF;
+
   -- 1. Create Kurt N guest owned by organizer
   INSERT INTO public.guest_players (display_name, created_by)
   VALUES ('Kurt N', v_organizer)

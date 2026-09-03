@@ -1,5 +1,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 CREATE SCHEMA IF NOT EXISTS private;
 
@@ -11,8 +13,8 @@ CREATE TABLE IF NOT EXISTS private.app_config (
 
 -- Seed config (idempotent). Shared secret is random; URL is the project's edge endpoint.
 INSERT INTO private.app_config (key, value) VALUES
-  ('push_send_url', 'https://ryxklkayezjnwwunuphn.supabase.co/functions/v1/push-send'),
-  ('push_dispatch_secret', encode(gen_random_bytes(32), 'hex'))
+  ('push_send_url', 'https://rqfqwavhtfwwtmfjnxkx.supabase.co/functions/v1/push-send'),
+  ('push_dispatch_secret', encode(extensions.gen_random_bytes(32), 'hex'))
 ON CONFLICT (key) DO NOTHING;
 
 -- Trigger function: fire-and-forget HTTP POST to push-send for each new notification

@@ -46,7 +46,7 @@ AS $$
   SELECT
     lm.id, lm.league_id, l.name, l.league_type::TEXT,
     lm.season_id, s.name AS season_name,
-    lm.scheduled_time, lm.court_number, s.location,
+    lm.scheduled_time, lm.court_number, l.location,
     lm.status::TEXT,
     lm.team_a_id, ta.name, lm.team_b_id, tb.name
   FROM public.league_matches lm

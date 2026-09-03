@@ -260,13 +260,10 @@ export function useGroupChat(groupId: string | undefined) {
 
   const editMessageMutation = useMutation({
     mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
-      const { error } = await supabase
-        .from('group_messages')
-        .update({
-          content: content.trim(),
-          edited_at: new Date().toISOString(),
-        })
-        .eq('id', messageId);
+      const { error } = await supabase.rpc('edit_group_message', {
+        p_message_id: messageId,
+        p_content: content.trim(),
+      });
       if (error) throw error;
     },
     onMutate: async ({ messageId, content }) => {

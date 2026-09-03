@@ -153,7 +153,7 @@ serve(async (req) => {
 
     logStep("Line items prepared", { lineItems: lineItems.length });
 
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = req.headers.get("origin") || "https://pulsepb.com";
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({

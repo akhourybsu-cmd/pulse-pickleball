@@ -6,6 +6,12 @@ DECLARE
   v_kyle uuid;
   v_next_court int;
 BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.round_robin_events WHERE id = v_event)
+     OR NOT EXISTS (SELECT 1 FROM auth.users WHERE id = v_organizer)
+     OR NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_alex) THEN
+    RETURN;
+  END IF;
+
   -- Create Kyle N guest
   INSERT INTO public.guest_players (display_name, created_by)
   VALUES ('Kyle N', v_organizer)

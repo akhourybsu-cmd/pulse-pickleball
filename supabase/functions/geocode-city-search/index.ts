@@ -1,12 +1,11 @@
 // Verified-city autocomplete proxy for the Record Match wizard.
-// Uses Google Maps Platform Places API (New) via the Lovable connector gateway,
+// Uses Google Maps Platform Places API (New) directly,
 // restricted to city / town level results so the stored location is always
 // canonical (no typos, no inconsistent spellings).
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const GATEWAY = 'https://connector-gateway.lovable.dev/google_maps';
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const PLACES_API = 'https://places.googleapis.com/v1';
 const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -28,6 +27,17 @@ interface DetailsBody {
 }
 type Body = SearchBody | DetailsBody;
 
+interface AutocompleteSuggestion {
+  placePrediction?: {
+    placeId?: string;
+    text?: { text?: string };
+    structuredFormat?: {
+      mainText?: { text?: string };
+      secondaryText?: { text?: string };
+    };
+  };
+}
+
 function bad(status: number, error: string) {
   return new Response(JSON.stringify({ error }), {
     status,
@@ -39,8 +49,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return bad(405, 'Method not allowed');
 
-  if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) {
-    return bad(500, 'Google Maps connector is not configured');
+  if (!GOOGLE_MAPS_API_KEY) {
+    return bad(500, 'Google Maps is not configured');
   }
 
   // Require an authenticated caller so we don't burn the connector key on
@@ -65,11 +75,11 @@ Deno.serve(async (req) => {
     if (query.length < 2 || query.length > 100) return bad(400, 'Query too short or too long');
     if (!sessionToken) return bad(400, 'Missing sessionToken');
 
-    const resp = await fetch(`${GATEWAY}/places/v1/places:autocomplete`, {
+    const resp = await fetch(`${PLACES_API}/places:autocomplete`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GOOGLE_MAPS_API_KEY,
+        'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -84,7 +94,7 @@ Deno.serve(async (req) => {
       return bad(502, 'Place lookup failed');
     }
     const data = await resp.json();
-    const suggestions = (data.suggestions ?? []).map((s: any) => {
+    const suggestions = (data.suggestions ?? []).map((s: AutocompleteSuggestion) => {
       const p = s.placePrediction;
       if (!p) return null;
       return {
@@ -105,14 +115,13 @@ Deno.serve(async (req) => {
     const sessionToken = (body.sessionToken ?? '').trim();
     if (!placeId) return bad(400, 'Missing placeId');
 
-    const url = new URL(`${GATEWAY}/places/v1/places/${encodeURIComponent(placeId)}`);
+    const url = new URL(`${PLACES_API}/places/${encodeURIComponent(placeId)}`);
     if (sessionToken) url.searchParams.set('sessionToken', sessionToken);
 
     const resp = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GOOGLE_MAPS_API_KEY,
+        'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
         'X-Goog-FieldMask': 'id,displayName,formattedAddress,addressComponents,types,location',
       },
     });

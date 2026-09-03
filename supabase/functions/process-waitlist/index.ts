@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-dispatch-secret",
 };
 
 serve(async (req) => {
@@ -15,6 +15,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const providedSecret = req.headers.get("x-dispatch-secret") ?? "";
+    const { data: isAuthorized, error: authError } = await supabase.rpc(
+      "is_valid_scheduled_task_secret",
+      { p_secret: providedSecret },
+    );
+    if (authError || isAuthorized !== true) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.log("[process-waitlist] Starting waitlist processing...");
 

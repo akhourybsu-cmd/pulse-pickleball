@@ -110,7 +110,7 @@ serve(async (req) => {
     }
 
     // Get origin for success/cancel URLs
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = req.headers.get("origin") || "https://pulsepb.com";
 
     // Create checkout session for additional division
     const session = await stripe.checkout.sessions.create({

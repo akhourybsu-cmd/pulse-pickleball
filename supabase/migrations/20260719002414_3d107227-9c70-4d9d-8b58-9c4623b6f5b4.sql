@@ -1,6 +1,8 @@
 -- Slice 2b: apply an externally-computed plan.
 DROP FUNCTION IF EXISTS public.rr_manage_participant(
   uuid, uuid, uuid, text, text, integer, text, boolean, jsonb, jsonb);
+DROP FUNCTION IF EXISTS public.rr_manage_participant(
+  uuid, uuid, uuid, text, text, integer, text, boolean, jsonb, jsonb, jsonb, text);
 
 CREATE FUNCTION public.rr_manage_participant(
   p_request_id               uuid,

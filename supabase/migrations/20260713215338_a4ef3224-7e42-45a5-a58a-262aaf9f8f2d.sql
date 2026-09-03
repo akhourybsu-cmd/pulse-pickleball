@@ -4,6 +4,11 @@ DECLARE
   v_marty uuid := 'f878f00b-d102-4d74-87eb-9fd0063a2f09';
   v_bonnie uuid := '8be721e2-32a7-4b4b-87a2-addfb72c27de';
 BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.round_robin_events WHERE id = v_event)
+     OR NOT EXISTS (SELECT 1 FROM public.guest_players WHERE id = v_marty) THEN
+    RETURN;
+  END IF;
+
   -- Re-register Marty
   INSERT INTO public.round_robin_players (event_id, guest_player_id, registration_status)
   VALUES (v_event, v_marty, 'confirmed')

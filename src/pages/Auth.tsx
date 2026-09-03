@@ -13,7 +13,6 @@ import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
-import { lovable } from "@/integrations/lovable";
 import { Logo } from "@/components/Logo";
 import {
   clearPostAuthRedirect,
@@ -62,6 +61,13 @@ const waitForAuthenticatedUser = async () => {
   }
   return user;
 };
+
+// OAuth provider availability differs between the live Lovable project and
+// the external Supabase staging project during migration. Default to enabled
+// so existing production behavior is unchanged; staging explicitly disables
+// providers until their credentials are installed in the new project.
+const googleOAuthEnabled = import.meta.env.VITE_AUTH_GOOGLE !== "false";
+const appleOAuthEnabled = import.meta.env.VITE_AUTH_APPLE !== "false";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -240,11 +246,6 @@ const Auth = () => {
           toast.success("Account created! Welcome to PULSE!");
           navigate(redirectPath, { replace: true });
         } else if (authData.user) {
-          await sendAuthEmail({
-            type: "signup",
-            email,
-            redirectTo: `${window.location.origin}/`,
-          }).catch((e) => console.error("Signup email failed", e));
           toast.success("Account created! Check your email to finish signing in.");
         }
       }
@@ -317,18 +318,17 @@ const Auth = () => {
       // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
       // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
       // the provider to bounce the user back to /auth without a session.
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+        },
       });
-      if (result.error) {
-        toast.error(result.error.message || `Could not sign in with ${provider}`);
+      if (error) {
+        toast.error(error.message || `Could not sign in with ${provider}`);
         clearPostAuthRedirect();
         setLoading(false);
-        return;
       }
-      if (result.redirected) return;
-      await waitForAuthenticatedUser();
-      navigate(consumePostAuthRedirect(), { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "OAuth sign-in failed");
       clearPostAuthRedirect();
@@ -486,29 +486,33 @@ const Auth = () => {
                     app we hide these and show email/password only. Re-enable on
                     native once the Custom-Tab OAuth flow lands (see
                     GOOGLE_PLAY_LAUNCH.md §8). */}
-                {!isNativeApp() && (
+                {!isNativeApp() && (googleOAuthEnabled || appleOAuthEnabled) && (
                   <>
                     <div className="space-y-2 mb-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleOAuth("google")}
-                        disabled={loading}
-                      >
-                        <GoogleIcon />
-                        <span className="ml-2">Continue with Google</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleOAuth("apple")}
-                        disabled={loading}
-                      >
-                        <AppleIcon />
-                        <span className="ml-2">Continue with Apple</span>
-                      </Button>
+                      {googleOAuthEnabled && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleOAuth("google")}
+                          disabled={loading}
+                        >
+                          <GoogleIcon />
+                          <span className="ml-2">Continue with Google</span>
+                        </Button>
+                      )}
+                      {appleOAuthEnabled && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleOAuth("apple")}
+                          disabled={loading}
+                        >
+                          <AppleIcon />
+                          <span className="ml-2">Continue with Apple</span>
+                        </Button>
+                      )}
                     </div>
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">

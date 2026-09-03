@@ -8,6 +8,13 @@ ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS pinned boolean DEFAULT false;
 ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS last_activity_at timestamptz DEFAULT now();
 
 -- Add LFG-specific optional fields
+-- The original Lovable schema had these foundational LFG columns before the
+-- checked-in history began using them. Restore them for fresh installations.
+ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS session_date date;
+ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS session_time time without time zone;
+ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS max_players integer;
+ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+
 ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS lfg_skill_min numeric;
 ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS lfg_skill_max numeric;
 ALTER TABLE court_posts ADD COLUMN IF NOT EXISTS lfg_format text CHECK (lfg_format IN ('singles', 'doubles', 'either'));

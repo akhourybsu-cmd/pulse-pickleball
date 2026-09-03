@@ -9368,6 +9368,10 @@ export type Database = {
         Args: { p_match_id: string; p_reason?: string }
         Returns: undefined
       }
+      edit_group_message: {
+        Args: { p_message_id: string; p_content: string }
+        Returns: undefined
+      }
       enforce_rpc_rate_limit: {
         Args: {
           p_action: string

@@ -112,4 +112,12 @@ WHERE NOT EXISTS (
   SELECT 1 FROM venue_staff 
   WHERE venue_id = '3a9f6e6b-6b6a-4f9d-8b24-8959c92ef266' 
   AND user_id = 'fff594fe-02ea-439c-a974-72e1f6295f08'
+)
+AND EXISTS (
+  SELECT 1 FROM venues
+  WHERE id = '3a9f6e6b-6b6a-4f9d-8b24-8959c92ef266'
+)
+AND EXISTS (
+  SELECT 1 FROM auth.users
+  WHERE id = 'fff594fe-02ea-439c-a974-72e1f6295f08'
 );

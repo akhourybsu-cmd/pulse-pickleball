@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { preparePasswordRecovery } from "@/lib/passwordRecovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,28 +24,28 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [recoveryState, setRecoveryState] = useState<"checking" | "ready" | "invalid">("checking");
+  const recoveryCheck = useRef<Promise<void> | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have a valid session from the recovery link
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Invalid or expired link",
-          description: "Please request a new password reset link",
-          variant: "destructive"
-        });
-        navigate("/auth");
-      }
-    };
-    checkSession();
-  }, [navigate, toast]);
+    let cancelled = false;
+    recoveryCheck.current ??= preparePasswordRecovery(
+      supabase.auth,
+      () => window.location.href,
+      (path) => window.history.replaceState(window.history.state, "", path),
+    );
+    recoveryCheck.current.then(
+      () => { if (!cancelled) setRecoveryState("ready"); },
+      () => { if (!cancelled) setRecoveryState("invalid"); },
+    );
+    return () => { cancelled = true; };
+  }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (recoveryState !== "ready" || loading) return;
 
     // Validate inputs
     const validation = passwordSchema.safeParse({ password, confirmPassword });
@@ -103,11 +104,20 @@ export default function ResetPassword() {
           </div>
           <CardTitle className="text-2xl font-bold">Reset Your Password</CardTitle>
           <CardDescription>
-            Enter your new password below
+            {recoveryState === "checking" ? "Verifying your reset link…"
+              : recoveryState === "invalid" ? "This reset link is invalid or has expired."
+              : "Enter your new password below"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleResetPassword} className="space-y-4">
+          {recoveryState === "checking" ? (
+            <p role="status" className="text-center text-sm text-muted-foreground">Checking your secure session…</p>
+          ) : recoveryState === "invalid" ? (
+            <div className="space-y-4 text-center">
+              <p role="alert" className="text-sm text-muted-foreground">Please return to sign in and request a new password reset email.</p>
+              <Button onClick={() => navigate("/auth")}>Back to Login</Button>
+            </div>
+          ) : <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <div className="relative">
@@ -118,6 +128,7 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   disabled={loading}
                   className="pr-10"
                 />
@@ -141,6 +152,7 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   disabled={loading}
                   className="pr-10"
                 />
@@ -168,7 +180,7 @@ export default function ResetPassword() {
                 Back to Login
               </Button>
             </div>
-          </form>
+          </form>}
         </CardContent>
       </Card>
     </div>

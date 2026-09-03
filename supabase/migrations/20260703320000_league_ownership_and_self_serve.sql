@@ -69,7 +69,7 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'leagues', 'league_seasons', 'league_divisions', 'league_members',
-    'league_teams', 'league_team_members', 'league_sessions',
+    'league_teams', 'league_sessions',
     'league_matches', 'league_audit_log'
   ] LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Admins full access" ON public.%I', t);
@@ -92,6 +92,30 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- league_team_members reaches its league through league_teams and does not
+-- carry a league_id column of its own.
+DROP POLICY IF EXISTS "Admins full access" ON public.league_team_members;
+DROP POLICY IF EXISTS "League admins full access" ON public.league_team_members;
+CREATE POLICY "League admins full access"
+  ON public.league_team_members
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.league_teams lt
+      WHERE lt.id = league_team_members.team_id
+        AND public.is_league_admin(lt.league_id, auth.uid())
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.league_teams lt
+      WHERE lt.id = league_team_members.team_id
+        AND public.is_league_admin(lt.league_id, auth.uid())
+    )
+  );
 
 -- Note: the leagues table's WITH CHECK also allows created_by=auth.uid()
 -- so a user can INSERT a new league where they'll be the owner. Without

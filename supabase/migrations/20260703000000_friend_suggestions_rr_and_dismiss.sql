@@ -47,6 +47,8 @@ CREATE POLICY "Users can delete own dismissals"
 -- RPC kept for parity with other community write paths — it's a thin
 -- INSERT … ON CONFLICT DO NOTHING wrapper that lets clients call one
 -- function regardless of whether the dismissal already exists.
+DROP FUNCTION IF EXISTS public.dismiss_friend_suggestion(uuid);
+
 CREATE OR REPLACE FUNCTION public.dismiss_friend_suggestion(p_target_user_id uuid)
 RETURNS void
 LANGUAGE plpgsql

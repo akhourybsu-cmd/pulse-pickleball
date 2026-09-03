@@ -1,18 +1,24 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Renders all registered templates with their previewData.
-// Gated by LOVABLE_API_KEY — only the Go API calls this.
+// The gateway verifies the user JWT; the function also requires platform admin.
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
-  if (!apiKey) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !supabaseServiceKey) {
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),
       {
@@ -22,12 +28,25 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Verify the caller is authorized with LOVABLE_API_KEY
-  const authHeader = req.headers.get('Authorization')
-  const token = authHeader?.replace(/^Bearer\s+/i, '')
-  if (token !== apiKey) {
+  const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+  const admin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false },
+  })
+  const { data: authData, error: authError } = await admin.auth.getUser(token)
+  if (authError || !authData.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  const { data: isAdmin, error: roleError } = await admin.rpc('has_role', {
+    _user_id: authData.user.id,
+    _role: 'admin',
+  })
+  if (roleError || isAdmin !== true) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

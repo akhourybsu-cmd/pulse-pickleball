@@ -17,26 +17,32 @@ BEGIN
   END IF;
 END $$;
 
-UPDATE public.leagues l
-   SET skill_min = d.skill_min, skill_max = d.skill_max
-  FROM (
-    SELECT DISTINCT ON (league_id) league_id, skill_min, skill_max
-      FROM public.league_divisions
-     ORDER BY league_id, created_at ASC
-  ) d
- WHERE d.league_id = l.id
-   AND l.skill_min IS NULL AND l.skill_max IS NULL;
-
 DO $$
 DECLARE r RECORD;
 BEGIN
-  FOR r IN
-    SELECT conrelid::regclass AS tbl, conname
-      FROM pg_constraint
-     WHERE confrelid = 'public.league_divisions'::regclass
-  LOOP
-    EXECUTE format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I', r.tbl, r.conname);
-  END LOOP;
+  -- A preceding migration may already have removed league_divisions. Only
+  -- backfill and detach its foreign keys when the legacy table still exists.
+  IF to_regclass('public.league_divisions') IS NOT NULL THEN
+    EXECUTE $backfill$
+      UPDATE public.leagues l
+         SET skill_min = d.skill_min, skill_max = d.skill_max
+        FROM (
+          SELECT DISTINCT ON (league_id) league_id, skill_min, skill_max
+            FROM public.league_divisions
+           ORDER BY league_id, created_at ASC
+        ) d
+       WHERE d.league_id = l.id
+         AND l.skill_min IS NULL AND l.skill_max IS NULL
+    $backfill$;
+
+    FOR r IN
+      SELECT conrelid::regclass AS tbl, conname
+        FROM pg_constraint
+       WHERE confrelid = to_regclass('public.league_divisions')
+    LOOP
+      EXECUTE format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I', r.tbl, r.conname);
+    END LOOP;
+  END IF;
 END $$;
 
 DROP TABLE IF EXISTS public.league_divisions CASCADE;

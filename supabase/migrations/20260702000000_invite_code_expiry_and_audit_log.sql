@@ -21,6 +21,7 @@ ALTER TABLE public.groups
 
 -- Drop the prior signature so we can add the new param.
 DROP FUNCTION IF EXISTS public.regenerate_group_invite_code(uuid);
+DROP FUNCTION IF EXISTS public.regenerate_group_invite_code(uuid, integer);
 
 CREATE OR REPLACE FUNCTION public.regenerate_group_invite_code(
   p_group_id           uuid,
@@ -79,6 +80,8 @@ GRANT EXECUTE ON FUNCTION public.regenerate_group_invite_code(uuid, int) TO auth
 -- find_group_by_invite_code now also returns is_expired so the landing
 -- page can show "This code has expired" instead of conflating with the
 -- "Invite not available" branch.
+DROP FUNCTION IF EXISTS public.find_group_by_invite_code(text);
+
 CREATE OR REPLACE FUNCTION public.find_group_by_invite_code(p_code text)
 RETURNS TABLE (
   id uuid, name text, description text, type text, visibility text,

@@ -12,6 +12,20 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
+function subscriptionUsesVapidKey(
+  subscription: PushSubscription,
+  vapidPublicKey: string,
+): boolean {
+  const activeKey = subscription.options.applicationServerKey;
+  if (!activeKey) return false;
+
+  const expectedKey = urlBase64ToUint8Array(vapidPublicKey);
+  const currentKey = new Uint8Array(activeKey);
+  if (currentKey.length !== expectedKey.length) return false;
+
+  return currentKey.every((byte, index) => byte === expectedKey[index]);
+}
+
 export type PushState = "unsupported" | "denied" | "disabled" | "enabled" | "loading";
 
 export function usePushSubscription() {
@@ -30,7 +44,11 @@ export function usePushSubscription() {
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      setState(sub ? "enabled" : "disabled");
+      const keyMatches =
+        sub && VAPID_PUBLIC_KEY
+          ? subscriptionUsesVapidKey(sub, VAPID_PUBLIC_KEY)
+          : Boolean(sub);
+      setState(sub && keyMatches ? "enabled" : "disabled");
     } catch {
       setState("disabled");
     }
@@ -50,6 +68,11 @@ export function usePushSubscription() {
       if (perm !== "granted") { setState(perm === "denied" ? "denied" : "disabled"); return; }
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
+      if (sub && !subscriptionUsesVapidKey(sub, VAPID_PUBLIC_KEY)) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+        sub = null;
+      }
       if (!sub) {
         const keyBytes = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
         sub = await reg.pushManager.subscribe({

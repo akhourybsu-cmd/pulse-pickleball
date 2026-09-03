@@ -28,6 +28,8 @@
 
 
 -- ---------- Widened teaser lookup --------------------------------------
+DROP FUNCTION IF EXISTS public.find_league_by_invite_code(TEXT);
+
 CREATE OR REPLACE FUNCTION public.find_league_by_invite_code(p_code TEXT)
 RETURNS TABLE (
   id UUID,

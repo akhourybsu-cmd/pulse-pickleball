@@ -111,6 +111,8 @@ $$;
 --    which a STABLE function isn't allowed to have. The table-return
 --    shape is preserved.
 -- =====================================================================
+DROP FUNCTION IF EXISTS public.find_group_by_invite_code(text);
+
 CREATE OR REPLACE FUNCTION public.find_group_by_invite_code(p_code text)
 RETURNS TABLE (
   id uuid, name text, description text, type text, visibility text,

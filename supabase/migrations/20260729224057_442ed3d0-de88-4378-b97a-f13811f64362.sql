@@ -337,6 +337,8 @@ END; $$;
 REVOKE ALL ON FUNCTION public.apply_skill_scoring_snapshot(UUID, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.apply_skill_scoring_snapshot(UUID, JSONB) TO service_role;
 
+DROP FUNCTION IF EXISTS public.get_league_skill_cards(UUID);
+
 CREATE OR REPLACE FUNCTION public.get_league_skill_cards(p_league_id UUID)
 RETURNS TABLE (
   player_id            UUID,
