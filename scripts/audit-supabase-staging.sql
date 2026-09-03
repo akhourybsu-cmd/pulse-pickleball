@@ -63,6 +63,82 @@ BEGIN
 END;
 $$;
 
+DO $$
+DECLARE
+  item record;
+  checked integer := 0;
+BEGIN
+  FOR item IN
+    SELECT p.oid, p.oid::regprocedure AS function_name
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = ANY (ARRAY[
+        'enqueue_email',
+        'read_email_batch',
+        'delete_email',
+        'move_to_dlq'
+      ])
+  LOOP
+    IF has_function_privilege('anon', item.oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', item.oid, 'EXECUTE')
+       OR has_function_privilege('public', item.oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Privileged queue function exposed to app roles: %', item.function_name;
+    END IF;
+
+    IF NOT has_function_privilege('service_role', item.oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Service role cannot execute queue function: %', item.function_name;
+    END IF;
+
+    checked := checked + 1;
+  END LOOP;
+
+  IF checked <> 4 THEN
+    RAISE EXCEPTION 'Expected 4 privileged queue functions, found %', checked;
+  END IF;
+
+  RAISE NOTICE 'Privileged queue functions checked: %, app-role exposure: 0', checked;
+END;
+$$;
+
+DO $$
+DECLARE
+  job_count integer;
+  all_active boolean;
+  all_unique boolean;
+  all_hardened boolean;
+BEGIN
+  SELECT
+    count(*),
+    bool_and(active),
+    bool_and(copies = 1),
+    bool_and(command LIKE '%timeout_milliseconds := 20000%')
+  INTO job_count, all_active, all_unique, all_hardened
+  FROM (
+    SELECT
+      active,
+      command,
+      count(*) OVER (PARTITION BY jobname) AS copies
+    FROM cron.job
+    WHERE jobname = ANY (ARRAY[
+      'send-event-reminders',
+      'process-waitlist',
+      'process-email-queue',
+      'cleanup-old-messages',
+      'delete-old-posts'
+    ])
+  ) jobs;
+
+  IF job_count <> 5 OR NOT all_active OR NOT all_unique OR NOT all_hardened THEN
+    RAISE EXCEPTION
+      'Scheduled job invariant failed (count %, active %, unique %, hardened %)',
+      job_count, all_active, all_unique, all_hardened;
+  END IF;
+
+  RAISE NOTICE 'Scheduled jobs checked: 5, active/unique/hardened: true';
+END;
+$$;
+
 SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;
 SELECT status_code, timed_out, count(*) FROM net._http_response
 WHERE created > now() - interval '1 hour' GROUP BY status_code, timed_out ORDER BY status_code;
