@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Json } from '@/integrations/supabase/types';
+import { useAuthState } from '@/hooks/useAuthState';
 
 export interface Group {
   id: string;
@@ -70,28 +71,35 @@ export interface GroupWithMembership extends Group {
   unread_count?: number;
 }
 
-export function useGroups() {
+interface UseGroupsOptions {
+  includePublic?: boolean;
+  includeUnreadCounts?: boolean;
+}
+
+export function useGroups(options: UseGroupsOptions = {}) {
+  const { includePublic = true, includeUnreadCounts = true } = options;
+  const { user } = useAuthState();
   const [myGroups, setMyGroups] = useState<GroupWithMembership[]>([]);
   const [publicGroups, setPublicGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserId = user?.id ?? null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id ?? null);
-    };
-    fetchUser();
-  }, []);
-
-  useEffect(() => {
     if (currentUserId) {
-      fetchMyGroups();
-      fetchPublicGroups();
+      void fetchMyGroups();
+      if (includePublic) void fetchPublicGroups();
+      else setPublicGroups([]);
+    } else {
+      setMyGroups([]);
+      setPublicGroups([]);
+      setLoading(false);
     }
-  }, [currentUserId]);
+    // The fetch functions intentionally remain imperative because mutations
+    // below reuse them for reconciliation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, includePublic, includeUnreadCounts]);
 
   const fetchMyGroups = async () => {
     if (!currentUserId) return;
@@ -133,18 +141,20 @@ export function useGroups() {
 
       // Calculate unread counts in parallel — the sequential loop was an
       // N+1 that added one round-trip of latency per joined group.
-      await Promise.all(
-        groups.map(async (group) => {
-          if (!group.membership?.last_read_at) return;
-          const { count } = await supabase
-            .from('group_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('group_id', group.id)
-            .gt('created_at', group.membership.last_read_at);
+      if (includeUnreadCounts) {
+        await Promise.all(
+          groups.map(async (group) => {
+            if (!group.membership?.last_read_at) return;
+            const { count } = await supabase
+              .from('group_posts')
+              .select('*', { count: 'exact', head: true })
+              .eq('group_id', group.id)
+              .gt('created_at', group.membership.last_read_at);
 
-          group.unread_count = count || 0;
-        })
-      );
+            group.unread_count = count || 0;
+          })
+        );
+      }
 
       // Any group with unread activity floats to the very top — a group
       // "with a notification" should always be the first thing you see.

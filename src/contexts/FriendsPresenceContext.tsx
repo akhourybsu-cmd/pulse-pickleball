@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthState } from '@/hooks/useAuthState';
 
 /**
  * App-wide friends presence.
@@ -26,6 +27,7 @@ const FriendsPresenceContext = createContext<FriendsPresenceValue>({
 });
 
 export function FriendsPresenceProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuthState();
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
   // Guard against overlapping setup/teardown on fast auth changes.
@@ -36,8 +38,6 @@ export function FriendsPresenceProvider({ children }: { children: ReactNode }) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
       if (!user || !activeRef.current) return;
 
       channel = supabase.channel('friends-presence', {
@@ -71,7 +71,7 @@ export function FriendsPresenceProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       if (channel) supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   return (
     <FriendsPresenceContext.Provider value={{ onlineUserIds, isConnected }}>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDirectMessages } from "@/hooks/useDirectMessages";
 import { useGroups } from "@/hooks/useGroups";
+import { useAuthState } from "@/hooks/useAuthState";
 import {
   dmToConversation,
   groupToConversation,
@@ -40,7 +41,12 @@ export interface SocialInboxState {
 
 export function useSocialInbox(): SocialInboxState {
   const dm = useDirectMessages();
-  const { myGroups, loading: groupsLoading } = useGroups();
+  const { user } = useAuthState();
+  const currentUserId = user?.id ?? null;
+  const { myGroups, loading: groupsLoading } = useGroups({
+    includePublic: false,
+    includeUnreadCounts: false,
+  });
   const [latestByGroup, setLatestByGroup] = useState<Map<string, RawLatest>>(new Map());
   const [unreadByGroup, setUnreadByGroup] = useState<Map<string, number>>(new Map());
   const [groupMsgLoading, setGroupMsgLoading] = useState(true);
@@ -65,7 +71,7 @@ export function useSocialInbox(): SocialInboxState {
         return;
       }
       setGroupMsgLoading(true);
-      const me = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const me = currentUserId;
       // Recent group messages across my groups, newest-first; keep the first
       // (latest) seen per group. Bounded so this never fans out per-group.
       // NOTE: the sender column on group_messages is `user_id` (there is no
@@ -121,7 +127,7 @@ export function useSocialInbox(): SocialInboxState {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupIdsKey, lastReadKey]);
+  }, [groupIdsKey, lastReadKey, currentUserId]);
 
   const conversations = useMemo(() => {
     const me = dm.currentUserId;

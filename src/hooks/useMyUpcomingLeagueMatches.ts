@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
+import { useAuthState } from "@/hooks/useAuthState";
 
 export interface UpcomingLeagueMatch {
   match_id: string;
@@ -30,28 +31,25 @@ export interface UpcomingLeagueMatch {
  * dev without crashing the Dashboard.
  */
 export function useMyUpcomingLeagueMatches(limit = 3) {
-  const [rows, setRows] = useState<UpcomingLeagueMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  const { user } = useAuthState();
+  const query = useQuery({
+    queryKey: ["my-upcoming-league-matches", user?.id, limit],
+    enabled: Boolean(user),
+    staleTime: 2 * 60 * 1000,
+    queryFn: async (): Promise<UpcomingLeagueMatch[]> => {
       const { data, error: rpcErr } = await supabase
         .rpc("get_my_upcoming_league_matches" as never, { p_limit: limit } as never);
-      if (cancelled) return;
       if (rpcErr) {
         console.error("get_my_upcoming_league_matches failed", rpcErr);
-        setError(rpcErr.message);
-        setRows([]);
-      } else {
-        setError(null);
-        setRows((data ?? []) as unknown as UpcomingLeagueMatch[]);
+        throw rpcErr;
       }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [limit]);
+      return (data ?? []) as unknown as UpcomingLeagueMatch[];
+    },
+  });
 
-  return { rows, loading, error };
+  return {
+    rows: query.data ?? [],
+    loading: Boolean(user) && query.isPending,
+    error: query.error instanceof Error ? query.error.message : null,
+  };
 }

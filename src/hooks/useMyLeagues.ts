@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
 import type {
   League, LeagueMember, LeagueSeason,
 } from "@/lib/leagues/types";
@@ -115,73 +116,62 @@ function mapRow(r: RpcRow): MyLeagueRow {
  * enforced inside the RPC, matching client-side RLS.
  */
 export function useMyLeagues() {
-  const [rows, setRows] = useState<MyLeagueRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthState();
+  const query = useQuery({
+    queryKey: ["my-leagues", user?.id],
+    enabled: Boolean(user),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<MyLeagueRow[]> => {
+      if (!user) return [];
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error: rpcErr } = await supabase
-        .rpc("get_my_leagues_with_context" as never);
-      if (rpcErr) {
-        if (!cancelled) { setError(rpcErr.message); setLoading(false); }
-        return;
-      }
-      const list = ((data ?? []) as unknown as RpcRow[]).map(mapRow);
-
-      // Also surface leagues the caller OWNS but has no membership row
-      // for. The RPC only returns active memberships, so a freshly
-      // created league (owner not yet enrolled) or an admin_only league
-      // would otherwise vanish from "My Leagues" — reading as "it didn't
-      // persist." RLS lets an owner select their own league regardless,
-      // so we merge those in with a synthetic manager membership. This
-      // keeps the portal correct even before the auto-enroll migration
-      // is deployed; once it is, the dedupe below prevents doubles.
-      const { data: { user } } = await supabase.auth.getUser();
-      let merged = list;
-      if (user) {
-        const { data: ownedRaw, error: ownedErr } = await supabase
+      // Membership context and owner-only fallback are independent once the
+      // shared auth provider supplies the user id. Run them together and let
+      // React Query dedupe the dashboard wrapper/card consumers.
+      const [membershipResult, ownedResult] = await Promise.all([
+        supabase.rpc("get_my_leagues_with_context" as never),
+        supabase
           .from("leagues" as never)
           .select("*")
-          .eq("created_by", user.id);
-        if (ownedErr) {
-          // Silently dropping this made an organizer's own league look deleted.
-          console.error("useMyLeagues: owned-leagues fetch failed", ownedErr);
-        }
-        const owned = (ownedRaw ?? []) as unknown as League[];
-        const have = new Set(list.map((r) => r.league.id));
-        const synthetic: MyLeagueRow[] = owned
-          .filter((l) => !have.has(l.id))
-          .map((l) => ({
-            league: l,
-            membership: {
-              id: `owner:${l.id}`,
-              league_id: l.id,
-              season_id: null,
-              user_id: user.id,
-              role: "manager",
-              status: "active",
-              joined_at: l.created_at,
-              created_at: l.created_at,
-              updated_at: l.updated_at,
-            },
-            season: null,
-          }));
-        merged = [...list, ...synthetic].sort((a, b) =>
-          a.league.name.localeCompare(b.league.name),
-        );
+          .eq("created_by", user.id),
+      ]);
+
+      if (membershipResult.error) throw membershipResult.error;
+      const list = ((membershipResult.data ?? []) as unknown as RpcRow[]).map(mapRow);
+
+      if (ownedResult.error) {
+        console.error("useMyLeagues: owned-leagues fetch failed", ownedResult.error);
+        return list;
       }
 
-      if (!cancelled) {
-        setRows(merged);
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+      const owned = (ownedResult.data ?? []) as unknown as League[];
+      const have = new Set(list.map((row) => row.league.id));
+      const synthetic: MyLeagueRow[] = owned
+        .filter((league) => !have.has(league.id))
+        .map((league) => ({
+          league,
+          membership: {
+            id: `owner:${league.id}`,
+            league_id: league.id,
+            season_id: null,
+            user_id: user.id,
+            role: "manager",
+            status: "active",
+            joined_at: league.created_at,
+            created_at: league.created_at,
+            updated_at: league.updated_at,
+          },
+          season: null,
+        }));
+
+      return [...list, ...synthetic].sort((a, b) =>
+        a.league.name.localeCompare(b.league.name),
+      );
+    },
+  });
+
+  const rows = query.data ?? [];
+  const loading = Boolean(user) && query.isPending;
+  const error = query.error instanceof Error ? query.error.message : null;
 
   // Archived leagues are tucked away: `rows` (what every surface renders
   // by default) holds only live leagues, while `archivedRows` is opt-in

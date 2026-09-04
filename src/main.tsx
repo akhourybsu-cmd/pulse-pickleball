@@ -40,16 +40,16 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('Service Worker registered');
-        const hadController = Boolean(navigator.serviceWorker.controller);
 
         if (registration.waiting) {
           registration.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
         
-        // Check for updates periodically
+        // Check for updates occasionally while the app is visible. Every
+        // minute was needless network churn for a long-running PWA session.
         setInterval(() => {
-          registration.update();
-        }, 60000);
+          if (document.visibilityState === 'visible') void registration.update();
+        }, 15 * 60 * 1000);
 
         // Listen for updates and activate them automatically.
         registration.addEventListener('updatefound', () => {
@@ -63,12 +63,10 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
           }
         });
 
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!hadController || refreshing) return;
-          refreshing = true;
-          window.location.reload();
-        });
+        // Do not force-reload on controllerchange. The old implementation did
+        // this while the activating worker also navigated every client, which
+        // could turn one refresh into a visible double refresh. The new worker
+        // takes over quietly and the next natural navigation gets the update.
       })
       .catch((error) => {
         console.log('Service Worker registration failed:', error);

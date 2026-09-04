@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { useLocation, useNavigationType, useOutlet } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { EASE_OUT } from "@/lib/motion";
 import {
   classifyTransition,
   shellRouteKind,
@@ -27,7 +26,6 @@ import {
  * fixed action bars are never re-anchored by a transform.
  */
 
-const DURATION = 0.18;
 // Small offset only — enough to read as directional, never enough to look like
 // a page is sliding across content.
 const OFFSET = 24;
@@ -35,7 +33,6 @@ const OFFSET = 24;
 export function ShellContentTransition({ immersive }: { immersive: boolean }) {
   const location = useLocation();
   const navType = useNavigationType();
-  const reduced = useReducedMotion();
   const outlet = useOutlet();
   const prevPathRef = useRef<string | null>(null);
   const nextPath = location.pathname;
@@ -50,9 +47,6 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
     prevPathRef.current = nextPath;
   }, [nextPath]);
 
-  // Reduced motion → instant swap; navigation is never delayed for animation.
-  if (reduced) return <>{outlet}</>;
-
   const toKind = shellRouteKind(nextPath);
   const delegated =
     toKind === "league" ||
@@ -61,22 +55,17 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
     toKind === "other";
 
   // Immersive + delegated subtrees: fade only (no transform).
-  const initial =
-    delegated || direction === 0
-      ? { opacity: 0 }
-      : { opacity: 0, x: direction > 0 ? OFFSET : -OFFSET };
-  const animate = { opacity: 1, x: 0 };
+  const enterX = delegated || direction === 0 ? 0 : direction > 0 ? OFFSET : -OFFSET;
 
   return (
     <div className="relative overflow-x-hidden">
-      <motion.div
+      <div
         key={transitionKey(nextPath)}
-        initial={initial}
-        animate={animate}
-        transition={{ duration: DURATION, ease: EASE_OUT }}
+        className="pulse-route-enter"
+        style={{ "--pulse-route-enter-x": `${enterX}px` } as CSSProperties}
       >
         {outlet}
-      </motion.div>
+      </div>
     </div>
   );
 }

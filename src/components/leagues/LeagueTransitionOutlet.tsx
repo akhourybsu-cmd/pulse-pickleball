@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { EASE_OUT } from "@/lib/leagues/motion";
 
 /**
  * Depth-aware enter transition for the player-facing league routes:
@@ -14,7 +13,6 @@ import { EASE_OUT } from "@/lib/leagues/motion";
  * perceived delay when switching).
  */
 
-const DURATION = 0.18;
 const OFFSET = 24;
 
 function leagueDepth(pathname: string): number {
@@ -27,7 +25,6 @@ function leagueDepth(pathname: string): number {
 
 export function LeagueTransitionOutlet() {
   const location = useLocation();
-  const reduced = useReducedMotion();
   const currentDepth = leagueDepth(location.pathname);
   const prevDepthRef = useRef<number>(currentDepth);
 
@@ -40,24 +37,17 @@ export function LeagueTransitionOutlet() {
     prevDepthRef.current = currentDepth;
   }, [currentDepth]);
 
-  if (reduced) {
-    return <Outlet />;
-  }
-
   return (
     <div className="relative overflow-x-hidden">
-      <motion.div
+      <div
         key={location.pathname}
-        initial={
-          direction === 0
-            ? { opacity: 0 }
-            : { opacity: 0, x: direction > 0 ? OFFSET : -OFFSET }
-        }
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: DURATION, ease: EASE_OUT }}
+        className="pulse-route-enter"
+        style={{
+          "--pulse-route-enter-x": `${direction === 0 ? 0 : direction > 0 ? OFFSET : -OFFSET}px`,
+        } as CSSProperties}
       >
         <Outlet />
-      </motion.div>
+      </div>
     </div>
   );
 }

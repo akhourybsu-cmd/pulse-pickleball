@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "@/lib/platform";
@@ -46,9 +45,10 @@ async function upsertDeviceToken(token: string): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const { Capacitor } = await import("@capacitor/core");
     const platform = Capacitor.getPlatform();
     if (platform !== "android" && platform !== "ios") return;
-    await (supabase as any)
+    await supabase
       .from("device_tokens")
       .upsert(
         { user_id: user.id, token, platform, updated_at: new Date().toISOString() },

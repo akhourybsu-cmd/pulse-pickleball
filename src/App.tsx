@@ -14,12 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
 
 import { AuthStateProvider } from "@/hooks/useAuthState";
-import { useAuthPersistence } from "@/hooks/useAuthPersistence";
-import { DirectMessagesProvider } from "@/hooks/useDirectMessages";
 import { setPushNavigator, initNativePush } from "@/lib/push";
-import { PlayerShell } from "@/components/layout/PlayerShell";
-import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
-import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
 import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
 import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 import { AuthGuard, AdminGuard } from "@/components/guards";
@@ -32,7 +27,6 @@ import { supabase } from "@/integrations/supabase/client";
 // disk in case we want to revive a global indicator later.
 // import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollManager } from "@/components/ScrollManager";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { clearPostAuthRedirect, consumePostAuthRedirect, isAuthEntryPath } from "@/lib/authRedirect";
@@ -73,6 +67,62 @@ const PageLoader = () => (
     </div>
   </div>
 );
+
+// These authenticated or delayed-only surfaces used to live in the entry
+// bundle. Splitting them keeps public routes and the first app paint from
+// parsing the full player shell, notification center, and transition stack.
+const PlayerAppShell = lazy(() => import("@/components/layout/PlayerAppShell"));
+const CommunityTransitionOutlet = lazy(() =>
+  import("@/components/community/CommunityTransitionOutlet").then((module) => ({ default: module.CommunityTransitionOutlet })),
+);
+const LeagueTransitionOutlet = lazy(() =>
+  import("@/components/leagues/LeagueTransitionOutlet").then((module) => ({ default: module.LeagueTransitionOutlet })),
+);
+const PWAInstallPrompt = lazy(() =>
+  import("@/components/PWAInstallPrompt").then((module) => ({ default: module.PWAInstallPrompt })),
+);
+
+/** Load the install-prompt UI only after initial navigation has settled. */
+function DeferredPWAInstallPrompt() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    if (localStorage.getItem("pulse_pwa_dismissed_permanent") === "true") return;
+    if (localStorage.getItem("pulse_pwa_installed") === "true") return;
+
+    const timer = window.setTimeout(() => setReady(true), 2500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return ready ? (
+    <Suspense fallback={null}>
+      <PWAInstallPrompt />
+    </Suspense>
+  ) : null;
+}
+
+function hasPendingAuthCallback(): boolean {
+  const url = new URL(window.location.href);
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const queryParams = url.searchParams;
+  const errorMessage =
+    hashParams.get("error_description") ||
+    queryParams.get("error_description") ||
+    hashParams.get("error") ||
+    queryParams.get("error");
+  const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
+  const code = queryParams.get("code") || hashParams.get("code");
+  const canUseCode = Boolean(
+    code &&
+    (queryParams.has("state") ||
+      isAuthEntryPath(url.pathname) ||
+      url.pathname.startsWith("/profile") ||
+      url.pathname.startsWith("/player/profile")),
+  );
+  return Boolean(errorMessage || (accessToken && refreshToken) || canUseCode);
+}
 
 // Lazy load all page components
 const Index = lazy(() => import("./pages/Index"));
@@ -198,8 +248,10 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   const navigate = useNavigate();
-  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(false);
-  useAuthPersistence();
+  // Ordinary refreshes have no auth payload to exchange, so render routes on
+  // the first pass. Previously every page showed a full-screen loader for an
+  // extra render before its lazy route chunk was even requested.
+  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(() => !hasPendingAuthCallback());
 
   // Route a tapped native push notification through the router.
   useEffect(() => {
@@ -326,7 +378,7 @@ const AppContent = () => {
   return (
     <>
       <ScrollManager />
-      <PWAInstallPrompt />
+      <DeferredPWAInstallPrompt />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Design harness for the venue surfaces. Not registered in a
@@ -407,9 +459,7 @@ const AppContent = () => {
           {/* Player routes with shell - require auth */}
           <Route path="/player" element={
             <AuthGuard>
-              <DirectMessagesProvider>
-                <PlayerShell />
-              </DirectMessagesProvider>
+              <PlayerAppShell />
             </AuthGuard>
           }>
             <Route index element={<Navigate to="/player/dashboard" replace />} />

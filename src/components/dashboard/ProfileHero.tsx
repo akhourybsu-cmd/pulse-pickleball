@@ -11,6 +11,7 @@ interface ProfileHeroProps {
   totalMatches: number | undefined;
   wins: number | undefined;
   losses: number | undefined;
+  showQuickActions?: boolean;
 }
 
 /**
@@ -36,6 +37,7 @@ export const ProfileHero = ({
   totalMatches,
   wins = 0,
   losses = 0,
+  showQuickActions = true,
 }: ProfileHeroProps) => {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 pb-2 pt-4 sm:pt-5 lg:px-8 lg:pb-3 lg:pt-7">
@@ -54,9 +56,11 @@ export const ProfileHero = ({
       {/* Quick Actions — mobile-only here. Desktop renders QuickActionsBar
           inside the left column of the body grid (under the "Quick actions"
           SectionHeader). */}
-      <div className="mt-3.5 lg:hidden">
-        <QuickActionsBar />
-      </div>
+      {showQuickActions && (
+        <div className="mt-3.5">
+          <QuickActionsBar />
+        </div>
+      )}
     </div>
   );
 };

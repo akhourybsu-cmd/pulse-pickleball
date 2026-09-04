@@ -7,9 +7,8 @@ import { removeOldestQuery, type PersistQueryClientOptions } from '@tanstack/rea
  *
  * Without this the cache is memory-only, so every cold start — very common on
  * mobile, where the OS evicts backgrounded apps — begins with a full round of
- * spinners even for data we already had. Persisting to localStorage lets the
- * hot screens (dashboard, community, profiles, groups) paint from the last
- * known-good data immediately and revalidate in the background.
+ * spinners even for data we already had. We persist only a small allowlist of
+ * compact dashboard queries so hydration stays cheaper than refetching.
  *
  * Restored data is never treated as fresh: queries keep their normal
  * staleTime, so anything stale refetches on mount. Persistence only removes
@@ -20,20 +19,21 @@ const STORAGE_KEY = 'pulse.rq-cache';
 
 /** Bump when cached query SHAPES change incompatibly — invalidates every
  *  persisted entry so no screen can restore data it can't render. */
-const PERSIST_VERSION = 'v1';
+const PERSIST_VERSION = 'v2-lean';
 
 /** Don't restore anything older than a day — beyond that a fetch is fine. */
 const MAX_AGE = 24 * 60 * 60 * 1000;
 
 /**
- * Query keys that must NOT be persisted.
- *
- * `group-messages` is realtime-driven with staleTime: Infinity — a restored
- * entry would never refetch on mount, so the chat could show a stale backlog
- * until a realtime event happened to arrive. It's cheap to refetch and must be
- * correct, so it always comes from the network.
+ * Query keys worth persisting across a cold start. Realtime feeds, chat,
+ * member lists, and large post collections intentionally stay memory-only.
  */
-const NEVER_PERSIST = ['group-messages'];
+const PERSISTED_QUERY_KEYS = new Set([
+  'my-leagues',
+  'my-upcoming-league-matches',
+  'upcoming-registered-events',
+  'player-pulse',
+]);
 
 /** localStorage can be unavailable (private mode, embedded webviews). */
 function safeStorage(): Storage | undefined {
@@ -70,15 +70,21 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> | un
         maxAge: MAX_AGE,
         buster: PERSIST_VERSION,
         dehydrateOptions: {
-          // Loosely typed: duplicate @tanstack/query-core copies in the tree
-          // make the nominal `Query` types incompatible across packages.
-          shouldDehydrateQuery: (query: any) => {
+          // Keep this structural because duplicate @tanstack/query-core copies
+          // in the tree make the nominal `Query` types incompatible.
+          shouldDehydrateQuery: (query: {
+            state: { status: string };
+            queryKey?: readonly unknown[];
+          }) => {
             // Only persist settled, successful data — never errors or
             // in-flight/partial state.
             if (query.state.status !== 'success') return false;
             const head = query.queryKey?.[0];
-            if (typeof head === 'string' && NEVER_PERSIST.includes(head)) return false;
-            return true;
+            // Persist only compact, high-value refresh data. Serializing every
+            // successful query allowed large member/post/chat payloads to grow
+            // localStorage and made hydration itself part of the cold-start
+            // critical path.
+            return typeof head === 'string' && PERSISTED_QUERY_KEYS.has(head);
           },
         },
       }

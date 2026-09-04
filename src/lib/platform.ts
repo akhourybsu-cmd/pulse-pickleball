@@ -1,4 +1,11 @@
-import { Capacitor } from "@capacitor/core";
+interface CapacitorBridge {
+  isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
+}
+
+function getCapacitorBridge(): CapacitorBridge | undefined {
+  return (globalThis as typeof globalThis & { Capacitor?: CapacitorBridge }).Capacitor;
+}
 
 /**
  * True when PULSE is running inside the native (iOS/Android) Capacitor shell,
@@ -7,7 +14,9 @@ import { Capacitor } from "@capacitor/core";
  */
 export function isNativeApp(): boolean {
   try {
-    return Capacitor.isNativePlatform();
+    const bridge = getCapacitorBridge();
+    if (bridge?.isNativePlatform) return bridge.isNativePlatform();
+    return Boolean(bridge?.getPlatform && bridge.getPlatform() !== "web");
   } catch {
     return false;
   }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,15 +90,10 @@ export function PulseActivityBar() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <AnimatePresence>
-        {task && (
-          <motion.div
+      {task && (
+          <div
             key={task.id}
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-sm rounded-2xl border border-border/70 bg-background/85 px-4 py-3 shadow-lg backdrop-blur-xl"
+            className="pulse-activity-enter w-full max-w-sm rounded-2xl border border-border/70 bg-background/85 px-4 py-3 shadow-lg backdrop-blur-xl"
             role="status"
             aria-live="polite"
           >
@@ -124,26 +118,18 @@ export function PulseActivityBar() {
             {/* Heartbeat track */}
             <div className="relative mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
               {task.phase === "running" ? (
-                <motion.div
-                  className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent"
-                  animate={{ x: ["-60%", "160%"] }}
-                  transition={{ duration: 1.05, repeat: Infinity, ease: "easeInOut" }}
-                />
+                <div className="pulse-activity-sweep absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
               ) : (
-                <motion.div
+                <div
                   className={cn(
-                    "absolute inset-y-0 left-0 rounded-full",
+                    "pulse-activity-complete absolute inset-y-0 left-0 rounded-full",
                     task.phase === "error" ? "bg-destructive" : "bg-primary",
                   )}
-                  initial={{ width: "35%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 0.32, ease: "easeOut" }}
                 />
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </div>
   );
 }

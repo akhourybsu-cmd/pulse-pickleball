@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
 
 /**
  * Depth-aware enter transition for the three Community routes:
@@ -14,8 +14,6 @@ import { motion, useReducedMotion } from "framer-motion";
  * never more than one page in the tree.
  */
 
-const DURATION = 0.18;
-const EASE = [0.32, 0.72, 0, 1] as const;
 const OFFSET = 24;
 
 function communityDepth(pathname: string): number {
@@ -28,7 +26,6 @@ function communityDepth(pathname: string): number {
 
 export function CommunityTransitionOutlet() {
   const location = useLocation();
-  const reduced = useReducedMotion();
   const currentDepth = communityDepth(location.pathname);
   const prevDepthRef = useRef<number>(currentDepth);
 
@@ -41,24 +38,17 @@ export function CommunityTransitionOutlet() {
     prevDepthRef.current = currentDepth;
   }, [currentDepth]);
 
-  if (reduced) {
-    return <Outlet />;
-  }
-
   return (
     <div className="relative overflow-x-hidden">
-      <motion.div
+      <div
         key={location.pathname}
-        initial={
-          direction === 0
-            ? { opacity: 0 }
-            : { opacity: 0, x: direction > 0 ? OFFSET : -OFFSET }
-        }
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: DURATION, ease: EASE }}
+        className="pulse-route-enter"
+        style={{
+          "--pulse-route-enter-x": `${direction === 0 ? 0 : direction > 0 ? OFFSET : -OFFSET}px`,
+        } as CSSProperties}
       >
         <Outlet />
-      </motion.div>
+      </div>
     </div>
   );
 }

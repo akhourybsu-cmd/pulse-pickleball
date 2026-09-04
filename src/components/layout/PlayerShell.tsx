@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Trophy, Swords, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { ShellContentTransition } from '@/components/layout/ShellContentTransition';
@@ -19,6 +18,12 @@ import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
 import { useAuthState } from '@/hooks/useAuthState';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
+
+const NotificationCenter = lazy(() =>
+  import('@/components/notifications/NotificationCenter').then((module) => ({
+    default: module.NotificationCenter,
+  })),
+);
 
 // Player-first bottom nav. Tab ORDER + labels come from the single
 // authoritative definition (src/lib/navigation/primaryTabs) so the nav and
@@ -109,7 +114,7 @@ export function PlayerShell() {
     deleteNotification,
     clearAll,
     groupedByTime,
-  } = useNotifications(user?.id);
+  } = useNotifications(user?.id, { loadDetails: isNotificationCenterOpen });
 
   // Surfacing total unread DM count in the header so Messages is one
   // tap from anywhere instead of being buried 2-3 levels deep behind
@@ -179,23 +184,34 @@ export function PlayerShell() {
     mainRef.current?.focus({ preventScroll: true });
   }, [location.pathname]);
 
-  // Warm every primary tab's code chunk once, at idle, so tapping a tab on
-  // mobile (no hover to trigger prefetch) can animate immediately instead of
-  // suspending on a cold chunk. Bounded to the known primary-tab chunks;
-  // failures are ignored (the route will still lazy-load normally).
+  // Warm primary tabs only after the current screen has had time to finish its
+  // data work. The old idle callback launched every import almost immediately
+  // and could saturate a mobile connection during a dashboard refresh.
   useEffect(() => {
-    const warm = () => Object.values(prefetchMap).forEach((fn) => fn().catch(() => {}));
-    const w = window as unknown as {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (h: number) => void;
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (connection?.saveData || connection?.effectiveType?.includes('2g')) return;
+
+    let cancelled = false;
+    const warm = async () => {
+      const entries = Object.entries(prefetchMap).filter(([path]) => path !== activeRootPath);
+      for (const [, prefetch] of entries) {
+        if (cancelled) return;
+        try {
+          await prefetch();
+        } catch {
+          // The route still lazy-loads normally if speculative loading fails.
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 200));
+      }
     };
-    if (typeof w.requestIdleCallback === 'function') {
-      const handle = w.requestIdleCallback(warm, { timeout: 2500 });
-      return () => w.cancelIdleCallback?.(handle);
-    }
-    const t = setTimeout(warm, 600);
-    return () => clearTimeout(t);
-  }, []);
+    const timer = window.setTimeout(() => { void warm(); }, 5000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeRootPath]);
 
   return (
     <FriendsPresenceProvider>
@@ -279,18 +295,22 @@ export function PlayerShell() {
       )}
 
       {/* Notification Center */}
-      <NotificationCenter
-        isOpen={isNotificationCenterOpen}
-        onClose={() => setIsNotificationCenterOpen(false)}
-        notifications={notifications}
-        loading={notificationsLoading}
-        unreadCount={unreadCount}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-        onDelete={deleteNotification}
-        onClearAll={clearAll}
-        groupedByTime={groupedByTime}
-      />
+      {isNotificationCenterOpen && (
+        <Suspense fallback={null}>
+          <NotificationCenter
+            isOpen
+            onClose={() => setIsNotificationCenterOpen(false)}
+            notifications={notifications}
+            loading={notificationsLoading}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onDelete={deleteNotification}
+            onClearAll={clearAll}
+            groupedByTime={groupedByTime}
+          />
+        </Suspense>
+      )}
 
       {/* Main Content — the ONLY region that moves during a tab change. The
           header (above) and bottom nav (below) are siblings, so they stay

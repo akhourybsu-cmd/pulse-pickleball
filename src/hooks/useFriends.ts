@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuthState } from '@/hooks/useAuthState';
 
 export interface FriendProfile {
   id: string;
@@ -30,133 +31,103 @@ export interface FriendRequest {
   profile: FriendProfile;
 }
 
-export function useFriends(options?: { realtime?: boolean }) {
+export function useFriends(options?: { realtime?: boolean; includeSent?: boolean }) {
   const realtime = options?.realtime ?? false;
+  const includeSent = options?.includeSent ?? true;
+  const { user } = useAuthState();
   const [friends, setFriends] = useState<FriendWithProfile[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserId = user?.id ?? null;
 
   const fetchFriends = useCallback(async () => {
     try {
       setError(null);
-      // getSession() reads the cached local session instead of a server
-      // round-trip — RLS is the real auth boundary for every query below.
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) return;
+      if (!currentUserId) {
+        setFriends([]);
+        setPendingRequests([]);
+        setSentRequests([]);
+        return;
+      }
 
-      setCurrentUserId(user.id);
+      // Relationship lists are independent. Fetch them together, then resolve
+      // every referenced user with one profile query. This changes the full
+      // friends load from as many as six sequential round trips to two.
+      const [acceptedResult, receivedResult, sentResult] = await Promise.all([
+        supabase
+          .from('friendships')
+          .select('*')
+          .eq('status', 'accepted')
+          .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`),
+        supabase
+          .from('friendships')
+          .select('id, user_id, created_at')
+          .eq('friend_id', currentUserId)
+          .eq('status', 'pending'),
+        includeSent
+          ? supabase
+              .from('friendships')
+              .select('id, friend_id, created_at')
+              .eq('user_id', currentUserId)
+              .eq('status', 'pending')
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-      // Fetch accepted friendships where user is either party
-      const { data: friendships, error } = await supabase
-        .from('friendships')
-        .select('*')
-        .eq('status', 'accepted')
-        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+      if (acceptedResult.error) throw acceptedResult.error;
+      if (receivedResult.error) throw receivedResult.error;
+      if (sentResult.error) throw sentResult.error;
 
-      if (error) throw error;
+      const friendships = acceptedResult.data || [];
+      const received = receivedResult.data || [];
+      const sent = sentResult.data || [];
+      const profileIds = [...new Set([
+        ...friendships.map((friendship) =>
+          friendship.user_id === currentUserId ? friendship.friend_id : friendship.user_id,
+        ),
+        ...received.map((request) => request.user_id),
+        ...sent.map((request) => request.friend_id),
+      ])];
 
-      // Batch fetch all friend profiles to avoid N+1 queries
-      const friendUserIds = (friendships || []).map(f => 
-        f.user_id === user.id ? f.friend_id : f.user_id
+      const { data: profiles, error: profileError } = profileIds.length
+        ? await supabase
+            .from('profiles_public')
+            .select('id, display_name, full_name, avatar_url, current_rating')
+            .in('id', profileIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+
+      const profileMap = new Map(
+        (profiles || []).map((profile) => [profile.id, profile as FriendProfile]),
       );
-      
-      const friendsWithProfiles: FriendWithProfile[] = [];
-      
-      if (friendUserIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles_public')
-          .select('id, display_name, full_name, avatar_url, current_rating')
-          .in('id', friendUserIds);
-        
-        const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-        
-        for (const f of friendships || []) {
-          const otherUserId = f.user_id === user.id ? f.friend_id : f.user_id;
-          const profile = profileMap.get(otherUserId);
-          
-          if (profile) {
-            friendsWithProfiles.push({
-              ...f,
-              status: f.status as 'pending' | 'accepted' | 'blocked',
-              profile: profile as FriendProfile
-            });
-          }
-        }
-      }
 
-      setFriends(friendsWithProfiles);
+      setFriends(friendships.flatMap((friendship) => {
+        const otherUserId = friendship.user_id === currentUserId
+          ? friendship.friend_id
+          : friendship.user_id;
+        const profile = profileMap.get(otherUserId);
+        return profile ? [{
+          ...friendship,
+          status: friendship.status as Friendship['status'],
+          profile,
+        }] : [];
+      }));
 
-      // Fetch pending requests received by user
-      const { data: received, error: receivedError } = await supabase
-        .from('friendships')
-        .select('id, user_id, created_at')
-        .eq('friend_id', user.id)
-        .eq('status', 'pending');
+      setPendingRequests(received.flatMap((request) => {
+        const profile = profileMap.get(request.user_id);
+        return profile ? [{ ...request, profile }] : [];
+      }));
 
-      if (receivedError) throw receivedError;
-
-      // Batch fetch pending request profiles
-      const pendingWithProfiles: FriendRequest[] = [];
-      const pendingUserIds = (received || []).map(r => r.user_id);
-      
-      if (pendingUserIds.length > 0) {
-        const { data: pendingProfiles } = await supabase
-          .from('profiles_public')
-          .select('id, display_name, full_name, avatar_url, current_rating')
-          .in('id', pendingUserIds);
-        
-        const pendingProfileMap = new Map((pendingProfiles || []).map(p => [p.id, p]));
-        
-        for (const r of received || []) {
-          const profile = pendingProfileMap.get(r.user_id);
-          if (profile) {
-            pendingWithProfiles.push({
-              ...r,
-              profile: profile as FriendProfile
-            });
-          }
-        }
-      }
-      setPendingRequests(pendingWithProfiles);
-
-      // Fetch sent pending requests
-      const { data: sent, error: sentError } = await supabase
-        .from('friendships')
-        .select('id, friend_id, created_at')
-        .eq('user_id', user.id)
-        .eq('status', 'pending');
-
-      if (sentError) throw sentError;
-
-      // Batch fetch sent request profiles
-      const sentWithProfiles: FriendRequest[] = [];
-      const sentUserIds = (sent || []).map(s => s.friend_id);
-      
-      if (sentUserIds.length > 0) {
-        const { data: sentProfiles } = await supabase
-          .from('profiles_public')
-          .select('id, display_name, full_name, avatar_url, current_rating')
-          .in('id', sentUserIds);
-        
-        const sentProfileMap = new Map((sentProfiles || []).map(p => [p.id, p]));
-        
-        for (const s of sent || []) {
-          const profile = sentProfileMap.get(s.friend_id);
-          if (profile) {
-            sentWithProfiles.push({
-              id: s.id,
-              user_id: s.friend_id,
-              created_at: s.created_at,
-              profile: profile as FriendProfile
-            });
-          }
-        }
-      }
-      setSentRequests(sentWithProfiles);
+      setSentRequests(sent.flatMap((request) => {
+        const profile = profileMap.get(request.friend_id);
+        return profile ? [{
+          id: request.id,
+          user_id: request.friend_id,
+          created_at: request.created_at,
+          profile,
+        }] : [];
+      }));
 
     } catch (error) {
       console.error('Error fetching friends:', error);
@@ -166,7 +137,7 @@ export function useFriends(options?: { realtime?: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUserId, includeSent]);
 
   useEffect(() => {
     fetchFriends();
@@ -198,11 +169,11 @@ export function useFriends(options?: { realtime?: boolean }) {
       // the resulting status: 'pending' (sent or already pending) or
       // 'accepted' (the other side had a pending request — instant
       // friends).
-      // (supabase as any): send_friend_request is not in the generated
+      // The RPC is not in the generated types yet.
       // types yet — same pattern as the user_blocks table below.
-      const { data: status, error } = await (supabase as any).rpc('send_friend_request', {
+      const { data: status, error } = await supabase.rpc('send_friend_request' as never, {
         p_friend_id: friendId,
-      });
+      } as never);
 
       if (error) throw error;
 
@@ -330,8 +301,8 @@ export function useFriends(options?: { realtime?: boolean }) {
       if (!user) throw new Error('Not authenticated');
 
       // Insert into user_blocks (canonical block source of truth).
-      const { error: blockErr } = await (supabase as any)
-        .from('user_blocks')
+      const { error: blockErr } = await supabase
+        .from('user_blocks' as never)
         .insert({ blocker_id: user.id, blocked_id: userId });
 
       if (blockErr && !/duplicate/i.test(blockErr.message)) throw blockErr;

@@ -878,3 +878,57 @@ All colors MUST be HSL.
   background: hsl(var(--background));
   border-bottom-right-radius: 11px;
 }
+
+/* Lightweight app-shell motion. Keeping these transitions in CSS avoids
+   loading the full animation runtime on every refresh just to fade/slide the
+   current route and the global progress pill. */
+@keyframes pulse-route-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--pulse-route-enter-x, 0), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.pulse-route-enter {
+  animation: pulse-route-enter 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes pulse-activity-enter {
+  from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.98); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes pulse-activity-sweep {
+  from { transform: translate3d(-60%, 0, 0); }
+  to { transform: translate3d(160%, 0, 0); }
+}
+
+@keyframes pulse-activity-complete {
+  from { width: 35%; }
+  to { width: 100%; }
+}
+
+.pulse-activity-enter {
+  animation: pulse-activity-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.pulse-activity-sweep {
+  animation: pulse-activity-sweep 1.05s ease-in-out infinite;
+}
+
+.pulse-activity-complete {
+  animation: pulse-activity-complete 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-route-enter,
+  .pulse-activity-enter,
+  .pulse-activity-sweep,
+  .pulse-activity-complete {
+    animation: none;
+  }
+}

@@ -8,7 +8,12 @@ import { cn } from "@/lib/utils";
 const MAX_VISIBLE = 8;
 
 export function MyCommunitiesRail() {
-  const { myGroups, loading } = useGroups();
+  // Home only needs joined-group identity. Public discovery and one unread
+  // count query per group belong to the Community screen, not app startup.
+  const { myGroups, loading } = useGroups({
+    includePublic: false,
+    includeUnreadCounts: false,
+  });
 
   if (loading) {
     return (

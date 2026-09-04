@@ -60,6 +60,13 @@ interface PartnerOpponentData {
 
 const Dashboard = () => {
   const { user, profile: sharedProfile, loading } = useAuthState();
+  // CSS-only responsive branches still mount their React children. The old
+  // `hidden lg:grid` + `lg:hidden` pair therefore ran every dashboard query
+  // twice on every refresh. Render exactly one branch so only the visible
+  // dashboard performs work.
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [profileOverrides, setProfileOverrides] = useState<Partial<Profile>>({});
   const profile = useMemo(
     () => sharedProfile ? ({ ...sharedProfile, ...profileOverrides } as Profile) : null,
@@ -72,6 +79,14 @@ const Dashboard = () => {
 
   // One-time "confirm your name" prompt for existing (pre-lock) users.
   const [showConfirmName, setShowConfirmName] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = (event: MediaQueryListEvent) => setIsDesktop(event.matches);
+    setIsDesktop(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -149,6 +164,7 @@ const Dashboard = () => {
         totalMatches={profile?.total_matches}
         wins={profile?.wins}
         losses={profile?.losses}
+        showQuickActions={!isDesktop}
       />
 
       {/* Main Dashboard Content — single linear flow on mobile, two-column
@@ -162,8 +178,10 @@ const Dashboard = () => {
             both mobile and desktop. Renders null (no phantom spacing) when done. */}
         <GettingStartedCard userId={user?.id} profile={profile} />
 
-        {/* Desktop: Two-column — action stack left, sticky activity right */}
-        <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-7 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-9">
+        {/* Render only the active responsive branch. Mounting both and hiding
+            one with CSS doubled every child hook and Supabase request. */}
+        {isDesktop ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-7 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-9">
           <div className="space-y-9 xl:space-y-10">
             <EnablePushBanner />
             {/* Quick Actions — primary action surface (Record Match etc.) */}
@@ -294,10 +312,11 @@ const Dashboard = () => {
           </aside>
         </div>
 
-        {/* Mobile: single linear flow. Activity at top (action items first),
-            then the player-first stack. Quick Actions already render inside
-            ProfileHero above on mobile. */}
-        <div className="mt-5 space-y-8 lg:hidden">
+        ) : (
+        <div className="mt-5 space-y-8">
+          {/* Mobile: single linear flow. Activity at top (action items first),
+              then the player-first stack. Quick Actions already render inside
+              ProfileHero above on mobile. */}
           <EnablePushBanner />
           <div
             className="opacity-0 animate-fade-up"
@@ -397,6 +416,7 @@ const Dashboard = () => {
           {/* "Discover play" (SmartMatch + LFGNotifications) removed — retired
               court/LFG surface; see the desktop column note above. */}
         </div>
+        )}
       </div>
 
       <Footer />

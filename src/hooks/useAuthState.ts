@@ -71,6 +71,62 @@ type AuthStateValue = AuthState & { refresh: () => Promise<void> };
 
 const AuthStateContext = createContext<AuthStateValue | null>(null);
 
+const PROFILE_CACHE_KEY = 'pulse.auth-profile.v1';
+const PROFILE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+interface CachedAuthProfile {
+  userId: string;
+  cachedAt: number;
+  profile: AuthProfile;
+}
+
+function profileStorage(): Storage {
+  return localStorage.getItem('pulse_persist_session') === 'false'
+    ? sessionStorage
+    : localStorage;
+}
+
+function readCachedProfile(userId: string): AuthProfile | null {
+  try {
+    const storage = profileStorage();
+    const raw = storage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedAuthProfile;
+    if (
+      cached.userId !== userId ||
+      !cached.profile ||
+      Date.now() - cached.cachedAt > PROFILE_CACHE_MAX_AGE
+    ) {
+      storage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+    return cached.profile;
+  } catch {
+    clearCachedProfile();
+    return null;
+  }
+}
+
+function writeCachedProfile(userId: string, profile: AuthProfile): void {
+  try {
+    profileStorage().setItem(
+      PROFILE_CACHE_KEY,
+      JSON.stringify({ userId, cachedAt: Date.now(), profile } satisfies CachedAuthProfile),
+    );
+  } catch {
+    // Storage is only a refresh optimization; private webviews may reject it.
+  }
+}
+
+function clearCachedProfile(): void {
+  try {
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+    sessionStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch {
+    // Best effort only.
+  }
+}
+
 const SIGNED_OUT_STATE: AuthState = {
   user: null,
   profile: null,
@@ -105,12 +161,26 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     const requestId = ++requestIdRef.current;
 
     if (!session?.user) {
+      clearCachedProfile();
       if (mountedRef.current) setState(SIGNED_OUT_STATE);
       return;
     }
 
     const user = session.user;
-    if (showLoader && mountedRef.current) {
+    const cachedProfile = readCachedProfile(user.id);
+    if (cachedProfile && mountedRef.current) {
+      // Returning sessions can paint the shell immediately from a small,
+      // user-scoped snapshot while the authoritative RLS-protected row
+      // revalidates in the background.
+      setState({
+        user,
+        profile: cachedProfile,
+        loading: false,
+        isAuthenticated: true,
+        isOnboarding: cachedProfile.player_state === 'onboarding' || !cachedProfile.tutorial_completed,
+        isActive: cachedProfile.player_state === 'active',
+      });
+    } else if (showLoader && mountedRef.current) {
       setState((current) => ({
         ...current,
         user,
@@ -132,6 +202,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
       const authProfile = profile as unknown as AuthProfile;
+      writeCachedProfile(user.id, authProfile);
 
       setState({
         user,
@@ -144,6 +215,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error fetching auth state:', error);
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (cachedProfile) return;
       setState({
         user,
         profile: null,

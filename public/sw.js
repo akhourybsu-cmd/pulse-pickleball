@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pulse-v7-notif-refresh';
+const CACHE_VERSION = 'pulse-v8-fast-refresh';
 const urlsToCache = [
   '/pulse-icon.jpg'
 ];
@@ -25,8 +25,6 @@ self.addEventListener('activate', (event) => {
       );
     })
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-      .then((clients) => Promise.allSettled(clients.map((client) => client.navigate(client.url))))
   );
 });
 
@@ -61,6 +59,26 @@ self.addEventListener('fetch', (event) => {
   // releases cannot be trapped behind stale cached HTML.
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Vite assets are content-hashed and therefore immutable. Cache-first makes
+  // repeat launches and refreshes avoid downloading/parsing the same JS and
+  // CSS through the network path again. A new deploy uses new filenames, so a
+  // stale cached asset can never shadow updated code.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.open(CACHE_VERSION).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+
+        const response = await fetch(event.request);
+        if (response && response.ok && response.type === 'basic') {
+          void cache.put(event.request, response.clone()).catch(() => {});
+        }
+        return response;
+      })
+    );
     return;
   }
 

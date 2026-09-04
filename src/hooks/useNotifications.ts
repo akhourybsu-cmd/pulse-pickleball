@@ -36,10 +36,12 @@ export interface NotificationPreference {
 interface UseNotificationsOptions {
   showToasts?: boolean;
   categories?: string[];
+  /** Fetch full notification rows only when their panel is visible. */
+  loadDetails?: boolean;
 }
 
 export function useNotifications(userId: string | null | undefined, options: UseNotificationsOptions = {}) {
-  const { showToasts = true, categories } = options;
+  const { showToasts = true, categories, loadDetails = true } = options;
   const { isContextActive } = useActiveView();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -54,7 +56,26 @@ export function useNotifications(userId: string | null | undefined, options: Use
       return;
     }
 
+    if (loadDetails) setLoading(true);
     try {
+      if (!loadDetails) {
+        let countQuery = supabase
+          .from("user_notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("read", false);
+
+        if (categories && categories.length > 0) {
+          countQuery = countQuery.in("category", categories);
+        }
+
+        const { count, error } = await countQuery;
+        if (error) throw error;
+        setNotifications([]);
+        setUnreadCount(count || 0);
+        return;
+      }
+
       let query = supabase
         .from("user_notifications")
         .select("*")
@@ -110,7 +131,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
     } finally {
       setLoading(false);
     }
-  }, [userId, categories, isContextActive]);
+  }, [userId, categories, isContextActive, loadDetails]);
 
 
   // Real-time subscription
@@ -141,16 +162,18 @@ export function useNotifications(userId: string | null | undefined, options: Use
             event_id: newNotif.event_id,
           });
 
-          setNotifications(prev => [
-            {
-              ...newNotif,
-              category: newNotif.category || 'system',
-              priority: newNotif.priority || 'normal',
-              metadata: (newNotif.metadata as Record<string, unknown>) || {},
-              read: alreadyEngaged ? true : newNotif.read,
-            },
-            ...prev
-          ]);
+          if (loadDetails) {
+            setNotifications(prev => [
+              {
+                ...newNotif,
+                category: newNotif.category || 'system',
+                priority: newNotif.priority || 'normal',
+                metadata: (newNotif.metadata as Record<string, unknown>) || {},
+                read: alreadyEngaged ? true : newNotif.read,
+              },
+              ...prev
+            ]);
+          }
 
           if (alreadyEngaged) {
             void supabase
@@ -185,6 +208,10 @@ export function useNotifications(userId: string | null | undefined, options: Use
         },
         (payload) => {
           const updated = payload.new as Notification;
+          if (!loadDetails) {
+            void fetchNotifications();
+            return;
+          }
           setNotifications(prev => 
             prev.map(n => n.id === updated.id ? {
               ...updated,
@@ -209,6 +236,10 @@ export function useNotifications(userId: string | null | undefined, options: Use
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          if (!loadDetails) {
+            void fetchNotifications();
+            return;
+          }
           const deleted = payload.old as { id: string };
           setNotifications(prev => prev.filter(n => n.id !== deleted.id));
           setUnreadCount(prev => Math.max(0, prev - 1));
@@ -219,7 +250,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, fetchNotifications, showToasts, isContextActive]);
+  }, [userId, fetchNotifications, showToasts, isContextActive, loadDetails]);
 
   // Mark as read
   const markAsRead = useCallback(async (notificationId: string) => {

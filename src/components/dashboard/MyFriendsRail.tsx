@@ -14,7 +14,7 @@ const MAX_VISIBLE = 10;
  * pulse dot so they're glanceable without their own section.
  */
 export function MyFriendsRail() {
-  const { friends, pendingRequests, loading } = useFriends();
+  const { friends, pendingRequests, loading } = useFriends({ includeSent: false });
 
   if (loading) {
     return (
