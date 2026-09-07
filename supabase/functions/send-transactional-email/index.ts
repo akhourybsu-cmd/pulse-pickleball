@@ -5,15 +5,11 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { isServiceRoleRequest } from '../_shared/service-role-auth.ts'
 
-// Configuration baked in at scaffold time — do NOT change these manually.
-// To update, re-run the email domain setup flow.
+// Transactional-email identity for the current verified Resend configuration.
 const SITE_NAME = "pulse-pickleball"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
-// It must match the subdomain verified with the configured email provider.
-const SENDER_DOMAIN = "notify.pulsepb.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// When display_from_root is enabled, this can be the root domain for cleaner branding,
-// even though actual sending uses the subdomain above.
+// Retained in queue payloads as delivery metadata for auditing.
+const SENDER_DOMAIN = "pulsepb.com"
+// FROM_DOMAIN records the root domain used for the branded sender identity.
 const FROM_DOMAIN = "pulsepb.com"
 
 // Generate a cryptographically random 32-byte hex token

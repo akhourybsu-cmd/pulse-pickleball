@@ -1,11 +1,29 @@
-# Supabase cutover runbook
+# Supabase production cutover record
 
-This runbook moves PULSE from Lovable Cloud project
-`ryxklkayezjnwwunuphn` to Supabase project `rqfqwavhtfwwtmfjnxkx`.
-Do not reduce, pause, or remove the Lovable backend until the post-cutover
-checks pass.
+PULSE moved from the former Lovable-managed Supabase project
+`ryxklkayezjnwwunuphn` to the independently managed Supabase project
+`rqfqwavhtfwwtmfjnxkx`. The production cutover is complete.
 
-## Current staging state
+The current production providers are:
+
+- Firebase Hosting (`pulse-pickleball-c60e1`) for the web frontend.
+- Supabase (`rqfqwavhtfwwtmfjnxkx`) for authentication, Postgres, Storage,
+  Realtime, Edge Functions, and scheduled jobs.
+- GitHub and GitHub Actions for source control and automated deployments.
+- GoDaddy for domain registration and DNS management.
+- Resend for transactional email delivery from `pulsepb.com`.
+
+Lovable no longer serves production web traffic, writes application data,
+authenticates users, runs functions, or deploys the app. Retain the former
+project only as a rollback resource through the 48-hour observation window,
+scheduled to close around September 9, 2026 at 11:53 AM EDT. After that window,
+complete the retirement steps recorded below.
+
+## Completed migration state
+
+The following items record verification performed before and immediately after
+the production switch. References to staging identify where a check originally
+ran; they do not mean staging is still the production source.
 
 - Schema and migration history are installed on the destination.
 - 142 public tables, 6,122 source public rows, 157 auth users, and 160 auth
@@ -55,7 +73,9 @@ checks pass.
   original bytes and SHA-256 hashes. Auth remains 157 users / 160 identities.
   Temporary accounts, venues, communities, messages, posts, programs, court
   holds, friendships, audit rows, and uploaded fixture objects were removed.
-- Production frontend configuration has not been changed.
+- Production frontend configuration points to Supabase project
+  `rqfqwavhtfwwtmfjnxkx`, and Firebase Hosting serves `pulsepb.com` and
+  `www.pulsepb.com`.
 
 ## September 3 verification results
 
@@ -104,10 +124,12 @@ The server-key authorization approach follows Supabase's
 [authorization-header documentation](https://supabase.com/docs/guides/functions/auth-headers)
 and [managed environment-variable documentation](https://supabase.com/docs/guides/functions/secrets).
 
-## Credentials still required
+## Optional or deferred provider credentials
 
-Lovable shows the source secret names but does not expose their values. Create
-or retrieve provider-side credentials and install them on the destination.
+Production Supabase secrets required for the active non-payment features are
+installed. The following table records configured capabilities and explicitly
+deferred integrations. Retrieve any future provider credential directly from
+that provider; Lovable is not a credential source.
 
 | Capability | Destination input | Cutover requirement |
 | --- | --- | --- |
@@ -185,7 +207,7 @@ destination redirect allowlist includes `http://localhost:8080/**`, but not
 `http://127.0.0.1:8080/**`; using the latter for reset emails can send the user
 back to the production Site URL instead. No redirect settings were changed.
 
-### Ordered final acceptance (in progress)
+### Cutover acceptance record
 
 1. **PASSED September 3.** Existing imported email/password login, real recovery
    email receipt, recovery-link routing, password update and login with the
@@ -199,13 +221,11 @@ back to the production Site URL instead. No redirect settings were changed.
    **Deferred by the user to immediate post-cutover acceptance.**
 3. Confirm unavailable-payment UI while Stripe remains deferred. **Deferred by
    the user to immediate post-cutover acceptance; Stripe stays unconfigured.**
-4. Cutover preparation has begun. A fresh source export was attempted, but the
-   Lovable database panel currently reports zero rows for every table while its
-   own recent project history identifies a disk-full connection failure. Those
-   zeroes are not accepted as source data. The verified September 2 export is
-   the current migration snapshot; Lovable's September 3 automatic backup and
-   the original backend remain intact for rollback. Production traffic has not
-   yet been switched.
+4. **COMPLETED September 7.** The verified migration snapshot is installed in
+   the independent Supabase project, production configuration points to it,
+   and Firebase Hosting serves the production domain. The former Lovable
+   project is retained only for the temporary rollback window; it is not the
+   live writer or production host.
 
 The September 3 account-check preparation found that the custom `auth-email`
 function generates implicit recovery links while the frontend client uses
@@ -226,9 +246,10 @@ The suspected hook URL issue was ruled out: Supabase's hook payload sets
 Site URL ([Supabase Auth implementation](https://github.com/supabase/auth/blob/master/internal/api/mail.go)).
 The existing hook verification-link host was not changed.
 
-A staging password reset changes only the destination account. The final
-fresh auth-data import will restore the then-current source password hash;
-do not promise that a staging-only test password persists through cutover.
+Before cutover, a staging password reset changed only the destination account.
+The final import and production switch are now complete, so production password
+changes remain in the independent Supabase project and are no longer subject to
+a source-account overwrite.
 
 Test at minimum:
 
@@ -246,28 +267,34 @@ Existing browser sessions will not survive the project change because the new
 project has a different JWT signing secret. Users will need to sign in again;
 their imported password hashes remain available for email/password login.
 
-## Final data sync and production switch
+## Completed production switch and rollback retirement
 
-Lovable remains the live writer, so staging is only a point-in-time copy.
+The final data import and production switch completed on September 7, 2026.
+There is no further source sync to perform: the independent Supabase project is
+the sole production writer, and Firebase Hosting is the production web host.
+Production URLs, OAuth redirects, Edge Function routing, scheduled jobs, and
+email webhooks have been checked against the new provider configuration.
 
-1. Announce a short maintenance window and stop writes to the Lovable-backed
-   app.
-2. Take a fresh database export and storage delta from Lovable.
-3. Re-inspect snapshot counts and update the restore guardrails if live data
-   changed.
-4. Run the restore script without `commit_restore` and require every audit to
-   pass.
-5. Run the same restore with `-v commit_restore=1` to commit the final snapshot.
-6. Re-run storage hashes, ELEVENO authority checks, and Supabase advisors.
-   Keep migrations `20260910170000` and `20260910180000` installed; a data-only
-   refresh preserves them, but rebuilding the schema from the source dump
-   requires reapplying destination migrations before app use.
-7. Change production frontend variables to the destination project URL and
-   publishable key. Set OAuth flags only for configured providers.
-8. Deploy, then execute the staging checklist against `https://pulsepb.com`.
-9. Monitor Auth, Postgres, Edge Function, Realtime, and Stripe webhook logs.
-10. Keep Lovable available for rollback until the observation window passes;
-    only then reduce its cloud usage or plan.
+Until the 48-hour observation window closes around September 9, 2026 at
+11:53 AM EDT:
+
+1. Keep the former Lovable project available only for emergency rollback.
+2. Monitor Firebase deployment status and Supabase Auth, Postgres, Storage,
+   Realtime, Edge Function, and scheduled-job health.
+3. Continue functional checks against `https://pulsepb.com`; do not write new
+   production data back to the retired provider.
+
+After the observation window passes:
+
+1. Remove the obsolete `_lovable-email` verification record and the two
+   Lovable `notify.pulsepb.com` nameserver delegations after confirming they are
+   not used by the active Resend configuration.
+2. Remove the Lovable GitHub App installation and any remaining Lovable deploy
+   access.
+3. Detach the production domain from the former project and cancel or reduce
+   its paid plan.
+4. Keep the GitHub repository, Firebase deployment history, Supabase backups,
+   and migration artifacts; none depends on Lovable.
 
 ## Accepted security debt
 
