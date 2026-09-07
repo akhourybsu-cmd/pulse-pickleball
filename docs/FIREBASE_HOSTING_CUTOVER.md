@@ -15,7 +15,7 @@ Do not remove the existing `pulsepb.com` A record or cancel the current host unt
 ## 2. Configure GitHub deployment
 
 1. Create a least-privilege Firebase deployment service account for the project.
-2. Add its JSON credential to the GitHub repository as the Actions secret `FIREBASE_SERVICE_ACCOUNT`.
+2. Add its JSON credential to the GitHub repository as the Actions secret `FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1`.
 3. Add the repository variable `AUTO_FRONTEND_DEPLOY=true` only after the first manual deployment passes testing.
 4. Run the `Deploy frontend to Firebase Hosting` workflow manually once.
 

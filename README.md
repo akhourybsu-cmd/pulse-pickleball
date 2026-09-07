@@ -32,7 +32,7 @@ npm run test
 
 Firebase Hosting serves the compiled `dist/` directory. Production deployments from `main` are controlled by `.github/workflows/firebase-hosting-deploy.yml` and the `AUTO_FRONTEND_DEPLOY` repository variable.
 
-Before enabling automatic deployment, configure the `FIREBASE_SERVICE_ACCOUNT` GitHub Actions secret and complete the steps in `docs/FIREBASE_HOSTING_CUTOVER.md`.
+Before enabling automatic deployment, configure the `FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1` GitHub Actions secret and complete the steps in `docs/FIREBASE_HOSTING_CUTOVER.md`.
 
 Manual local deployment, after authenticating the Firebase CLI:
 
