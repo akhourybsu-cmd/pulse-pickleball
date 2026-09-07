@@ -879,6 +879,13 @@ All colors MUST be HSL.
   border-bottom-right-radius: 11px;
 }
 
+/* Gold message bubbles use ink in both light and dark app themes. The global
+   light-mode primary-foreground is cream, which is only ~2.6:1 on PULSE gold
+   and makes normal-size chat copy unnecessarily difficult to read. */
+.chat-outgoing-bubble {
+  color: hsl(220 10% 10%);
+}
+
 /* Lightweight app-shell motion. Keeping these transitions in CSS avoids
    loading the full animation runtime on every refresh just to fade/slide the
    current route and the global progress pill. */
@@ -889,12 +896,23 @@ All colors MUST be HSL.
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: none;
   }
 }
 
+@keyframes pulse-route-enter-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .pulse-route-enter {
-  animation: pulse-route-enter 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  /* Backwards applies the entrance state before the first frame, but releases
+     transform entirely after the animation so fixed descendants stay fixed. */
+  animation: pulse-route-enter 180ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
+.pulse-route-enter-fade {
+  animation: pulse-route-enter-fade 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes pulse-activity-enter {
@@ -926,6 +944,7 @@ All colors MUST be HSL.
 
 @media (prefers-reduced-motion: reduce) {
   .pulse-route-enter,
+  .pulse-route-enter-fade,
   .pulse-activity-enter,
   .pulse-activity-sweep,
   .pulse-activity-complete {

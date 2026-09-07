@@ -18,6 +18,27 @@ import { outgoingBubble, incomingBubble } from '@/lib/chat/bubbleStyles';
 import { MessageReactions } from './MessageReactions';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+
+function linkifyContent(content: string) {
+  const parts = content.split(URL_RE);
+  if (parts.length === 1) return content;
+  return parts.map((part, index) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={`${part}-${index}`}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all underline underline-offset-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {part}
+      </a>
+    ) : part,
+  );
+}
+
 interface ChatMessageProps {
   message: GroupMessage;
   isOwn: boolean;
@@ -64,6 +85,7 @@ export const ChatMessage = memo(function ChatMessage({
   onRetry,
 }: ChatMessageProps) {
   const [showReactions, setShowReactions] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [saving, setSaving] = useState(false);
@@ -154,13 +176,26 @@ export const ChatMessage = memo(function ChatMessage({
         role="group"
         aria-label={`${senderLabel}, ${format(messageDate, 'h:mm a')}`}
         onDoubleClick={() => !editing && setShowReactions(true)}
+        onClick={(event) => {
+          if (editing || (event.target as HTMLElement).closest('button, textarea, a')) return;
+          if (window.matchMedia('(hover: none)').matches) {
+            setShowReactions(false);
+            setShowActions((visible) => !visible);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setShowActions(false);
+            setShowReactions(false);
+          }
+        }}
       >
         {!isOwn && showAvatar ? (
           <button
             type="button"
             onClick={() => !isOwn && navigate(`/profile/${message.user_id}`)}
             className="flex-shrink-0"
-            aria-label="View profile"
+            aria-label={`View ${displayName}'s profile`}
           >
             <Avatar className="h-8 w-8 ring-1 ring-border/60">
               <AvatarImage src={message.profile?.avatar_url || undefined} />
@@ -173,7 +208,7 @@ export const ChatMessage = memo(function ChatMessage({
 
         <div
           className={cn(
-            'flex max-w-[82%] flex-col space-y-1 sm:max-w-[74%]',
+            'relative flex max-w-[82%] flex-col space-y-1 sm:max-w-[74%]',
             isOwn ? 'items-end' : 'items-start'
           )}
         >
@@ -200,6 +235,7 @@ export const ChatMessage = memo(function ChatMessage({
               <button
                 type="button"
                 onClick={() => onImageClick?.(message.image_url!)}
+                aria-label={`Open image shared by ${senderLabel}`}
                 className={cn(
                   'block rounded-2xl overflow-hidden mb-1 max-w-[280px]',
                   isOwn ? 'ml-auto' : '',
@@ -207,7 +243,7 @@ export const ChatMessage = memo(function ChatMessage({
               >
                 <img
                   src={message.image_url}
-                  alt=""
+                  alt={`${senderLabel} shared an image`}
                   loading="lazy"
                   decoding="async"
                   className="w-full max-h-72 object-cover hover:opacity-95 transition-opacity"
@@ -225,7 +261,7 @@ export const ChatMessage = memo(function ChatMessage({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault();
                       handleSaveEdit();
                     } else if (e.key === 'Escape') {
@@ -274,54 +310,56 @@ export const ChatMessage = memo(function ChatMessage({
                     message._status === 'failed' && 'ring-1 ring-destructive/60',
                   )}
                 >
-                  {message.content}
+                  {linkifyContent(message.content)}
                 </div>
-                {/* Per-bubble status indicator for own messages — matches
-                    the DM pattern (pulse during sending, subtle check on
-                    sent, tap-to-retry on failed). Off-bubble so the
-                    bubble shape stays clean and the indicator can be
-                    color-tuned independently. */}
-                {isOwn && message._status === 'sending' && (
-                  <span
-                    className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground"
-                    aria-label="Sending"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50 animate-pulse" />
-                    Sending
-                  </span>
-                )}
-                {isOwn && message._status === 'sent' && (
-                  <Check
-                    className="mt-1 h-3 w-3 text-muted-foreground opacity-70"
-                    aria-label="Sent"
-                  />
-                )}
-                {isOwn && message._status === 'failed' && message._clientId && (
-                  <button
-                    type="button"
-                    onClick={() => onRetry?.(message._clientId!)}
-                    className="mt-1 inline-flex items-center gap-1 text-[10px] text-destructive underline hover:opacity-80"
-                  >
-                    <RefreshCw className="h-2.5 w-2.5" />
-                    Failed — tap to retry
-                  </button>
-                )}
               </div>
             ) : null}
+
+            {/* Delivery belongs to the complete message (including image-only
+                sends), not only to its optional text bubble. Keep the quiet
+                sent check on the final bubble in a run; failures remain loud. */}
+            {isOwn && message._status === 'sending' && (
+              <span
+                className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+                aria-label="Sending"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current opacity-50" />
+                Sending
+              </span>
+            )}
+            {isOwn && isLastInGroup && message._status === 'sent' && (
+              <Check
+                className="mt-1 ml-auto h-3 w-3 text-muted-foreground opacity-70"
+                aria-label="Sent"
+              />
+            )}
+            {isOwn && message._status === 'failed' && message._clientId && (
+              <button
+                type="button"
+                onClick={() => onRetry?.(message._clientId!)}
+                className="mt-1 ml-auto inline-flex min-h-8 items-center gap-1 text-[11px] font-medium text-destructive underline hover:opacity-80"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Failed — tap to retry
+              </button>
+            )}
 
 
             {/* Hover affordances — reaction trigger and message menu. */}
             {!editing && (
               <div
                 className={cn(
-                  'absolute top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity',
-                  isOwn ? 'right-full mr-1' : 'left-full ml-1'
+                  'mt-1 min-h-11 items-center gap-1 transition-opacity sm:absolute sm:top-1/2 sm:mt-0 sm:min-h-0 sm:-translate-y-1/2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
+                  showActions ? 'flex' : 'hidden sm:flex',
+                  isOwn
+                    ? 'justify-end sm:right-full sm:mr-1'
+                    : 'justify-start sm:left-full sm:ml-1',
                 )}
               >
                 <button
                   type="button"
                   onClick={() => setShowReactions(true)}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/50 transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
                   aria-label="React"
                 >
                   <SmilePlus className="h-3.5 w-3.5" />
@@ -332,7 +370,7 @@ export const ChatMessage = memo(function ChatMessage({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground/40 hover:text-muted-foreground"
+                        className="h-11 w-11 text-muted-foreground hover:text-foreground sm:h-8 sm:w-8"
                         aria-label="Message actions"
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
@@ -373,7 +411,10 @@ export const ChatMessage = memo(function ChatMessage({
               messageId={message.id}
               isOwn={isOwn}
               showPicker={showReactions}
-              onPickerClose={() => setShowReactions(false)}
+              onPickerClose={() => {
+                setShowReactions(false);
+                setShowActions(false);
+              }}
               onReactionAdd={onReactionAdd}
               reactions={message.reactions ?? []}
             />

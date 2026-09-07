@@ -385,7 +385,7 @@ export function useNotificationPreferences(userId: string | null | undefined) {
   const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const defaultCategories = ['matches', 'events', 'community', 'achievements', 'system'];
+  const defaultCategories = ['matches', 'leagues', 'events', 'messages', 'community', 'achievements', 'system'];
 
   useEffect(() => {
     if (!userId) {

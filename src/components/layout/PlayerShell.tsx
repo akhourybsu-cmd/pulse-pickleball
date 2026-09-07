@@ -6,6 +6,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
+import { GroupInboxProvider, useGroupInboxUnreadCount } from '@/hooks/useSocialInbox';
 import { ShellContentTransition } from '@/components/layout/ShellContentTransition';
 import { PRIMARY_TABS, primaryTabPath } from '@/lib/navigation/primaryTabs';
 import { routeAnnouncement } from '@/lib/navigation/navClassification';
@@ -92,6 +93,16 @@ function HeaderMessagesButton({
 }
 
 export function PlayerShell() {
+  return (
+    <FriendsPresenceProvider>
+      <GroupInboxProvider>
+        <PlayerShellContent />
+      </GroupInboxProvider>
+    </FriendsPresenceProvider>
+  );
+}
+
+function PlayerShellContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authUser, profile } = useAuthState();
@@ -116,10 +127,11 @@ export function PlayerShell() {
     groupedByTime,
   } = useNotifications(user?.id, { loadDetails: isNotificationCenterOpen });
 
-  // Surfacing total unread DM count in the header so Messages is one
-  // tap from anywhere instead of being buried 2-3 levels deep behind
-  // the Community tab.
+  // Chats is a unified inbox: both direct and group unread messages surface
+  // in the header and on the Social tab, backed by one shared provider each.
   const { totalUnread: dmUnread } = useDirectMessages();
+  const groupUnread = useGroupInboxUnreadCount();
+  const socialUnread = dmUnread + groupUnread;
 
   // Full-screen immersive routes (hide all shell chrome).
   // Match entry has its own sticky header + fixed bottom CTA bar; rendering
@@ -214,7 +226,6 @@ export function PlayerShell() {
   }, [activeRootPath]);
 
   return (
-    <FriendsPresenceProvider>
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header — single source of top chrome across all player tabs.
           Previously hidden on /player/dashboard which rendered its own ProfileHero
@@ -257,9 +268,9 @@ export function PlayerShell() {
                     >
                       <span className="relative">
                         <item.icon className={cn('hidden h-[17px] w-[17px] xl:block', isActive && 'text-primary')} />
-                        {item.to === '/player/social' && dmUnread > 0 && (
+                        {item.to === '/player/social' && socialUnread > 0 && (
                           <span className="absolute -right-2.5 -top-2 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[8px] font-bold text-primary-foreground">
-                            {dmUnread > 9 ? '9+' : dmUnread}
+                            {socialUnread > 9 ? '9+' : socialUnread}
                           </span>
                         )}
                       </span>
@@ -272,7 +283,7 @@ export function PlayerShell() {
 
             <div className="flex shrink-0 items-center justify-self-end sm:gap-1 lg:col-start-3 lg:row-start-1 xl:gap-2">
               <ThemeToggle />
-              <HeaderMessagesButton unreadCount={dmUnread} onOpen={() => navigate('/player/messages')} />
+              <HeaderMessagesButton unreadCount={socialUnread} onOpen={() => navigate('/player/messages')} />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
                   which surprised users expecting to land in their own hub). */}
@@ -409,9 +420,9 @@ export function PlayerShell() {
                       'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
                       isActive ? 'text-primary' : 'stroke-[1.5]'
                     )} />
-                    {item.to === '/player/social' && dmUnread > 0 && (
+                    {item.to === '/player/social' && socialUnread > 0 && (
                       <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center tabular-nums">
-                        {dmUnread > 9 ? '9+' : dmUnread}
+                        {socialUnread > 9 ? '9+' : socialUnread}
                       </span>
                     )}
                   </span>
@@ -428,9 +439,7 @@ export function PlayerShell() {
           </div>
         </nav>
       )}
-
     </div>
-    </FriendsPresenceProvider>
   );
 }
 

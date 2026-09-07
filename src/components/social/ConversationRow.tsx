@@ -31,7 +31,7 @@ export function ConversationRow({
   onLeave,
 }: {
   conversation: SocialConversation;
-  onMarkRead: (id: string) => void;
+  onMarkRead?: (id: string) => void;
   onToggleMute: (id: string, muted: boolean) => void;
   onLeave: (id: string) => void;
 }) {
@@ -42,6 +42,10 @@ export function ConversationRow({
 
   const open = () => {
     haptic("tap");
+    // Clear the shared inbox row immediately so the Social badge responds on
+    // the same tap that opens a DM. The thread performs its own persistence
+    // update too; this provider-level update keeps every inbox surface synced.
+    if (!isGroup && hasUnread) onMarkRead?.(c.id);
     navigate(c.route, { state: isGroup ? { fromSocialInbox: true } : undefined });
   };
 
@@ -139,7 +143,7 @@ export function ConversationRow({
               </DropdownMenuItem>
             ) : (
               <>
-                <DropdownMenuItem disabled={!hasUnread} onClick={() => onMarkRead(c.id)}>
+                <DropdownMenuItem disabled={!hasUnread} onClick={() => onMarkRead?.(c.id)}>
                   <Check className="h-4 w-4 mr-2" /> Mark as read
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onToggleMute(c.id, !c.isMuted)}>

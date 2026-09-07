@@ -33,6 +33,7 @@ export function CommunityTransitionOutlet() {
     currentDepth > prevDepthRef.current ? 1 :
     currentDepth < prevDepthRef.current ? -1 :
     0;
+  const fadeOnly = direction === 0 || new URLSearchParams(location.search).get('tab') === 'chat';
 
   useEffect(() => {
     prevDepthRef.current = currentDepth;
@@ -42,9 +43,9 @@ export function CommunityTransitionOutlet() {
     <div className="relative overflow-x-hidden">
       <div
         key={location.pathname}
-        className="pulse-route-enter"
-        style={{
-          "--pulse-route-enter-x": `${direction === 0 ? 0 : direction > 0 ? OFFSET : -OFFSET}px`,
+        className={fadeOnly ? "pulse-route-enter-fade" : "pulse-route-enter"}
+        style={fadeOnly ? undefined : {
+          "--pulse-route-enter-x": `${direction > 0 ? OFFSET : -OFFSET}px`,
         } as CSSProperties}
       >
         <Outlet />

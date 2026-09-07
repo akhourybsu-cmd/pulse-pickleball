@@ -70,10 +70,16 @@ export function ActiveViewProvider({ children }: { children: React.ReactNode }) 
     push('league', meta.league_id);
     push('tournament', meta.tournament_id);
 
-    if (candidates.some((k) => keysRef.current.has(k))) return true;
+    // Structured notification metadata is authoritative. A venue's Home,
+    // Feed, and Chat tabs share the same base route, so falling through to
+    // pathname matching here would incorrectly treat a group chat message as
+    // already viewed while the user is looking at another venue tab.
+    if (candidates.length > 0) {
+      return candidates.some((k) => keysRef.current.has(k));
+    }
 
-    // Fall back to route matching: the notification deep-links to the page
-    // (or a sub-path of the page) the user is already on.
+    // Legacy notifications without structured ids can still use route
+    // matching as a best-effort fallback.
     if (n.link) {
       const target = normalizePath(n.link);
       const current = pathRef.current;

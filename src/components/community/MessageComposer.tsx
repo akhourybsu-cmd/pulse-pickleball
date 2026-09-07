@@ -1,4 +1,11 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import { Send, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +42,8 @@ interface MessageComposerProps {
   submitOnEnter?: boolean;
   /** When true (default false), focuses the textarea on mount. */
   autoFocus?: boolean;
+  /** Called when focus leaves the textarea (for example, to clear typing presence). */
+  onBlur?: () => void;
 }
 
 /**
@@ -65,32 +74,60 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
       className,
       submitOnEnter = true,
       autoFocus = false,
+      onBlur,
     },
     ref,
   ) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const focusComposer = useCallback(() => {
+      requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+    }, []);
+
+    const resizeTextarea = useCallback(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // Reset first so deleting text can shrink the field as readily as typing
+      // can grow it. The 128px ceiling is roughly five message lines; after
+      // that the draft scrolls internally without pushing history off-screen.
+      textarea.style.height = 'auto';
+      const nextHeight = Math.min(textarea.scrollHeight, 128);
+      textarea.style.height = `${Math.max(nextHeight, 40)}px`;
+      textarea.style.overflowY = textarea.scrollHeight > 128 ? 'auto' : 'hidden';
+    }, []);
+
     useImperativeHandle(ref, () => ({
-      focus: () => requestAnimationFrame(() => textareaRef.current?.focus()),
+      focus: focusComposer,
       clear: () => onChange(''),
-    }));
+    }), [focusComposer, onChange]);
+
+    // Controlled values can change without an input event (send, restored
+    // draft, reply cancellation), so size from the rendered value before paint.
+    useLayoutEffect(() => {
+      resizeTextarea();
+    }, [resizeTextarea, value]);
 
     // Autofocus when the reply target changes so the user can type immediately.
     useEffect(() => {
       if (replyToLabel) {
-        requestAnimationFrame(() => textareaRef.current?.focus());
+        focusComposer();
       }
-    }, [replyToLabel]);
+    }, [focusComposer, replyToLabel]);
 
     useEffect(() => {
       if (autoFocus) {
-        requestAnimationFrame(() => textareaRef.current?.focus());
+        focusComposer();
       }
-    }, [autoFocus]);
+    }, [autoFocus, focusComposer]);
 
     const canSubmit = value.trim().length > 0 && !sending && !disabled;
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter confirms an in-progress IME composition for many languages. It
+      // must never send the draft while the candidate picker is still active.
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+
       if (submitOnEnter && e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (canSubmit) onSubmit();
@@ -137,10 +174,12 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onBlur={onBlur}
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="min-h-[40px] max-h-32 resize-none py-2"
+            enterKeyHint={submitOnEnter ? 'send' : 'enter'}
+            className="min-h-[40px] max-h-32 resize-none overflow-y-hidden py-2 leading-5"
           />
           <Button
             size="icon"

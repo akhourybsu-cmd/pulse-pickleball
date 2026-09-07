@@ -8,39 +8,53 @@ interface TypingUser {
   timestamp: number;
 }
 
+const TYPING_HEARTBEAT_MS = 1_500;
+const TYPING_IDLE_MS = 3_000;
+const TYPING_STALE_MS = 5_000;
+
 export function useTypingIndicator(groupId: string | undefined) {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const lastTypingBroadcastAtRef = useRef(0);
 
-  // Clear stale typing states after 3 seconds
+  // Heartbeats arrive while someone continues typing. Keep a slightly wider
+  // receiver window than the sender's idle timer so latency cannot make the
+  // indicator flicker between keystrokes.
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      setTypingUsers(prev => prev.filter(u => now - u.timestamp < 3000));
+      setTypingUsers(prev => prev.filter(u => now - u.timestamp < TYPING_STALE_MS));
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
+    setTypingUsers([]);
+    currentUserIdRef.current = null;
+    channelRef.current = null;
+    isTypingRef.current = false;
+    lastTypingBroadcastAtRef.current = 0;
     if (!groupId) return;
 
-    let mounted = true;
+    let disposed = false;
+    let activeChannel: RealtimeChannel | null = null;
 
     const initTyping = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !mounted) return;
+      if (!user || disposed) return;
 
       currentUserIdRef.current = user.id;
 
       const channel = supabase.channel(`group-typing-${groupId}`);
+      activeChannel = channel;
 
       channel
         .on('broadcast', { event: 'typing' }, ({ payload }) => {
-          if (!mounted) return;
+          if (disposed) return;
           if (payload.user_id === user.id) return; // Ignore own typing
 
           setTypingUsers(prev => {
@@ -60,75 +74,101 @@ export function useTypingIndicator(groupId: string | undefined) {
           });
         })
         .on('broadcast', { event: 'stop_typing' }, ({ payload }) => {
-          if (!mounted) return;
+          if (disposed) return;
           setTypingUsers(prev => prev.filter(u => u.user_id !== payload.user_id));
         })
         .subscribe();
 
       channelRef.current = channel;
-
-      return () => {
-        mounted = false;
-        supabase.removeChannel(channel);
-      };
     };
 
-    const cleanup = initTyping();
+    void initTyping();
 
     return () => {
-      cleanup?.then(fn => fn?.());
+      disposed = true;
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+
+      const channel = activeChannel;
+      const userId = currentUserIdRef.current;
+      const shouldStop = isTypingRef.current && !!channel && !!userId;
+
+      channelRef.current = null;
+      currentUserIdRef.current = null;
+      isTypingRef.current = false;
+      lastTypingBroadcastAtRef.current = 0;
+
+      if (channel) {
+        if (shouldStop) {
+          // Send the terminal state before removing the channel so navigating
+          // away never leaves the other participant looking "active".
+          void channel.send({
+            type: 'broadcast',
+            event: 'stop_typing',
+            payload: { user_id: userId },
+          }).finally(() => {
+            void supabase.removeChannel(channel);
+          });
+        } else {
+          void supabase.removeChannel(channel);
+        }
       }
     };
   }, [groupId]);
 
-  const startTyping = useCallback(async (displayName: string) => {
-    if (!channelRef.current || !currentUserIdRef.current) return;
-
-    // Clear any existing stop-typing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Only send if not already marked as typing
-    if (!isTypingRef.current) {
-      isTypingRef.current = true;
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'typing',
-        payload: {
-          user_id: currentUserIdRef.current,
-          display_name: displayName,
-        },
-      });
-    }
-
-    // Auto-stop after 3 seconds of no typing
-    typingTimeoutRef.current = setTimeout(() => {
-      stopTyping();
-    }, 3000);
-  }, []);
-
   const stopTyping = useCallback(async () => {
-    if (!channelRef.current || !currentUserIdRef.current) return;
-
-    if (isTypingRef.current) {
-      isTypingRef.current = false;
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'stop_typing',
-        payload: {
-          user_id: currentUserIdRef.current,
-        },
-      });
-    }
-
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
     }
+
+    const channel = channelRef.current;
+    const userId = currentUserIdRef.current;
+    const wasTyping = isTypingRef.current;
+    isTypingRef.current = false;
+    lastTypingBroadcastAtRef.current = 0;
+
+    if (wasTyping && channel && userId) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'stop_typing',
+        payload: { user_id: userId },
+      });
+    }
   }, []);
+
+  const startTyping = useCallback(async (displayName: string) => {
+    const channel = channelRef.current;
+    const userId = currentUserIdRef.current;
+    if (!channel || !userId) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Reset the idle timer immediately, even if a heartbeat is still in flight.
+    typingTimeoutRef.current = setTimeout(() => {
+      void stopTyping();
+    }, TYPING_IDLE_MS);
+
+    const now = Date.now();
+    const shouldBroadcast =
+      !isTypingRef.current ||
+      now - lastTypingBroadcastAtRef.current >= TYPING_HEARTBEAT_MS;
+
+    isTypingRef.current = true;
+    if (shouldBroadcast) {
+      lastTypingBroadcastAtRef.current = now;
+      await channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          user_id: userId,
+          display_name: displayName.trim() || 'Someone',
+        },
+      });
+    }
+  }, [stopTyping]);
 
   return {
     typingUsers,

@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   type ReactNode,
 } from 'react';
@@ -15,6 +16,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useLocation } from 'react-router-dom';
 import { interpretDmError } from '@/lib/dmErrors';
 import { useAuthState } from '@/hooks/useAuthState';
+import {
+  mergeDirectMessageRealtime,
+  mergeDirectMessageSnapshot,
+  reconcileDirectMessageAck,
+} from '@/lib/chat/directMessageState';
 
 export interface ConversationParticipant {
   id: string;
@@ -31,6 +37,7 @@ export interface DirectMessage {
   sender_id: string;
   content: string;
   created_at: string;
+  client_id?: string | null;
   /** Set on optimistic rows pre-server-ACK so the realtime handler can
    *  swap by client id rather than blind-appending a duplicate. */
   _clientId?: string;
@@ -57,6 +64,8 @@ function useDirectMessagesState(enabled = true) {
   const [totalUnread, setTotalUnread] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -72,7 +81,8 @@ function useDirectMessagesState(enabled = true) {
       const { data: mine, error: mineErr } = await supabase
         .from('conversation_participants')
         .select('conversation_id, last_read_at, is_muted, left_at')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('left_at', null);
       if (mineErr) throw mineErr;
       if (!mine || mine.length === 0) {
         setConversations([]);
@@ -250,20 +260,25 @@ function useDirectMessagesState(enabled = true) {
   }, [fetchConversations]);
 
   const markRead = useCallback(async (conversationId: string) => {
-    if (!user) return;
-    await supabase
+    if (!user) return false;
+    const { error } = await supabase
       .from('conversation_participants')
       .update({ last_read_at: new Date().toISOString() })
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
+    if (error) {
+      console.error('Error marking conversation read:', error);
+      return false;
+    }
     setConversations(prev => prev.map(c =>
       c.id === conversationId ? { ...c, unreadCount: 0 } : c
     ));
     setTotalUnread(prev => {
-      const target = conversations.find(c => c.id === conversationId);
+      const target = conversationsRef.current.find(c => c.id === conversationId);
       return Math.max(0, prev - (target?.unreadCount || 0));
     });
-  }, [conversations, user]);
+    return true;
+  }, [user]);
 
   const setMuted = useCallback(async (conversationId: string, muted: boolean) => {
     if (!user) return false;
@@ -364,16 +379,27 @@ export function useConversation(conversationId: string | null) {
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [participant, setParticipant] = useState<ConversationParticipant | null>(null);
+  const [viewerMembership, setViewerMembership] = useState<{
+    isMuted: boolean;
+    leftAt: string | null;
+  } | null>(null);
   // True when the conversation has no other participant visible to this
   // user — an invalid id, or a conversation they're not part of (RLS
   // returns zero rows for both cases). Without this the page rendered
   // an empty chat with "Player" as the header, indistinguishable from
   // a real conversation.
   const [notFound, setNotFound] = useState(false);
+  const [loadedConversationId, setLoadedConversationId] = useState<string | null>(null);
+  const [resolvedParticipantFor, setResolvedParticipantFor] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const activeConversationRef = useRef(conversationId);
+  const fetchSequenceRef = useRef(0);
+  activeConversationRef.current = conversationId;
 
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
+    const requestedConversationId = conversationId;
+    const requestSequence = ++fetchSequenceRef.current;
     try {
       if (!user) return;
 
@@ -386,22 +412,46 @@ export function useConversation(conversationId: string | null) {
         .order('created_at', { ascending: false })
         .limit(DM_PAGE_SIZE);
       if (error) throw error;
-      setMessages((data || []).slice().reverse());
+      if (
+        activeConversationRef.current !== requestedConversationId ||
+        fetchSequenceRef.current !== requestSequence
+      ) return;
+
+      const serverMessages = ((data || []).slice().reverse()) as DirectMessage[];
+      setMessages((previous) => mergeDirectMessageSnapshot(
+        previous.filter(
+          (message) => message.conversation_id === requestedConversationId,
+        ),
+        serverMessages,
+      ));
+      setLoadedConversationId(requestedConversationId);
       setHasMore((data || []).length === DM_PAGE_SIZE);
 
-      const { data: participants } = await supabase
+      const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select('user_id')
-        .eq('conversation_id', conversationId)
-        .neq('user_id', user.id);
+        .select('user_id, is_muted, left_at')
+        .eq('conversation_id', conversationId);
+      if (participantsError) throw participantsError;
 
-      if (participants && participants.length > 0) {
-        const otherId = participants[0].user_id;
+      // A departed viewer is still allowed to read the retained history, and
+      // the thread UI renders that state with a disabled composer. Confirm the
+      // viewer's membership explicitly (instead of relying only on RLS), then
+      // keep the other participant lookup independent of either person's
+      // left_at value so historical threads retain the correct identity.
+      const viewer = participants?.find((entry) => entry.user_id === user.id);
+      const other = participants?.find((entry) => entry.user_id !== user.id);
+
+      if (viewer && other) {
+        const otherId = other.user_id;
         const { data: profile } = await supabase
           .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .eq('id', otherId)
           .maybeSingle();
+        if (
+          activeConversationRef.current !== requestedConversationId ||
+          fetchSequenceRef.current !== requestSequence
+        ) return;
         setParticipant({
           id: otherId,
           user_id: otherId,
@@ -410,31 +460,60 @@ export function useConversation(conversationId: string | null) {
           avatar_url: profile?.avatar_url ?? null,
           current_rating: profile?.current_rating ?? null,
         });
+        setViewerMembership({
+          isMuted: !!viewer.is_muted,
+          leftAt: viewer.left_at,
+        });
+        setResolvedParticipantFor(requestedConversationId);
         setNotFound(false);
       } else {
-        setNotFound(true);
+        if (
+          activeConversationRef.current === requestedConversationId &&
+          fetchSequenceRef.current === requestSequence
+        ) {
+          setResolvedParticipantFor(requestedConversationId);
+          setNotFound(true);
+        }
       }
-
-      await supabase
-        .from('conversation_participants')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', user.id);
     } catch (error: unknown) {
       console.error('Error fetching messages:', error);
       // Malformed id in the URL (not a uuid) errors before the
       // participant check runs — treat it as not-found, not a chat.
-      if (getErrorCode(error) === '22P02') setNotFound(true);
+      if (
+        activeConversationRef.current === requestedConversationId &&
+        fetchSequenceRef.current === requestSequence
+      ) {
+        setLoadedConversationId(requestedConversationId);
+        setResolvedParticipantFor(requestedConversationId);
+        if (getErrorCode(error) === '22P02') setNotFound(true);
+      }
     } finally {
-      setLoading(false);
+      if (
+        activeConversationRef.current === requestedConversationId &&
+        fetchSequenceRef.current === requestSequence
+      ) setLoading(false);
     }
   }, [conversationId, user]);
 
   useEffect(() => {
-    if (!conversationId) return;
-    fetchMessages();
+    fetchSequenceRef.current += 1;
+    setMessages([]);
+    setParticipant(null);
+    setViewerMembership(null);
+    setNotFound(false);
+    setLoadedConversationId(null);
+    setResolvedParticipantFor(null);
+    setHasMore(false);
+    setLoadingOlder(false);
+    setLoading(!!conversationId);
+    if (!conversationId || !user) {
+      setLoading(false);
+      return;
+    }
 
-    channelRef.current = supabase
+    void fetchMessages();
+
+    const channel = supabase
       .channel(`dm-${conversationId}`)
       .on(
         'postgres_changes',
@@ -446,44 +525,40 @@ export function useConversation(conversationId: string | null) {
         },
         (payload) => {
           const incoming = payload.new as DirectMessage;
-          setMessages(prev => {
-            // If this is the server confirming an optimistic row we
-            // already inserted locally, swap by matching sender +
-            // content rather than appending a duplicate. The temp
-            // row's _clientId stays attached to the swapped row so
-            // any in-flight UI references continue to resolve.
-            const tempIdx = prev.findIndex(
-              (m) => m._status === 'sending'
-                && m.sender_id === incoming.sender_id
-                && m.content === incoming.content,
-            );
-            if (tempIdx !== -1) {
-              const next = [...prev];
-              next[tempIdx] = { ...incoming, _status: 'sent', _clientId: prev[tempIdx]._clientId };
-              return next;
-            }
-            // Otherwise it's a message we haven't seen — append.
-            // De-dupe by id in case the row was both optimistically
-            // inserted and re-broadcast (rare with the temp swap above
-            // but defensive).
-            if (prev.some((m) => m.id === incoming.id)) return prev;
-            return [...prev, incoming];
-          });
-          if (user) {
-            void supabase
-              .from('conversation_participants')
-              .update({ last_read_at: new Date().toISOString() })
-              .eq('conversation_id', conversationId)
-              .eq('user_id', user.id);
-          }
+          if (activeConversationRef.current !== conversationId) return;
+          setMessages((previous) => mergeDirectMessageRealtime(previous, incoming));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && activeConversationRef.current === conversationId) {
+          // Close the fetch/subscription race and catch anything the socket
+          // could not replay while reconnecting.
+          void fetchMessages();
+        }
+      });
+    channelRef.current = channel;
 
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (channelRef.current === channel) channelRef.current = null;
+      void supabase.removeChannel(channel);
     };
   }, [conversationId, fetchMessages, user]);
+
+  const recoverAcknowledgedMessage = useCallback(async (clientId: string): Promise<boolean> => {
+    if (!conversationId || !user) return false;
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .eq('sender_id', user.id)
+      .eq('client_id', clientId)
+      .maybeSingle();
+    if (error || !data || activeConversationRef.current !== conversationId) return false;
+    setMessages((previous) =>
+      reconcileDirectMessageAck(previous, data as DirectMessage, clientId),
+    );
+    return true;
+  }, [conversationId, user]);
 
   // Optimistic send — matches the useGroupChat pattern so DMs feel as
   // snappy as group messages. Pre-conversion the caller awaited the
@@ -503,13 +578,14 @@ export function useConversation(conversationId: string | null) {
       return false;
     }
 
-    const clientId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const clientId = crypto.randomUUID();
     const optimistic: DirectMessage = {
       id: `temp-${clientId}`,
       conversation_id: conversationId,
       sender_id: user.id,
       content: trimmed,
       created_at: new Date().toISOString(),
+      client_id: clientId,
       _clientId: clientId,
       _status: 'sending',
     };
@@ -520,29 +596,38 @@ export function useConversation(conversationId: string | null) {
     // on screen, which is what the composer needs to clear its input.
     (async () => {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('direct_messages')
           .insert({
             conversation_id: conversationId,
             sender_id: user.id,
             content: trimmed,
-          });
+            client_id: clientId,
+          })
+          .select('*')
+          .single();
         if (error) throw error;
-        // On success we leave the swap to the realtime INSERT handler,
-        // which will match by sender+content and replace the temp row
-        // with the server row (carrying the real UUID).
+        if (activeConversationRef.current !== conversationId) return;
+        setMessages((previous) =>
+          reconcileDirectMessageAck(previous, data as DirectMessage, clientId),
+        );
       } catch (error) {
+        // The request can lose its response after Postgres committed the row.
+        // Resolve by the idempotency key before presenting a false failure.
+        if (await recoverAcknowledgedMessage(clientId)) return;
         console.error('Error sending message:', error);
         // Mark the optimistic row failed so the UI can offer a retry.
-        setMessages(prev =>
-          prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
-        );
+        if (activeConversationRef.current === conversationId) {
+          setMessages(prev =>
+            prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
+          );
+        }
         toast.error('Failed to send message');
       }
     })();
 
     return true;
-  }, [conversationId, user]);
+  }, [conversationId, recoverAcknowledgedMessage, user]);
 
   // Retry a failed send by re-firing the network insert for an existing
   // optimistic row. Same dedupe rules apply — realtime swap finishes
@@ -555,25 +640,39 @@ export function useConversation(conversationId: string | null) {
     // Flip back to 'sending' for the spinner / pulse.
     setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'sending' as const } : m)));
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('direct_messages')
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
           content: target.content,
-        });
+          client_id: clientId,
+        })
+        .select('*')
+        .single();
       if (error) throw error;
+      if (activeConversationRef.current !== conversationId) return;
+      setMessages((previous) =>
+        reconcileDirectMessageAck(previous, data as DirectMessage, clientId),
+      );
     } catch (error) {
+      // Retrying the same client id may hit the unique constraint when the
+      // original request committed but its response was lost. In that case,
+      // recover the existing row and treat it as delivered.
+      if (await recoverAcknowledgedMessage(clientId)) return;
       console.error('Error retrying message:', error);
-      setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)));
+      if (activeConversationRef.current === conversationId) {
+        setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)));
+      }
       toast.error('Failed to send message');
     }
-  }, [conversationId, messages, user]);
+  }, [conversationId, messages, recoverAcknowledgedMessage, user]);
 
   // Pull the previous page of (older) messages and prepend them. Keyed on the
   // oldest currently-loaded real message's timestamp; dedupes by id defensively.
   const loadOlder = useCallback(async () => {
     if (!conversationId) return;
+    const requestedConversationId = conversationId;
     const oldest = messages.find((m) => !m._clientId) ?? messages[0];
     if (!oldest) return;
     setLoadingOlder(true);
@@ -586,6 +685,7 @@ export function useConversation(conversationId: string | null) {
         .order('created_at', { ascending: false })
         .limit(DM_PAGE_SIZE);
       if (error) throw error;
+      if (activeConversationRef.current !== requestedConversationId) return;
       const older = (data || []).slice().reverse();
       if (older.length) {
         setMessages((prev) => {
@@ -598,18 +698,30 @@ export function useConversation(conversationId: string | null) {
     } catch (error) {
       console.error('Error loading older messages:', error);
     } finally {
-      setLoadingOlder(false);
+      if (activeConversationRef.current === requestedConversationId) {
+        setLoadingOlder(false);
+      }
     }
   }, [conversationId, messages]);
 
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => message.conversation_id === conversationId),
+    [conversationId, messages],
+  );
+
   return {
-    messages,
-    loading,
+    messages: visibleMessages,
+    loading: loading || (
+      !!conversationId &&
+      (loadedConversationId !== conversationId || resolvedParticipantFor !== conversationId)
+    ),
     hasMore,
     loadingOlder,
     loadOlder,
-    participant,
-    notFound,
+    participant: resolvedParticipantFor === conversationId ? participant : null,
+    viewerMembership: resolvedParticipantFor === conversationId ? viewerMembership : null,
+    currentUserId: user?.id ?? null,
+    notFound: resolvedParticipantFor === conversationId && notFound,
     sendMessage,
     retryMessage,
     channelRef,

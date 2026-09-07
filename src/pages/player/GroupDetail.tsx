@@ -36,6 +36,7 @@ import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
+import { parseGroupSettings } from '@/types/groupSettings';
 
 
 
@@ -175,6 +176,10 @@ export default function GroupDetail() {
   }, [createPost]);
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
+  const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
+  const canSendChat =
+    groupSettings.chat_enabled &&
+    (isAdmin || (membership?.status === 'active' && groupSettings.allow_member_chat));
   
   // Venue branding. The accent plumbing below (the --venue-primary custom
   // property, the tinted tab underline) has always been here; it was fed a
@@ -582,6 +587,7 @@ export default function GroupDetail() {
                 isAdmin={isAdmin}
                 lastReadAt={membership?.last_chat_read_at ?? membership?.last_read_at ?? null}
                 isActive={activeTab === 'chat'}
+                canSendMessages={canSendChat}
               />
             )}
           </TabsContent>

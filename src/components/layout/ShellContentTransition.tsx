@@ -54,15 +54,18 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
     toKind === "immersive" ||
     toKind === "other";
 
-  // Immersive + delegated subtrees: fade only (no transform).
-  const enterX = delegated || direction === 0 ? 0 : direction > 0 ? OFFSET : -OFFSET;
+  // A zero-distance transform is still a transformed containing block. That
+  // re-anchors fixed chat panes to this wrapper instead of VisualViewport, so
+  // immersive/delegated screens get a genuinely transform-free fade class.
+  const fadeOnly = immersive || delegated || direction === 0;
+  const enterX = direction > 0 ? OFFSET : -OFFSET;
 
   return (
     <div className="relative overflow-x-hidden">
       <div
         key={transitionKey(nextPath)}
-        className="pulse-route-enter"
-        style={{ "--pulse-route-enter-x": `${enterX}px` } as CSSProperties}
+        className={fadeOnly ? "pulse-route-enter-fade" : "pulse-route-enter"}
+        style={fadeOnly ? undefined : { "--pulse-route-enter-x": `${enterX}px` } as CSSProperties}
       >
         {outlet}
       </div>

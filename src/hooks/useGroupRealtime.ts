@@ -6,6 +6,14 @@ import type { GroupPost } from './useGroupPosts';
 import type { PostComment } from './useGroupPostComments';
 import type { GroupEvent } from './useGroupEvents';
 import { applyRemoteReactionDelta } from '@/lib/chat/reactions';
+import { useAuthState } from '@/hooks/useAuthState';
+
+function sortMessagesChronologically(messages: GroupMessage[]): GroupMessage[] {
+  return [...messages].sort((a, b) => {
+    const timeDelta = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return timeDelta || a.id.localeCompare(b.id);
+  });
+}
 
 /**
  * Granular realtime: patch React Query caches in place instead of invalidating.
@@ -17,14 +25,11 @@ import { applyRemoteReactionDelta } from '@/lib/chat/reactions';
  */
 export function useGroupRealtime(groupId: string | undefined) {
   const queryClient = useQueryClient();
+  const { user } = useAuthState();
+  const currentUserId = user?.id ?? null;
 
   useEffect(() => {
     if (!groupId) return;
-
-    let currentUserId: string | null = null;
-    supabase.auth.getUser().then(({ data }) => {
-      currentUserId = data.user?.id || null;
-    });
 
     const messagesKey = ['group-messages', groupId];
     const postsKey = ['group-posts', groupId];
@@ -53,36 +58,53 @@ export function useGroupRealtime(groupId: string | undefined) {
         event: 'INSERT', schema: 'public', table: 'group_messages',
         filter: `group_id=eq.${groupId}`,
       }, async (payload) => {
-        const row = payload.new as any;
+        const row = payload.new as GroupMessage;
         if (row.user_id === currentUserId) {
-          // Replace optimistic temp row matched by user+content+recent window.
+          // Replace the exact optimistic row using its durable sender-generated
+          // id. Content matching is retained only for legacy rows created
+          // before client_id existed.
           queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) => {
             if (prev.some((m) => m.id === row.id)) return prev;
             const idx = prev.findIndex(
-              (m) => m._status === 'sending' && m.user_id === row.user_id && m.content === row.content,
+              (m) => m._status === 'sending' && (
+                (row.client_id && m._clientId === row.client_id) ||
+                (!row.client_id && m.user_id === row.user_id && m.content === row.content)
+              ),
             );
             if (idx >= 0) {
               const next = [...prev];
               const author = prev.find((m) => m.user_id === row.user_id)?.profile;
-              next[idx] = { ...row, profile: author, reactions: [], _status: 'sent' };
-              return next;
+              next[idx] = {
+                ...row,
+                profile: author,
+                reactions: [],
+                _clientId: row.client_id ?? next[idx]._clientId,
+                _status: 'sent',
+              };
+              return sortMessagesChronologically(next);
             }
             const author = prev.find((m) => m.user_id === row.user_id)?.profile;
-            return [...prev, { ...row, profile: author, reactions: [], _status: 'sent' }];
+            return sortMessagesChronologically([
+              ...prev,
+              { ...row, profile: author, reactions: [], _status: 'sent' },
+            ]);
           });
           return;
         }
         const profile = await hydrateProfile(row.user_id);
         queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) => {
           if (prev.some((m) => m.id === row.id)) return prev;
-          return [...prev, { ...row, profile, reactions: [], _status: 'sent' }];
+          return sortMessagesChronologically([
+            ...prev,
+            { ...row, profile, reactions: [], _status: 'sent' },
+          ]);
         });
       })
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'group_messages',
         filter: `group_id=eq.${groupId}`,
       }, (payload) => {
-        const row = payload.new as any;
+        const row = payload.new as GroupMessage;
         queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
           prev.map((m) => (m.id === row.id ? { ...m, ...row } : (
             // If this row was pinned, unpin any others to keep single-pin invariant.
@@ -94,7 +116,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         event: 'DELETE', schema: 'public', table: 'group_messages',
         filter: `group_id=eq.${groupId}`,
       }, (payload) => {
-        const oldRow = payload.old as any;
+        const oldRow = payload.old as Pick<GroupMessage, 'id'>;
         queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
           prev.filter((m) => m.id !== oldRow.id),
         );
@@ -131,7 +153,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         event: 'INSERT', schema: 'public', table: 'group_posts',
         filter: `group_id=eq.${groupId}`,
       }, async (payload) => {
-        const row = payload.new as any;
+        const row = payload.new as GroupPost;
         if (row.user_id === currentUserId) {
           // Self post: optimistic row is already in cache. Swap temp id for real.
           queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) => {
@@ -169,7 +191,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         event: 'UPDATE', schema: 'public', table: 'group_posts',
         filter: `group_id=eq.${groupId}`,
       }, (payload) => {
-        const row = payload.new as any;
+        const row = payload.new as GroupPost;
         queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
           prev.map((p) => (p.id === row.id ? { ...p, ...row } : p)),
         );
@@ -178,7 +200,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         event: 'DELETE', schema: 'public', table: 'group_posts',
         filter: `group_id=eq.${groupId}`,
       }, (payload) => {
-        const oldRow = payload.old as any;
+        const oldRow = payload.old as Pick<GroupPost, 'id'>;
         queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
           prev.filter((p) => p.id !== oldRow.id),
         );
@@ -188,7 +210,11 @@ export function useGroupRealtime(groupId: string | undefined) {
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'group_post_reactions',
       }, (payload) => {
-        const row = (payload.new || payload.old) as any;
+        const row = (payload.new || payload.old) as Partial<{
+          post_id: string;
+          user_id: string;
+          emoji: string;
+        }>;
         if (!row?.post_id) return;
         const isSelf = row.user_id === currentUserId;
         if (isSelf) return; // optimistic already applied
@@ -214,7 +240,7 @@ export function useGroupRealtime(groupId: string | undefined) {
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'group_post_comments',
       }, async (payload) => {
-        const row = (payload.new || payload.old) as any;
+        const row = (payload.new || payload.old) as Partial<PostComment>;
         if (!row?.post_id) return;
         const delta = payload.eventType === 'INSERT' ? 1
           : payload.eventType === 'DELETE' ? -1 : 0;
@@ -259,7 +285,10 @@ export function useGroupRealtime(groupId: string | undefined) {
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'group_post_participants',
       }, (payload) => {
-        const row = (payload.new || payload.old) as any;
+        const row = (payload.new || payload.old) as Partial<{
+          post_id: string;
+          user_id: string;
+        }>;
         if (!row?.post_id || row.user_id === currentUserId) return;
         const delta = payload.eventType === 'INSERT' ? 1
           : payload.eventType === 'DELETE' ? -1 : 0;
@@ -335,10 +364,17 @@ export function useGroupRealtime(groupId: string | undefined) {
         queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
         queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Close the initial fetch/subscribe gap and converge again after a
+          // socket reconnect. Active chats refetch; inactive cached tabs are
+          // simply marked stale for their next visit.
+          void queryClient.invalidateQueries({ queryKey: messagesKey, exact: true });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [groupId, queryClient]);
+  }, [currentUserId, groupId, queryClient]);
 }

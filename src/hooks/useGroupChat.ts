@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { toggleOwnReaction, type ReactionSummary } from '@/lib/chat/reactions';
+import { useAuthState } from '@/hooks/useAuthState';
 
 export interface GroupMessage {
   id: string;
@@ -17,6 +18,8 @@ export interface GroupMessage {
   pinned_at?: string | null;
   edited_at?: string | null;
   image_url?: string | null;
+  /** Stable sender-generated id used to reconcile HTTP/realtime delivery. */
+  client_id?: string | null;
   /** Client-only fields for optimistic UI. Never persisted. */
   _status?: 'sending' | 'sent' | 'failed';
   _clientId?: string;
@@ -36,6 +39,7 @@ const MESSAGE_PAGE_SIZE = 100;
 async function fetchGroupMessagesPage(
   groupId: string,
   before?: string,
+  currentUserId?: string | null,
 ): Promise<GroupMessage[]> {
   // Fetch the NEWEST page (descending + limit), then reverse to chronological
   // for display. Ordering ascending + limit(100) returned the OLDEST 100
@@ -57,10 +61,6 @@ async function fetchGroupMessagesPage(
 
   const userIds = [...new Set(ordered.map(m => m.user_id))];
   const messageIds = ordered.map((m) => m.id);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const [{ data: profilesData }, reactionsResult] = await Promise.all([
     userIds.length
       ? supabase
@@ -91,7 +91,7 @@ async function fetchGroupMessagesPage(
       hasReacted: false,
     };
     reaction.count += 1;
-    if (row.user_id === user?.id) reaction.hasReacted = true;
+    if (row.user_id === currentUserId) reaction.hasReacted = true;
     byEmoji.set(row.emoji, reaction);
     reactionsByMessage.set(row.message_id, byEmoji);
   }
@@ -105,6 +105,8 @@ async function fetchGroupMessagesPage(
 }
 
 export function useGroupChat(groupId: string | undefined) {
+  const { user } = useAuthState();
+  const currentUserId = user?.id ?? null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ['group-messages', groupId] as const, [groupId]);
@@ -114,13 +116,13 @@ export function useGroupChat(groupId: string | undefined) {
 
   const { data: messages = [], isLoading: loading, refetch } = useQuery({
     queryKey,
-    queryFn: () => fetchGroupMessagesPage(groupId!),
+    queryFn: () => fetchGroupMessagesPage(groupId!, undefined, currentUserId),
     // Realtime keeps an open chat fresh. Refetch on mount also closes the gap
     // for messages sent while this screen was not subscribed.
     staleTime: 15_000,
     gcTime: 10 * 60 * 1000,
     refetchOnMount: 'always',
-    enabled: !!groupId,
+    enabled: !!groupId && !!currentUserId,
   });
 
   useEffect(() => {
@@ -146,7 +148,7 @@ export function useGroupChat(groupId: string | undefined) {
 
     setLoadingOlder(true);
     try {
-      const page = await fetchGroupMessagesPage(groupId, oldest.created_at);
+      const page = await fetchGroupMessagesPage(groupId, oldest.created_at, currentUserId);
       queryClient.setQueryData<GroupMessage[]>(queryKey, (current = []) => {
         const known = new Set(current.map((message) => message.id));
         return [...page.filter((message) => !known.has(message.id)), ...current];
@@ -161,40 +163,53 @@ export function useGroupChat(groupId: string | undefined) {
     } finally {
       setLoadingOlder(false);
     }
-  }, [groupId, hasOlder, loadingOlder, queryClient, queryKey, toast]);
+  }, [currentUserId, groupId, hasOlder, loadingOlder, queryClient, queryKey, toast]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (input: { content: string; imageUrl?: string; clientId: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!currentUserId) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      const payload = {
+        group_id: groupId!,
+        user_id: currentUserId,
+        content: input.content.trim(),
+        client_id: input.clientId,
+        ...(input.imageUrl ? { image_url: input.imageUrl } : {}),
+      };
+      let { data, error } = await supabase
         .from('group_messages')
-        .insert({
-          group_id: groupId!,
-          user_id: user.id,
-          content: input.content.trim(),
-          ...(input.imageUrl ? { image_url: input.imageUrl } : {}),
-        })
+        .insert(payload)
         .select()
         .single();
 
-      if (error) throw error;
-      return { row: data, clientId: input.clientId, userId: user.id };
+      // A retry after an ambiguous network response may encounter the unique
+      // sender/client id constraint. Recover the already-committed row and
+      // treat it as the acknowledgement instead of creating a duplicate.
+      if (error?.code === '23505') {
+        const existing = await supabase
+          .from('group_messages')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .eq('client_id', input.clientId)
+          .single();
+        data = existing.data;
+        error = existing.error;
+      }
+      if (error || !data) throw error ?? new Error('Message acknowledgement missing');
+      return { row: data, clientId: input.clientId, userId: currentUserId };
     },
-    onMutate: async ({ content, imageUrl, clientId }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    onMutate: ({ content, imageUrl, clientId }) => {
+      if (!currentUserId) return;
       // Pull author profile from cache if we have it
       const cachedAuthor = (queryClient.getQueryData<GroupMessage[]>(queryKey) || [])
-        .find((m) => m.user_id === user.id)?.profile;
+        .find((m) => m.user_id === currentUserId)?.profile;
       const now = new Date().toISOString();
       const optimistic: GroupMessage = {
         id: `temp-${clientId}`,
         _clientId: clientId,
         _status: 'sending',
         group_id: groupId!,
-        user_id: user.id,
+        user_id: currentUserId,
         content: content.trim(),
         image_url: imageUrl ?? null,
         created_at: now,
@@ -356,25 +371,36 @@ export function useGroupChat(groupId: string | undefined) {
     const cached = queryClient.getQueryData<GroupMessage[]>(queryKey) || [];
     const target = cached.find((m) => m._clientId === clientId && m._status === 'failed');
     if (!target) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!currentUserId) return;
 
     queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
       prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'sending' as const } : m)),
     );
 
     try {
-      const { data: row, error } = await supabase
+      const payload = {
+        group_id: groupId!,
+        user_id: currentUserId,
+        content: target.content.trim(),
+        client_id: clientId,
+        ...(target.image_url ? { image_url: target.image_url } : {}),
+      };
+      let { data: row, error } = await supabase
         .from('group_messages')
-        .insert({
-          group_id: groupId!,
-          user_id: user.id,
-          content: target.content.trim(),
-          ...(target.image_url ? { image_url: target.image_url } : {}),
-        })
+        .insert(payload)
         .select()
         .single();
-      if (error) throw error;
+      if (error?.code === '23505') {
+        const existing = await supabase
+          .from('group_messages')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .eq('client_id', clientId)
+          .single();
+        row = existing.data;
+        error = existing.error;
+      }
+      if (error || !row) throw error ?? new Error('Message acknowledgement missing');
 
       queryClient.setQueryData<GroupMessage[]>(queryKey, (previous = []) => {
         if (previous.some((message) => message.id === row.id)) {
@@ -413,7 +439,7 @@ export function useGroupChat(groupId: string | undefined) {
       sendMessageMutation.mutateAsync({
         content,
         imageUrl,
-        clientId: clientId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        clientId: clientId || crypto.randomUUID(),
       }),
     retryMessage,
     deleteMessage: deleteMessageMutation.mutateAsync,

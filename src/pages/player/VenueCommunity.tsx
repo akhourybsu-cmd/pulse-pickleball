@@ -160,12 +160,16 @@ export default function VenueCommunity() {
   // Snapshot the viewer's last-read marker BEFORE anything updates it, so the
   // chat's unread divider reflects where they actually left off.
   const lastReadRef = useRef<string | null>(null);
+  const lastReadGroupRef = useRef<string | null>(null);
   useEffect(() => {
     const chatMarker = membership?.last_chat_read_at ?? membership?.last_read_at;
-    if (lastReadRef.current === null && chatMarker) {
+    if (lastReadGroupRef.current !== groupId) {
+      lastReadGroupRef.current = groupId ?? null;
+      lastReadRef.current = chatMarker ?? null;
+    } else if (lastReadRef.current === null && chatMarker) {
       lastReadRef.current = chatMarker;
     }
-  }, [membership?.last_chat_read_at, membership?.last_read_at]);
+  }, [groupId, membership?.last_chat_read_at, membership?.last_read_at]);
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);

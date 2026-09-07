@@ -17,6 +17,7 @@ const categoryConfig = [
   { id: "matches", label: "Matches", description: "Match recordings, verifications, and results", icon: Target },
   { id: "leagues", label: "Leagues", description: "Score confirmations, disputes, forfeits, and resolved matches", icon: Trophy },
   { id: "events", label: "Events", description: "Event reminders and registration updates", icon: Calendar },
+  { id: "messages", label: "Messages", description: "Direct messages and group chat activity", icon: MessageCircle },
   { id: "community", label: "Community", description: "Group posts, comments, and LFG alerts", icon: Users },
   { id: "achievements", label: "Achievements", description: "Badges earned and milestones reached", icon: Shield },
   { id: "system", label: "System", description: "Account updates and announcements", icon: Settings },

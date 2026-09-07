@@ -23,6 +23,7 @@ import {
   viewportResizeAnchoredScrollTop,
 } from '@/lib/chat/scroll';
 import { isSameSenderRun } from '@/lib/chat/grouping';
+import { useAuthState } from '@/hooks/useAuthState';
 
 interface GroupChatProps {
   groupId: string;
@@ -72,13 +73,13 @@ export const GroupChat = memo(function GroupChat({
     sendMessage, retryMessage, deleteMessage, editMessage, togglePinMessage, toggleReaction,
   } = useGroupChat(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
+  const { profile: authProfile } = useAuthState();
   // Force-mounted tabs stay in the DOM to preserve scroll position, so only
   // suppress notifications while the chat is actually the visible tab.
   useRegisterActiveContext([isActive && groupId ? `group:${groupId}` : null]);
 
 
   const [newMessage, setNewMessage] = useState('');
-  const [userDisplayName, setUserDisplayName] = useState('');
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -98,20 +99,21 @@ export const GroupChat = memo(function GroupChat({
     bucket: 'group-message-images',
     folder: groupId,
   });
+  const userDisplayName = authProfile?.display_name || authProfile?.full_name || 'Member';
 
-  // Get user display name for typing indicator
+  // React Router can reuse the same component while moving between groups.
+  // Never leak a draft, attachment, lightbox, or scroll bookkeeping into the
+  // next venue conversation.
   useEffect(() => {
-    const fetchDisplayName = async () => {
-      if (!currentUserId) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, full_name')
-        .eq('id', currentUserId)
-        .single();
-      setUserDisplayName(data?.display_name || data?.full_name || 'User');
-    };
-    fetchDisplayName();
-  }, [currentUserId]);
+    setNewMessage('');
+    setPendingImage(null);
+    setLightboxImage(null);
+    setAtBottom(true);
+    setNewBelowCount(0);
+    initialPositionedFor.current = null;
+    previousLastMessageId.current = null;
+    lastMarkedMessageId.current = null;
+  }, [groupId]);
 
   // Build a preview URL when an image is staged.
   useEffect(() => {
@@ -130,6 +132,11 @@ export const GroupChat = memo(function GroupChat({
     [messages],
   );
 
+  // Dismissing one announcement must not hide the next message an admin pins.
+  useEffect(() => {
+    setPinnedDismissed(false);
+  }, [pinnedMessage?.id]);
+
   const firstUnreadIndex = useMemo(() => {
     if (!lastReadAt) return -1;
     return messages.findIndex(
@@ -139,14 +146,20 @@ export const GroupChat = memo(function GroupChat({
   const isNearBottom = useCallback((element: HTMLDivElement) => isChatNearBottom(element), []);
 
   const markChatRead = useCallback(() => {
-    if (!currentUserId || !isActive) return;
-    const newest = messages[messages.length - 1];
+    if (
+      !currentUserId ||
+      !isActive ||
+      (typeof document !== 'undefined' && document.visibilityState !== 'visible')
+    ) return;
+    const newest = [...messages].reverse().find(
+      (message) => !message.id.startsWith('temp-') && message._status !== 'sending',
+    );
     if (!newest || newest.id === lastMarkedMessageId.current) return;
     lastMarkedMessageId.current = newest.id;
 
     void supabase
       .from('group_members')
-      .update({ last_chat_read_at: new Date().toISOString() })
+      .update({ last_chat_read_at: newest.created_at })
       .eq('group_id', groupId)
       .eq('user_id', currentUserId)
       .then(({ error }) => {
@@ -293,12 +306,11 @@ export const GroupChat = memo(function GroupChat({
     const trimmed = newMessage.trim();
     if ((!trimmed && !pendingImage) || uploading) return;
 
-    // Capture & clear synchronously so the input is ready for the next message
-    // before the network round-trip completes.
+    // Clear the caption immediately, but keep an attachment preview visible
+    // throughout upload so progress never disappears behind a blank composer.
     const stagedImage = pendingImage;
     const content = trimmed;
     setNewMessage('');
-    setPendingImage(null);
     stopTyping();
     requestAnimationFrame(() => {
       if (textareaRef.current) textareaRef.current.style.height = '40px';
@@ -321,6 +333,7 @@ export const GroupChat = memo(function GroupChat({
         return; // toast surfaced inside hook
       }
       imageUrl = result.url;
+      setPendingImage(null);
     }
 
     // sendMessage applies the optimistic bubble immediately via React Query.
@@ -342,7 +355,7 @@ export const GroupChat = memo(function GroupChat({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
@@ -353,11 +366,6 @@ export const GroupChat = memo(function GroupChat({
     if (!element) return;
     const shouldFollowLatest = isNearBottom(element);
     requestAnimationFrame(() => {
-      // Mobile browsers sometimes scroll the layout viewport while revealing a
-      // focused textarea even though the chat itself is fixed. Reset only for
-      // the immersive venue thread; ordinary embedded group chats keep their
-      // surrounding page position.
-      if (immersive) document.scrollingElement?.scrollTo({ top: 0, behavior: 'auto' });
       if (shouldFollowLatest) scrollToLatest('auto');
     });
   };
@@ -475,6 +483,11 @@ export const GroupChat = memo(function GroupChat({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-label={`${title || 'Community chat'} messages`}
+          tabIndex={0}
           className="h-full touch-pan-y overflow-y-auto overscroll-contain bg-background px-3 py-4 [overflow-anchor:none] sm:px-5"
         >
           {messages.length > 0 && (
@@ -510,7 +523,7 @@ export const GroupChat = memo(function GroupChat({
             </p>
           </motion.div>
         ) : (
-            <div role="log" aria-live="polite" aria-relevant="additions text">
+            <div>
             <AnimatePresence initial={false}>
               {messages.map((message, index) => {
                 const isOwn = message.user_id === currentUserId;
@@ -580,8 +593,9 @@ export const GroupChat = memo(function GroupChat({
               <button
                 type="button"
                 onClick={() => setPendingImage(null)}
+                disabled={uploading}
                 aria-label="Remove attachment"
-                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-foreground text-background flex items-center justify-center shadow"
+                className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-background shadow disabled:cursor-wait disabled:opacity-60"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -627,9 +641,13 @@ export const GroupChat = memo(function GroupChat({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onFocus={handleComposerFocus}
+              onBlur={() => void stopTyping()}
               placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message...'}
               disabled={uploading}
               rows={1}
+              enterKeyHint="send"
+              autoCapitalize="sentences"
+              spellCheck
               className="min-h-10 max-h-[120px] resize-none overflow-hidden rounded-[20px] border-border/70 bg-muted/35 px-3 py-2.5 text-sm leading-5 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
             />
           </div>

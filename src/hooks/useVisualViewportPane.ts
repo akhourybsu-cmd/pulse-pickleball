@@ -1,4 +1,26 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useState, type CSSProperties } from 'react';
+
+const DEFAULT_PANE_STYLE: CSSProperties = { height: '100dvh' };
+
+function shouldPinToVisualViewport(): boolean {
+  return window.matchMedia(
+    '(max-width: 767px), (hover: none) and (pointer: coarse)',
+  ).matches;
+}
+
+function readPaneStyle(): CSSProperties {
+  if (typeof window === 'undefined' || !window.visualViewport || !shouldPinToVisualViewport()) {
+    return DEFAULT_PANE_STYLE;
+  }
+  const viewport = window.visualViewport;
+  return {
+    position: 'fixed',
+    top: `${viewport.offsetTop}px`,
+    left: 0,
+    right: 0,
+    height: `${viewport.height}px`,
+  };
+}
 
 /**
  * Pins a full-screen pane (e.g. a chat thread) to the *visible* viewport so an
@@ -19,31 +41,38 @@ import { useEffect, useState, type CSSProperties } from 'react';
  * i.e. the previous behavior.
  */
 export function useVisualViewportPane(): CSSProperties {
-  const [style, setStyle] = useState<CSSProperties>({ height: '100dvh' });
+  // Read synchronously so an immersive chat never paints once in-flow and
+  // jumps to fixed positioning a frame later.
+  const [style, setStyle] = useState<CSSProperties>(readPaneStyle);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    const media = window.matchMedia(
+      '(max-width: 767px), (hover: none) and (pointer: coarse)',
+    );
+    let frame = 0;
+    let previousSignature = '';
 
     const update = () => {
-      setStyle({
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: `${vv.height}px`,
-        // Follow the viewport when the keyboard offsets it (iOS) so the pane
-        // always overlays the visible region rather than the layout viewport.
-        transform: `translateY(${vv.offsetTop}px)`,
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const next = readPaneStyle();
+        const signature = `${next.position ?? 'flow'}:${next.top ?? 0}:${next.height}`;
+        if (signature === previousSignature) return;
+        previousSignature = signature;
+        setStyle(next);
       });
     };
 
     update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    media.addEventListener('change', update);
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      cancelAnimationFrame(frame);
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      media.removeEventListener('change', update);
     };
   }, []);
 
