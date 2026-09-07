@@ -27,6 +27,7 @@ import { RoundRobinFeatureCard } from "@/components/round-robin/RoundRobinFeatur
 import { Logo } from "@/components/Logo";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
+import { fetchUserRoundRobinEvents } from "@/lib/roundRobin/userEvents";
 
 interface RoundRobinEvent {
   id: string;
@@ -97,24 +98,23 @@ export default function RoundRobinHub() {
 
   const fetchStats = async () => {
     try {
-      // Fetch aggregate stats
-      const { count: eventsCount } = await supabase
-        .from("round_robin_events")
-        .select("*", { count: "exact", head: true });
+      const [eventsResult, playersResult, courtsResult] = await Promise.all([
+        supabase
+          .from("round_robin_events")
+          .select("*", { count: "exact", head: true }),
+        supabase
+          .from("round_robin_players")
+          .select("*", { count: "exact", head: true }),
+        supabase
+          .from("round_robin_events")
+          .select("num_courts"),
+      ]);
       
-      const { count: playersCount } = await supabase
-        .from("round_robin_players")
-        .select("*", { count: "exact", head: true });
-      
-      const { data: courtsData } = await supabase
-        .from("round_robin_events")
-        .select("num_courts");
-      
-      const totalCourts = courtsData?.reduce((acc, e) => acc + (e.num_courts || 0), 0) || 0;
+      const totalCourts = courtsResult.data?.reduce((acc, e) => acc + (e.num_courts || 0), 0) || 0;
       
       setStats({
-        eventsHosted: eventsCount || 0,
-        playersServed: playersCount || 0,
+        eventsHosted: eventsResult.count || 0,
+        playersServed: playersResult.count || 0,
         courtsActive: totalCourts
       });
     } catch (error) {
@@ -131,30 +131,18 @@ export default function RoundRobinHub() {
       }
       setUserId(user.id);
 
-      const { data: organized, error: orgError } = await supabase
-        .from("round_robin_events")
-        .select("*")
-        .eq("organizer_id", user.id)
-        .order("created_at", { ascending: false });
+      const userEvents = await fetchUserRoundRobinEvents(user.id);
+      const organized = userEvents
+        .filter((entry) => entry.role === "host")
+        .map((entry) => entry.event as unknown as RoundRobinEvent)
+        .sort((a, b) => b.date.localeCompare(a.date));
+      const participating = userEvents
+        .filter((entry) => entry.role === "player")
+        .map((entry) => entry.event as unknown as RoundRobinEvent)
+        .sort((a, b) => b.date.localeCompare(a.date));
 
-      if (orgError) throw orgError;
-      setMyEvents(organized || []);
-
-      const { data: playerEvents, error: playerError } = await supabase
-        .from("round_robin_players")
-        .select(`
-          event_id,
-          round_robin_events (*)
-        `)
-        .eq("player_id", user.id);
-
-      if (playerError) throw playerError;
-      
-      const participatingList = playerEvents
-        ?.map((pe: any) => pe.round_robin_events)
-        .filter((e: any) => e.organizer_id !== user.id) || [];
-      
-      setParticipatingEvents(participatingList);
+      setMyEvents(organized);
+      setParticipatingEvents(participating);
     } catch (error: any) {
       toast.error("Failed to load events");
       console.error(error);

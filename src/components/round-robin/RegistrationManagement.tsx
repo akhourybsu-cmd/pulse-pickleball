@@ -35,24 +35,42 @@ export function RegistrationManagement({
   const { data: players = [], refetch } = useQuery({
     queryKey: ['event-registrations', eventId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: registrations, error } = await supabase
         .from('round_robin_players')
-        .select(`
-          id,
-          player_id,
-          registration_status,
-          joined_at,
-          profiles:profiles_public!round_robin_players_player_id_fkey(full_name, display_name)
-        `)
+        .select('id, player_id, guest_player_id, guest_name, registration_status, joined_at')
         .eq('event_id', eventId)
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+
+      const profileIds = [...new Set((registrations ?? []).map((row) => row.player_id).filter(Boolean))] as string[];
+      const guestIds = [...new Set((registrations ?? []).map((row) => row.guest_player_id).filter(Boolean))] as string[];
+      const [profilesResult, guestsResult] = await Promise.all([
+        profileIds.length > 0
+          ? supabase.from('profiles_public').select('id, full_name, display_name').in('id', profileIds)
+          : Promise.resolve({ data: [], error: null }),
+        guestIds.length > 0
+          ? supabase.from('guest_players').select('id, display_name').in('id', guestIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      // Names and avatars are enhancements. A migrated view permission or
+      // schema-cache issue must not hide registrations that loaded correctly.
+      if (profilesResult.error) console.error('Failed to load registration profiles', profilesResult.error);
+      if (guestsResult.error) console.error('Failed to load registration guests', guestsResult.error);
+
+      const profilesById = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
+      const guestsById = new Map((guestsResult.data ?? []).map((guest) => [guest.id, guest]));
+      return (registrations ?? []).map((registration) => ({
+        ...registration,
+        profiles: registration.player_id ? profilesById.get(registration.player_id) ?? null : null,
+        guest_players: registration.guest_player_id
+          ? guestsById.get(registration.guest_player_id) ?? null
+          : null,
+      }));
     }
   });
 
-  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{ registrationId: string; name: string } | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
   const confirmed = players.filter(p => p.registration_status === 'confirmed');
@@ -66,7 +84,7 @@ export function RegistrationManagement({
         .from('round_robin_players')
         .delete()
         .eq('event_id', eventId)
-        .eq('player_id', pendingRemove.id);
+        .eq('id', pendingRemove.registrationId);
 
       if (error) throw error;
       toast.success(
@@ -91,13 +109,13 @@ export function RegistrationManagement({
     }
   };
 
-  const handlePromoteFromWaitlist = async (playerId: string, playerName: string) => {
+  const handlePromoteFromWaitlist = async (registrationId: string, playerName: string) => {
     try {
       const { error } = await supabase
         .from('round_robin_players')
         .update({ registration_status: 'confirmed' })
         .eq('event_id', eventId)
-        .eq('player_id', playerId);
+        .eq('id', registrationId);
 
       if (error) throw error;
       toast.success(`${playerName} confirmed!`);
@@ -123,7 +141,8 @@ export function RegistrationManagement({
     onRemove?: () => void;
     onPromote?: () => void;
   }) => {
-    const playerName = player.profiles?.display_name || player.profiles?.full_name || 'Unknown';
+    const playerName = player.profiles?.display_name || player.profiles?.full_name ||
+      player.guest_players?.display_name || player.guest_name || 'Unknown';
     const initials = playerName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
 
     return (
@@ -220,8 +239,9 @@ export function RegistrationManagement({
                   key={player.id}
                   player={player}
                   onRemove={isOrganizer ? () => setPendingRemove({
-                    id: player.player_id,
-                    name: player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                    registrationId: player.id,
+                    name: player.profiles?.display_name || player.profiles?.full_name ||
+                      player.guest_players?.display_name || player.guest_name || 'Unknown'
                   }) : undefined}
                 />
               ))
@@ -242,12 +262,14 @@ export function RegistrationManagement({
                   key={player.id}
                   player={player}
                   onPromote={isOrganizer ? () => handlePromoteFromWaitlist(
-                    player.player_id,
-                    player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                    player.id,
+                    player.profiles?.display_name || player.profiles?.full_name ||
+                      player.guest_players?.display_name || player.guest_name || 'Unknown'
                   ) : undefined}
                   onRemove={isOrganizer ? () => setPendingRemove({
-                    id: player.player_id,
-                    name: player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                    registrationId: player.id,
+                    name: player.profiles?.display_name || player.profiles?.full_name ||
+                      player.guest_players?.display_name || player.guest_name || 'Unknown'
                   }) : undefined}
                 />
               ))}

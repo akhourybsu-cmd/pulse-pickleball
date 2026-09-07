@@ -49,30 +49,58 @@ export function RoundRobinEventDetailDialog({
       if (eventError) throw eventError;
 
       // Fetch players
-      const { data: players, error: playersError } = await supabase
+      const { data: registrations, error: playersError } = await supabase
         .from("round_robin_players")
-        .select(`
-          id,
-          registration_status,
-          joined_at,
-          profiles:player_id (
-            id,
-            full_name,
-            display_name
-          )
-        `)
+        .select("id, player_id, guest_player_id, guest_name, registration_status, joined_at")
         .eq("event_id", eventId)
         .eq("active", true)
         .order("joined_at", { ascending: true });
 
       if (playersError) throw playersError;
 
-      // Fetch organizer
-      const { data: organizer } = await supabase
-        .from("profiles_public")
-        .select("full_name, display_name")
-        .eq("id", event.organizer_id)
-        .single();
+      // Hydrate identities explicitly. The implicit player_id -> profiles
+      // embed was another migration-sensitive PostgREST relationship and
+      // could make the entire public event preview disappear.
+      const profileIds = [...new Set([
+        event.organizer_id,
+        ...(registrations ?? []).map((row) => row.player_id).filter(Boolean),
+      ])] as string[];
+      const guestIds = [...new Set(
+        (registrations ?? []).map((row) => row.guest_player_id).filter(Boolean),
+      )] as string[];
+      const [profilesResult, guestsResult] = await Promise.all([
+        supabase
+          .from("profiles_public")
+          .select("id, full_name, display_name")
+          .in("id", profileIds),
+        guestIds.length > 0
+          ? supabase
+              .from("guest_players")
+              .select("id, display_name")
+              .in("id", guestIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (profilesResult.error) console.error("Failed to load event-preview profiles", profilesResult.error);
+      if (guestsResult.error) console.error("Failed to load event-preview guests", guestsResult.error);
+
+      const profilesById = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
+      const guestsById = new Map((guestsResult.data ?? []).map((guest) => [guest.id, guest]));
+      const players = (registrations ?? []).map((registration) => {
+        const guest = registration.guest_player_id
+          ? guestsById.get(registration.guest_player_id)
+          : null;
+        return {
+          ...registration,
+          profiles: registration.player_id
+            ? profilesById.get(registration.player_id) ?? null
+            : {
+                id: registration.guest_player_id,
+                full_name: guest?.display_name || registration.guest_name || "Guest",
+                display_name: guest?.display_name || registration.guest_name || "Guest",
+              },
+        };
+      });
+      const organizer = profilesById.get(event.organizer_id);
 
       // Check user registration
       let userRegistration = null;

@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ChevronRight, Repeat, Trophy, ListChecks, History as HistoryIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useAuthState } from "@/hooks/useAuthState";
+import { fetchUserRoundRobinEvents } from "@/lib/roundRobin/userEvents";
 
 type Status = "draft" | "live" | "completed" | "voided";
 type Role = "host" | "player";
@@ -20,17 +21,6 @@ interface RREntry {
   currentRound: number | null;
   numRounds: number;
   role: Role;
-}
-
-interface RawEvent {
-  id: string;
-  name: string;
-  date: string;
-  status: Status;
-  voided?: boolean | null;
-  current_round: number | null;
-  num_rounds: number;
-  organizer_id?: string;
 }
 
 /**
@@ -50,80 +40,39 @@ interface RawEvent {
  */
 export default function MyRoundRobinsPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuthState();
+  const userId = user?.id;
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<RREntry[]>([]);
   const [tab, setTab] = useState<"active" | "past">("active");
 
   useEffect(() => {
+    if (authLoading) return;
+
     let cancelled = false;
 
     const run = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        if (!userId) {
           if (!cancelled) setLoading(false);
           return;
         }
+        setLoading(true);
 
-        // Hosting — all statuses, including voided so the host can
-        // see the history of their cancellations.
-        const { data: hostingData } = await supabase
-          .from("round_robin_events")
-          .select("id, name, date, status, voided, current_round, num_rounds")
-          .eq("organizer_id", user.id)
-          .order("date", { ascending: false });
-
-        // Playing — every event the user is registered for.
-        const { data: playingData } = await supabase
-          .from("round_robin_players")
-          .select(
-            `event_id,
-             round_robin_events!inner (
-               id, name, date, status, voided, current_round, num_rounds,
-               organizer_id
-             )`,
-          )
-          .eq("player_id", user.id)
-          .eq("active", true);
+        const userEvents = await fetchUserRoundRobinEvents(userId);
 
         if (cancelled) return;
 
-        const hostingMap = new Map<string, RawEvent>();
-        (hostingData || []).forEach((e) => hostingMap.set(e.id, e as RawEvent));
-
-        const playingMap = new Map<string, RawEvent>();
-        (playingData || []).forEach((p) => {
-          const e = (p as unknown as { round_robin_events: RawEvent }).round_robin_events;
-          if (e && !hostingMap.has(e.id) && e.organizer_id !== user.id) {
-            playingMap.set(e.id, e);
-          }
-        });
-
-        const all: RREntry[] = [];
-        hostingMap.forEach((e) =>
-          all.push({
-            id: e.id,
-            name: e.name,
-            date: e.date,
-            status: e.status,
-            voided: !!e.voided,
-            currentRound: e.current_round,
-            numRounds: e.num_rounds,
-            role: "host",
-          }),
-        );
-        playingMap.forEach((e) =>
-          all.push({
-            id: e.id,
-            name: e.name,
-            date: e.date,
-            status: e.status,
-            voided: !!e.voided,
-            currentRound: e.current_round,
-            numRounds: e.num_rounds,
-            role: "player",
-          }),
-        );
+        const all: RREntry[] = userEvents.map(({ event, role }) => ({
+          id: event.id,
+          name: event.name,
+          date: event.date,
+          status: event.status as Status,
+          voided: !!event.voided,
+          currentRound: event.current_round,
+          numRounds: event.num_rounds,
+          role,
+        }));
 
         setEntries(all);
       } catch (err) {
@@ -137,7 +86,7 @@ export default function MyRoundRobinsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, userId]);
 
   const active = entries
     .filter((e) => e.status === "draft" || e.status === "live")

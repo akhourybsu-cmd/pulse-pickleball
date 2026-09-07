@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { isFuture } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 import { useMyEventRegistrations } from '@/hooks/useEventRegistrations';
+import { useAuthState } from '@/hooks/useAuthState';
+import { fetchUserRoundRobinEvents } from '@/lib/roundRobin/userEvents';
 
 /**
  * Aggregates everything a player has coming up for pickleball play into one
@@ -39,51 +40,29 @@ interface RegistrationRow {
   } | null;
 }
 
-interface RRRow {
-  id: string;
-  name: string;
-  date: string | null;
-  status: string;
-  voided: boolean | null;
-  current_round: number | null;
-  num_rounds: number | null;
-  organizer_id?: string;
-}
-
 const isActiveRR = (status: string) => status === 'draft' || status === 'live';
 
 export function useUpcomingPlay() {
+  const { user, loading: authLoading } = useAuthState();
+  const userId = user?.id;
   const { registrations, isLoading: regLoading } = useMyEventRegistrations();
   const [rrItems, setRrItems] = useState<UpcomingPlayItem[]>([]);
   const [rrLoading, setRrLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
+
     let cancelled = false;
     const run = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!userId) return;
+        setRrLoading(true);
 
-        const [hostRes, playRes] = await Promise.all([
-          supabase
-            .from('round_robin_events')
-            .select('id, name, date, status, voided, current_round, num_rounds')
-            .eq('organizer_id', user.id)
-            .in('status', ['draft', 'live']),
-          supabase
-            .from('round_robin_players')
-            .select(
-              `round_robin_events!inner (
-                 id, name, date, status, voided, current_round, num_rounds, organizer_id
-               )`,
-            )
-            .eq('player_id', user.id)
-            .eq('active', true),
-        ]);
+        const userEvents = await fetchUserRoundRobinEvents(userId);
         if (cancelled) return;
 
         const byId = new Map<string, UpcomingPlayItem>();
-        const push = (e: RRRow | null | undefined, role: 'host' | 'playing') => {
+        userEvents.forEach(({ event: e, role }) => {
           if (!e || e.voided || !isActiveRR(e.status) || byId.has(e.id)) return;
           byId.set(e.id, {
             key: `rr-${e.id}`,
@@ -93,16 +72,11 @@ export function useUpcomingPlay() {
               e.status === 'live' && e.current_round
                 ? `Round robin · Round ${e.current_round}${e.num_rounds ? ` of ${e.num_rounds}` : ''}`
                 : 'Round robin',
-            date: e.date ? new Date(e.date) : new Date(),
+            date: new Date(e.date),
             href: `/round-robin/${e.id}`,
-            role,
+            role: role === 'host' ? 'host' : 'playing',
           });
-        };
-
-        ((hostRes.data as RRRow[] | null) ?? []).forEach((e) => push(e, 'host'));
-        ((playRes.data as unknown as Array<{ round_robin_events: RRRow }> | null) ?? []).forEach(
-          (p) => push(p.round_robin_events, 'playing'),
-        );
+        });
 
         setRrItems(Array.from(byId.values()));
       } catch {
@@ -116,7 +90,7 @@ export function useUpcomingPlay() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, userId]);
 
   const eventItems: UpcomingPlayItem[] = ((registrations as RegistrationRow[] | undefined) ?? [])
     .filter((r) => r.event && r.status !== 'cancelled' && isFuture(new Date(r.event.start_time)))

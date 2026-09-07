@@ -97,19 +97,9 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           .eq("matches.status", "pending"),
         supabase
           .from("round_robin_players")
-          .select(`
-            event:round_robin_events!inner (
-              id,
-              name,
-              date,
-              start_time,
-              location
-            )
-          `)
+          .select("event_id")
           .eq("player_id", userId)
-          .eq("active", true)
-          .gte("round_robin_events.date", now.toISOString().split("T")[0])
-          .lte("round_robin_events.date", in48Hours.toISOString().split("T")[0]),
+          .eq("active", true),
         supabase
           .from("match_participants")
           .select(`
@@ -130,15 +120,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           .limit(5),
         supabase
           .from("round_robin_players")
-          .select(`
-            id,
-            joined_at,
-            event:round_robin_events (
-              id,
-              name,
-              date
-            )
-          `)
+          .select("id, joined_at, event_id")
           .eq("player_id", userId)
           .eq("active", true)
           .gte("joined_at", sevenDaysAgo.toISOString())
@@ -147,9 +129,33 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       ]);
 
       const pendingMatches = pendingResult.data;
-      const upcomingRREvents = upcomingResult.data;
       const recentApprovedMatches = approvedResult.data;
-      const recentEventRegs = registrationsResult.data;
+      const rrEventIds = [...new Set([
+        ...(upcomingResult.data ?? []).map((registration) => registration.event_id),
+        ...(registrationsResult.data ?? []).map((registration) => registration.event_id),
+      ])];
+      const rrEventsResult = rrEventIds.length > 0
+        ? await supabase
+            .from("round_robin_events")
+            .select("id, name, date, start_time, location")
+            .in("id", rrEventIds)
+        : { data: [], error: null };
+      if (rrEventsResult.error) {
+        console.error("Failed to hydrate round-robin activity", rrEventsResult.error);
+      }
+      const rrEventsById = new Map(
+        (rrEventsResult.data ?? []).map((event) => [event.id, event as ActivityEvent]),
+      );
+      const today = now.toISOString().split("T")[0];
+      const endDate = in48Hours.toISOString().split("T")[0];
+      const upcomingRREvents = (upcomingResult.data ?? [])
+        .map((registration) => ({ event: rrEventsById.get(registration.event_id) }))
+        .filter(({ event }) => event && event.date >= today && event.date <= endDate);
+      const recentEventRegs = (registrationsResult.data ?? [])
+        .map((registration) => ({
+          ...registration,
+          event: rrEventsById.get(registration.event_id),
+        }));
 
       if (pendingMatches) {
         for (const p of pendingMatches) {

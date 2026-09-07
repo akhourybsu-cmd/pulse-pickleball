@@ -1,7 +1,8 @@
 import { useEffect, useState, memo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
+import { useAuthState } from "@/hooks/useAuthState";
+import { fetchUserRoundRobinEvents } from "@/lib/roundRobin/userEvents";
 
 interface LiveEvent {
   id: string;
@@ -16,47 +17,43 @@ export const RoundRobinBanner = memo(() => {
   const [isDismissed, setIsDismissed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuthState();
+  const userId = user?.id;
 
   useEffect(() => {
-    fetchLiveEvent();
-  }, []);
+    let cancelled = false;
 
-  const fetchLiveEvent = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get events where user is a participant and status is live
-      const { data: playerEvents, error } = await supabase
-        .from("round_robin_players")
-        .select(`
-          event_id,
-          round_robin_events!inner (
-            id,
-            name,
-            date,
-            status,
-            current_round,
-            num_rounds
-          )
-        `)
-        .eq("player_id", user.id)
-        .eq("round_robin_events.status", "live")
-        .limit(1);
-
-      if (error) {
-        console.error("Error fetching live event:", error);
+    const fetchLiveEvent = async () => {
+      if (!userId) {
         setLiveEvent(null);
         return;
       }
 
-      const event = playerEvents?.[0]?.round_robin_events;
-      setLiveEvent(event || null);
-    } catch (error) {
-      console.error("Error fetching live event:", error);
-      setLiveEvent(null);
-    }
-  };
+      try {
+        const entries = await fetchUserRoundRobinEvents(userId);
+        if (cancelled) return;
+
+        const event = entries.find(({ event: candidate }) =>
+          !candidate.voided && candidate.status === "live",
+        )?.event;
+        setLiveEvent(event ? {
+          id: event.id,
+          name: event.name,
+          date: event.date,
+          current_round: event.current_round ?? 1,
+          num_rounds: event.num_rounds,
+        } : null);
+      } catch (error) {
+        console.error("Error fetching live event:", error);
+        if (!cancelled) setLiveEvent(null);
+      }
+    };
+
+    fetchLiveEvent();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const handleBannerClick = () => {
     if (liveEvent) {

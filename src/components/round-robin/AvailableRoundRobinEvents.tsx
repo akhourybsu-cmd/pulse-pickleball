@@ -20,10 +20,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
     queryFn: async () => {
       const { data, error } = await supabase
         .from('round_robin_events')
-        .select(`
-          *,
-          round_robin_players(count)
-        `)
+        .select('*')
         .eq('is_published', true)
         .eq('registration_mode', 'open_registration')
         .gte('registration_deadline', new Date().toISOString())
@@ -31,44 +28,55 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
 
       if (error) throw error;
 
-      // Enrich with registration counts and organizer info
-      const enrichedEvents = await Promise.all(
-        (data || []).map(async (event) => {
-          const { data: players } = await supabase
-            .from('round_robin_players')
-            .select('id, registration_status')
-            .eq('event_id', event.id)
-            .eq('active', true);
+      const eventIds = (data ?? []).map((event) => event.id);
+      const organizerIds = [...new Set((data ?? []).map((event) => event.organizer_id))];
+      const [playersResult, organizersResult] = await Promise.all([
+        eventIds.length > 0
+          ? supabase
+              .from('round_robin_players')
+              .select('event_id, player_id, registration_status')
+              .in('event_id', eventIds)
+              .eq('active', true)
+          : Promise.resolve({ data: [], error: null }),
+        organizerIds.length > 0
+          ? supabase
+              .from('profiles_public')
+              .select('id, full_name, display_name')
+              .in('id', organizerIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-          const confirmed = players?.filter(p => p.registration_status === 'confirmed').length || 0;
-          const waitlisted = players?.filter(p => p.registration_status === 'waitlisted').length || 0;
-          
-          // Check if current user is already registered
-          const { data: myReg } = await supabase
-            .from('round_robin_players')
-            .select('registration_status')
-            .eq('event_id', event.id)
-            .eq('player_id', userId || '')
-            .eq('active', true)
-            .maybeSingle();
+      if (playersResult.error) throw playersResult.error;
+      if (organizersResult.error) {
+        console.error('Failed to load round-robin organizers', organizersResult.error);
+      }
 
-          // Get organizer info
-          const { data: organizer } = await supabase
-            .from('profiles_public')
-            .select('full_name, display_name')
-            .eq('id', event.organizer_id)
-            .single();
-
-          return {
-            ...event,
-            confirmed_count: confirmed,
-            waitlisted_count: waitlisted,
-            is_registered: !!myReg,
-            my_status: myReg?.registration_status,
-            organizer_name: organizer?.display_name || organizer?.full_name || 'Organizer'
-          };
-        })
+      const registrationsByEvent = new Map<string, typeof playersResult.data>();
+      (playersResult.data ?? []).forEach((registration) => {
+        const registrations = registrationsByEvent.get(registration.event_id) ?? [];
+        registrations.push(registration);
+        registrationsByEvent.set(registration.event_id, registrations);
+      });
+      const organizersById = new Map(
+        (organizersResult.data ?? []).map((organizer) => [organizer.id, organizer]),
       );
+
+      const enrichedEvents = (data ?? []).map((event) => {
+        const registrations = registrationsByEvent.get(event.id) ?? [];
+        const confirmed = registrations.filter((row) => row.registration_status === 'confirmed').length;
+        const waitlisted = registrations.filter((row) => row.registration_status === 'waitlisted').length;
+        const myRegistration = registrations.find((row) => row.player_id === userId);
+        const organizer = organizersById.get(event.organizer_id);
+
+        return {
+          ...event,
+          confirmed_count: confirmed,
+          waitlisted_count: waitlisted,
+          is_registered: !!myRegistration,
+          my_status: myRegistration?.registration_status,
+          organizer_name: organizer?.display_name || organizer?.full_name || 'Organizer',
+        };
+      });
 
       return enrichedEvents;
     },
@@ -102,7 +110,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
           : 'Added to waitlist - you\'ll be notified if a spot opens'
       );
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Join error:', error);
       toast.error('Failed to join event');
     } finally {

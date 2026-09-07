@@ -134,13 +134,15 @@ interface Player {
   active: boolean;
   profiles: {
     id: string;
-    full_name: string;
+    full_name: string | null;
     display_name: string | null;
+    avatar_url?: string | null;
   } | null;
   guest_players?: {
     id: string;
     display_name: string;
     linked_user_id: string | null;
+    email?: string | null;
   } | null;
 }
 
@@ -296,6 +298,18 @@ export default function RoundRobinDetail() {
           fetchEventDetails();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_players',
+          filter: `event_id=eq.${id}`
+        },
+        () => {
+          fetchEventDetails();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -308,18 +322,7 @@ export default function RoundRobinDetail() {
 
     const { data, error } = await supabase
       .from("round_robin_audit")
-      .select(`
-        id,
-        change_type,
-        editor_id,
-        changes,
-        created_at,
-        reason,
-        profiles:editor_id (
-          display_name,
-          email
-        )
-      `)
+      .select("id, change_type, editor_id, changes, created_at, reason")
       .eq("event_id", id)
       .order("created_at", { ascending: false });
 
@@ -328,10 +331,27 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    const formattedEntries = data.map((entry: any) => ({
+    // Do not depend on a cross-table embed here. The external Supabase
+    // project cannot infer every relationship through profiles_public, which
+    // made the whole audit request fail after cutover.
+    const editorIds = [...new Set((data ?? []).map((entry) => entry.editor_id).filter(Boolean))] as string[];
+    const { data: editorProfiles, error: profileError } = editorIds.length > 0
+      ? await supabase
+          .from("profiles_public")
+          .select("id, display_name, full_name")
+          .in("id", editorIds)
+      : { data: [], error: null };
+
+    if (profileError) {
+      console.error("Error fetching audit editors:", profileError);
+    }
+    const editorsById = new Map(
+      (editorProfiles ?? []).map((profile) => [profile.id, profile.display_name || profile.full_name]),
+    );
+
+    const formattedEntries = (data ?? []).map((entry) => ({
       ...entry,
-      editor_name:
-        entry.profiles?.display_name || entry.profiles?.email || "Unknown",
+      editor_name: editorsById.get(entry.editor_id) || "Unknown",
     }));
 
     setAuditEntries(formattedEntries);
@@ -346,10 +366,9 @@ export default function RoundRobinDetail() {
       }
       setUserId(user.id);
 
-      // The four reads below are independent — event, players, schedule,
-      // and the admin check only need `id`/`user.id`. Running them
-      // serially added three full round-trips of latency to every load
-      // AND every post-mutation refetch.
+      // Keep the base reads independent and portable. Cross-table embeds
+      // through profiles_public worked in Lovable's PostgREST schema cache but
+      // fail on the external Supabase project, zeroing the roster and schedule.
       const [adminFlag, eventResult, playersResult, scheduleResult] = await Promise.all([
         isPlatformAdmin(user.id),
         supabase
@@ -359,21 +378,11 @@ export default function RoundRobinDetail() {
           .single(),
         supabase
           .from("round_robin_players")
-          .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id, email)")
+          .select("*")
           .eq("event_id", id),
         supabase
           .from("round_robin_schedule")
-          .select(`
-            *,
-            a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name, avatar_url),
-            a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name, avatar_url),
-            b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name, avatar_url),
-            b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name, avatar_url),
-            a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name, linked_user_id),
-            a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name, linked_user_id),
-            b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name, linked_user_id),
-            b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name, linked_user_id)
-          `)
+          .select("*")
           .eq("event_id", id)
           .order("round_no")
           .order("court_no"),
@@ -388,21 +397,77 @@ export default function RoundRobinDetail() {
 
       const { data: playersData, error: playersError } = playersResult;
       if (playersError) throw playersError;
-      setPlayers(playersData || []);
-
-      // Check if user is a participant
-      const userIsParticipant = playersData?.some(
-        (p: Player) => p.player_id === user.id
-      );
-      setIsParticipant(userIsParticipant || false);
 
       const { data: scheduleData, error: scheduleError } = scheduleResult;
       if (scheduleError) throw scheduleError;
-      setSchedule(scheduleData || []);
 
-      if (scheduleData && playersData) {
-        calculateStandings(scheduleData, playersData);
-      }
+      const rawPlayers = (playersData ?? []) as unknown as Player[];
+      const rawSchedule = (scheduleData ?? []) as unknown as ScheduleMatch[];
+      const profileIds = new Set<string>();
+      const guestIds = new Set<string>();
+
+      rawPlayers.forEach((player) => {
+        if (player.player_id) profileIds.add(player.player_id);
+        if (player.guest_player_id) guestIds.add(player.guest_player_id);
+      });
+      rawSchedule.forEach((match) => {
+        [match.a1_player_id, match.a2_player_id, match.b1_player_id, match.b2_player_id]
+          .forEach((playerId) => { if (playerId) profileIds.add(playerId); });
+        [match.a1_guest_id, match.a2_guest_id, match.b1_guest_id, match.b2_guest_id]
+          .forEach((guestId) => { if (guestId) guestIds.add(guestId); });
+      });
+
+      const [profilesResult, guestsResult] = await Promise.all([
+        profileIds.size > 0
+          ? supabase
+              .from("profiles_public")
+              .select("id, full_name, display_name, avatar_url")
+              .in("id", [...profileIds])
+          : Promise.resolve({ data: [], error: null }),
+        guestIds.size > 0
+          ? supabase
+              .from("guest_players")
+              .select("id, display_name, linked_user_id, email")
+              .in("id", [...guestIds])
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      // Roster identities decorate the already-loaded event data. If a
+      // migrated view or guest policy is unavailable, keep the schedule and
+      // roster usable with fallback labels instead of failing the whole page.
+      if (profilesResult.error) console.error("Error hydrating round-robin profiles:", profilesResult.error);
+      if (guestsResult.error) console.error("Error hydrating round-robin guests:", guestsResult.error);
+
+      const profilesById = new Map(
+        (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
+      );
+      const guestsById = new Map(
+        (guestsResult.data ?? []).map((guest) => [guest.id, guest]),
+      );
+      const hydratedPlayers: Player[] = rawPlayers.map((player) => ({
+        ...player,
+        profiles: player.player_id
+          ? (profilesById.get(player.player_id) as Player["profiles"] | undefined) ?? null
+          : null,
+        guest_players: player.guest_player_id
+          ? (guestsById.get(player.guest_player_id) as Player["guest_players"] | undefined) ?? null
+          : null,
+      }));
+      const hydratedSchedule: ScheduleMatch[] = rawSchedule.map((match) => ({
+        ...match,
+        a1_profile: match.a1_player_id ? profilesById.get(match.a1_player_id) ?? null : null,
+        a2_profile: match.a2_player_id ? profilesById.get(match.a2_player_id) ?? null : null,
+        b1_profile: match.b1_player_id ? profilesById.get(match.b1_player_id) ?? null : null,
+        b2_profile: match.b2_player_id ? profilesById.get(match.b2_player_id) ?? null : null,
+        a1_guest: match.a1_guest_id ? guestsById.get(match.a1_guest_id) ?? null : null,
+        a2_guest: match.a2_guest_id ? guestsById.get(match.a2_guest_id) ?? null : null,
+        b1_guest: match.b1_guest_id ? guestsById.get(match.b1_guest_id) ?? null : null,
+        b2_guest: match.b2_guest_id ? guestsById.get(match.b2_guest_id) ?? null : null,
+      }));
+
+      setPlayers(hydratedPlayers);
+      setSchedule(hydratedSchedule);
+      setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
+      calculateStandings(hydratedSchedule, hydratedPlayers);
 
       setLoading(false);
     } catch (error: unknown) {
@@ -451,7 +516,7 @@ export default function RoundRobinDetail() {
   const handleGenerateSchedule = async () => {
     if (!event) return;
 
-    const activePlayers = players;
+    const activePlayers = players.filter((player) => player.active !== false);
     if (activePlayers.length < 4) {
       toast.error("At least 4 players are required");
       return;
@@ -1885,14 +1950,15 @@ export default function RoundRobinDetail() {
   }
 
   // Organizers and admins see full view
+  const activeRoster = players.filter((player) => player.active !== false);
   const hasSchedule = schedule.length > 0;
-  const canGenerate = players.length >= 4;
+  const canGenerate = activeRoster.length >= 4;
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
   const currentRound = event.current_round || 1;
 
   // Calculate progress step
   const getCurrentStep = () => {
-    if (players.length < 4) return 1;
+    if (activeRoster.length < 4) return 1;
     if (!hasSchedule) return 2;
     if (event.status === 'live' || hasScores) return 3;
     if (event.status === 'completed') return 4;
@@ -1902,7 +1968,7 @@ export default function RoundRobinDetail() {
   const currentStep = getCurrentStep();
 
   // Estimate rounds and time
-  const estimatedRounds = hasSchedule ? event.num_rounds : suggestRounds(players.length, event.num_courts, event.games_per_player || 3);
+  const estimatedRounds = hasSchedule ? event.num_rounds : suggestRounds(activeRoster.length, event.num_courts, event.games_per_player || 3);
   const estimatedMinutes = estimatedRounds * 12;
 
   // Share functionality
@@ -2013,7 +2079,7 @@ export default function RoundRobinDetail() {
           format={event.format}
           numRounds={event.num_rounds}
           numCourts={event.num_courts}
-          playerCount={players.length}
+          playerCount={activeRoster.length}
           hasSchedule={hasSchedule}
           inviteCode={event.invite_code}
           registrationMode={event.registration_mode}
@@ -2052,7 +2118,7 @@ export default function RoundRobinDetail() {
           {isOrganizer && (
             <aside className="hidden lg:block">
               <RRLeftSidebar
-                playerCount={players.length}
+                playerCount={activeRoster.length}
                 hasSchedule={hasSchedule}
                 status={event.status}
                 format={event.format}
@@ -2099,9 +2165,9 @@ export default function RoundRobinDetail() {
             <WhatsNextBanner
               status={event.status}
               voided={event.voided}
-              hasPlayers={players.length >= 4}
+              hasPlayers={activeRoster.length >= 4}
               hasSchedule={hasSchedule}
-              playerCount={players.length}
+              playerCount={activeRoster.length}
               courtCount={event.num_courts}
               currentRound={event.current_round}
               totalRounds={event.num_rounds}
@@ -2144,7 +2210,7 @@ export default function RoundRobinDetail() {
           {(() => {
             const tabs: { value: typeof activeTab; label: string; icon: typeof Calendar; count?: number }[] = [
               { value: "schedule", label: "Schedule", icon: Calendar },
-              { value: "players", label: "Players", icon: Users, count: players.length },
+              { value: "players", label: "Players", icon: Users, count: activeRoster.length },
               { value: "standings", label: "Standings", icon: Trophy },
             ];
             const activeIndex = tabs.findIndex((t) => t.value === activeTab);
@@ -2207,9 +2273,9 @@ export default function RoundRobinDetail() {
                     <p className="text-sm text-muted-foreground max-w-md">
                       Add or confirm players, then generate your schedule.
                     </p>
-                    {players.length >= 4 && (
+                    {activeRoster.length >= 4 && (
                       <p className="text-xs text-muted-foreground">
-                        With {players.length} players you'll typically see ~{estimatedRounds} rounds (~{estimatedMinutes} min)
+                        With {activeRoster.length} players you'll typically see ~{estimatedRounds} rounds (~{estimatedMinutes} min)
                       </p>
                     )}
                   </div>
@@ -2224,7 +2290,7 @@ export default function RoundRobinDetail() {
                         <Zap className="h-4 w-4 mr-2" />
                         Generate Schedule
                       </Button>
-                      {players.length < 4 && (
+                      {activeRoster.length < 4 && (
                         <Button 
                           variant="link" 
                           size="sm"
@@ -2494,7 +2560,7 @@ export default function RoundRobinDetail() {
                   {players.length > 0 && (
                     <>
                       <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Players ({players.length})
+                        Players ({activeRoster.length} active)
                       </p>
                       {players.map((player) => {
                         const guest = (player as any).guest_players as { id?: string; display_name?: string; linked_user_id?: string | null; email?: string | null } | undefined;
@@ -2511,7 +2577,9 @@ export default function RoundRobinDetail() {
                             {displayName}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="default">Active</Badge>
+                            <Badge variant={player.active === false ? "secondary" : "default"}>
+                              {player.active === false ? "Inactive" : "Active"}
+                            </Badge>
                             {isOrganizer && isUnlinkedGuest && (
                               <Button
                                 size="sm"
@@ -2526,7 +2594,7 @@ export default function RoundRobinDetail() {
                                 Invite
                               </Button>
                             )}
-                            {isOrganizer && !event.voided && event.status !== 'completed' && (
+                            {isOrganizer && player.active !== false && !event.voided && event.status !== 'completed' && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -2697,7 +2765,7 @@ export default function RoundRobinDetail() {
           {isOrganizer && (
             <aside className="hidden lg:block">
               <RRRightSidebar
-                playerCount={players.length}
+                playerCount={activeRoster.length}
                 hasSchedule={hasSchedule}
                 status={event.status}
                 format={event.format}
@@ -2842,7 +2910,7 @@ export default function RoundRobinDetail() {
             onOpenChange={setEditDialogOpen}
             event={event}
             onSave={handleSaveEventSettings}
-            playerCount={players.length}
+            playerCount={activeRoster.length}
           />
           
           <PlayerManagementDialog
@@ -2894,7 +2962,7 @@ export default function RoundRobinDetail() {
             currentGamesPerPlayer={event.games_per_player || 3}
             currentRound={event.current_round}
             hasScores={hasScores}
-            totalPlayers={players.length}
+            totalPlayers={activeRoster.length}
             onUpdateCourts={handleUpdateCourts}
             onUpdateGamesPerPlayer={handleUpdateGamesPerPlayer}
           />

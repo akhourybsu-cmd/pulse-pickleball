@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ChevronRight, Repeat, Trophy } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { cn } from "@/lib/utils";
+import { fetchUserRoundRobinEvents } from "@/lib/roundRobin/userEvents";
 
 interface MyRoundRobinsCardProps {
   userId: string | undefined;
@@ -22,17 +22,6 @@ interface RREntry {
   currentRound: number | null;
   numRounds: number;
   role: Role;
-}
-
-interface RawEvent {
-  id: string;
-  name: string;
-  date: string;
-  status: Status;
-  current_round: number | null;
-  num_rounds: number;
-  organizer_id?: string;
-  voided?: boolean | null;
 }
 
 /**
@@ -70,73 +59,22 @@ export function MyRoundRobinsCard({ userId }: MyRoundRobinsCardProps) {
 
     const run = async () => {
       try {
-        // Hosting and player registrations are independent views of the same
-        // dashboard card, so load them concurrently.
-        const [hostingResult, playingResult] = await Promise.all([
-          supabase
-            .from("round_robin_events")
-            .select("id, name, date, status, current_round, num_rounds, voided")
-            .eq("organizer_id", userId)
-            .in("status", ["draft", "live"])
-            .or("voided.is.null,voided.eq.false")
-            .order("date", { ascending: true }),
-          // Events I'm participating in (active registration). Join through
-          // the inner relation so completed events do not appear here.
-          supabase
-            .from("round_robin_players")
-            .select(
-              `event_id,
-               round_robin_events!inner (
-                 id, name, date, status, current_round, num_rounds,
-                 organizer_id, voided
-               )`,
-            )
-            .eq("player_id", userId)
-            .eq("active", true)
-            .in("round_robin_events.status", ["draft", "live"]),
-        ]);
-        const hostingData = hostingResult.data;
-        const playingData = playingResult.data;
-
+        const userEvents = await fetchUserRoundRobinEvents(userId);
         if (cancelled) return;
 
-        const hostingMap = new Map<string, RawEvent>();
-        (hostingData || []).forEach((e) => {
-          if (e && !e.voided) hostingMap.set(e.id, e as RawEvent);
-        });
-
-        const playingMap = new Map<string, RawEvent>();
-        (playingData || []).forEach((p) => {
-          const e = (p as unknown as { round_robin_events: RawEvent }).round_robin_events;
-          // Skip if the user is also the host (don't double-list).
-          if (e && !e.voided && !hostingMap.has(e.id) && e.organizer_id !== userId) {
-            playingMap.set(e.id, e);
-          }
-        });
-
-        const collected: RREntry[] = [];
-        hostingMap.forEach((e) =>
-          collected.push({
-            id: e.id,
-            name: e.name,
-            date: e.date,
-            status: e.status,
-            currentRound: e.current_round,
-            numRounds: e.num_rounds,
-            role: "host",
-          }),
-        );
-        playingMap.forEach((e) =>
-          collected.push({
-            id: e.id,
-            name: e.name,
-            date: e.date,
-            status: e.status,
-            currentRound: e.current_round,
-            numRounds: e.num_rounds,
-            role: "player",
-          }),
-        );
+        const collected: RREntry[] = userEvents
+          .filter(({ event }) =>
+            !event.voided && (event.status === "draft" || event.status === "live"),
+          )
+          .map(({ event, role }) => ({
+            id: event.id,
+            name: event.name,
+            date: event.date,
+            status: event.status as Status,
+            currentRound: event.current_round,
+            numRounds: event.num_rounds,
+            role,
+          }));
 
         // Sort: live before draft, then by date ascending.
         collected.sort((a, b) => {
