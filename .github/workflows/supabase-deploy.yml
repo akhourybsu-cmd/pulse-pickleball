@@ -1,28 +1,10 @@
 name: Deploy Supabase
 
-# Applies database migrations (and, optionally, edge functions) to your
-# Supabase project automatically — no more approving each migration by
-# hand. It runs when migration/function files change on `main`, and can
-# also be triggered manually from the Actions tab.
-#
-# ─────────────────────────────────────────────────────────────────────
-# ONE-TIME SETUP (nothing here runs until you do this):
-#
-#   1. Repo → Settings → Secrets and variables → Actions → New secret,
-#      add all three:
-#        • SUPABASE_ACCESS_TOKEN   (supabase.com/dashboard/account/tokens)
-#        • SUPABASE_DB_PASSWORD    (Supabase → Project Settings → Database)
-#        • SUPABASE_PROJECT_REF    (your VITE_SUPABASE_PROJECT_ID)
-#
-#   2. Same screen → Variables tab → New variable:
-#        • AUTO_DB_PUSH = true
-#      (This flag is the on-switch. Until it's `true`, the job is skipped
-#      instead of failing, so the workflow can sit here harmlessly.)
-#
-# Requires access to the Supabase dashboard for this project to obtain
-# the token + DB password. If the project is fully managed by Lovable
-# Cloud and you can't reach that dashboard, CI can't authenticate either.
-# ─────────────────────────────────────────────────────────────────────
+# Production deployments use a project-scoped Supabase access token. Database
+# migrations are applied through the Management API, so the database password
+# never needs to be stored in GitHub. Pushes are enabled only when the
+# repository variable AUTO_DB_PUSH is set to true; manual dry runs remain
+# available even while automatic deployment is disabled.
 
 on:
   push:
@@ -31,46 +13,83 @@ on:
       - "supabase/migrations/**"
       - "supabase/functions/**"
       - "supabase/config.toml"
+      - "scripts/deploy-supabase-migrations.mjs"
+      - "scripts/deploy-supabase-migrations.test.mjs"
+      - ".github/workflows/supabase-deploy.yml"
   workflow_dispatch:
     inputs:
+      migration_mode:
+        description: "Database migration mode"
+        type: choice
+        options:
+          - plan
+          - apply
+        default: plan
       deploy_functions:
         description: "Also deploy edge functions"
         type: boolean
-        default: true
+        default: false
 
 concurrency:
-  group: supabase-deploy
+  group: supabase-production-deploy
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    name: Push migrations
-    # On-switch: set repo variable AUTO_DB_PUSH=true to enable. Skipped
-    # (grey, not red) until then so it never spams failed checks.
-    if: ${{ vars.AUTO_DB_PUSH == 'true' }}
+    name: Deploy production backend
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_DB_PUSH == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test migration runner
+        run: node --test scripts/deploy-supabase-migrations.test.mjs
+
+      - name: Determine deployment surfaces
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          DEPLOY_FUNCTIONS_INPUT: ${{ inputs.deploy_functions }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "deploy_functions=$DEPLOY_FUNCTIONS_INPUT" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/functions supabase/config.toml; then
+            echo "deploy_functions=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_functions=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Audit pending migrations
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.migration_mode == 'plan' }}
+        run: node scripts/deploy-supabase-migrations.mjs --dry-run
+
+      - name: Apply pending migrations
+        if: ${{ github.event_name == 'push' || inputs.migration_mode == 'apply' }}
+        run: node scripts/deploy-supabase-migrations.mjs
 
       - name: Set up Supabase CLI
+        if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Link project
-        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-
-      - name: Push migrations
-        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
-
-      # Deploys every function under supabase/functions. Safe to remove
-      # this step if you only want database migrations automated. On a
-      # manual run you can also untick "Also deploy edge functions".
-      - name: Deploy edge functions
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy_functions }}
-        run: supabase functions deploy --project-ref "$PROJECT_REF"
+      - name: Deploy Edge Functions
+        if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
