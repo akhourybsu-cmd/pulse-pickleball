@@ -16,24 +16,15 @@ void initNativeApp();
 // Attach native push listeners + refresh the device token if already granted.
 void initNativePush();
 
-// Register service worker for PWA
-const isPreviewHost =
-  window.location.hostname.startsWith('id-preview--') ||
-  window.location.hostname.startsWith('preview--') ||
-  window.location.hostname === 'lovableproject.com' ||
-  window.location.hostname.endsWith('.lovableproject.com') ||
-  window.location.hostname === 'lovableproject-dev.com' ||
-  window.location.hostname.endsWith('.lovableproject-dev.com') ||
-  window.location.hostname === 'beta.lovable.dev' ||
-  window.location.hostname.endsWith('.beta.lovable.dev');
-
+// Register the PWA service worker in standalone production pages. Embedded
+// previews intentionally skip it so they cannot retain a stale app shell.
 let isIframe = false;
 try {
   isIframe = window.self !== window.top;
 } catch {
   isIframe = true;
 }
-const shouldRegisterServiceWorker = import.meta.env.PROD && !isPreviewHost && !isIframe;
+const shouldRegisterServiceWorker = import.meta.env.PROD && !isIframe;
 
 if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
   window.addEventListener('load', () => {

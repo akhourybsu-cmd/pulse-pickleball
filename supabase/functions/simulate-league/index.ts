@@ -122,8 +122,8 @@ Deno.serve(async (req) => {
     )
 
     // ---- auth + admin gate (mirrors create-test-accounts) ----
-    // Also supports a service-role bypass so Lovable's server-side
-    // tooling can drive the simulation on behalf of a named admin.
+    // Also supports a service-role bypass so trusted server-side tooling can
+    // drive the simulation on behalf of a named admin.
     const authHeader = req.headers.get('Authorization') ?? ''
     const bearerToken = authHeader.replace('Bearer ', '').trim()
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''

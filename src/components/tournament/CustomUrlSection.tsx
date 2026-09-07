@@ -33,14 +33,14 @@ export function CustomUrlSection({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Determine the base URL for display
-  const baseUrl = typeof window !== "undefined" 
-    ? window.location.origin.replace(/^https?:\/\//, "").replace("id-preview--ca6dbc43-755e-43df-a1af-7527a749b225.lovable.app", "pulsepb.com")
-    : "pulsepb.com";
+  // Use the actual deployment origin so links work on local, preview, and
+  // production hosting without any provider-specific URL rewriting.
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://pulsepb.com";
+  const baseUrl = origin.replace(/^https?:\/\//, "");
 
   const fullUrl = slug 
-    ? `https://${baseUrl}/tournament/${slug}`
-    : `https://${baseUrl}/tournament/${eventId}`;
+    ? `${origin}/tournament/${slug}`
+    : `${origin}/tournament/${eventId}`;
 
   // Generate suggested slug from tournament name
   const suggestedSlug = generateSlugFromName(eventName);

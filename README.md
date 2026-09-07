@@ -1,73 +1,52 @@
-# Welcome to your Lovable project
+# PULSE Pickleball
 
-## Project info
+PULSE is a Vite, React, TypeScript, Tailwind CSS, Capacitor, and Supabase application for pickleball players, venues, leagues, tournaments, and communities.
 
-**URL**: https://lovable.dev/projects/ca6dbc43-755e-43df-a1af-7527a749b225
+## Local development
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/ca6dbc43-755e-43df-a1af-7527a749b225) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requirements: Node.js 20 and npm.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm ci
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The browser app is served at `http://localhost:8080` by default.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Verification
 
-**Use GitHub Codespaces**
+```sh
+npm run build
+npm run test
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Architecture
 
-## What technologies are used for this project?
+- Frontend: Vite/React static application
+- Backend, authentication, database, storage, and Edge Functions: Supabase
+- Source control and deployment automation: GitHub Actions
+- Web hosting: Firebase Hosting
+- Native packaging: Capacitor for Android and iOS
 
-This project is built with:
+## Web deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Firebase Hosting serves the compiled `dist/` directory. Production deployments from `main` are controlled by `.github/workflows/firebase-hosting-deploy.yml` and the `AUTO_FRONTEND_DEPLOY` repository variable.
 
-## How can I deploy this project?
+Before enabling automatic deployment, configure the `FIREBASE_SERVICE_ACCOUNT` GitHub Actions secret and complete the steps in `docs/FIREBASE_HOSTING_CUTOVER.md`.
 
-Simply open [Lovable](https://lovable.dev/projects/ca6dbc43-755e-43df-a1af-7527a749b225) and click on Share -> Publish.
+Manual local deployment, after authenticating the Firebase CLI:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm ci
+npm run build
+npx firebase-tools deploy --only hosting --project pulse-pickleball-c60e1
+```
 
-Yes, you can!
+## Mobile builds
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```sh
+npm run cap:sync
+npm run android:open
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Release builds bundle the generated `dist/` assets and do not rely on a remote preview server.

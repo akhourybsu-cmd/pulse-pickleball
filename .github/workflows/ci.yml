@@ -36,11 +36,9 @@ jobs:
           node-version: "20"
           cache: npm
 
-      # Use `npm install` rather than `npm ci`: the committed lockfile may be
-      # out of sync (Lovable-managed project), and a strict `npm ci` would
-      # hard-fail the gate for reasons unrelated to the code under review.
+      # The committed npm lockfile is the canonical dependency graph.
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Production build (includes TypeScript typecheck)
         run: npm run build

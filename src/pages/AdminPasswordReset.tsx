@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -68,14 +67,11 @@ export default function AdminPasswordReset() {
               variant="outline"
               className="w-full gap-2"
               onClick={() => {
-                // This opens the Lovable Cloud panel
-                const cloudButton = document.querySelector('[data-testid="cloud-button"]') as HTMLButtonElement;
-                if (cloudButton) {
-                  cloudButton.click();
-                } else {
-                  // Fallback: show instructions
-                  alert('Click the "Cloud" button in the left sidebar to access the backend panel.');
-                }
+                const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                const url = projectId
+                  ? `https://supabase.com/dashboard/project/${projectId}/auth/users`
+                  : "https://supabase.com/dashboard/projects";
+                window.open(url, "_blank", "noopener,noreferrer");
               }}
             >
               <ExternalLink className="h-4 w-4" />

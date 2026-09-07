@@ -273,8 +273,8 @@ Email/password sign-up and login work in the WebView and are fine for launch.
 
 **Google/Apple OAuth will NOT work as-is in the native app.** Two reasons:
 1. Google blocks OAuth inside embedded WebViews (`disallowed_useragent`).
-2. The current `handleOAuth` uses a Lovable-specific `lovable.auth.signInWithOAuth`
-   helper (see `src/pages/Auth.tsx`) that isn't wired for a native redirect.
+2. The current Supabase OAuth flow redirects back to the web origin and is not
+   yet wired for a native deep-link callback.
 
 To enable social login on device (fast-follow):
 - Use `@capacitor/browser` to open the provider in the system browser/Custom Tab.

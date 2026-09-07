@@ -1,5 +1,5 @@
 // Shared Resend transport for all PULSE email (auth + transactional).
-// Replaces the Lovable email gateway. Reads RESEND_API_KEY from the function
+// Reads RESEND_API_KEY from the function
 // environment. Throws an Error with a numeric `.status` on failure so the
 // queue processor's rate-limit (429) / forbidden (403) / DLQ handling works.
 

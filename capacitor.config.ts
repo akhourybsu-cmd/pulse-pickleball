@@ -6,14 +6,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * IMPORTANT (production / store builds):
  * Do NOT set `server.url` for release builds. When `server.url` is set, the
  * native app loads JS from that remote URL on every cold start — that means
- * a network round-trip to Lovable's preview origin before the user sees
- * anything, and the app cannot launch offline. For Google Play / App Store
+ * a network round-trip to a development server before the user sees anything,
+ * and the app cannot launch offline. For Google Play / App Store
  * builds we ship the bundled `dist/` so cold start is instant.
  *
  * For live-reload during local development only, you can temporarily
  * re-add the `server` block:
  *   server: {
- *     url: 'https://ca6dbc43-755e-43df-a1af-7527a749b225.lovableproject.com?forceHideBadge=true',
+ *     url: 'http://YOUR-LAN-IP:8080',
  *     cleartext: true,
  *   }
  * Remove it again before `npx cap sync` for a release build.

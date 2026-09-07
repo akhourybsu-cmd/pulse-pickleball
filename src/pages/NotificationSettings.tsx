@@ -141,27 +141,17 @@ function BrowserPushCard() {
   );
 }
 
-function isLovablePreviewContext() {
+function isEmbeddedPreviewContext() {
   if (typeof window === "undefined") return false;
-  const h = window.location.hostname;
-  const previewHost =
-    h.startsWith("id-preview--") ||
-    h.startsWith("preview--") ||
-    h === "lovableproject.com" ||
-    h.endsWith(".lovableproject.com") ||
-    h === "lovableproject-dev.com" ||
-    h.endsWith(".lovableproject-dev.com") ||
-    h === "beta.lovable.dev" ||
-    h.endsWith(".beta.lovable.dev");
   let inIframe = false;
   try { inIframe = window.self !== window.top; } catch { inIframe = true; }
-  return previewHost || inIframe;
+  return inIframe;
 }
 
 function TestNotificationCard() {
   const { state, supported, enable, busy: pushBusy } = usePushSubscription();
   const [sending, setSending] = useState(false);
-  const isPreview = isLovablePreviewContext();
+  const isPreview = isEmbeddedPreviewContext();
 
   const handleSend = async () => {
     if (isPreview) {

@@ -1,9 +1,9 @@
 /**
  * League Management types.
  *
- * Kept intentionally hand-written (not from types.ts) so this module is
- * self-contained until Lovable regenerates the DB types. When
- * regeneration lands, we can either delete this file and pull from
+ * Kept intentionally hand-written (not from types.ts) so this module remains
+ * self-contained until the Supabase DB types are regenerated. We can then
+ * either delete this file and pull from
  * `Database["public"]["Tables"]["leagues"]["Row"]` etc., or keep this
  * as the narrow view we actually use.
  */

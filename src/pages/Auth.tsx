@@ -62,10 +62,8 @@ const waitForAuthenticatedUser = async () => {
   return user;
 };
 
-// OAuth provider availability differs between the live Lovable project and
-// the external Supabase staging project during migration. Default to enabled
-// so existing production behavior is unchanged; staging explicitly disables
-// providers until their credentials are installed in the new project.
+// OAuth providers default to enabled. Individual environments can explicitly
+// disable a provider until its Supabase credentials are configured.
 const googleOAuthEnabled = import.meta.env.VITE_AUTH_GOOGLE !== "false";
 const appleOAuthEnabled = import.meta.env.VITE_AUTH_APPLE !== "false";
 

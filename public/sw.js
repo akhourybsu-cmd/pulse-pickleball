@@ -1,6 +1,6 @@
 const CACHE_VERSION = 'pulse-v8-fast-refresh';
 const urlsToCache = [
-  '/pulse-icon.jpg'
+  '/pulse-icon-192.png'
 ];
 
 // Install - cache resources
@@ -40,10 +40,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // CRITICAL: never intercept OAuth broker paths or auth callbacks.
-  // The Lovable proxy worker handles /~oauth/initiate and /~oauth/callback;
-  // caching or replaying them breaks Google/Apple sign-in (user bounces
-  // back to /auth without a session). Also skip Supabase auth endpoints.
+  // Never intercept OAuth broker paths or auth callbacks. Caching or replaying
+  // them can break sign-in and bounce the user back to /auth without a session.
   if (
     url.pathname.startsWith('/~oauth') ||
     url.pathname.startsWith('/auth/v1') ||
@@ -107,8 +105,8 @@ self.addEventListener('push', (event) => {
   const base = self.location.origin;
   const options = {
     body: data.body || '',
-    icon: data.icon || `${base}/pulse-icon.jpg`,
-    badge: data.badge || `${base}/pulse-icon.jpg`,
+    icon: data.icon || `${base}/pulse-icon-192.png`,
+    badge: data.badge || `${base}/pulse-icon-192.png`,
     tag: data.tag || 'pulse',
     data: { url: data.url || '/', ...data },
     requireInteraction: data.priority === 'high',

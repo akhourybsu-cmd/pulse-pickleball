@@ -14,7 +14,7 @@ You're holding a production-ready tournament management platform that can replac
 
 ## System Architecture
 
-### Database Tables (Supabase/Lovable Cloud)
+### Database Tables (Supabase)
 
 1. **tournaments_events**
    - Event metadata (name, location, dates)
