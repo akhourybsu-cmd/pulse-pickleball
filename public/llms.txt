@@ -8,10 +8,8 @@ PULSE pairs a player-facing identity (matches, ratings, friends, events) with ve
 
 - [Home](/): Overview of PULSE for players and venues.
 - [For Players](/players): Rating system, match tracking, events, and community features.
-- [For Venues](/venues): Venue operations — courts, bookings, tournaments, round robins, communities.
 - [FAQ](/faq): How PULSE works — ratings, matches, round robins, communities, venues.
 - [Live Demo](/demo): Interactive walkthrough of the player dashboard.
-- [List Your Venue](/venue/interest): Lead form for venues interested in joining PULSE.
 
 ## Optional
 

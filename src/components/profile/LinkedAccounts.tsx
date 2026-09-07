@@ -37,7 +37,7 @@ export function LinkedAccounts() {
     try {
       const { data, error } = await supabase.auth.linkIdentity({
         provider: p,
-        options: { redirectTo: `${window.location.origin}/profile` },
+        options: { redirectTo: `${window.location.origin}/player/profile` },
       });
       if (error) throw error;
       // Browser redirects to provider; no further action needed
