@@ -8,6 +8,7 @@ import {
   parseMigrationFilename,
   quoteSqlLiteral,
   unwrapOuterTransaction,
+  verifyWriteAccess,
 } from "./deploy-supabase-migrations.mjs";
 
 test("parses timestamped migration filenames", () => {
@@ -91,4 +92,22 @@ test("sends SQL through the scoped Management API", async () => {
     query: "SELECT version FROM supabase_migrations.schema_migrations;",
     read_only: true,
   });
+});
+
+test("verifies write capability without leaving a database change", async () => {
+  let requestBody;
+
+  await verifyWriteAccess({
+    accessToken: "sbp_test_token",
+    projectRef: "abcdefghijklmnopqrst",
+    fetchImpl: async (_url, options) => {
+      requestBody = JSON.parse(options.body);
+      return new Response("[]", { status: 201 });
+    },
+  });
+
+  assert.equal(requestBody.read_only, false);
+  assert.match(requestBody.query, /^BEGIN;/);
+  assert.match(requestBody.query, /pg_advisory_xact_lock/);
+  assert.match(requestBody.query, /ROLLBACK;$/);
 });

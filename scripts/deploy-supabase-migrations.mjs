@@ -125,6 +125,20 @@ export async function executeSql({ accessToken, projectRef, query, readOnly, fet
   throw new Error("Supabase Management API returned an unexpected query response.");
 }
 
+export async function verifyWriteAccess({ accessToken, projectRef, fetchImpl = fetch }) {
+  await executeSql({
+    accessToken,
+    projectRef,
+    query: [
+      "BEGIN;",
+      "SELECT pg_advisory_xact_lock(672913804);",
+      "ROLLBACK;",
+    ].join("\n"),
+    readOnly: false,
+    fetchImpl,
+  });
+}
+
 function validateEnvironment(accessToken, projectRef) {
   if (!accessToken?.startsWith("sbp_")) {
     throw new Error("SUPABASE_ACCESS_TOKEN is missing or is not a Supabase access token.");
@@ -158,6 +172,11 @@ export async function deployMigrations({
   console.log(
     `Migration audit: ${localMigrations.length} local, ${remoteVersions.length} recorded, ${pending.length} pending.`,
   );
+
+  if (dryRun) {
+    await verifyWriteAccess({ accessToken, projectRef, fetchImpl });
+    console.log("Database write capability verified in a rolled-back transaction.");
+  }
 
   if (pending.length === 0) {
     console.log("Database is current; no migrations to apply.");
