@@ -87,7 +87,7 @@ export function LadderReplacePanel({
               </label>
               <Select value={outId} onValueChange={setOutId} disabled={disabled}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pick a player" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="league-menu">
                   {currentOrder.map((id, i) => (
                     <SelectItem key={id} value={id}>#{i + 1} · {nameOf(id)}</SelectItem>
                   ))}
@@ -102,7 +102,7 @@ export function LadderReplacePanel({
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder={eligible.length ? "Pick a replacement" : "No eligible members"} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="league-menu">
                   {eligible.map((id) => (
                     <SelectItem key={id} value={id}>{nameOf(id)}</SelectItem>
                   ))}
@@ -128,7 +128,7 @@ export function LadderReplacePanel({
       )}
 
       <AlertDialog open={confirm} onOpenChange={(o) => { if (!o) setConfirm(false); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Replace this player?</AlertDialogTitle>
             <AlertDialogDescription>

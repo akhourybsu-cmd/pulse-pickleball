@@ -303,7 +303,7 @@ export function AuditLogTab({
           <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="league-menu">
             <SelectItem value="all">All actions</SelectItem>
             {prefixes.map((p) => (
               <SelectItem key={p} value={p}>

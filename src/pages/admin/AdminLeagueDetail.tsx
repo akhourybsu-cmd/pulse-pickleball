@@ -8,6 +8,7 @@ import type { League } from "@/lib/leagues/types";
 import {
   CalendarDays, Users, UsersRound, CalendarClock,
   Trophy,
+  ArrowLeft, ExternalLink,
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
@@ -26,6 +27,9 @@ import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
 import { DUR, EASE_OUT, contentVariants } from "@/lib/leagues/motion";
 import { useLeagueLiveRefresh } from '@/hooks/useLeagueLiveRefresh';
 import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { useLeagueActions } from '@/hooks/useLeagueActions';
+import { ActionsTab } from '@/components/admin/leagues/ActionsTab';
 
 interface Counts {
   seasons: number;
@@ -58,22 +62,27 @@ export default function AdminLeagueDetail() {
   // manual reload. Also refetches hero counts.
   const [dataVersion, setDataVersion] = useState(0);
   const bumpDataVersion = () => setDataVersion((v) => v + 1);
-  useLeagueLiveRefresh(leagueId, bumpDataVersion);
+  useLeagueLiveRefresh(leagueId, () => {
+    bumpDataVersion();
+    void queryClient.invalidateQueries({ queryKey: ['league-sub-requests'] });
+  });
+  const actions = useLeagueActions(leagueId, !!league && !accessDenied && !loading, dataVersion);
 
   // Active tab is synced to the URL (?tab=…) so a refresh keeps your place and
   // organizers can share a link straight to a section. Unknown values fall
-  // back to Overview; the type-validity guard below handles hidden tabs.
+  // back to Actions; the type-validity guard below handles hidden tabs.
   const [searchParams, setSearchParams] = useSearchParams();
   const paramTab = searchParams.get("tab");
   const activeTab: ManageTab =
     paramTab && MANAGE_TABS.some((t) => t.key === paramTab)
       ? (paramTab as ManageTab)
-      : "overview";
+      : "actions";
   const setActiveTab = useCallback((t: ManageTab) => {
+    if (t === activeTab) return;
     const next = new URLSearchParams(searchParams);
     next.set("tab", t);
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+    setSearchParams(next);
+  }, [activeTab, searchParams, setSearchParams]);
 
   // Direction for the tab-content transition: forward (right) when moving
   // to a later tab in canonical order, backward (left) otherwise. Tracked
@@ -95,12 +104,14 @@ export default function AdminLeagueDetail() {
     () => (league ? visibleManageTabs(league.league_type) : MANAGE_TABS),
     [league],
   );
-  // If the current tab isn't valid for this league type, fall back to Overview.
+  // If the current tab isn't valid for this league type, fall back to Actions.
   useEffect(() => {
     if (league && !visibleTabs.some((t) => t.key === activeTab)) {
-      setActiveTab("overview");
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", "actions");
+      setSearchParams(next, { replace: true });
     }
-  }, [league, visibleTabs, activeTab, setActiveTab]);
+  }, [league, visibleTabs, activeTab, searchParams, setSearchParams]);
 
   useEffect(() => {
     const init = async () => {
@@ -205,7 +216,7 @@ export default function AdminLeagueDetail() {
   const onDataMutated = () => {
     bumpDataVersion();
     void refetchCounts();
-    for (const key of ['my-leagues', 'my-upcoming-league-matches', 'player-league-detail', 'league-seasons']) {
+    for (const key of ['my-leagues', 'my-upcoming-league-matches', 'player-league-detail', 'league-seasons', 'league-actions', 'league-sub-requests']) {
       void queryClient.invalidateQueries({ queryKey: [key] });
     }
   };
@@ -263,17 +274,29 @@ export default function AdminLeagueDetail() {
 
   return shell(
     <LeagueScope>
-      <div className="container mx-auto px-4 py-5 max-w-6xl space-y-5">
-        <LeagueHero
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 max-w-[1440px] space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" className="h-11 rounded-xl" onClick={() => navigate(backHref)}>
+            <ArrowLeft className="h-4 w-4" /> All leagues
+          </Button>
+          <Button variant="outline" className="h-11 rounded-xl" onClick={() => navigate(`/player/leagues/${league.id}${searchParams.get('season') ? `?season=${encodeURIComponent(searchParams.get('season')!)}` : ''}`)}>
+            <ExternalLink className="h-4 w-4" /> Player view
+          </Button>
+        </div>
+        {activeTab === 'actions' ? <section className="lg-hero-gradient rounded-2xl p-5 sm:p-6">
+          <p className="text-sm text-[color:var(--lg-hero-text-dim)]">League management</p>
+          <h1 className="mt-1 break-words text-2xl sm:text-3xl font-semibold text-[color:var(--lg-hero-text)]">{league.name}</h1>
+          <p className="mt-2 text-sm text-[color:var(--lg-hero-text-dim)]">Your requests, roster decisions and results in one place.</p>
+        </section> : <LeagueHero
           league={league}
           managerName={managerName}
           eyebrow={
             <>
-              <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[color:var(--lg-text-dim)]">
+              <span className="text-xs font-medium text-[color:var(--lg-hero-text-dim)]">
                 {league.visibility.replace("_", " ")}
               </span>
               {league.guests_allowed && (
-                <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[color:var(--lg-text-dim)]">
+                <span className="text-xs font-medium text-[color:var(--lg-hero-text-dim)]">
                   · Guests allowed
                 </span>
               )}
@@ -287,10 +310,16 @@ export default function AdminLeagueDetail() {
               : []),
             { icon: CalendarClock, label: "Sessions", value: counts.sessions },
           ] : undefined}
-        />
+        />}
+
+        {activeTab !== 'actions' && <button type="button" onClick={() => setActiveTab('actions')}
+          className="flex min-h-14 w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm">
+          <span className="font-semibold">{actions.error ? 'Pending actions could not be checked' : actions.isPending ? 'Checking pending actions…' : `${actions.data?.total ?? 0} items need attention`}</span>
+          <span>Open Actions →</span>
+        </button>}
 
         {/* First-run order-of-operations for ladder managers (dismissible). */}
-        {league.league_type === "ladder" && counts && (
+        {activeTab !== 'actions' && league.league_type === "ladder" && counts && (
           <LeagueSetupChecklist
             leagueId={league.id}
             seasons={counts.seasons}
@@ -305,11 +334,11 @@ export default function AdminLeagueDetail() {
 
           <div className="flex-1 min-w-0 space-y-3">
             {activeTabDef && (
-              <div className="hidden lg:flex items-baseline gap-2 pb-1">
-                <h2 className="text-sm font-bold tracking-normal text-[color:var(--lg-text)]">
+              <div className="hidden lg:flex flex-wrap items-baseline gap-2 pb-1">
+                <h2 className="text-base font-semibold text-[color:var(--lg-text)]">
                   {activeTabDef.label}
                 </h2>
-                <span className="text-[11px] text-[color:var(--lg-text-dim)]/80">
+                <span className="text-sm text-[color:var(--lg-text-dim)]">
                   · {activeTabDef.hint}
                 </span>
               </div>
@@ -328,6 +357,13 @@ export default function AdminLeagueDetail() {
                 // perceived-content budget.
                 transition={{ duration: DUR.hover, ease: EASE_OUT }}
               >
+                {activeTab === "actions" && <ActionsTab query={actions} onMutated={onDataMutated} onNavigate={(tab, seasonId) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('tab', tab);
+                  if (seasonId) next.set('season', seasonId);
+                  if (tab === 'matches') next.set('review', 'true'); else next.delete('review');
+                  setSearchParams(next);
+                }} />}
                 {activeTab === "overview" && (
                   <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
                 )}

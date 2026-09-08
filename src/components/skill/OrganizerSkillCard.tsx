@@ -74,7 +74,7 @@ export function OrganizerSkillCard({
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className={cn("max-w-md max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl overflow-y-auto", leagueId && "league-menu")}>
         <DialogHeader>
           <DialogTitle className="text-base">{playerName ?? "Player"} · Skill self-assessment</DialogTitle>
         </DialogHeader>

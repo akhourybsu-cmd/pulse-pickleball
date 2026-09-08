@@ -57,6 +57,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
     },
   });
   const refresh = useCallback(() => {
+    void client.invalidateQueries({ queryKey: ['league-sub-requests', user?.id, leagueId] });
     void client.invalidateQueries({ queryKey: ['player-league-detail', user?.id, leagueId] });
     void client.invalidateQueries({ queryKey: ['league-seasons', user?.id, leagueId] });
     void client.invalidateQueries({ queryKey: ['my-leagues', user?.id] });

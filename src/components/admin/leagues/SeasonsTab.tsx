@@ -286,7 +286,7 @@ function SeasonEditor({
       onPrimary={() => submit()}
     >
       <AlertDialog open={confirmTerminal !== null} onOpenChange={(o) => { if (!o) setConfirmTerminal(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmTerminal === "archived" ? "Archive this season?" : "Mark this season complete?"}
@@ -317,7 +317,7 @@ function SeasonEditor({
         <FormRow label="Status">
           <Select value={status} onValueChange={(v) => setStatus(v as SeasonStatus)}>
             <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="league-menu">
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>

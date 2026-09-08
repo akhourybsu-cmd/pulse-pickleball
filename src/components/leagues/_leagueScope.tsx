@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { League, LeagueType } from "@/lib/leagues/types";
@@ -10,7 +9,7 @@ import { MapPin, UserCircle2 } from "lucide-react";
 /**
  * Shared design surface for every league-facing page. Adding a page to
  * the league experience? Wrap it in <LeagueScope> and it inherits the
- * Emerald Prestige tokens + Bebas display type + correct light/dark
+ * PULSE cream/ink/gold tokens + Manrope/Sora type + correct light/dark
  * variant with no per-page work.
  */
 export function LeagueScope({
@@ -24,13 +23,11 @@ export function LeagueScope({
   forceDark?: boolean;
   className?: string;
 }) {
-  const { resolvedTheme } = useTheme();
-  const light = !forceDark && resolvedTheme === "light";
   return (
     <div
       className={cn(
         "league-scope",
-        light && "league-scope--light",
+        forceDark && "dark",
         "bg-[color:var(--lg-bg)] min-h-screen",
         className,
       )}
@@ -45,7 +42,7 @@ export function LeagueScope({
  * the organizer console. Anatomy:
  *
  *   [type chip] [status] [flags]                 (optional right-slot)
- *   LEAGUE NAME (Bebas display)
+ *   League name (PULSE display type, original capitalization)
  *   optional description
  *   MapPin location · Manager name
  *   ─ gold hairline ─
@@ -74,7 +71,7 @@ export function LeagueHero({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-xl border border-[color:var(--lg-border)] lg-hero-gradient shadow-[inset_0_1px_0_0_var(--lg-inset)]"
+      className="relative min-w-0 overflow-hidden rounded-2xl border border-[color:var(--lg-border)] lg-hero-gradient"
     >
       {/* Diagonal court-line texture */}
       <div className="absolute inset-0 lg-court-lines pointer-events-none" aria-hidden />
@@ -83,12 +80,12 @@ export function LeagueHero({
 
       <div className="relative p-5 sm:p-6">
         {/* Meta row */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <LeagueTypeChip type={league.league_type} onHero />
             <LeagueStatusPill status={league.status} onHero />
             {league.rating_eligible && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-gold)]/50">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
                 Rating-eligible
               </span>
             )}
@@ -98,8 +95,8 @@ export function LeagueHero({
         </div>
 
         {/* Title */}
-        <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-hero-text)]">
-          {league.name.toUpperCase()}
+        <h1 className="font-display mt-4 break-words text-2xl sm:text-3xl lg:text-4xl leading-tight text-[color:var(--lg-hero-text)]">
+          {league.name}
         </h1>
 
         {league.description && (
@@ -108,17 +105,17 @@ export function LeagueHero({
           </p>
         )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--lg-hero-text-dim)]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[color:var(--lg-hero-text-dim)]">
           {league.location && (
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" />
+            <span className="inline-flex min-w-0 items-center gap-1.5 break-words">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
               {league.location}
             </span>
           )}
           {managerName && (
             <span className="inline-flex items-center gap-1.5">
               <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-hero-gold)]" />
-              <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-hero-gold)]">
+              <span className="text-xs font-semibold text-[color:var(--lg-hero-gold)]">
                 Manager
               </span>
               <span className="text-[color:var(--lg-hero-text)] font-medium">{managerName}</span>
@@ -130,7 +127,7 @@ export function LeagueHero({
         {kpis && kpis.length > 0 && (
           <div
             className={cn(
-              "mt-5 grid gap-0 border-t border-[color:var(--lg-hairline)] divide-y sm:divide-y-0 sm:divide-x divide-[color:var(--lg-hairline)]",
+              "mt-5 grid gap-x-4 gap-y-1 border-t border-white/15",
               kpis.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4",
             )}
           >
@@ -145,7 +142,7 @@ export function LeagueHero({
 }
 
 /**
- * Scoreboard-style hero stat. Bebas numeral over uppercase gold label.
+ * Clear tabular stat with a readable sentence-case label.
  * Uses hero-* tokens because it always sits on the dark hero gradient.
  */
 export function HeroStat({
@@ -158,12 +155,12 @@ export function HeroStat({
   value: number | string;
 }) {
   return (
-    <div className="min-w-0 flex flex-col items-start px-2 sm:px-4 py-3 first:pl-0">
+    <div className="min-w-0 flex flex-col items-start py-3">
       <div className="flex items-center gap-1.5 text-[color:var(--lg-hero-gold)]">
         {icon}
-        <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
+        <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className={cn("mt-1 break-words text-[color:var(--lg-hero-text)]", typeof value === 'number' || /^[\d–.%+-]+$/.test(String(value)) ? "lg-num text-3xl sm:text-4xl leading-none" : "text-sm sm:text-base font-semibold leading-snug")}>
+      <div className={cn("mt-2 break-words text-[color:var(--lg-hero-text)]", typeof value === 'number' || /^[\d–.%+-]+$/.test(String(value)) ? "lg-num text-2xl sm:text-3xl leading-tight" : "text-sm sm:text-base font-semibold leading-snug")}>
         {value}
       </div>
     </div>
@@ -178,7 +175,7 @@ export function LeagueTypeChip({ type, onHero = false }: { type: LeagueType; onH
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] ring-1",
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ring-1",
         onHero
           ? "bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-[color:var(--lg-hero-chip-ring)]"
           : "bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-accent-gold)] ring-[color:var(--lg-eyebrow-ring)]",
@@ -202,7 +199,7 @@ export function LeagueStatusPill({ status, onHero = false }: { status: League["s
   return (
     <span
       className={cn(
-        "text-[10px] font-bold uppercase tracking-[0.14em] px-2 py-1 rounded",
+        "text-xs font-semibold capitalize px-2.5 py-1 rounded-md",
         tone,
       )}
     >
@@ -229,8 +226,8 @@ export function LgSectionHeader({
 }) {
   return (
     <div className={cn("mb-3", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--lg-accent-gold)]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="inline-flex min-w-0 items-center gap-2 text-base font-semibold leading-snug text-[color:var(--lg-text)]">
           {Icon && <Icon className="w-3.5 h-3.5" />}
           {children}
         </h2>

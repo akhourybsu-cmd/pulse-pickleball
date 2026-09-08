@@ -122,7 +122,7 @@ export function JoinByCodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="league-menu sm:max-w-md w-[calc(100%-2rem)] rounded-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="w-4 h-4" />

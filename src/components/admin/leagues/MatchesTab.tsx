@@ -3,6 +3,7 @@ import { parseWholeNumber, validateMatchInputs } from '@/lib/leagues/operations'
 import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
 import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useState } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,8 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueMatch | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "needs_review" | "done">("all");
+  const [params] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "needs_review" | "done">(params.get('review') === 'true' ? 'needs_review' : 'all');
   const [query, setQuery] = useState("");
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
@@ -141,7 +143,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
             <div className="text-sm font-semibold text-destructive">
               {matches.filter((m) => m.status === "disputed").length} disputed match{matches.filter((m) => m.status === "disputed").length === 1 ? "" : "es"} need review
             </div>
-            <div className="text-[11px] text-destructive/80 mt-0.5">
+            <div className="text-xs text-destructive/80 mt-0.5">
               Tap to open the first one and resolve
             </div>
           </div>
@@ -255,7 +257,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                   >
                     {label}
                     <span className={cn(
-                      "text-[10px] font-bold tabular-nums px-1.5 rounded",
+                      "text-xs font-bold tabular-nums px-1.5 rounded",
                       statusFilter === key ? "bg-primary-foreground/20" : "bg-muted",
                     )}>{count}</span>
                   </button>
@@ -317,11 +319,11 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                           {label}
                         </span>
                         {isToday && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary">
+                          <span className="text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary">
                             Today
                           </span>
                         )}
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {list.length} match{list.length === 1 ? "" : "es"}
                         </span>
                         <div className="flex-1 h-px bg-border/60 ml-2" />
@@ -367,7 +369,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                                           <span className={cn("text-lg leading-none", bWon ? "text-primary" : "text-muted-foreground")}>{m.team_b_score}</span>
                                         </>
                                       ) : (
-                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">vs</span>
+                                        <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">vs</span>
                                       )}
                                     </div>
                                     <TeamCell name={bName} won={bWon} align="left" />
@@ -378,7 +380,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                                         STATUS_TONE[m.status],
                                       )}>{m.status.replace("_", " ")}</span>
                                       {timeLabel && (
-                                        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
+                                        <span className="text-xs text-muted-foreground inline-flex items-center gap-0.5">
                                           <CalendarClock className="w-2.5 h-2.5" />{timeLabel}
                                         </span>
                                       )}
@@ -631,7 +633,7 @@ function MatchEditor({
           <FormRow label="Session">
             <Select value={sessionId} onValueChange={setSessionId}>
               <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="league-menu">
                 {sessions.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}{s.scheduled_date ? ` · ${s.scheduled_date}` : ""}
@@ -660,12 +662,12 @@ function MatchEditor({
                 { label: "Team B", val: teamBId, set: setTeamBId },
               ] as const).map((side) => (
                 <div key={side.label} className="rounded-lg border border-border/60 bg-card p-2.5 space-y-2">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                  <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">
                     {side.label}
                   </div>
                   <Select value={side.val} onValueChange={side.set}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Pick team" /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="league-menu">
                       <SelectItem value="none">Empty</SelectItem>
                       {teams.map((t) => (
                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -689,13 +691,13 @@ function MatchEditor({
               ] },
             ] as const).map((side) => (
               <div key={side.label} className="rounded-lg border border-border/60 bg-card p-2.5 space-y-2">
-                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">
                   {side.label}
                 </div>
                 {side.slots.map((slot, i) => (
                   <Select key={i} value={slot.val} onValueChange={slot.set}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Add player" /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="league-menu">
                       <SelectItem value="none">Empty</SelectItem>
                       {slot.val !== 'none' && !playerPool.some(p => p.id === slot.val) && <SelectItem value={slot.val}>{nameOf(slot.val) ?? 'Assigned player'} · not active on roster</SelectItem>}
                       {playerPool.map((p) => (
@@ -707,7 +709,7 @@ function MatchEditor({
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {isTeamMode
               ? "Pick the two teams. Player slots are optional and track who actually played."
               : "One player per side for singles, two for doubles. Only active league members appear."}
@@ -718,7 +720,7 @@ function MatchEditor({
           <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
               <div className="text-center min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
                   {sideAName}
                 </div>
                 <Input type="number" min="0" inputMode="numeric" value={teamAScore}
@@ -727,7 +729,7 @@ function MatchEditor({
               </div>
               <div className="text-2xl font-black text-muted-foreground pb-4">–</div>
               <div className="text-center min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
                   {sideBName}
                 </div>
                 <Input type="number" min="0" inputMode="numeric" value={teamBScore}
@@ -735,7 +737,7 @@ function MatchEditor({
                   className="h-14 text-center text-3xl font-black tabular-nums" />
               </div>
             </div>
-            <p className="text-[10px] text-center text-muted-foreground mt-2">
+            <p className="text-xs text-center text-muted-foreground mt-2">
               Leave both blank until played. Entering both scores on a scheduled match confirms the result as organizer.
               To correct a verified lineup, first save its status as Scheduled, then make corrections and verify again.
             </p>
@@ -745,7 +747,7 @@ function MatchEditor({
         <FormSection label="Status">
           <Select value={status} onValueChange={(v) => setStatus(v as LeagueMatchStatus)}>
             <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="league-menu">
               <SelectItem value="scheduled">Scheduled</SelectItem>
               <SelectItem value="in_progress">In progress</SelectItem>
               <SelectItem value="score_submitted">Score submitted</SelectItem>
@@ -890,7 +892,7 @@ function ResolveDisputeDialog({
           <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
               <div className="text-center min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
                   {teamAName}
                 </div>
                 <Input type="number" min={0} inputMode="numeric" value={aScore}
@@ -899,7 +901,7 @@ function ResolveDisputeDialog({
               </div>
               <div className="text-2xl font-black text-muted-foreground pb-4">–</div>
               <div className="text-center min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
                   {teamBName}
                 </div>
                 <Input type="number" min={0} inputMode="numeric" value={bScore}
@@ -962,7 +964,7 @@ function ForfeitMatchDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Flag className="w-4 h-4 text-amber-600" />
@@ -979,7 +981,7 @@ function ForfeitMatchDialog({
             <Label className="text-xs">Winning team</Label>
             <Select value={winnerId} onValueChange={setWinnerId}>
               <SelectTrigger><SelectValue placeholder="Pick a team" /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="league-menu">
                 {match.team_a_id && (
                   <SelectItem value={match.team_a_id}>{teamAName}</SelectItem>
                 )}

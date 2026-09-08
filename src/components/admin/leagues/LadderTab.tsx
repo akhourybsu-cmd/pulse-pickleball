@@ -1,3 +1,4 @@
+import { SubRequestInbox } from './SubRequestInbox';
 import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
 import { ladderActivationIssues, parseWholeNumber, validateSessionInputs } from '@/lib/leagues/operations';
 import { leagueErrorMessage } from '@/lib/leagues/data';
@@ -427,7 +428,7 @@ function LadderStart({
               {i + 1}
             </span>
             <span className="text-sm font-medium flex-1 min-w-0 break-words">{ladder.nameOf(pid)}</span>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
               Court {Math.floor(i / 4) + 1}
             </span>
             <div className="flex items-center">
@@ -830,10 +831,10 @@ function LadderManage({
 
       {/* Progress header */}
       {activeBatch && (
-        <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
+        <div className="rounded-xl border border-border/70 lg-hero-gradient p-4 text-[color:var(--lg-hero-text)]">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
                 Week {activeBatch.week_number}
                 {settings?.total_weeks ? ` of ${settings.total_weeks}` : ""}
               </div>
@@ -845,20 +846,20 @@ function LadderManage({
               <div className="text-2xl font-black tabular-nums">
                 {scoredGames}<span className="text-[color:var(--lg-hero-text-dim)]/70">/{totalGames}</span>
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-[color:var(--lg-hero-text-dim)]">games in</div>
+              <div className="text-xs uppercase tracking-wider text-[color:var(--lg-hero-text-dim)]">games in</div>
             </div>
           </div>
           <div className="mt-3 h-1.5 rounded-full bg-white/15 overflow-hidden">
             <div className="h-full bg-[color:var(--lg-gold)] transition-all"
               style={{ width: `${totalGames ? (scoredGames / totalGames) * 100 : 0}%` }} />
           </div>
-          <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-2">
+          <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-2">
             {batchComplete
               ? "All games in — process results to apply movement. You'll then generate the next stage as a separate step."
               : "Enter every game's final score, then process the results to move players up and down."}
           </p>
           {stuckGames > 0 && !batchComplete && (
-            <p className="text-[11px] text-amber-300 mt-1.5">
+            <p className="text-xs text-amber-300 mt-1.5">
               {stuckGames} game{stuckGames === 1 ? " has" : "s have"} a score but
               {stuckGames === 1 ? " isn't" : " aren't"} counting yet — disputed, or
               still waiting on a second player to confirm. Resolve those to finish the batch.
@@ -937,7 +938,7 @@ function LadderManage({
             />
           </label>
           <AlertDialog open={confirmSelfReport} onOpenChange={(o) => { if (!o) setConfirmSelfReport(false); }}>
-            <AlertDialogContent>
+            <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
               <AlertDialogHeader>
                 <AlertDialogTitle>Turn on self-report scoring?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -982,22 +983,9 @@ function LadderManage({
         />
       )}
 
-      {/* Sub requests — resolve any that the Week roster below isn't already
-          covering (e.g. requests for weeks further out). */}
+      {/* One shared request workflow for every scheduled week in this season. */}
       {settings && (
-        <SubRequestsPanel
-          seasonId={settings.season_id}
-          order={ladder.currentOrder}
-          nameOf={ladder.nameOf}
-          excludeWeek={!activeBatch && nextStage?.kind === "week" ? nextStage.week : null}
-          generatedWeeks={new Set([
-            ...ladder.history.map((b) => b.week_number),
-            ...(activeBatch ? [activeBatch.week_number] : []),
-          ])}
-          version={ladder.version}
-          disabled={paused}
-          onChanged={onChanged}
-        />
+        <SubRequestInbox leagueId={league.id} seasonId={settings.season_id} dataVersion={ladder.version} onMutated={onChanged} />
       )}
 
       {/* Week planner — pre-schedule the dated week shells players request
@@ -1023,6 +1011,7 @@ function LadderManage({
           order={ladder.currentOrder}
           nameOf={ladder.nameOf}
           disabled={paused || generating}
+          dataVersion={ladder.version}
           onValidChange={setWeekRosterValid}
           onMutated={onChanged}
         />
@@ -1164,7 +1153,7 @@ function TiebreakDialog({
         }
       >
         {ties.some((t) => t.resolved_order?.length) && (
-          <div className="rounded-xl border border-primary/30 bg-primary/[0.07] px-3 py-2 text-[11px] leading-relaxed text-foreground/80">
+          <div className="rounded-xl border border-primary/30 bg-primary/[0.07] px-3 py-2 text-xs leading-relaxed text-foreground/80">
             A player already recorded an order for a tied court — it's pre-filled below. Review and process.
           </div>
         )}
@@ -1184,19 +1173,19 @@ function TiebreakDialog({
             <div key={t.group_index} className="rounded-lg border border-border/70">
               <div className="px-3 py-2 bg-muted/40 border-b border-border/50">
                 <div className="text-sm font-bold">Court {t.court_number}</div>
-                <div className="text-[11px] text-muted-foreground">{label(t)}</div>
+                <div className="text-xs text-muted-foreground">{label(t)}</div>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-muted/20 border-b border-border/50 text-[10px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-muted/20 border-b border-border/50 text-xs text-muted-foreground">
                 <span className="font-bold uppercase tracking-wide">Finishing order:</span>
                 {promo && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-xs font-black uppercase tracking-wide">
                     <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
                   </span>
                 )}
                 {promo && <span>top moves up a court</span>}
                 {promo && relo && <span>·</span>}
                 {relo && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-xs font-black uppercase tracking-wide">
                     <ArrowDown className="w-3 h-3" strokeWidth={3} /> Down
                   </span>
                 )}
@@ -1212,17 +1201,17 @@ function TiebreakDialog({
                     </span>
                     <span className="text-sm font-medium flex-1 min-w-0 break-words">{nameOf(pid)}</span>
                     {kind === "up" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-xs font-black uppercase tracking-wide">
                         <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
                       </span>
                     )}
                     {kind === "down" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-xs font-black uppercase tracking-wide">
                         <ArrowDown className="w-3 h-3" strokeWidth={3} /> Down
                       </span>
                     )}
                     {kind === "stay" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-xs font-black uppercase tracking-wide">
                         <Minus className="w-3 h-3" strokeWidth={3} /> Stay
                       </span>
                     )}
@@ -1321,7 +1310,7 @@ function WeekSchedulePanel({
           <CalendarClock className="w-4 h-4 text-muted-foreground shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-bold">Week schedule</div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {upcoming.length === 0
                 ? "No upcoming weeks to schedule"
                 : `${scheduledCount}/${upcoming.length} upcoming week${upcoming.length === 1 ? "" : "s"} scheduled`}
@@ -1334,7 +1323,7 @@ function WeekSchedulePanel({
 
       {open && (
         <div className="border-t border-border/60 divide-y divide-border/40">
-          <div className="px-4 py-2.5 text-[11px] text-muted-foreground bg-muted/30">
+          <div className="px-4 py-2.5 text-xs text-muted-foreground bg-muted/30">
             Pre-schedule upcoming weeks so players can request subs for them.
             Future weeks stay scheduled but aren't generated until the previous
             week is processed.
@@ -1351,7 +1340,7 @@ function WeekSchedulePanel({
               <div key={w} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">Week {w}</div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {s
                       ? (label ? `${label}${s.start_time ? ` · ${s.start_time.slice(0, 5)}` : ""}` : "Scheduled — no date set")
                       : "Not scheduled"}
@@ -1360,7 +1349,7 @@ function WeekSchedulePanel({
                 </div>
                 {removeWeek === w ? (
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-[11px] text-amber-600 dark:text-amber-400 text-right max-w-[230px]">
+                    <span className="text-xs text-amber-600 dark:text-amber-400 text-right max-w-[230px]">
                       Removes Week {w}'s schedule and cancels any pending sub requests for it.
                       You can re-schedule it later.
                     </span>
@@ -1448,7 +1437,7 @@ interface SubReqRow {
 
 function WeekRosterPanel({
   leagueId, seasonId, weekNumber, sessionId, order, nameOf, disabled,
-  onValidChange, onMutated,
+  onValidChange, onMutated, dataVersion,
 }: {
   leagueId: string;
   seasonId: string;
@@ -1457,78 +1446,50 @@ function WeekRosterPanel({
   order: string[];
   nameOf: (id: string) => string;
   disabled: boolean;
+  dataVersion: number;
   onValidChange: (valid: boolean) => void;
   onMutated: () => void;
 }) {
   const [sitouts, setSitouts] = useState<Set<string>>(new Set());
   const [requests, setRequests] = useState<SubReqRow[]>([]);
-  const [candidates, setCandidates] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [pickingReqId, setPickingReqId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const reload = () => setReloadKey((k) => k + 1);
-
-  // Load this week's sit-outs, sub-requests, and eligible fill-ins.
+  const orderKey = order.join(',');
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    setLoading(true); setLoadError(null);
     (async () => {
-      const onLadder = new Set(order);
-      const [sitRes, reqRes, memRes, subRes] = await Promise.all([
+      const [sitRes, reqRes] = await Promise.all([
         supabase.from("ladder_week_sitouts" as never).select("player_id")
           .eq("season_id", seasonId).eq("week_number", weekNumber),
-        sessionId
-          ? supabase.from("ladder_sub_requests" as never)
-              .select("id, player_id, note, status, assigned_sub_id")
-              .eq("session_id", sessionId)
-              .neq("status", "canceled")
-          : Promise.resolve({ data: [] }),
-        supabase.from("league_members" as never).select("user_id")
-          .eq("season_id", seasonId).eq("status", "active"),
-        supabase.from("league_substitutes" as never).select("user_id")
-          .eq("season_id", seasonId).eq("status", "active"),
+        sessionId ? supabase.from("ladder_sub_requests" as never)
+          .select("id, player_id, note, status, assigned_sub_id").eq("session_id", sessionId).neq("status", "canceled")
+          : Promise.resolve({ data: [], error: null }),
       ]);
+      if (sitRes.error || reqRes.error) throw sitRes.error ?? reqRes.error;
       if (cancelled) return;
-
-      const sitIds = ((sitRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id);
-      setSitouts(new Set(sitIds.filter((id) => onLadder.has(id))));
+      setSitouts(new Set(((sitRes.data ?? []) as Array<{ player_id: string }>).map(r => r.player_id).filter(id => order.includes(id))));
       setRequests((reqRes.data ?? []) as unknown as SubReqRow[]);
-
-      // Eligible fill-ins: active subs + active members not currently on the
-      // ladder (players in the order are already playing this week).
-      const memIds = ((memRes.data ?? []) as Array<{ user_id: string }>)
-        .map((m) => m.user_id).filter((id) => !onLadder.has(id));
-      const subIds = ((subRes.data ?? []) as Array<{ user_id: string }>).map((s) => s.user_id);
-      const candIds = Array.from(new Set([...subIds, ...memIds]));
-      if (candIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles_public" as never)
-          .select("id, display_name, full_name, first_name, last_name")
-          .in("id", candIds);
-        const nameById = new Map<string, string>(
-          ((profs ?? []) as Array<{ id: string }>).map((p) => [p.id, resolvePlayerName(p as never)]),
-        );
-        setCandidates(candIds.map((id) => ({ id, name: nameById.get(id) ?? id.slice(0, 8) })));
-      } else {
-        setCandidates([]);
-      }
-      setLoading(false);
-    })().catch(() => { if (!cancelled) setLoading(false); });
+    })().catch(error => { if (!cancelled) setLoadError(leagueErrorMessage(error)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+    // orderKey tracks replacements even when the roster length is unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonId, weekNumber, sessionId, order.length, reloadKey]);
+  }, [seasonId, weekNumber, sessionId, orderKey, reloadKey, dataVersion]);
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const present = order.length - sitouts.size;
   const rem = present % 4;
-  const valid = present > 0 && rem === 0 && pendingCount === 0;
+  const valid = !loading && !loadError && present > 0 && rem === 0 && pendingCount === 0;
 
   useEffect(() => { onValidChange(valid); }, [valid, onValidChange]);
 
   const toggle = async (pid: string) => {
     const sitting = !sitouts.has(pid);
+    if (disabled || busyId) return;
     setBusyId(pid);
     const { error } = await supabase.rpc("set_ladder_week_sitout" as never, {
       p_season_id: seasonId,
@@ -1546,32 +1507,9 @@ function WeekRosterPanel({
       if (sitting) next.add(pid); else next.delete(pid);
       return next;
     });
+    setReloadKey(k => k + 1);
     onMutated();
   };
-
-  const resolve = async (
-    req: SubReqRow, resolution: "sub" | "sitout" | "declined", subId?: string,
-  ) => {
-    setBusyId(req.id);
-    const { error } = await supabase.rpc("resolve_ladder_sub_request" as never, {
-      p_request_id: req.id,
-      p_resolution: resolution,
-      p_assigned_sub_id: subId ?? null,
-    } as never);
-    setBusyId(null);
-    if (error) {
-      toast.error((error as { message?: string }).message ?? "Couldn't resolve the request");
-      return;
-    }
-    setPickingReqId(null);
-    reload();       // sit-out rows may have changed → refetch sitouts + requests
-    onMutated();
-  };
-
-  // Subs from the pool may not be ladder players, so fall back to the
-  // candidate names we loaded before the ladder name map.
-  const candName = new Map(candidates.map((c) => [c.id, c.name]));
-  const nameFor = (id: string) => candName.get(id) ?? nameOf(id);
 
   const sitMore = rem;          // sit this many more → present - rem
   const subCover = 4 - rem;     // cover this many with subs → present + (4-rem)
@@ -1589,12 +1527,12 @@ function WeekRosterPanel({
             <div className="text-sm font-bold flex items-center gap-2">
               Week {weekNumber} roster
               {pendingCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
+                <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-xs font-bold">
                   {pendingCount} request{pendingCount === 1 ? "" : "s"}
                 </span>
               )}
             </div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {pendingCount > 0
                 ? `${pendingCount} sub request${pendingCount === 1 ? "" : "s"} to resolve`
                 : sitouts.size === 0
@@ -1622,14 +1560,14 @@ function WeekRosterPanel({
 
       {pendingCount > 0 && (
         <div className="px-4 -mt-1 pb-3">
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
+          <p className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed">
             {pendingCount} sub request{pendingCount === 1 ? "" : "s"} need a decision before this week can be generated.
           </p>
         </div>
       )}
       {pendingCount === 0 && rem !== 0 && (
         <div className="px-4 -mt-1 pb-3">
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
+          <p className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed">
             Groups are foursomes, so the number playing must be a multiple of four.
             Sit out {sitMore} more {sitMore === 1 ? "player" : "players"} (→ {present - sitMore} playing),
             or cover {subCover} sitting {subCover === 1 ? "player" : "players"} with a sub (→ {present + subCover} playing).
@@ -1637,81 +1575,10 @@ function WeekRosterPanel({
         </div>
       )}
 
+      {loadError && <div role="alert" className="p-4 text-sm"><p>{loadError}</p><ActionButton variant="outline" className="mt-2 min-h-11" onClick={() => setReloadKey(k => k + 1)}>Retry roster</ActionButton></div>}
       {open && (
         <div className="border-t border-border/60 divide-y divide-border/40">
-          {/* Sub requests players filed for this week */}
-          {requests.length > 0 && (
-            <div className="bg-muted/20">
-              <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Sub requests
-              </div>
-              {requests.map((req) => {
-                const resolvedLabel =
-                  req.status === "sub"
-                    ? `Sub: ${req.assigned_sub_id ? nameFor(req.assigned_sub_id) : "assigned"}`
-                    : req.status === "sitout" ? "Sitting out"
-                    : req.status === "declined" ? "Declined" : null;
-                return (
-                  <div key={req.id} className="px-4 py-2.5 border-t border-border/40 first:border-t-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="text-sm font-medium">{nameFor(req.player_id)}</span>
-                        {req.note && (
-                          <span className="text-[11px] text-muted-foreground"> — “{req.note}”</span>
-                        )}
-                      </div>
-                      {req.status !== "pending" && (
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-                          {resolvedLabel}
-                        </span>
-                      )}
-                    </div>
-                    {req.status === "pending" && pickingReqId !== req.id && (
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <ActionButton size="sm" variant="default" disabled={disabled || busyId === req.id}
-                          onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">
-                          Find sub
-                        </ActionButton>
-                        <ActionButton size="sm" variant="outline" disabled={disabled || busyId === req.id || weekNumber < 2}
-                          onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">
-                          Sit out
-                        </ActionButton>
-                        <ActionButton size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">
-                          Decline
-                        </ActionButton>
-                      </div>
-                    )}
-                    {req.status === "pending" && pickingReqId === req.id && (
-                      <div className="mt-2 space-y-1.5">
-                        <div className="text-[11px] text-muted-foreground">Pick a fill-in:</div>
-                        {candidates.length === 0 ? (
-                          <div className="text-[11px] text-amber-600 dark:text-amber-400">
-                            No eligible subs — add one in the Substitutes tab first.
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {candidates
-                              .filter((c) => c.id !== req.player_id)
-                              .map((c) => (
-                                <ActionButton key={c.id} size="sm" variant="outline"
-                                  disabled={disabled || busyId === req.id}
-                                  onClick={() => resolve(req, "sub", c.id)}
-                                  className="h-9 text-xs px-3">
-                                  {c.name}
-                                </ActionButton>
-                              ))}
-                          </div>
-                        )}
-                        <ActionButton size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                          className="h-9 text-xs px-3 text-muted-foreground">Cancel</ActionButton>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {pendingCount > 0 && <p className="p-4 text-sm text-muted-foreground">Review the pending requests in Player requests above before drawing this week.</p>}
 
           {loading ? (
             <div className="p-4 text-xs text-muted-foreground">Loading roster…</div>
@@ -1723,14 +1590,14 @@ function WeekRosterPanel({
               return (
                 <div key={pid} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-6 shrink-0">
+                    <span className="text-xs font-bold text-muted-foreground tabular-nums w-6 shrink-0">
                       #{i + 1}
                     </span>
                     <span className={cn("text-sm min-w-0 break-words", sitting && "text-muted-foreground line-through")}>
                       {nameOf(pid)}
                     </span>
                     {sitting && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 shrink-0">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 shrink-0">
                         <UserX className="w-3 h-3" /> Sitting out
                       </span>
                     )}
@@ -1738,7 +1605,7 @@ function WeekRosterPanel({
                   <ActionButton
                     size="sm"
                     variant={sitting ? "outline" : "ghost"}
-                    disabled={disabled}
+                    disabled={disabled || !!busyId || requests.some(r => r.player_id === pid && ['pending', 'sub'].includes(r.status))}
                     loading={busyId === pid}
                     onClick={() => toggle(pid)}
                     className="h-9 shrink-0 text-xs"
@@ -1749,7 +1616,7 @@ function WeekRosterPanel({
               );
             })
           )}
-          <div className="px-4 py-2.5 text-[11px] text-muted-foreground bg-muted/30">
+          <div className="px-4 py-2.5 text-xs text-muted-foreground bg-muted/30">
             Sitting players keep their ladder position and return automatically next week.
           </div>
         </div>
@@ -1761,174 +1628,6 @@ function WeekRosterPanel({
 /* ------------------------------------------------------------------ */
 /*  Sub requests — resolve requests for weeks not covered by the roster */
 /* ------------------------------------------------------------------ */
-
-interface SubReqWeekRow extends SubReqRow { week_number: number }
-
-function SubRequestsPanel({
-  seasonId, order, nameOf, excludeWeek, generatedWeeks, version, disabled, onChanged,
-}: {
-  seasonId: string;
-  order: string[];
-  nameOf: (id: string) => string;
-  /** Week already handled by the Week roster panel — skip it here to avoid
-   *  two places resolving the same request. Null when no roster is shown. */
-  excludeWeek: number | null;
-  /** Weeks that already have a batch — their subs live in the actual games
-   *  (a post-generation swap can change them), so we don't show the request's
-   *  now-possibly-stale assigned_sub_id here. */
-  generatedWeeks: Set<number>;
-  version: number;
-  disabled: boolean;
-  onChanged: () => void;
-}) {
-  const [requests, setRequests] = useState<SubReqWeekRow[]>([]);
-  const [candidates, setCandidates] = useState<Array<{ id: string; name: string }>>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [pickingReqId, setPickingReqId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const onLadder = new Set(order);
-      const [reqRes, memRes, subRes] = await Promise.all([
-        supabase.from("ladder_sub_requests" as never)
-          .select("id, player_id, note, status, assigned_sub_id, week_number, resolved_at")
-          .eq("season_id", seasonId).neq("status", "canceled")
-          .order("week_number", { ascending: true }),
-        supabase.from("league_members" as never).select("user_id")
-          .eq("season_id", seasonId).eq("status", "active"),
-        supabase.from("league_substitutes" as never).select("user_id")
-          .eq("season_id", seasonId).eq("status", "active"),
-      ]);
-      if (cancelled) return;
-      const rows = ((reqRes.data ?? []) as unknown as SubReqWeekRow[])
-        .filter((r) => (excludeWeek == null || r.week_number !== excludeWeek)
-          && !generatedWeeks.has(r.week_number));
-      setRequests(rows);
-
-      const memIds = ((memRes.data ?? []) as Array<{ user_id: string }>)
-        .map((m) => m.user_id).filter((id) => !onLadder.has(id));
-      const subIds = ((subRes.data ?? []) as Array<{ user_id: string }>).map((s) => s.user_id);
-      const candIds = Array.from(new Set([...subIds, ...memIds]));
-      if (candIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles_public" as never)
-          .select("id, display_name, full_name, first_name, last_name")
-          .in("id", candIds);
-        const nameById = new Map<string, string>(
-          ((profs ?? []) as Array<{ id: string }>).map((p) => [p.id, resolvePlayerName(p as never)]),
-        );
-        setCandidates(candIds.map((id) => ({ id, name: nameById.get(id) ?? id.slice(0, 8) })));
-      } else {
-        setCandidates([]);
-      }
-    })().catch(() => { /* leave prior state on failure */ });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonId, excludeWeek, version, order.length]);
-
-  const candName = new Map(candidates.map((c) => [c.id, c.name]));
-  const nameFor = (id: string) => candName.get(id) ?? nameOf(id);
-
-  const resolve = async (
-    req: SubReqWeekRow, resolution: "sub" | "sitout" | "declined", subId?: string,
-  ) => {
-    setBusyId(req.id);
-    const { error } = await supabase.rpc("resolve_ladder_sub_request" as never, {
-      p_request_id: req.id,
-      p_resolution: resolution,
-      p_assigned_sub_id: subId ?? null,
-    } as never);
-    setBusyId(null);
-    if (error) {
-      toast.error((error as { message?: string }).message ?? "Couldn't resolve the request");
-      return;
-    }
-    setPickingReqId(null);
-    onChanged();
-  };
-
-  if (requests.length === 0) return null;
-  const pending = requests.filter((r) => r.status === "pending").length;
-
-  return (
-    <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
-      <div className="flex items-center gap-2 p-4 border-b border-border/60">
-        <UserX className="w-4 h-4 text-muted-foreground shrink-0" />
-        <div className="text-sm font-bold">Sub requests</div>
-        {pending > 0 && (
-          <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
-            {pending} pending
-          </span>
-        )}
-      </div>
-      <div className="divide-y divide-border/40">
-        {requests.map((req) => {
-          const resolvedLabel =
-            req.status === "sub"
-              ? `Sub: ${req.assigned_sub_id ? nameFor(req.assigned_sub_id) : "assigned"}`
-              : req.status === "sitout" ? "Sitting out"
-              : req.status === "declined" ? "Declined" : null;
-          return (
-            <div key={req.id} className="px-4 py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="text-[11px] font-bold text-muted-foreground mr-1.5">Week {req.week_number}</span>
-                  <span className="text-sm font-medium">{nameFor(req.player_id)}</span>
-                  {req.note && (
-                    <span className="text-[11px] text-muted-foreground"> — “{req.note}”</span>
-                  )}
-                </div>
-                {req.status !== "pending" && (
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 text-right">
-                    {resolvedLabel}
-                    {req.resolved_at && (
-                      <span className="block font-normal text-muted-foreground">
-                        {formatDistanceToNow(new Date(req.resolved_at), { addSuffix: true })}
-                      </span>
-                    )}
-                  </span>
-                )}
-              </div>
-              {req.status === "pending" && pickingReqId !== req.id && (
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <ActionButton size="sm" variant="default" disabled={disabled || busyId === req.id}
-                    onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">Find sub</ActionButton>
-                  <ActionButton size="sm" variant="outline" disabled={disabled || busyId === req.id || req.week_number < 2}
-                    onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">Sit out</ActionButton>
-                  <ActionButton size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                    onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">Decline</ActionButton>
-                </div>
-              )}
-              {req.status === "pending" && pickingReqId === req.id && (
-                <div className="mt-2 space-y-1.5">
-                  <div className="text-[11px] text-muted-foreground">Pick a fill-in:</div>
-                  {candidates.length === 0 ? (
-                    <div className="text-[11px] text-amber-600 dark:text-amber-400">
-                      No eligible subs — add one in the Substitutes tab first.
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {candidates.filter((c) => c.id !== req.player_id).map((c) => (
-                        <ActionButton key={c.id} size="sm" variant="outline"
-                          disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "sub", c.id)} className="h-9 text-xs px-3">
-                          {c.name}
-                        </ActionButton>
-                      ))}
-                    </div>
-                  )}
-                  <ActionButton size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                    className="h-9 text-xs px-3 text-muted-foreground">Cancel</ActionButton>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function GenerateNextPanel({
   nextStage, paused, generating, blocked = false, activationBlocked = false, onGenerate,
@@ -1966,8 +1665,8 @@ function GenerateNextPanel({
 
   const isWeek = nextStage.kind === "week";
   return (
-    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
+    <motion.div {...reveal} className="rounded-xl border border-border/70 lg-hero-gradient p-4 text-[color:var(--lg-hero-text)]">
+      <div className="text-xs font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
       <div className="text-lg font-black mt-0.5">
@@ -1975,7 +1674,7 @@ function GenerateNextPanel({
           ? `Ready to start Week ${nextStage.week}`
           : `Ready for Batch ${nextStage.batch}`}
       </div>
-      <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
+      <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
         {isWeek
           ? "The week's final positions are locked in. Generating Week " +
             `${nextStage.week} builds new foursomes from the current ladder — ` +
@@ -1994,12 +1693,12 @@ function GenerateNextPanel({
       </ActionButton>
       {activationBlocked && <p className="text-xs text-amber-300 mt-2">Review the league and season status using the links above. Existing results are preserved.</p>}
       {blocked && !paused && (
-        <p className="text-[11px] text-amber-300 mt-2">
+        <p className="text-xs text-amber-300 mt-2">
           Adjust the week roster above so the number of players is a multiple of four.
         </p>
       )}
       {paused && (
-        <p className="text-[11px] text-amber-300 mt-2">
+        <p className="text-xs text-amber-300 mt-2">
           Progression is paused — resume to generate the next stage.
         </p>
       )}
@@ -2119,7 +1818,7 @@ function CourtGroupCard({
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
       <div className="flex items-start justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border/50">
         <span className="text-sm font-bold shrink-0">Court {group.court_number ?? group.group_index + 1}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-0 text-right break-words leading-snug">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground min-w-0 text-right break-words leading-snug">
           {group.player_ids.map((p) => nameOf(p)).join(" · ")}
         </span>
       </div>
@@ -2128,7 +1827,7 @@ function CourtGroupCard({
           <GameScoreRow key={game.id} game={game} nameOf={nameOf} onScored={onScored} />
         ))}
       </ul>
-      <div className="px-4 py-1.5 text-[10px] text-muted-foreground bg-muted/20">
+      <div className="px-4 py-1.5 text-xs text-muted-foreground bg-muted/20">
         Format: {scoring.replace(/_/g, " ")}
       </div>
     </div>
@@ -2305,7 +2004,7 @@ function LastBatchResults({
 
       {/* Confirm: reopen the last finalized batch */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Reopen this batch to fix a score?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -2327,7 +2026,7 @@ function LastBatchResults({
 
       {/* Force confirm: downstream already has played games */}
       <AlertDialog open={forceOpen} onOpenChange={setForceOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Discard {forceCount} already-played game(s)?</AlertDialogTitle>
             <AlertDialogDescription>

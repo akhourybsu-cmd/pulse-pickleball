@@ -33,7 +33,7 @@ export function StandingsTable({
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
       {/* Header row */}
-      <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2 bg-muted/40 border-b border-border/50 text-xs font-semibold text-muted-foreground">
         <div className="text-center">#</div>
         <div>{nameHeader}</div>
         <div className="text-right">W</div>
@@ -57,7 +57,7 @@ export function StandingsTable({
               key={row.teamId}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.24, delay: i * 0.03, ease: "easeOut" }}
+              transition={{ duration: 0.24, delay: Math.min(i, 6) * 0.025, ease: "easeOut" }}
               className={cn(
                 "grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
                 highlighted && "bg-primary/5",
@@ -93,8 +93,8 @@ export function StandingsTable({
               </div>
               <div
                 className={cn(
-                  "text-right font-mono text-xs",
-                  row.pointDiff > 0 && "text-emerald-600",
+                  "text-right tabular-nums text-sm",
+                  row.pointDiff > 0 && "text-emerald-700 dark:text-emerald-300",
                   row.pointDiff < 0 && "text-destructive",
                   row.pointDiff === 0 && "text-muted-foreground",
                 )}
@@ -135,7 +135,7 @@ function FormChips({ form }: { form: FormResult[] }) {
           key={i}
           className={cn(
             "inline-flex items-center justify-center h-4 w-4 rounded text-[9px] font-bold leading-none",
-            r === "W"  && "bg-emerald-500/20 text-emerald-600",
+            r === "W"  && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
             r === "L"  && "bg-destructive/15 text-destructive",
             r === "FW" && "bg-amber-500/20 text-amber-600",
             r === "FL" && "bg-amber-500/10 text-amber-500/70",

@@ -149,7 +149,7 @@ export function CreateLeagueDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+      <DialogContent className="league-menu sm:max-w-lg w-[calc(100%-2rem)] rounded-2xl p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)]">
         {quotaExceeded ? (
           <PaywallView
             capacity={capacity}
@@ -162,7 +162,7 @@ export function CreateLeagueDialog({
             {/* Gold accent stripe — brand signature */}
             <div className="h-1.5 w-full bg-[color:var(--lg-gold)]" aria-hidden />
 
-            <DialogHeader className="p-5 pb-3">
+            <DialogHeader className="shrink-0 p-5 pr-16 pb-4 text-left">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <DialogTitle className="text-lg font-bold tracking-tight leading-tight flex items-center gap-2">
@@ -180,7 +180,7 @@ export function CreateLeagueDialog({
             </DialogHeader>
 
             {/* Body — animated crossfade between steps */}
-            <div className="px-5 pb-4 max-h-[65vh] overflow-y-auto">
+            <div className="min-h-0 px-5 pb-4 overflow-y-auto overscroll-contain">
               <AnimatePresence mode="wait" initial={false}>
                 {step === 1 ? (
                   <motion.div
@@ -288,7 +288,7 @@ export function CreateLeagueDialog({
               </AnimatePresence>
             </div>
 
-            <DialogFooter className="p-4 pt-3 border-t border-border/60 bg-muted/20 gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
+            <DialogFooter className="shrink-0 p-4 pt-3 border-t border-border/60 bg-muted/20 gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
               {step === 2 && (
                 <Button
                   variant="ghost"
@@ -302,7 +302,7 @@ export function CreateLeagueDialog({
               {step === 1 ? (
                 <Button
                   onClick={() => setStep(2)}
-                  className="h-11 flex-1 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+                  className="h-11 min-h-11 shrink-0 flex-1 rounded-xl font-semibold shadow-sm active:scale-[0.98] transition-transform"
                 >
                   Continue <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
@@ -310,7 +310,7 @@ export function CreateLeagueDialog({
                 <Button
                   onClick={submit}
                   disabled={saving || !name.trim()}
-                  className="h-11 flex-1 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+                  className="h-11 min-h-11 shrink-0 flex-1 rounded-xl font-semibold shadow-sm active:scale-[0.98] transition-transform"
                 >
                   {saving ? "Creating…" : (
                     <>Create league <Check className="w-4 h-4 ml-1.5" /></>

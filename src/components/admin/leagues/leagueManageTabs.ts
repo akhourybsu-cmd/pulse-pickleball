@@ -1,6 +1,6 @@
 import {
   Trophy, CalendarDays, Layers, Users, UsersRound,
-  CalendarClock, Swords, Award, Shield, LifeBuoy,
+  CalendarClock, Swords, Award, Shield, LifeBuoy, ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,7 +13,7 @@ import {
  * export only React components — keeps Fast Refresh happy.
  */
 export type ManageTab =
-  | "overview" | "seasons"
+  | "actions" | "overview" | "seasons"
   | "members" | "teams" | "subs"
   | "ladder" | "sessions" | "matches"
   | "standings"
@@ -25,25 +25,26 @@ export interface TabDef {
   /** Short label used when the mobile strip is tight. */
   short: string;
   icon: LucideIcon;
-  group: "Setup" | "People" | "Play" | "Results" | "Log";
+  group: "Manage" | "Setup" | "People" | "Play" | "Results" | "Log";
   /** One-line hint shown under the label on the desktop rail. */
   hint: string;
 }
 
 export const MANAGE_TABS: TabDef[] = [
-  { key: "overview",  label: "Overview",   short: "Info",     icon: Trophy,        group: "Setup",   hint: "Details, visibility, invite code" },
-  { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "Setup",   hint: "Semesters or session runs" },
+  { key: "actions", label: "Actions", short: "Actions", icon: ClipboardList, group: "Manage", hint: "Requests, approvals and results to review" },
+  { key: "overview",  label: "League settings", short: "Settings", icon: Trophy,     group: "Setup",   hint: "Details, visibility and invitations" },
+  { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "Setup",   hint: "Dates, registration and season status" },
   { key: "members",   label: "Players",    short: "Players",  icon: Users,         group: "People",  hint: "Everyone in this league" },
   { key: "teams",     label: "Teams",      short: "Teams",    icon: UsersRound,    group: "People",  hint: "Fixed pairs or rosters" },
-  { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
-  { key: "ladder",    label: "Ladder",     short: "Ladder",   icon: Layers,        group: "Play",    hint: "Individual doubles ladder" },
+  { key: "subs",      label: "Substitutes", short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Available subs and weekly replacements" },
+  { key: "ladder",    label: "Ladder & weeks", short: "Ladder", icon: Layers,       group: "Play",    hint: "Schedule batches and manage each week" },
   { key: "sessions",  label: "Sessions",   short: "Sessions", icon: CalendarClock, group: "Play",    hint: "Nights of scheduled play" },
   { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Play",    hint: "Individual matchups" },
   { key: "standings", label: "Standings",  short: "Table",    icon: Award,         group: "Results", hint: "Wins, points, form" },
-  { key: "audit",     label: "Audit log",  short: "Log",      icon: Shield,        group: "Log",     hint: "Every change, who + when" },
+  { key: "audit",     label: "Activity log", short: "Activity", icon: Shield,       group: "Log",     hint: "Changes, who made them and when" },
 ];
 
-export const GROUPS = ["Setup", "People", "Play", "Results", "Log"] as const;
+export const GROUPS = ["Manage", "Setup", "People", "Play", "Results", "Log"] as const;
 
 /**
  * The tabs that make sense for a given league type. The product runs two

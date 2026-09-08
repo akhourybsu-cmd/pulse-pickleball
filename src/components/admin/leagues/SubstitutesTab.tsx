@@ -35,6 +35,7 @@ import {
 import { useLeagueSkillCards, type LeagueSkillCard } from "@/hooks/useLeagueSkillCards";
 import { useOrganizerSkillCard } from "@/hooks/useOrganizerSkillCard";
 import { SkillLevelChip } from "@/components/skill/SkillLevelChip";
+import { SubRequestInbox } from './SubRequestInbox';
 
 interface PlayerRow {
   id: string;
@@ -106,7 +107,9 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         </Dialog>
       </div>
 
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-300 flex gap-2">
+      {league.league_type === 'ladder' && seasonId && <SubRequestInbox leagueId={league.id} seasonId={seasonId} dataVersion={dataVersion} onMutated={onMutated} />}
+
+      <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground flex gap-2">
         <LifeBuoy className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           Keep a bench of fill-in players here, then use <strong>Swap in</strong> to
@@ -146,19 +149,19 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
                     {p?.avatar_url ? (
                       <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-[11px] font-bold text-muted-foreground">{initials}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{initials}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium truncate">{name}</span>
                       {inactive && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <span className="text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           Inactive
                         </span>
                       )}
                       {appearances > 0 && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                           In {appearances} matchup{appearances === 1 ? "" : "s"}
                         </span>
                       )}
@@ -310,7 +313,7 @@ function SubInlineActions({
         <Trash2 className="w-4 h-4" />
       </Button>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {subName} from the sub list?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -662,7 +665,7 @@ function SubSwapDialog({
                   <span className="text-sm font-semibold truncate">{c.name}</span>
                   <span className="flex items-center gap-2 shrink-0">
                     {c.fit && <FitBadge fit={c.fit} />}
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {c.count} game{c.count === 1 ? "" : "s"}
                     </span>
                   </span>
@@ -709,7 +712,7 @@ function FitBadge({ fit }: { fit: SubstituteFit }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold",
         FIT_TONE[fit.tier],
       )}
       title={fit.reasons.join(" · ") || undefined}

@@ -153,7 +153,7 @@ export default function PlayerLeagues() {
                             "w-1.5 shrink-0",
                             isOrganizer
                               ? "bg-gradient-to-b from-[color:var(--lg-gold)]/40 via-[color:var(--lg-gold)] to-[color:var(--lg-gold)]/40"
-                              : "bg-gradient-to-b from-[color:var(--lg-emerald)]/40 via-[color:var(--lg-emerald-bright)] to-[color:var(--lg-emerald)]/40",
+                              : "bg-gradient-to-b from-[color:var(--lg-gold)]/40 via-[color:var(--lg-gold)] to-[color:var(--lg-gold)]/40",
                           )}
                           aria-hidden
                         />
@@ -220,13 +220,13 @@ export default function PlayerLeagues() {
                       className="group w-full overflow-hidden text-left opacity-90 lg-card lg-card-hover transition-all hover:-translate-y-0.5 hover:border-[color:var(--lg-gold)]/40 hover:opacity-100 active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-reduce:transform-none"
                     >
                       <div className="flex items-stretch">
-                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-transparent via-[color:var(--lg-emerald)] to-transparent opacity-60" aria-hidden />
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-transparent via-[color:var(--lg-gold)] to-transparent opacity-60" aria-hidden />
                         <div className="flex-1 min-w-0 p-3.5 flex items-start gap-3">
                           <LeagueRowIcon type={league.league_type} isOrganizer={false} />
                           <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-base truncate text-[color:var(--lg-text)]">
+                                <span className="font-semibold text-base break-words text-[color:var(--lg-text)]">
                                   {league.name}
                                 </span>
                                 <LeagueTypeChip type={league.league_type} />
@@ -304,7 +304,7 @@ export default function PlayerLeagues() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm truncate text-[color:var(--lg-text)]">
+                            <span className="font-semibold text-sm break-words text-[color:var(--lg-text)]">
                               {league.name}
                             </span>
                             <LeagueTypeChip type={league.league_type} />

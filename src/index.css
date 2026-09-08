@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -636,190 +634,143 @@ All colors MUST be HSL.
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ------------------------------------------------------------------ */
-/*  LEAGUE SCOPED DESIGN SYSTEM                                       */
-/*  "Emerald Prestige" — applied inside .league-scope so the whole    */
-/*  league experience (player list, player detail, organizer console) */
-/*  shares one identity while the rest of the app keeps Pulse tokens. */
-/*  Add .league-scope--light for the cream/ink light-mode variant.    */
-/* ------------------------------------------------------------------ */
-.league-scope {
-  /* Brand tokens — stable across light/dark, the accent identity. */
-  --lg-emerald: #0D7A5F;
-  --lg-emerald-bright: #14B08A;
-  --lg-emerald-deep: #064E3B;
-  --lg-gold: #C9A84C;
-  --lg-gold-bright: #E4C368;
-  --lg-gold-soft: #F5F0E0;
-  --lg-danger: #E85D3A;
-
-  /* Dark-mode surfaces (default). */
-  --lg-bg: #04140F;
-  --lg-surface: #0A2A20;
-  --lg-surface-2: #0F3A2C;
-  --lg-border: #134A38;
-  --lg-text: #F5F0E0;
-  --lg-text-dim: #9CB5A8;
-  --lg-hairline: rgba(201, 168, 76, 0.25);
-  --lg-inset: rgba(201, 168, 76, 0.08);
-  --lg-court-line: rgba(245, 240, 224, 0.06);
-  --lg-hero-radial: rgba(201, 168, 76, 0.18);
-  --lg-hero-stops: #064E3B 0%, #0D7A5F 45%, #0A2A20 100%;
-  --lg-eyebrow: var(--lg-gold-bright);
-  --lg-eyebrow-bg: rgba(201, 168, 76, 0.15);
-  --lg-eyebrow-ring: rgba(201, 168, 76, 0.4);
-
-  /* Hero tokens — CONSTANT across themes because the hero gradient is
-     always dark emerald. Any text/icon on top of .lg-hero-gradient
-     must use --lg-hero-* tokens, not --lg-text/--lg-gold-bright,
-     otherwise light-mode text renders dark-on-dark. */
-  --lg-hero-text: #F5F0E0;
-  --lg-hero-text-dim: rgba(245, 240, 224, 0.78);
-  --lg-hero-gold: #E4C368;
-  --lg-hero-gold-dim: rgba(228, 195, 104, 0.85);
-  --lg-hero-chip-bg: rgba(255, 255, 255, 0.10);
-  --lg-hero-chip-ring: rgba(228, 195, 104, 0.55);
-
-  /* Accent gold for text on the current SURFACE (auto per theme).
-     Light mode below darkens this to gold ink for AA contrast on
-     cream/white cards. Use this instead of --lg-gold-bright anywhere
-     gold text sits on a body surface. */
-  --lg-accent-gold: var(--lg-gold-bright);
-  --lg-gold-ink: #7A5E14;
-
-  /* Shadcn semantic overrides so nested primitives render on-brand. */
-  --background: 165 55% 9%;
-  --foreground: 44 68% 92%;
-  --card: 165 55% 9%;
-  --card-foreground: 44 68% 92%;
-  --popover: 165 55% 12%;
-  --popover-foreground: 44 68% 92%;
-  --muted: 165 45% 14%;
-  --muted-foreground: 156 15% 66%;
-  --border: 165 45% 18%;
-  --input: 165 45% 18%;
-  --primary: 165 80% 26%;
-  --primary-foreground: 44 68% 92%;
-  --secondary: 165 45% 14%;
-  --secondary-foreground: 44 68% 92%;
-  --accent: 44 55% 54%;
-  --accent-foreground: 165 55% 9%;
-  --destructive: 12 78% 57%;
-  --destructive-foreground: 44 68% 92%;
-  --ring: 44 55% 54%;
-
+/* League surfaces reuse PULSE tokens. Menus are portalled outside the page,
+   so .league-menu explicitly provides the same aliases without global overrides. */
+.league-scope,
+.league-menu {
+  /* Ink labels keep gold actions readable in both app themes. */
+  --primary-foreground: 220 10% 12%;
+  --lg-bg: hsl(var(--background));
+  --lg-surface: hsl(var(--card));
+  --lg-surface-2: hsl(var(--muted));
+  --lg-border: hsl(var(--border));
+  --lg-text: hsl(var(--foreground));
+  --lg-text-dim: hsl(var(--muted-foreground));
+  --lg-gold: hsl(var(--primary));
+  --lg-gold-bright: hsl(41 72% 64%);
+  --lg-gold-soft: hsl(44 33% 93%);
+  --lg-accent-gold: hsl(35 65% 30%);
+  --lg-gold-ink: hsl(35 65% 30%);
+  /* Green is reserved for positive results, never the workspace chrome. */
+  --lg-emerald: hsl(155 56% 30%);
+  --lg-emerald-bright: hsl(155 56% 30%);
+  --lg-emerald-deep: hsl(220 10% 12%);
+  --lg-danger: hsl(var(--destructive));
+  --lg-hairline: hsl(var(--border) / 0.7);
+  --lg-inset: hsl(var(--foreground) / 0.025);
+  --lg-court-line: hsl(44 25% 92% / 0.025);
+  --lg-hero-radial: hsl(41 60% 50% / 0.12);
+  --lg-hero-stops: hsl(220 10% 12%) 0%, hsl(220 10% 16%) 65%, hsl(220 8% 19%) 100%;
+  --lg-hero-text: hsl(44 25% 96%);
+  --lg-hero-text-dim: hsl(44 15% 80%);
+  --lg-hero-gold: hsl(41 72% 68%);
+  --lg-hero-gold-dim: hsl(41 72% 68% / 0.85);
+  --lg-hero-chip-bg: hsl(0 0% 100% / 0.06);
+  --lg-hero-chip-ring: hsl(44 25% 92% / 0.2);
+  --lg-eyebrow: var(--lg-accent-gold);
+  --lg-eyebrow-bg: hsl(var(--primary) / 0.08);
+  --lg-eyebrow-ring: hsl(var(--primary) / 0.25);
   color: var(--lg-text);
-  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
-  font-feature-settings: "tnum" 1;
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
 }
 
-/* Light variant — cream on ink. Emerald + gold accents are reserved
-   for chips, hairlines, and icons where they hit AA contrast; body
-   text is rendered in emerald-deep ink for readability. */
-.league-scope.league-scope--light {
-  --lg-bg: #F5F0E0;
-  --lg-surface: #FFFFFF;
-  --lg-surface-2: #FAF6E9;
-  --lg-border: #D9CFB4;
-  --lg-text: #0A2A20;
-  --lg-text-dim: #4A6B5E;
-  --lg-hairline: rgba(6, 78, 59, 0.25);
-  --lg-inset: rgba(6, 78, 59, 0.05);
-  --lg-court-line: rgba(6, 78, 59, 0.05);
-  --lg-hero-radial: rgba(201, 168, 76, 0.28);
-  --lg-hero-stops: #064E3B 0%, #0D7A5F 55%, #14B08A 100%;
-  --lg-eyebrow: var(--lg-gold-bright);
-  --lg-eyebrow-bg: rgba(255, 255, 255, 0.14);
-  --lg-eyebrow-ring: rgba(228, 195, 104, 0.55);
-
-  /* On light card surfaces, gold accent text must be darker ink gold
-     to hit AA contrast. Hero tokens stay bright (dark gradient). */
-  --lg-accent-gold: var(--lg-gold-ink);
-
-  --background: 44 50% 92%;
-  --foreground: 165 65% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 165 65% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 165 65% 10%;
-  --muted: 44 30% 88%;
-  --muted-foreground: 165 20% 35%;
-  --border: 44 20% 78%;
-  --input: 44 20% 78%;
-  --primary: 165 85% 22%;
-  --primary-foreground: 44 68% 96%;
-  --secondary: 44 40% 90%;
-  --secondary-foreground: 165 65% 10%;
-  --accent: 44 60% 40%;
-  --accent-foreground: 44 68% 96%;
-  --destructive: 12 78% 47%;
-  --destructive-foreground: 0 0% 100%;
-  --ring: 165 85% 30%;
+.dark .league-scope,
+.dark .league-menu,
+.league-scope.dark {
+  --lg-accent-gold: hsl(41 72% 68%);
+  --lg-emerald: hsl(155 50% 66%);
+  --lg-emerald-bright: hsl(155 50% 66%);
 }
 
-.league-scope h1,
-.league-scope h2,
-.league-scope h3,
-.league-scope .font-display {
-  font-family: 'Bebas Neue', 'Barlow', sans-serif;
-  letter-spacing: 0.04em;
-  font-weight: 400;
+:is(.league-scope, .league-menu) :is(h1, h2, h3, h4, h5, h6, .font-display) {
+  font-family: 'Sora', 'Outfit', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
 }
 
-.league-scope .lg-num {
-  font-family: 'Bebas Neue', 'Barlow', sans-serif;
-  letter-spacing: 0.02em;
+:is(.league-scope, .league-menu) :is(button, input, textarea, select, [role="combobox"], [role="tab"], [role="option"], [role="menuitem"]) {
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+  letter-spacing: normal;
+}
+:is(.league-scope, .league-menu) :is(button, [role="tab"]) {
+  text-transform: none;
+}
+
+:is(.league-scope, .league-menu) .lg-num {
+  font-family: 'Sora', 'Outfit', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.league-scope .lg-surface { background-color: var(--lg-surface); }
-.league-scope .lg-surface-2 { background-color: var(--lg-surface-2); }
+:is(.league-scope, .league-menu) .lg-surface { background-color: var(--lg-surface); }
+:is(.league-scope, .league-menu) .lg-surface-2 { background-color: var(--lg-surface-2); }
 
-.league-scope .lg-card {
+:is(.league-scope, .league-menu) .lg-card {
   background-color: var(--lg-surface);
   border: 1px solid var(--lg-border);
-  border-radius: 0.75rem;
-  box-shadow: inset 0 1px 0 0 var(--lg-inset);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.025);
 }
-
-.league-scope .lg-card-hover:hover {
+:is(.league-scope, .league-menu) .lg-card-hover:hover {
   background-color: var(--lg-surface-2);
 }
 
-/* Hero: emerald→deep gradient with a warm gold sheen top-right.
-   Same silhouette in both modes; light mode brightens the mid stop. */
-.league-scope .lg-hero-gradient {
+:is(.league-scope, .league-menu) .lg-hero-gradient {
   background:
-    radial-gradient(1200px 400px at 90% -30%, var(--lg-hero-radial), transparent 60%),
+    radial-gradient(900px 400px at 95% -30%, var(--lg-hero-radial), transparent 65%),
     linear-gradient(135deg, var(--lg-hero-stops));
 }
-
-.league-scope .lg-court-lines {
+:is(.league-scope, .league-menu) .lg-court-lines {
   background-image:
-    repeating-linear-gradient(45deg, transparent 0, transparent 22px, var(--lg-court-line) 22px, var(--lg-court-line) 23px);
+    repeating-linear-gradient(45deg, transparent 0, transparent 44px, var(--lg-court-line) 44px, var(--lg-court-line) 45px);
+}
+:is(.league-scope, .league-menu) :focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+:is(.league-scope, .league-menu) .lg-hairline {
+  background: var(--lg-hairline);
 }
 
-.league-scope :focus-visible {
-  outline: 2px solid rgba(201, 168, 76, 0.7);
-  outline-offset: 2px;
+/* The portalled form gets its own font/tokens, safe viewport bounds and a
+   touch-sized close control. Other app dialogs are unaffected. */
+.league-menu[role="dialog"] {
+  max-height: calc(100dvh - 2rem);
+}
+.league-menu [role="option"] {
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.league-menu[role="dialog"] > button.absolute {
+  width: 2.75rem;
+  height: 2.75rem;
+  right: 0.5rem;
+  top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  opacity: 1;
+}
+@media (max-width: 639px) {
+  :is(.league-scope, .league-menu) :is(input, textarea, select, [role="combobox"]) {
+    font-size: 1rem;
+  }
 }
 
-/* Gold hairline separator — used above section headers and on hero edges. */
-.league-scope .lg-hairline {
-  background: linear-gradient(to right, transparent, var(--lg-hairline), transparent);
-}
-
-/* Live pulse dot */
-.league-scope .lg-pulse {
-  animation: lg-pulse 1.6s ease-in-out infinite;
-}
+.league-scope .lg-pulse { animation: lg-pulse 1.6s ease-in-out infinite; }
 @keyframes lg-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(1.4); }
+  50% { opacity: 0.4; transform: scale(1.4); }
 }
-
-/* Backwards-compat alias so any legacy .league-admin usage still works. */
-.league-admin { }
+@media (prefers-reduced-motion: reduce) {
+  .league-scope .lg-pulse { animation: none; }
+}
 
 
 /* =====================================================================

@@ -216,6 +216,9 @@ const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const VenuePreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/VenuePreview"))
   : null;
+const LeaguePreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/LeaguePreview"))
+  : null;
 const DashboardPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/DashboardPreview"))
   : null;
@@ -386,6 +389,7 @@ const AppContent = () => {
           {VenuePreview && (
             <Route path="/__venue-preview" element={<VenuePreview />} />
           )}
+          {LeaguePreview && <Route path="/__league-preview" element={<LeaguePreview />} />}
           {DashboardPreview && (
             <Route path="/__dashboard-preview" element={<DashboardPreview />} />
           )}

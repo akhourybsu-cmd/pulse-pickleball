@@ -247,7 +247,7 @@ function SubmitScoreDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Enter score</DialogTitle>
         </DialogHeader>
@@ -320,7 +320,7 @@ function DisputeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Dispute this score</DialogTitle>
         </DialogHeader>

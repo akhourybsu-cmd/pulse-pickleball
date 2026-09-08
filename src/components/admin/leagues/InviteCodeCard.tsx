@@ -144,7 +144,7 @@ export function InviteCodeCard({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Pick a memorable code (e.g. <code className="text-[11px] font-mono px-1 rounded bg-muted">SPRING26</code>).
+        Pick a memorable code (e.g. <code className="text-xs font-mono px-1 rounded bg-muted">SPRING26</code>).
         Players enter it on the Join screen to become an active member. Case-insensitive.
       </p>
 
@@ -180,13 +180,13 @@ export function InviteCodeCard({
       {/* Format guidance shown only when the user has typed something
           invalid. Silence otherwise. */}
       {trimmed !== "" && !validForSave && (
-        <p className="text-[11px] text-destructive">
+        <p className="text-xs text-destructive">
           Codes must be 4–32 characters, letters/numbers/hyphens/underscores only.
         </p>
       )}
 
       {isAdminOnly && currentCode && (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-700 dark:text-amber-300">
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-300">
           Heads up — this league's visibility is <strong>admin_only</strong>, so the
           code won't work for players. Change visibility to <em>private</em> or{" "}
           <em>public_future</em> once you're ready to open joins.
@@ -239,7 +239,7 @@ export function InviteCodeCard({
           </div>
 
           {/* Truncated preview of the link so admin knows what they're sharing */}
-          <div className="text-[11px] font-mono text-muted-foreground truncate">
+          <div className="text-xs font-mono text-muted-foreground truncate">
             {shareUrl}
           </div>
 
@@ -253,10 +253,10 @@ export function InviteCodeCard({
                 bgColor="#ffffff"
                 fgColor="#0B171F"
               />
-              <div className="text-[11px] text-slate-600 font-medium">
+              <div className="text-xs text-slate-600 font-medium">
                 Scan to open the join screen
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+              <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                 {currentCode}
               </div>
             </div>
@@ -265,7 +265,7 @@ export function InviteCodeCard({
       )}
 
       {currentCode && !dirty && (
-        <div className="rounded-md bg-muted/40 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2">
+        <div className="rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground flex items-start gap-2">
           <Trash2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
             To disable joins, clear the field and press Save. Existing

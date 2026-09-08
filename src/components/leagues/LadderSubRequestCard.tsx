@@ -1,277 +1,82 @@
-import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { ActionButton } from "@/components/leagues/ActionButton";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { CalendarClock, UserX, CheckCircle2, Ban, Clock, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { PRESSABLE_CARD } from "@/lib/leagues/motion";
-import { resolvePlayerName } from "@/lib/matchDisplay";
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CalendarClock } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useLeagueSubRequests } from '@/hooks/useLeagueSubRequests';
+import { leagueErrorMessage } from '@/lib/leagues/data';
+import { requestableWeeks, subRequestStatus, weekDescription } from '@/lib/leagues/subRequests';
+import { resolvePlayerName } from '@/lib/matchDisplay';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog } from '@/components/ui/dialog';
+import { FormRow, FormShell } from '@/components/admin/leagues/_shared';
 
-interface WeekShell {
-  id: string;
-  week_number: number;
-  scheduled_date: string | null;
-  start_time: string | null;
-  location: string | null;
-}
-interface MyRequest {
-  id: string;
-  session_id: string;
-  week_number: number;
-  status: "pending" | "sub" | "sitout" | "declined" | "canceled";
-  assigned_sub_id: string | null;
-}
-
-/**
- * Player self-service: request a sub for an upcoming, scheduled ladder week
- * they can't make. Lists the player's existing requests (with cancel) and a
- * "Request a sub" action that picks from weeks that are scheduled but not yet
- * generated. Ladder leagues only.
- */
-export function LadderSubRequestCard({
-  leagueId, seasonId, currentUserId,
-}: {
-  leagueId: string;
-  seasonId: string | null;
-  currentUserId: string | null;
+export function LadderSubRequestCard({ leagueId, seasonId, currentUserId, canRequest = false }: {
+  leagueId: string; seasonId: string | null; currentUserId: string | null; canRequest?: boolean;
 }) {
-  const [weeks, setWeeks] = useState<WeekShell[]>([]);
-  const [requests, setRequests] = useState<MyRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const query = useLeagueSubRequests(leagueId, seasonId, 0, currentUserId ?? '');
+  const client = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [pickWeek, setPickWeek] = useState<string | null>(null);
-  const [note, setNote] = useState("");
+  const [pickWeek, setPickWeek] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  /** Upcoming scheduled weeks whose batch is already generated — too late. */
-  const [lockedWeeks, setLockedWeeks] = useState<number[]>([]);
-  const [subNames, setSubNames] = useState<Record<string, string>>({});
-
-  const load = useCallback(async () => {
-    if (!seasonId || !currentUserId) { setLoading(false); return; }
-    setLoading(true);
-    const [sessRes, batchRes, reqRes] = await Promise.all([
-      supabase.from("league_sessions" as never).select("id, week_number, scheduled_date, start_time, location")
-        .eq("season_id", seasonId).not("week_number", "is", null)
-        .order("week_number", { ascending: true }),
-      supabase.from("ladder_batches" as never).select("week_number").eq("season_id", seasonId),
-      supabase.from("ladder_sub_requests" as never)
-        .select("id, session_id, week_number, status, assigned_sub_id")
-        .eq("season_id", seasonId).eq("player_id", currentUserId),
-    ]);
-    const generated = new Set(
-      ((batchRes.data ?? []) as Array<{ week_number: number }>).map((b) => b.week_number),
-    );
-    const today = new Date().toISOString().slice(0, 10);
-    const upcoming = ((sessRes.data ?? []) as unknown as WeekShell[]).filter((w) =>
-      w.week_number >= 2 && (!w.scheduled_date || w.scheduled_date >= today));
-    // Requestable = upcoming and not yet generated. Weeks already generated are
-    // surfaced separately so the option doesn't just silently disappear.
-    setWeeks(upcoming.filter((w) => !generated.has(w.week_number)));
-    setLockedWeeks(upcoming.filter((w) => generated.has(w.week_number)).map((w) => w.week_number));
-    const reqs = (reqRes.data ?? []) as unknown as MyRequest[];
-    setRequests(reqs);
-
-    // Resolve the names of any assigned subs so "Sub arranged" says who.
-    const subIds = Array.from(new Set(reqs.map((r) => r.assigned_sub_id).filter(Boolean) as string[]));
-    if (subIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
-        .in("id", subIds);
-      const map: Record<string, string> = {};
-      (profs ?? []).forEach((p) => {
-        const r = p as { id: string };
-        map[r.id] = resolvePlayerName(p as never);
-      });
-      setSubNames(map);
-    } else {
-      setSubNames({});
-    }
-    setLoading(false);
-  }, [seasonId, currentUserId]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  if (loading || !seasonId || !currentUserId) return null;
-
-  // A declined request is a closed outcome — it must NOT block the player from
-  // asking again for that week (plans change, organizer may find a sub later).
-  const activeReqByWeek = new Map(
-    requests
-      .filter((r) => r.status !== "canceled" && r.status !== "declined")
-      .map((r) => [r.week_number, r]),
-  );
-  // Weeks the player can still request for (no active request yet).
-  const openWeeks = weeks.filter((w) => !activeReqByWeek.has(w.week_number));
-  const myActive = requests.filter((r) => r.status !== "canceled");
-
-  // Nothing to schedule against and nothing outstanding → hide entirely.
-  if (openWeeks.length === 0 && myActive.length === 0 && lockedWeeks.length === 0) return null;
-
-  const fmt = (w: WeekShell) => {
-    const d = w.scheduled_date
-      ? new Date(`${w.scheduled_date}T00:00:00`).toLocaleDateString(undefined,
-          { weekday: "short", month: "short", day: "numeric" })
-      : "date TBD";
-    return `Week ${w.week_number} · ${d}${w.start_time ? ` · ${w.start_time.slice(0, 5)}` : ""}`;
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  useEffect(() => { setOpen(false); setPickWeek(''); setNote(''); setError(null); }, [seasonId, currentUserId]);
+  if (!seasonId || !currentUserId) return null;
+  if (query.isPending) return <p role="status" className="text-sm text-muted-foreground">Checking substitute requests…</p>;
+  if (query.error) return <div className="lg-card space-y-2 p-4" role="alert"><p className="text-sm">Your substitute requests could not be loaded.</p><Button variant="outline" onClick={() => void query.refetch()}>Retry requests</Button></div>;
+  const { requests, weeks, generated, profiles } = query.data;
+  const today = new Date().toISOString().slice(0, 10);
+  const available = canRequest ? requestableWeeks(weeks, generated, today).filter(w =>
+    !requests.some(r => r.session_id === w.id && ['pending', 'sub', 'sitout'].includes(r.status))) : [];
+  const shown = requests.filter(r => r.status !== 'canceled').sort((a, b) => a.week_number - b.week_number);
+  const locked = weeks.filter(w => w.week_number && generated.has(w.week_number) && w.status === 'published' && (!w.scheduled_date || w.scheduled_date >= today));
+  const mutate = async (cancelId?: string) => {
+    if (inFlight.current || (!cancelId && !available.some(w => w.id === pickWeek))) return;
+    inFlight.current = true; setBusy(true); setError(null);
+    try {
+      const result = cancelId
+        ? await supabase.rpc('cancel_ladder_sub_request' as never, { p_request_id: cancelId } as never)
+        : await supabase.rpc('request_ladder_sub' as never, { p_season_id: seasonId, p_session_id: pickWeek, p_note: note.trim() || null } as never);
+      if (result.error) throw result.error;
+      toast.success(cancelId ? 'Request canceled. You remain available to play.' : 'Request sent. Your organizer will review it.');
+      setOpen(false); setPickWeek(''); setNote('');
+      for (const key of ['league-sub-requests', 'league-actions', 'player-league-detail']) void client.invalidateQueries({ queryKey: [key] });
+    } catch (err) { setError(leagueErrorMessage(err)); void query.refetch(); }
+    finally { inFlight.current = false; setBusy(false); }
   };
-
-  const statusMeta = (s: MyRequest["status"]) => {
-    switch (s) {
-      case "pending": return { icon: <Clock className="w-3.5 h-3.5" />, label: "Requested — awaiting organizer", cls: "text-amber-600 dark:text-amber-400" };
-      case "sub": return { icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: "Sub arranged", cls: "text-emerald-600 dark:text-emerald-400" };
-      case "sitout": return { icon: <UserX className="w-3.5 h-3.5" />, label: "Sitting out (you keep your spot)", cls: "text-emerald-600 dark:text-emerald-400" };
-      case "declined": return { icon: <Ban className="w-3.5 h-3.5" />, label: "Couldn't be arranged — please play", cls: "text-muted-foreground" };
-      default: return { icon: null, label: s, cls: "text-muted-foreground" };
-    }
-  };
-
-  const submit = async () => {
-    if (!pickWeek) return;
-    setBusy(true);
-    const { error } = await supabase.rpc("request_ladder_sub" as never, {
-      p_season_id: seasonId,
-      p_session_id: pickWeek,
-      p_note: note.trim() || null,
-    } as never);
-    setBusy(false);
-    if (error) {
-      toast.error((error as { message?: string }).message ?? "Couldn't send the request");
-      return;
-    }
-    toast.success("Sub request sent to the organizer");
-    setOpen(false); setPickWeek(null); setNote("");
-    void load();
-  };
-
-  const cancel = async (id: string) => {
-    setBusy(true);
-    const { error } = await supabase.rpc("cancel_ladder_sub_request" as never, {
-      p_request_id: id,
-    } as never);
-    setBusy(false);
-    if (error) {
-      toast.error((error as { message?: string }).message ?? "Couldn't cancel");
-      return;
-    }
-    void load();
-  };
-
-  return (
-    <div className="rounded-xl border border-border/70 bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <CalendarClock className="w-3.5 h-3.5" />
-          Can't make a week?
-        </h2>
-        {openWeeks.length > 0 && (
-          <ActionButton size="sm" variant="outline" className="h-9 text-xs"
-            onClick={() => { setPickWeek(openWeeks[0].id); setOpen(true); }}>
-            Request a sub
-          </ActionButton>
-        )}
-      </div>
-
-      {myActive.length > 0 ? (
-        <ul className="space-y-1.5">
-          {myActive
-            .sort((a, b) => a.week_number - b.week_number)
-            .map((r) => {
-              const m = statusMeta(r.status);
-              return (
-                <li key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="flex flex-wrap items-center gap-1.5 min-w-0 break-words">
-                    <span className="font-semibold">Week {r.week_number}</span>
-                    <span className={`inline-flex items-center gap-1 ${m.cls}`}>
-                      {m.icon}
-                      {m.label}
-                      {r.status === "sub" && r.assigned_sub_id && subNames[r.assigned_sub_id]
-                        ? ` — ${subNames[r.assigned_sub_id]}`
-                        : ""}
-                    </span>
-                  </span>
-                  {r.status === "pending" && (
-                    <ActionButton size="sm" variant="ghost" disabled={busy}
-                      onClick={() => cancel(r.id)} className="h-9 text-xs text-muted-foreground shrink-0">
-                      Cancel
-                    </ActionButton>
-                  )}
-                </li>
-              );
-            })}
-        </ul>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          If you can't make an upcoming week, request a sub so the organizer can
-          find a fill-in or hold your spot.
-        </p>
-      )}
-
-      {lockedWeeks.length > 0 && (
-        <p className="text-[11px] text-muted-foreground">
-          Week{lockedWeeks.length === 1 ? "" : "s"} {lockedWeeks.join(", ")}{" "}
-          {lockedWeeks.length === 1 ? "is" : "are"} already drawn — too late to request a sub.
-          Message your organizer directly if something came up.
-        </p>
-      )}
-
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setPickWeek(null); setNote(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Request a sub</DialogTitle>
-            <DialogDescription>
-              Pick the week you can't make. The organizer will find a fill-in or
-              hold your spot — you keep your ladder position either way.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Week</div>
-              <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                {openWeeks.map((w) => {
-                  const picked = pickWeek === w.id;
-                  return (
-                    <button key={w.id} type="button" onClick={() => setPickWeek(w.id)}
-                      aria-pressed={picked}
-                      className={cn(
-                        "relative w-full text-left rounded-lg border px-3 py-2 pr-8 text-sm transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                        PRESSABLE_CARD,
-                        picked
-                          ? "border-primary bg-primary/5 font-semibold"
-                          : "border-border/70 hover:border-primary/40",
-                      )}>
-                      {fmt(w)}
-                      {w.location ? <span className="text-muted-foreground"> · {w.location}</span> : null}
-                      {picked && (
-                        <span aria-hidden className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                          <Check className="h-3 w-3" strokeWidth={3} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Note (optional)</div>
-              <Textarea value={note} onChange={(e) => setNote(e.target.value)}
-                placeholder="Anything the organizer should know?" rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <ActionButton variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</ActionButton>
-            <ActionButton onClick={submit} loading={busy} disabled={!pickWeek}
-              className="font-bold uppercase tracking-wide">
-              Send request
-            </ActionButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+  return <section className="lg-card p-4 sm:p-5 space-y-4" aria-label="My substitute requests">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div><h2 className="flex items-center gap-2 text-lg font-semibold"><CalendarClock className="h-5 w-5" />Can’t make a week?</h2><p className="mt-1 text-sm text-muted-foreground">Request coverage and follow your organizer’s decision here.</p></div>
+      {!!available.length && <Button className="h-11 rounded-xl" onClick={() => { setPickWeek(available[0].id); setNote(''); setError(null); setOpen(true); }}>Request a sub</Button>}
     </div>
-  );
+    {!!shown.length && <ul className="divide-y divide-border">{shown.map(request => {
+      const week = weeks.find(w => w.id === request.session_id);
+      return <li key={request.id} className="space-y-2 py-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">{week ? weekDescription(week) : `Week ${request.week_number}`}</p><span className="rounded-full bg-muted px-3 py-1 font-medium">{subRequestStatus(request.status)}</span></div>
+        {request.status === 'sub' && <p>{request.assigned_sub_id && profiles[request.assigned_sub_id] ? resolvePlayerName(profiles[request.assigned_sub_id]) : 'A substitute'} was arranged for you. {generated.has(request.week_number) ? 'The draw is now set; check with the organizer for any later changes.' : 'You keep your ladder position.'}</p>}
+        {request.status === 'sitout' && <p>You keep your position and return next week.</p>}
+        {request.status === 'declined' && <p>Coverage has not been arranged. You remain in the draw; contact your organizer if you still cannot attend.</p>}
+        {request.note && <p className="whitespace-pre-wrap break-words text-muted-foreground">Your note: {request.note}</p>}
+        {request.resolution_note && <div className="rounded-xl bg-muted/50 p-3"><p className="font-semibold">From your organizer</p><p className="mt-1 whitespace-pre-wrap break-words">{request.resolution_note}</p></div>}
+        {request.status === 'pending' && !generated.has(request.week_number) && <Button variant="outline" className="h-11 rounded-xl" disabled={busy} onClick={() => void mutate(request.id)}>Cancel request</Button>}
+        {['sub', 'sitout'].includes(request.status) && <p className="text-muted-foreground">Plans changed? Contact your organizer so they can update the arrangement.</p>}
+      </li>;
+    })}</ul>}
+    {!available.length && !shown.length && <p className="text-sm text-muted-foreground">{canRequest ? 'No upcoming weeks are open for requests yet. Requests open for published weeks from Week 2, before the draw.' : 'Sub requests are available to active season players while the league and season are active.'}</p>}
+    {!!locked.length && <p className="text-sm text-muted-foreground">Week{locked.length > 1 ? 's' : ''} {locked.map(w => w.week_number).join(', ')} already drawn. For a late absence, contact your organizer; they can swap a substitute into unplayed games.</p>}
+    {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <Dialog open={open} onOpenChange={value => { if (!busy) setOpen(value); }}>
+      <FormShell icon={<CalendarClock className="h-5 w-5" />} kicker="My availability" title="Request a substitute" subtitle="This is a request, not confirmed coverage. Your organizer will assign a fill-in, arrange a sit-out, or contact you about the next step."
+        primaryLabel="Send request" primaryLoading={busy} primaryDisabled={!available.some(w => w.id === pickWeek) || query.isFetching} onPrimary={() => void mutate()}
+        secondary={<Button variant="outline" className="h-12 rounded-xl" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button>}>
+        <FormRow label="Which week can’t you attend?"><div className="max-h-56 space-y-2 overflow-y-auto">{available.map(week => <button key={week.id} type="button" aria-pressed={pickWeek === week.id} onClick={() => setPickWeek(week.id)} className={`min-h-11 w-full rounded-xl border p-3 text-left text-sm ${pickWeek === week.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><span className="block font-semibold">{weekDescription(week)}</span>{week.location && <span className="mt-1 block text-muted-foreground break-words">{week.location}</span>}</button>)}</div></FormRow>
+        <FormRow label="Note to your organizer (optional)"><Textarea value={note} maxLength={1000} onChange={e => setNote(e.target.value)} placeholder="Anything your organizer should know?" rows={3} /></FormRow>
+        <p className="text-sm text-muted-foreground">You can cancel while the request is pending. Once coverage is arranged, contact the organizer to change it.</p>
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      </FormShell>
+    </Dialog>
+  </section>;
 }

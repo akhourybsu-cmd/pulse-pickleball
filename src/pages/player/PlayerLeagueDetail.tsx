@@ -192,7 +192,7 @@ export default function PlayerLeagueDetail() {
         <div className="flex items-center justify-between gap-2">
           <ActionButton
             variant="ghost" size="sm" onClick={() => navigate("/player/leagues")}
-            className="group -ml-2 h-8 text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-[color:var(--lg-surface-2)]"
+            className="group -ml-2 h-11 rounded-xl text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-[color:var(--lg-surface-2)]"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
             My leagues
@@ -201,7 +201,7 @@ export default function PlayerLeagueDetail() {
             <ActionButton
               size="sm" variant="outline"
               onClick={() => navigate(`/player/leagues/${league.id}/manage${season ? `?season=${encodeURIComponent(season.id)}` : ''}`)}
-              className="h-8 border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10"
+              className="h-11 rounded-xl border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10"
             >
               <Settings className="w-4 h-4 mr-1.5" />
               Manage
@@ -214,7 +214,7 @@ export default function PlayerLeagueDetail() {
           managerName={managerName}
           eyebrow={
             membership && membership.role !== "player" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
                 You're {membership.role}
               </span>
             ) : undefined
@@ -255,7 +255,7 @@ export default function PlayerLeagueDetail() {
                 key={s.id}
                 type="button"
                 onClick={() => scrollToSection(s.id)}
-                className="rounded-full border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] px-3 py-1 text-xs font-medium text-[color:var(--lg-text-dim)] transition-colors hover:text-[color:var(--lg-text)] hover:border-[color:var(--lg-gold)]/40"
+                className="min-h-11 rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface)] px-4 py-2 text-sm font-semibold text-[color:var(--lg-text)] transition-colors hover:bg-muted hover:border-[color:var(--lg-gold)]/40"
               >
                 {s.label}
               </button>
@@ -275,6 +275,7 @@ export default function PlayerLeagueDetail() {
             leagueId={league.id}
             seasonId={season?.id ?? null}
             currentUserId={currentUserId}
+            canRequest={membership?.status === 'active' && membership?.season_id === season?.id && league.status === 'active' && season?.status === 'active'}
           />
         )}
 
@@ -285,7 +286,7 @@ export default function PlayerLeagueDetail() {
         )}
 
         {standings.length > 0 && (
-          <div id="standings" className="lg-card p-4 space-y-3 scroll-mt-20">
+          <div id="standings" className="lg-card p-4 space-y-3 scroll-mt-40">
             <LgSectionHeader icon={Trophy} className="mb-0">Standings</LgSectionHeader>
             <p className="text-xs text-[color:var(--lg-text-dim)]">Confirmed results only. Scores awaiting confirmation or under review do not count yet.</p>
             <StandingsTable
@@ -302,7 +303,7 @@ export default function PlayerLeagueDetail() {
         )}
 
         {isTeamMode && teammates.length > 0 && (
-          <div id="team" className="lg-card p-4 scroll-mt-20">
+          <div id="team" className="lg-card p-4 scroll-mt-40">
             <LgSectionHeader icon={Users}>
               Your team{myTeams.length === 1 ? "" : "s"}
               {myTeams.length === 1 && (
@@ -348,7 +349,7 @@ export default function PlayerLeagueDetail() {
         )}
 
         {noActivity ? (
-          <div id="upcoming" className="lg-card p-6 text-center scroll-mt-20">
+          <div id="upcoming" className="lg-card p-6 text-center scroll-mt-40">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)]">
               <CalendarClock className="h-6 w-6" />
             </div>
@@ -363,7 +364,7 @@ export default function PlayerLeagueDetail() {
           </div>
         ) : (
           <>
-            <div id="upcoming" className="lg-card p-4 scroll-mt-20">
+            <div id="upcoming" className="lg-card p-4 scroll-mt-40">
               <LgSectionHeader icon={CalendarClock}>Your matches · upcoming &amp; to finish</LgSectionHeader>
               {upcoming.length === 0 ? (
                 <p className="text-xs text-[color:var(--lg-text-dim)]">
@@ -389,7 +390,7 @@ export default function PlayerLeagueDetail() {
             </div>
 
             {past.length > 0 && (
-              <div id="past" className="lg-card p-4 scroll-mt-20">
+              <div id="past" className="lg-card p-4 scroll-mt-40">
                 <LgSectionHeader icon={Swords}>Past matches</LgSectionHeader>
                 <ul className="space-y-2">
                   {past.map((m) => (

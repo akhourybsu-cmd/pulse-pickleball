@@ -199,7 +199,7 @@ export function OverviewTab({
             <FormRow label="Visibility">
               <Select value={visibility} onValueChange={(v) => setVisibility(v as LeagueVisibility)}>
                 <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="league-menu">
                   <SelectItem value="admin_only">Admin only</SelectItem>
                   <SelectItem value="private">Private (future)</SelectItem>
                   <SelectItem value="public_future">Public (future)</SelectItem>
@@ -262,7 +262,7 @@ export function OverviewTab({
             {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
           </Button>
           <AlertDialog open={confirmStatusArchive} onOpenChange={(o) => { if (!o) setConfirmStatusArchive(false); }}>
-            <AlertDialogContent>
+            <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
               <AlertDialogHeader>
                 <AlertDialogTitle>Archive this league?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -286,7 +286,7 @@ export function OverviewTab({
                   Archive league
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Archive this league?</AlertDialogTitle>
                   <AlertDialogDescription>

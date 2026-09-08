@@ -54,7 +54,7 @@ function AvatarChip({
   name: string;
   size?: "sm" | "md";
 }) {
-  const dim = size === "md" ? "h-9 w-9 text-xs" : "h-8 w-8 text-[11px]";
+  const dim = size === "md" ? "h-9 w-9 text-xs" : "h-8 w-8 text-xs";
   return (
     <div className="relative shrink-0">
       <div className={cn(
@@ -183,9 +183,9 @@ export function TeamRosterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl">
+      <DialogContent className="league-menu sm:max-w-lg p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl">
         {/* Stadium banner header — matches every other league menu */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
+        <div className="relative overflow-hidden lg-hero-gradient">
           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400" aria-hidden />
           <div
             aria-hidden
@@ -207,7 +207,7 @@ export function TeamRosterDialog({
                 <Users className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1 pt-0.5">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
+                <div className="text-xs font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
                   Team roster
                 </div>
                 <DialogTitle className="text-lg font-black tracking-tight leading-tight text-[color:var(--lg-hero-text)] truncate">
@@ -233,10 +233,10 @@ export function TeamRosterDialog({
             {/* Active roster */}
             <section className="space-y-2.5">
               <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Active roster
                 </span>
-                <span className="text-[10px] text-muted-foreground/70">
+                <span className="text-xs text-muted-foreground/70">
                   {active.length}
                 </span>
               </div>
@@ -270,7 +270,7 @@ export function TeamRosterDialog({
                           <SelectTrigger className="h-8 w-[112px] text-xs">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="league-menu">
                             <SelectItem value="player">Player</SelectItem>
                             <SelectItem value="substitute">Substitute</SelectItem>
                           </SelectContent>
@@ -294,10 +294,10 @@ export function TeamRosterDialog({
             {/* Add from league members */}
             <section className="space-y-2.5">
               <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Add from league members
                 </span>
-                <span className="text-[10px] text-muted-foreground/70">
+                <span className="text-xs text-muted-foreground/70">
                   {addable.length} available
                 </span>
               </div>
@@ -343,14 +343,14 @@ export function TeamRosterDialog({
                       );
                     })}
                     {filteredAddable.length === 0 && (
-                      <li className="rounded-lg border border-dashed border-border p-3 text-center text-[11px] text-muted-foreground">
+                      <li className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
                         No matches — clear the search or add the player to the league first.
                       </li>
                     )}
                   </ul>
                 </>
               )}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Only active league members appear here. Missing someone?
                 Add them on the Members tab first.
               </p>
@@ -360,7 +360,7 @@ export function TeamRosterDialog({
             {removed.length > 0 && (
               <section>
                 <details className="group">
-                  <summary className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground cursor-pointer flex items-center gap-1.5 pb-1.5 border-b border-border/40 hover:text-foreground transition-colors">
+                  <summary className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground cursor-pointer flex items-center gap-1.5 pb-1.5 border-b border-border/40 hover:text-foreground transition-colors">
                     <span>Removed history · {removed.length}</span>
                   </summary>
                   <ul className="space-y-1.5 mt-2.5">
@@ -409,7 +409,7 @@ export function TeamRosterDialog({
         open={!!confirmRemove}
         onOpenChange={(o) => !o && setConfirmRemove(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="league-menu w-[calc(100%-2rem)] rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove from team?</AlertDialogTitle>
             <AlertDialogDescription>

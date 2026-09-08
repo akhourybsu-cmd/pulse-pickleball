@@ -2,7 +2,7 @@
  * Shared primitives used across the League Management tabs.
  * Extract so every tab looks and behaves the same.
  */
-import { ReactNode, useId, isValidElement, cloneElement } from "react";
+import { Children, ReactNode, useId, isValidElement, cloneElement } from "react";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -10,7 +10,7 @@ import { CalendarDays, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DUR, INDICATOR_SPRING, PRESSABLE, PRESSABLE_CARD } from "@/lib/leagues/motion";
 import {
-  DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/leagues/types";
 import type { ManageTab } from "./leagueManageTabs";
+import { nextChoiceIndex } from '@/lib/leagues/choiceNavigation';
 
 /* ------------------------------------------------------------------ */
 /*  LEAGUE-ADMIN VISUAL PRIMITIVES                                     */
@@ -28,7 +29,7 @@ import type { ManageTab } from "./leagueManageTabs";
 
 /**
  * Section header row that sits above every tab's workspace panel.
- * Bebas title + Barlow hint + right-aligned action cluster.
+ * PULSE heading, readable hint and wrapping action cluster.
  */
 export function SectionHeader({
   eyebrow, title, hint, actions, caption,
@@ -44,21 +45,21 @@ export function SectionHeader({
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           {eyebrow && (
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--lg-gold)]/80 mb-0.5">
+            <div className="text-xs font-semibold text-[color:var(--lg-accent-gold)] mb-1">
               {eyebrow}
             </div>
           )}
-          <h2 className="font-display text-2xl sm:text-3xl leading-none text-[color:var(--lg-text)]">
-            {title.toUpperCase()}
+          <h2 className="font-display break-words text-xl sm:text-2xl leading-tight text-[color:var(--lg-text)]">
+            {title}
           </h2>
           {hint && (
-            <p className="text-xs text-[color:var(--lg-text-dim)] mt-1.5 leading-relaxed max-w-2xl">
+            <p className="text-sm text-[color:var(--lg-text-dim)] mt-2 leading-relaxed max-w-2xl">
               {hint}
             </p>
           )}
         </div>
         {actions && (
-          <div className="flex items-center gap-2 shrink-0">{actions}</div>
+          <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>
         )}
       </div>
       {caption && (
@@ -73,7 +74,7 @@ export function SectionHeader({
 
 /**
  * "Scoreboard" numeric tile used in the hero KPI strip.
- * Bebas numeral on top-line, uppercase label above.
+ * Tabular PULSE numerals with a clear label above.
  */
 export function ScoreboardTile({
   icon, label, value, accent,
@@ -90,9 +91,9 @@ export function ScoreboardTile({
     )}>
       <div className="flex items-center gap-1.5 text-[color:var(--lg-gold)]/80">
         {icon}
-        <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
+        <span className="text-xs font-semibold text-[color:var(--lg-text-dim)]">{label}</span>
       </div>
-      <div className="lg-num text-4xl sm:text-5xl mt-1 leading-none text-[color:var(--lg-text)]">
+      <div className="lg-num text-2xl sm:text-3xl mt-2 leading-tight text-[color:var(--lg-text)]">
         {value}
       </div>
     </div>
@@ -114,7 +115,7 @@ export function TableShell({
     <div className="lg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[color:var(--lg-surface-2)] text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-gold)]/85">
+          <thead className="bg-[color:var(--lg-surface-2)] text-xs font-semibold text-[color:var(--lg-text-dim)]">
             <tr>{head}</tr>
           </thead>
           <tbody className="[&>tr]:border-t [&>tr]:border-[color:var(--lg-border)]/60 [&>tr:hover]:bg-[color:var(--lg-surface-2)]/60">
@@ -167,7 +168,7 @@ export function StatusChip({
 }) {
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-[0.1em]",
+      "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold",
       CHIP_TONES[tone],
     )}>
       {icon}
@@ -194,20 +195,21 @@ export function LgButton({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const reduced = useReducedMotion();
   const base = cn(
-    "relative inline-flex items-center justify-center gap-1.5 rounded-md font-bold uppercase tracking-[0.08em]",
+    "relative inline-flex items-center justify-center gap-2 rounded-xl font-semibold",
     "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--lg-gold)]/60 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--lg-surface)]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     PRESSABLE,
   );
-  const sizes = { sm: "h-8 px-3 text-[11px]", md: "h-9 px-4 text-xs" };
+  const sizes = { sm: "min-h-11 px-3 py-2 text-sm", md: "min-h-11 px-4 py-2 text-sm" };
   const variants = {
     primary: "bg-[color:var(--lg-gold)] text-[#1a1408] hover:bg-[color:var(--lg-gold-bright)] shadow-[0_2px_10px_-2px_rgba(201,168,76,0.4)]",
-    outline: "bg-transparent text-[color:var(--lg-gold)] ring-1 ring-[color:var(--lg-gold)]/50 hover:bg-[color:var(--lg-gold)]/10",
-    ghost:   "bg-transparent text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-white/5",
+    outline: "bg-transparent text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/50 hover:bg-[color:var(--lg-gold)]/10",
+    ghost:   "bg-transparent text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-muted",
   };
   const showSuccess = success && !loading;
   return (
     <button
+      type="button"
       className={cn(base, sizes[size], variants[variant], className)}
       aria-busy={loading || undefined}
       disabled={disabled || loading}
@@ -261,14 +263,14 @@ export function SeasonSelect({
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
             <CalendarDays className="w-3.5 h-3.5" />
           </span>
-          <span className="hidden sm:inline text-[10px] font-black uppercase tracking-wider text-muted-foreground shrink-0">
+          <span className="hidden sm:inline text-xs font-medium text-muted-foreground shrink-0">
             Season
           </span>
           <span className="hidden sm:inline text-border shrink-0">·</span>
           <span className="min-w-0 truncate font-semibold"><SelectValue /></span>
         </span>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="league-menu">
         {seasons.map((s) => (
           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
         ))}
@@ -401,32 +403,18 @@ export function FormShell({
   return (
     <DialogContent
       className={cn(
-        "p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl",
+        "league-menu p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl",
         size === "lg" ? "sm:max-w-lg" : "sm:max-w-md",
       )}
     >
-      {/* Stadium banner header — dark broadcast panel with an accent
-          side-rail, diagonal court texture, and a glow behind the icon.
-          Gives every league menu a "team sheet" feel instead of a plain
-          form. */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
+      {/* Quiet ink header with one gold accent; fields carry the hierarchy. */}
+      <div className="relative shrink-0 overflow-hidden lg-hero-gradient">
         <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", t.bar)} aria-hidden />
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-[0.05] pointer-events-none"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
-            color: "var(--lg-hero-gold)",
-          }}
-        />
-        <div aria-hidden className={cn("absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none", t.glow)} />
-
         <DialogHeader className="relative p-5 pr-12 pb-4 space-y-0 text-left">
           <div className="flex items-start gap-3">
             <div
               className={cn(
-                "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/10",
+                "hidden min-[400px]:flex h-11 w-11 rounded-xl items-center justify-center shrink-0 ring-1 ring-white/10",
                 t.chip,
               )}
               aria-hidden
@@ -435,18 +423,19 @@ export function FormShell({
             </div>
             <div className="min-w-0 flex-1 pt-0.5">
               {kicker && (
-                <div className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-0.5", t.kicker)}>
+                <div className="text-xs font-semibold mb-1 text-[color:var(--lg-hero-gold)]">
                   {kicker}
                 </div>
               )}
-              <DialogTitle className="text-lg font-black tracking-tight leading-tight text-[color:var(--lg-hero-text)]">
+              <DialogTitle className="break-words text-xl font-semibold leading-snug text-[color:var(--lg-hero-text)]">
                 {title}
               </DialogTitle>
               {subtitle && (
-                <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
+                <DialogDescription className="text-sm text-[color:var(--lg-hero-text-dim)] mt-2 leading-relaxed">
                   {subtitle}
-                </p>
+                </DialogDescription>
               )}
+              {!subtitle && <DialogDescription className="sr-only">Review the fields, then choose {primaryLabel}.</DialogDescription>}
             </div>
           </div>
         </DialogHeader>
@@ -462,7 +451,7 @@ export function FormShell({
           onClick={() => void onPrimary()}
           disabled={primaryDisabled || primaryLoading}
           className={cn(
-            "h-12 font-bold uppercase tracking-wide text-[13px] shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.35)]",
+            "h-12 min-h-12 shrink-0 rounded-xl font-semibold text-sm shadow-sm",
             "active:scale-[0.98] transition-transform",
             secondary ? "flex-1" : "w-full",
           )}
@@ -490,13 +479,13 @@ export function FormSection({
     <section className="space-y-2.5">
       {/* Chalk-line section header — accent tick + uppercase label +
           a fading rule, like a stat sheet heading. */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-baseline gap-2">
         <span className="h-3.5 w-1 rounded-full bg-primary shrink-0" aria-hidden />
-        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-foreground/75 shrink-0">
+        <span className="text-sm font-semibold text-foreground">
           {label}
         </span>
         {hint && (
-          <span className="text-[10px] text-muted-foreground/70 normal-case font-normal truncate">
+          <span className="text-xs text-muted-foreground font-normal">
             {hint}
           </span>
         )}
@@ -522,15 +511,25 @@ export function FormRow({
   children: ReactNode;
 }) {
   const generatedId = useId();
-  const fieldId = htmlFor ?? generatedId;
-  const labeledChild = isValidElement<{ id?: string }>(children)
+  const fieldId = htmlFor ?? (isValidElement<{ id?: string }>(children) ? children.props.id : undefined) ?? generatedId;
+  let labeledChild = isValidElement<{ id?: string }>(children)
     && (children.type === Input || children.type === Textarea)
     ? cloneElement(children, { id: children.props.id ?? fieldId }) : children;
+  if (isValidElement<{ children?: ReactNode }>(children) && children.type === Select) {
+    labeledChild = cloneElement(children, { children: Children.map(children.props.children, child =>
+      isValidElement<{ id?: string; 'aria-labelledby'?: string }>(child) && child.type === SelectTrigger
+        ? cloneElement(child, { id: fieldId, 'aria-labelledby': `${fieldId}-label` }) : child,
+    ) });
+  }
+  if (isValidElement<{ ariaLabel?: string }>(children) && children.type === SegmentedControl) {
+    labeledChild = cloneElement(children, { ariaLabel: children.props.ariaLabel ?? label });
+  }
   return (
     <div className="min-w-0 space-y-1.5">
       <Label
+        id={`${fieldId}-label`}
         htmlFor={fieldId}
-        className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
+        className="text-sm font-medium text-foreground"
       >
         {label}
         {required && (
@@ -539,7 +538,7 @@ export function FormRow({
       </Label>
       {labeledChild}
       {hint && (
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           {hint}
         </p>
       )}
@@ -552,7 +551,7 @@ export function FormRow({
  * a consistent touch-target on mobile. Import + apply to `<Input>`,
  * `<SelectTrigger>`, `<Textarea>`.
  */
-export const FIELD_H = "h-11 min-w-0 max-w-full rounded-lg";
+export const FIELD_H = "h-11 min-w-0 max-w-full rounded-xl text-base sm:text-sm";
 
 /* ------------------------------------------------------------------ */
 /*  Sporty choice controls — replace plain dropdowns for small enum
@@ -586,6 +585,16 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
+      onKeyDown={event => {
+        const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]'));
+        const index = buttons.indexOf(event.target as HTMLButtonElement);
+        if (index < 0) return;
+        const next = nextChoiceIndex(event.key, index, options.length);
+        if (next === null) return;
+        event.preventDefault();
+        onChange(options[next].value);
+        buttons[next]?.focus();
+      }}
       className="flex w-full rounded-xl bg-muted/60 p-1 gap-1 ring-1 ring-inset ring-border/50"
     >
       {options.map((o) => {
@@ -596,9 +605,10 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={active || (!options.some(option => option.value === value) && o === options[0]) ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative flex-1 rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors",
+              "relative min-h-11 min-w-0 flex-1 rounded-lg px-2 py-2 text-sm font-semibold transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
               PRESSABLE,
               active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
@@ -637,7 +647,7 @@ export function ChoiceGrid<T extends string>({
 }) {
   const reduced = useReducedMotion();
   return (
-    <div className={cn("grid gap-2", columns === 3 ? "grid-cols-3" : "grid-cols-2")}>
+    <div className={cn("grid gap-2", columns === 3 ? "grid-cols-1 min-[400px]:grid-cols-3" : "grid-cols-2")}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -679,14 +689,14 @@ export function ChoiceGrid<T extends string>({
                 </span>
               )}
               <span className={cn(
-                "text-xs font-bold uppercase tracking-wide leading-tight",
+                "text-sm font-semibold leading-snug",
                 active ? "text-primary" : "text-foreground",
               )}>
                 {o.label}
               </span>
             </div>
             {o.desc && (
-              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 {o.desc}
               </p>
             )}
