@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 const migrations = resolve(__dirname, "../../supabase/migrations");
 const read = (file: string) => readFileSync(resolve(migrations, file), "utf8");
 const migration = read("20260913100000_consistent_friend_connections.sql");
+const discoveryMigration = read("20260913110000_repair_friend_discovery.sql");
 const original = read(
   "20260130233055_2617c20c-4407-4b1d-a658-4e4cc4359fdb.sql"
 );
@@ -54,7 +55,15 @@ beforeAll(async () => {
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
       $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     GRANT USAGE ON SCHEMA auth TO authenticated, anon;
-    CREATE TABLE public.profiles (id uuid PRIMARY KEY REFERENCES auth.users(id), display_name text, full_name text);
+    CREATE TABLE public.profiles (id uuid PRIMARY KEY REFERENCES auth.users(id), display_name text, full_name text,
+      avatar_url text, current_rating numeric, handle text, location_name text, location_lat double precision,
+      location_lng double precision, discoverable_by_location boolean DEFAULT false);
+    CREATE TABLE public.matches (id uuid PRIMARY KEY, status text, voided boolean DEFAULT false);
+    CREATE TABLE public.match_participants (match_id uuid, player_id uuid);
+    CREATE TABLE public.round_robin_players (event_id uuid, player_id uuid, active boolean DEFAULT true);
+    CREATE TABLE public.group_members (group_id uuid, user_id uuid, status text DEFAULT 'active');
+    CREATE TABLE public.calendar_event_registrations (event_id uuid, user_id uuid);
+    CREATE TABLE public.friend_suggestion_dismissals (user_id uuid, dismissed_user_id uuid);
     CREATE TABLE public.user_notifications (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, notification_type text,
       category text, title text, message text, link text, actor_id uuid, metadata jsonb, read boolean DEFAULT false
@@ -90,18 +99,20 @@ beforeAll(async () => {
   );
   await db.exec(migration);
   await db.exec(migration); // Safe to copy/paste again.
+  await db.exec(discoveryMigration);
   await db.exec(`
     CREATE TRIGGER trg_notify_friendship_insert AFTER INSERT ON public.friendships
       FOR EACH ROW EXECUTE FUNCTION public.notify_friendship_event();
     CREATE TRIGGER trg_notify_friendship_update AFTER UPDATE ON public.friendships
       FOR EACH ROW EXECUTE FUNCTION public.notify_friendship_event();
     INSERT INTO auth.users VALUES ('${a}'), ('${b}'), ('${c}');
-    INSERT INTO public.profiles (id) SELECT id FROM auth.users;
+    INSERT INTO public.profiles (id, display_name, full_name, handle) VALUES
+      ('${a}', 'Alpha', 'Alpha Player', 'alpha'), ('${b}', 'Beta', 'Beta Player', 'beta'), ('${c}', 'Charlie', 'Charlie Player', 'charlie');
   `);
 }, 30_000);
 beforeEach(async () => {
   await db.exec(
-    "TRUNCATE public.friendships, public.user_blocks, public.user_notifications"
+    "TRUNCATE public.friendships, public.user_blocks, public.user_notifications, public.matches, public.match_participants, public.round_robin_players, public.group_members, public.calendar_event_registrations, public.friend_suggestion_dismissals; UPDATE profiles SET discoverable_by_location = false"
   );
 });
 afterAll(async () => {
@@ -307,5 +318,129 @@ describe("atomic blocks", () => {
   it("does not disclose other players’ friend lists through RLS", async () => {
     await send();
     expect((await asUser(c, "SELECT * FROM friendships")).rows).toEqual([]);
+  });
+});
+
+describe("player discovery", () => {
+  const suggest = () =>
+    asUser<{ id: string; reason: string; weight: number }>(
+      a,
+      "SELECT * FROM suggest_friends()"
+    );
+  const search = (query = "Charlie") =>
+    asUser<{ id: string; reason: string }>(
+      a,
+      "SELECT * FROM search_connectable_users($1)",
+      [query]
+    );
+  const sharedGroup = () =>
+    db.query(
+      "INSERT INTO group_members (group_id,user_id) VALUES ($1,$2),($1,$3)",
+      [a, a, c]
+    );
+  const optIn = () =>
+    db.exec(
+      "UPDATE profiles SET discoverable_by_location = true, location_lat = 40, location_lng = -74"
+    );
+
+  it("reproduces the old ambiguous-weight failure and verifies the replacement", async () => {
+    await db.exec(
+      read("20260828143211_d7c8e0fc-76bf-4537-b2d9-7c6be4ac2f9c.sql")
+    );
+    try {
+      await expect(suggest()).rejects.toThrow(
+        'column reference "weight" is ambiguous'
+      );
+    } finally {
+      await db.exec(discoveryMigration);
+    }
+    await sharedGroup();
+    expect((await suggest()).rows).toMatchObject([
+      { id: c, reason: "Shared group", weight: 5 },
+    ]);
+  });
+  it("returns an empty list only when there are no eligible connections", async () => {
+    expect((await suggest()).rows).toEqual([]);
+    expect((await search()).rows).toEqual([]);
+  });
+  it.each([
+    [a, b, b, c],
+    [a, b, c, b],
+    [b, a, b, c],
+    [b, a, c, b],
+  ])(
+    "discovers a mutual friend with directions %s → %s and %s → %s",
+    async (first, second, third, fourth) => {
+      await send(first, second);
+      await send(second, first);
+      await send(third, fourth);
+      await send(fourth, third);
+      expect((await suggest()).rows.map((row) => row.id)).toEqual([c]);
+      expect((await search()).rows.map((row) => row.id)).toEqual([c]);
+    }
+  );
+  it("keeps current friends and requests searchable by handle", async () => {
+    await send();
+    expect((await search("@beta")).rows).toMatchObject([
+      { id: b, reason: "Friend request" },
+    ]);
+    await send(b, a);
+    expect((await search("@beta")).rows).toMatchObject([
+      { id: b, reason: "Friends" },
+    ]);
+  });
+  it("honors dismissed suggestions without preventing intentional search", async () => {
+    await sharedGroup();
+    await db.query("INSERT INTO friend_suggestion_dismissals VALUES ($1,$2)", [
+      a,
+      c,
+    ]);
+    expect((await suggest()).rows).toEqual([]);
+    expect((await search()).rows.map((row) => row.id)).toEqual([c]);
+  });
+  it.each([
+    [a, c],
+    [c, a],
+  ])(
+    "excludes canonical blocks in either direction from suggestions, search, and nearby",
+    async (blocker, target) => {
+      await sharedGroup();
+      await optIn();
+      await asUser(blocker, "SELECT block_player($1)", [target]);
+      expect((await suggest()).rows).toEqual([]);
+      expect((await search()).rows).toEqual([]);
+      const nearby = await asUser<{ id: string }>(
+        a,
+        "SELECT * FROM discover_players_nearby()"
+      );
+      expect(nearby.rows.map((row) => row.id)).not.toContain(c);
+    }
+  );
+  it("does not use inactive group membership for discovery", async () => {
+    await sharedGroup();
+    await db.query(
+      "UPDATE group_members SET status = 'removed' WHERE user_id = $1",
+      [c]
+    );
+    expect((await suggest()).rows).toEqual([]);
+    expect((await search()).rows).toEqual([]);
+  });
+  it("requires reciprocal location opt-in and does not return exact coordinates", async () => {
+    expect(
+      (await asUser(a, "SELECT * FROM discover_players_nearby()")).rows
+    ).toEqual([]);
+    await optIn();
+    await db.query(
+      "UPDATE profiles SET discoverable_by_location = false WHERE id = $1",
+      [c]
+    );
+    const nearby = await asUser<{ id: string; distance_km: number }>(
+      a,
+      "SELECT * FROM discover_players_nearby()"
+    );
+    expect(nearby.rows.map((row) => row.id)).toEqual([b]);
+    expect(nearby.rows[0].distance_km).toBe(0);
+    expect(nearby.rows[0]).not.toHaveProperty("location_lat");
+    expect(nearby.rows[0]).not.toHaveProperty("location_lng");
   });
 });

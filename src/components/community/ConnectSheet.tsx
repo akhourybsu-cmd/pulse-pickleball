@@ -333,11 +333,11 @@ function PersonRow({
   const navigate = useNavigate();
   const name = displayName(player);
   return (
-    <div className={cn(glassRow, "gap-2")}>
+    <div className={cn(glassRow, "flex-wrap gap-3 sm:flex-nowrap")}>
       <button
         onClick={() => navigate(`/profile/${player.id}`)}
         aria-label={`View ${name}'s profile`}
-        className="shrink-0"
+        className="flex min-w-0 flex-1 basis-full items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:basis-auto"
       >
         <Avatar className="h-10 w-10 ring-1 ring-border/60">
           <AvatarImage src={player.avatar_url || undefined} />
@@ -345,28 +345,29 @@ function PersonRow({
             {getInitials(name)}
           </AvatarFallback>
         </Avatar>
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-sm font-semibold leading-snug tracking-tight">
+            {name}
+          </span>
+          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            {meta}
+          </span>
+        </span>
       </button>
-      <button
-        onClick={() => navigate(`/profile/${player.id}`)}
-        className="min-w-0 flex-1 text-left"
-      >
-        <p className="truncate text-sm font-semibold tracking-tight">{name}</p>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {meta}
-        </div>
-      </button>
-      {onDismiss && (
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-xl text-muted-foreground/60 hover:text-muted-foreground"
-          onClick={onDismiss}
-          aria-label={`Dismiss ${name}`}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
-      {action}
+      <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+        {onDismiss && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-11 w-11 shrink-0 rounded-xl text-muted-foreground/60 hover:text-muted-foreground"
+            onClick={onDismiss}
+            aria-label={`Dismiss ${name}`}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+        {action}
+      </div>
     </div>
   );
 }

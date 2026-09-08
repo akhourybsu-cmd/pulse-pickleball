@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 
 const VALID_TABS = ["friends", "requests", "suggestions"] as const;
 type FriendsTab = (typeof VALID_TABS)[number];
-const grid = "grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3";
+const grid = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 const card =
   "min-w-0 rounded-2xl border border-border/60 bg-card p-3.5 shadow-sm";
 
@@ -242,7 +242,7 @@ export default function Friends({
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1 basis-48">
+                <div className="min-w-0 flex-1 basis-48 sm:max-w-lg">
                   <SearchField
                     value={friendQuery}
                     onValueChange={setFriendQuery}
