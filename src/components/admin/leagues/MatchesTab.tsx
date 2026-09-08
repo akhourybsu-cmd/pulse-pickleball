@@ -1,3 +1,7 @@
+import { useLeagueWorkspace } from '@/hooks/useLeagueWorkspace';
+import { parseWholeNumber, validateMatchInputs } from '@/lib/leagues/operations';
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -54,78 +58,21 @@ const STATUS_TONE: Record<LeagueMatchStatus, string> = {
 };
 
 export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [sessions, setSessions] = useState<LeagueSession[]>([]);
-  const [teams, setTeams] = useState<LeagueTeam[]>([]);
-  const [members, setMembers] = useState<LeagueMember[]>([]);
-  const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
-  const [matches, setMatches] = useState<LeagueMatch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const { matches, members: seasonMembers, teams, sessions, profilesById, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'members', 'teams', 'sessions']);
+  const loading = seasonsLoading || rowsLoading;
+  const error = seasonsError ?? rowsError;
+  const members = seasonMembers.filter(m => m.status === 'active');
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueMatch | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "needs_review" | "done">("all");
   const [query, setQuery] = useState("");
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoading(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
 
-  useEffect(() => {
-    if (!seasonId) return;
-    void reload();
-    // eslint-disable-next-line
-  }, [seasonId, dataVersion]);
 
-  const reload = async () => {
-    const [{ data: sess }, { data: t }, { data: mt }, { data: mems }] = await Promise.all([
-      supabase.from("league_sessions" as never).select("*").eq("season_id", seasonId),
-      supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
-      supabase.from("league_matches" as never).select("*")
-        .eq("season_id", seasonId)
-        .order("scheduled_time", { ascending: true, nullsFirst: false })
-        .order("court_number", { ascending: true, nullsFirst: false })
-        .order("id", { ascending: true }),
-      supabase.from("league_members" as never).select("*")
-        .eq("season_id", seasonId).eq("status", "active"),
-    ]);
-    setSessions((sess ?? []) as unknown as LeagueSession[]);
-    setTeams((t ?? []) as unknown as LeagueTeam[]);
-    const matchList = (mt ?? []) as unknown as LeagueMatch[];
-    setMatches(matchList);
-    const memList = (mems ?? []) as unknown as LeagueMember[];
-    setMembers(memList);
-
-    // Grab profiles for any player referenced in a match slot OR in the
-    // active member list (so the pickers show names, not UUIDs).
-    const playerIds = new Set<string>(memList.map((m) => m.user_id));
-    matchList.forEach((m) => {
-      [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id]
-        .forEach((id) => id && playerIds.add(id));
-    });
-    if (playerIds.size) {
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
-        .in("id", Array.from(playerIds));
-      const map: Record<string, PlayerRow> = {};
-      (profs ?? []).forEach((p) => { map[(p as PlayerRow).id] = p as PlayerRow; });
-      setProfilesById(map);
-    } else {
-      setProfilesById({});
-    }
-  };
-
+  if (error) return <EmptyState title="Couldn't load this season" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void retry(); void reload(); } }} />;
   if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return <EmptyState title="Create a season first" desc="Matches belong to a session, which belongs to a season." />;
@@ -145,13 +92,13 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
       <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-xs text-blue-700 dark:text-blue-300 flex gap-2">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
-          League matches don't touch PULSE Ratings. rating_status stays
-          <code className="mx-1 px-1 rounded bg-blue-500/10 text-[10px]">not_connected</code>
-          regardless of score or verification.
+          {league.league_type === 'ladder' && league.rating_eligible
+            ? 'Verified ladder games contribute to PULSE Ratings. Correcting a result can also update ratings.'
+            : 'These matches contribute to league standings, not PULSE Ratings.'}
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
@@ -159,7 +106,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
               <Plus className="w-4 h-4 mr-1.5" />New match
             </Button>
           </DialogTrigger>
-          {seasonId && sessions.length > 0 && (
+          {createOpen && seasonId && sessions.length > 0 && (
             <MatchEditor
               mode="create"
               league={league} seasonId={seasonId}
@@ -456,6 +403,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
       {editing && (
         <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
           <MatchEditor
+            key={editing.id}
             mode="edit"
             league={league} seasonId={seasonId as string}
             sessions={sessions} teams={teams} members={members} profilesById={profilesById}
@@ -551,18 +499,22 @@ function MatchEditor({
   const [saving, setSaving] = useState(false);
 
   const doSave = async (): Promise<LeagueMatch | null> => {
+    if (saving) return null;
     if (!sessionId) { toast.error("Session required"); return null; }
     if (isTeamMode && teamAId !== "none" && teamBId !== "none" && teamAId === teamBId) {
       toast.error("Team A and Team B must be different"); return null;
     }
-    setSaving(true);
-
     const session = sessions.find((s) => s.id === sessionId);
-    const parseScore = (v: string): number | null => {
-      if (!v.trim()) return null;
-      const n = Number(v);
-      return Number.isNaN(n) || n < 0 ? null : n;
-    };
+    const inputError = validateMatchInputs({ seasonId, session, court: courtNumber,
+      players: [playerAId, playerBId, playerCId, playerDId].map(id => id === 'none' ? null : id),
+      teamA: teamAId === 'none' ? null : teamAId, teamB: teamBId === 'none' ? null : teamBId,
+      scoreA: teamAScore, scoreB: teamBScore, status });
+    if (inputError) { toast.error(inputError); return null; }
+    if (scheduledTime && !Number.isFinite(new Date(scheduledTime).getTime())) { toast.error('Choose a valid date and time'); return null; }
+    const hasScores = !!teamAScore.trim() && !!teamBScore.trim();
+    const nextStatus = hasScores && (status === 'scheduled' || status === 'in_progress')
+      && (!initial || initial.status === 'scheduled' || initial.status === 'in_progress') ? 'verified' : status;
+    setSaving(true);
 
     const payload = {
       league_id: league.id,
@@ -576,9 +528,9 @@ function MatchEditor({
       player_b_id: playerBId === "none" ? null : playerBId,
       player_c_id: playerCId === "none" ? null : playerCId,
       player_d_id: playerDId === "none" ? null : playerDId,
-      status,
-      team_a_score: parseScore(teamAScore),
-      team_b_score: parseScore(teamBScore),
+      status: nextStatus,
+      team_a_score: parseWholeNumber(teamAScore),
+      team_b_score: parseWholeNumber(teamBScore),
       // rating_status intentionally not set — stays at 'not_connected' default.
     };
 
@@ -604,7 +556,8 @@ function MatchEditor({
       } : null,
       newValue: payload,
     });
-    toast.success(mode === "create" ? "Match scheduled" : "Score locked in");
+    setStatus(saved.status);
+    toast.success(saved.status === 'verified' ? 'Result confirmed and added to standings' : mode === 'create' ? 'Match scheduled' : 'Match updated');
     setSaving(false);
     return saved;
   };
@@ -658,8 +611,8 @@ function MatchEditor({
         size="lg"
         kicker={mode === "create" ? "New matchup" : "Matchup"}
         title={mode === "create" ? "Schedule a match" : "Edit match"}
-        subtitle="Scores feed standings only — league play never touches PULSE Ratings."
-        primaryLabel={mode === "create" ? "Schedule match" : "Save score"}
+        subtitle={league.league_type === 'ladder' && league.rating_eligible ? 'Confirmed results update standings and PULSE Ratings.' : 'Confirmed results update this season’s standings.'}
+        primaryLabel={mode === "create" ? "Save match" : "Save changes"}
         primaryLoading={saving}
         onPrimary={submit}
         secondary={mode === "edit" && onSaveAndNext ? (
@@ -687,7 +640,7 @@ function MatchEditor({
               </SelectContent>
             </Select>
           </FormRow>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormRow label="Court #">
               <Input type="number" min="1" value={courtNumber}
                 onChange={(e) => setCourtNumber(e.target.value)} className={FIELD_H} />
@@ -701,7 +654,7 @@ function MatchEditor({
 
         <FormSection label="Matchup">
           {isTeamMode && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([
                 { label: "Team A", val: teamAId, set: setTeamAId },
                 { label: "Team B", val: teamBId, set: setTeamBId },
@@ -724,7 +677,7 @@ function MatchEditor({
             </div>
           )}
           {/* Player line-ups — always available for per-match roster tracking */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([
               { label: "Side A", slots: [
                 { val: playerAId, set: setPlayerAId },
@@ -744,6 +697,7 @@ function MatchEditor({
                     <SelectTrigger className="h-9"><SelectValue placeholder="Add player" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Empty</SelectItem>
+                      {slot.val !== 'none' && !playerPool.some(p => p.id === slot.val) && <SelectItem value={slot.val}>{nameOf(slot.val) ?? 'Assigned player'} · not active on roster</SelectItem>}
                       {playerPool.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                       ))}
@@ -782,7 +736,8 @@ function MatchEditor({
               </div>
             </div>
             <p className="text-[10px] text-center text-muted-foreground mt-2">
-              Leave blank until the match is played.
+              Leave both blank until played. Entering both scores on a scheduled match confirms the result as organizer.
+              To correct a verified lineup, first save its status as Scheduled, then make corrections and verify again.
             </p>
           </div>
         </FormSection>
@@ -797,7 +752,7 @@ function MatchEditor({
               <SelectItem value="verified">Verified</SelectItem>
               <SelectItem value="disputed">Disputed</SelectItem>
               <SelectItem value="canceled">Canceled</SelectItem>
-              <SelectItem value="forfeit">Forfeit</SelectItem>
+              {initial?.status === 'forfeit' && <SelectItem value="forfeit">Forfeit</SelectItem>}
             </SelectContent>
           </Select>
         </FormSection>
@@ -817,14 +772,14 @@ function MatchEditor({
                   Resolve dispute
                 </Button>
               )}
-              <Button
+              {isTeamMode && <Button
                 type="button" variant="outline" size="sm"
                 onClick={() => setForfeitOpen(true)}
                 className="flex-1 h-10 text-muted-foreground hover:text-foreground"
               >
                 <Flag className="w-3.5 h-3.5 mr-1.5" />
                 Mark forfeit
-              </Button>
+              </Button>}
             </div>
           </FormSection>
         )}

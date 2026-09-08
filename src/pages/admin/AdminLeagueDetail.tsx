@@ -24,6 +24,8 @@ import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
 import { type ManageTab, MANAGE_TABS, visibleManageTabs } from "@/components/admin/leagues/leagueManageTabs";
 import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
 import { DUR, EASE_OUT, contentVariants } from "@/lib/leagues/motion";
+import { useLeagueLiveRefresh } from '@/hooks/useLeagueLiveRefresh';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Counts {
   seasons: number;
@@ -48,12 +50,15 @@ export default function AdminLeagueDetail() {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [managerName, setManagerName] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   // Bumped on any mutation from any tab. Every tab subscribes to it so
   // creating a season in SeasonsTab immediately refreshes the season
   // dropdown in Divisions/Members/Teams/Sessions/Matches without a
   // manual reload. Also refetches hero counts.
   const [dataVersion, setDataVersion] = useState(0);
   const bumpDataVersion = () => setDataVersion((v) => v + 1);
+  useLeagueLiveRefresh(leagueId, bumpDataVersion);
 
   // Active tab is synced to the URL (?tab=…) so a refresh keeps your place and
   // organizers can share a link straight to a section. Unknown values fall
@@ -119,6 +124,7 @@ export default function AdminLeagueDetail() {
   const refresh = async () => {
     if (!leagueId) return;
     setLoading(true);
+    setLoadError(null);
     // No client-side admin gate — RLS decides. The row comes back only
     // when the caller is the league owner OR a platform admin (via
     // is_league_admin policy). An empty result means "not your league".
@@ -128,12 +134,22 @@ export default function AdminLeagueDetail() {
       .eq("id", leagueId)
       .maybeSingle();
     if (error) {
-      toast.error(error.message);
+      setLoadError(error.message);
       setLoading(false);
       return;
     }
     if (!data) {
       setAccessDenied(true);
+      setLoading(false);
+      return;
+    }
+    // SELECT visibility also includes ordinary members and public leagues;
+    // it is never evidence that someone has organizer privileges.
+    const permission = await supabase.rpc('is_league_admin' as never, { p_league_id: leagueId } as never);
+    if (permission.error || permission.data !== true) {
+      setLeague(null);
+      setAccessDenied(!permission.error);
+      setLoadError(permission.error?.message ?? null);
       setLoading(false);
       return;
     }
@@ -189,6 +205,9 @@ export default function AdminLeagueDetail() {
   const onDataMutated = () => {
     bumpDataVersion();
     void refetchCounts();
+    for (const key of ['my-leagues', 'my-upcoming-league-matches', 'player-league-detail', 'league-seasons']) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
   };
 
   // Shell wrapper — AdminLayout only inside /admin/*, else render
@@ -206,6 +225,14 @@ export default function AdminLeagueDetail() {
     );
   }
 
+  if (loadError) {
+    return shell(<div role="alert" className="mx-auto max-w-md p-6 text-center space-y-3">
+      <p className="font-semibold">Couldn't load league management</p>
+      <p className="text-sm text-muted-foreground">{loadError}</p>
+      <button className="rounded-xl border px-4 py-2" onClick={() => void refresh()}>Try again</button>
+    </div>);
+  }
+
   if (accessDenied || !league) {
     return shell(
       <div className="container mx-auto px-4 py-10 max-w-md text-center space-y-3">
@@ -214,7 +241,7 @@ export default function AdminLeagueDetail() {
         </div>
         <p className="text-sm font-semibold">You don't have access</p>
         <p className="text-xs text-muted-foreground">
-          This league is private, or you're not the owner or a member yet.
+          Only the owner, active assistant managers, and platform administrators can manage this league.
         </p>
         <button
           type="button"

@@ -62,7 +62,7 @@ export function visibleManageTabs(leagueType: string): TabDef[] {
   const isLadder = leagueType === "ladder";
   return MANAGE_TABS.filter((t) => {
     if (t.key === "sessions") return !isLadder;
-    if (t.key === "teams") return !isLadder;
+    if (t.key === "teams") return leagueType === 'doubles' || leagueType === 'team';
     if (t.key === "ladder") return isLadder;
     return true;
   });

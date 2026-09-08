@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { leagueErrorMessage, leagueRows } from '@/lib/leagues/data';
+import { useMemo, useState } from "react";
+import { useQuery } from '@tanstack/react-query';
+import { useAuthState } from '@/hooks/useAuthState';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -83,29 +86,20 @@ interface Props {
 export function TeamRosterDialog({
   open, onOpenChange, league, team, eligibleMembers, profilesById, onChanged,
 }: Props) {
-  const [roster, setRoster] = useState<LeagueTeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuthState();
+  const rosterQuery = useQuery({
+    queryKey: ['league-team-roster', user?.id, team.id], enabled: open && !!user,
+    queryFn: ({ signal }) => leagueRows<LeagueTeamMember>('league_team_members', { team_id: team.id }, signal),
+  });
+  const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
+  const loading = rosterQuery.isPending;
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ member: LeagueTeamMember; name: string } | null>(null);
   const [addQuery, setAddQuery] = useState("");
 
   const load = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("league_team_members" as never)
-      .select("*")
-      .eq("team_id", team.id)
-      .order("created_at", { ascending: true });
-    if (error) toast.error(error.message);
-    setRoster((data ?? []) as unknown as LeagueTeamMember[]);
-    setLoading(false);
+    await rosterQuery.refetch();
   };
-
-  useEffect(() => {
-    if (!open) return;
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, team.id]);
 
   const rosterUserIds = useMemo(
     () => new Set(roster.filter((r) => r.status === "active").map((r) => r.user_id)),
@@ -130,12 +124,13 @@ export function TeamRosterDialog({
   const addMember = async (userId: string) => {
     const p = profilesById[userId];
     const nm = p ? resolvePlayerName(p) : "player";
+    if (busy) return;
     setBusy(true);
-    const payload = { team_id: team.id, user_id: userId, role: "player" as TeamMemberRole };
+    const payload = { team_id: team.id, user_id: userId, role: "player" as TeamMemberRole, status: 'active' };
     try {
       await withPulseActivity(`Adding ${nm}…`, async () => {
         const { data, error } = await supabase
-          .from("league_team_members" as never).insert(payload as never).select().single();
+          .from("league_team_members" as never).upsert(payload as never, { onConflict: 'team_id,user_id' }).select().single();
         if (error || !data) throw error ?? new Error("Add failed");
         await logLeagueAction({
           leagueId: league.id, seasonId: team.season_id,
@@ -146,8 +141,8 @@ export function TeamRosterDialog({
       }, "Added to the team");
       await load();
       await onChanged();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Add failed");
+    } catch (e: unknown) {
+      toast.error(leagueErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -158,12 +153,13 @@ export function TeamRosterDialog({
     fields: Partial<LeagueTeamMember>,
     action: string,
   ) => {
+    if (busy) return;
     setBusy(true);
     try {
       await withPulseActivity("Updating team roster…", async () => {
         const { error } = await supabase
           .from("league_team_members" as never)
-          .update(fields as never).eq("id", member.id);
+          .update(fields as never).eq("id", member.id).select("id").single();
         if (error) throw error;
         await logLeagueAction({
           leagueId: league.id, seasonId: team.season_id,
@@ -174,8 +170,8 @@ export function TeamRosterDialog({
       }, "Roster updated");
       await load();
       await onChanged();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+    } catch (e: unknown) {
+      toast.error(leagueErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -187,7 +183,7 @@ export function TeamRosterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl">
         {/* Stadium banner header — matches every other league menu */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400" aria-hidden />
@@ -202,7 +198,7 @@ export function TeamRosterDialog({
           />
           <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-amber-400/20" />
 
-          <DialogHeader className="relative p-5 pb-4 space-y-0 text-left">
+          <DialogHeader className="relative p-5 pr-10 pb-4 space-y-0 text-left">
             <div className="flex items-start gap-3">
               <div
                 className="h-11 w-11 rounded-xl bg-amber-400/15 text-amber-300 flex items-center justify-center shrink-0 ring-1 ring-white/10"
@@ -225,14 +221,14 @@ export function TeamRosterDialog({
             </div>
           </DialogHeader>
         </div>
-        {loading ? (
+        {rosterQuery.error ? <div className="p-5 space-y-3" role="alert"><p className="text-sm">{leagueErrorMessage(rosterQuery.error)}</p><Button onClick={() => void load()}>Try again</Button></div> : loading ? (
           <div className="px-5 py-6 space-y-2">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-[52px] rounded-xl bg-muted/50 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="px-5 pb-5 pt-4 space-y-5 max-h-[65vh] overflow-y-auto">
+          <div className="px-5 pb-5 pt-4 space-y-5 min-h-0 overflow-y-auto overscroll-contain">
 
             {/* Active roster */}
             <section className="space-y-2.5">

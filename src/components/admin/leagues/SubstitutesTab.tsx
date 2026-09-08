@@ -1,3 +1,6 @@
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { leagueErrorMessage } from '@/lib/leagues/data';
+import { useLeagueWorkspace } from '@/hooks/useLeagueWorkspace';
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,7 +19,7 @@ import {
   Plus, Search, LifeBuoy, Trash2, Repeat, Power, PowerOff, StickyNote,
 } from "lucide-react";
 import type {
-  LeagueSeason, LeagueSubstitute, SubstituteStatus, LeagueMatch,
+  LeagueSubstitute, SubstituteStatus, LeagueMatch,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
@@ -43,13 +46,9 @@ interface PlayerRow {
 }
 
 export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [subs, setSubs] = useState<LeagueSubstitute[]>([]);
-  const [matches, setMatches] = useState<LeagueMatch[]>([]);
-  const [batchByGroup, setBatchByGroup] = useState<Record<string, { batch_id: string; week_number: number; batch_number: number }>>({});
-  const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
-  const [loading, setLoading] = useState(true);
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const { subs, matches, batchByGroup, profilesById, loading, error, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'subs']);
+
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSubstitute | null>(null);
   const [swapFor, setSwapFor] = useState<LeagueSubstitute | null>(null);
@@ -59,87 +58,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   // info; nothing here gates or blocks a swap.
   const { cards: skillCards } = useLeagueSkillCards(league.id);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoading(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
 
-  useEffect(() => {
-    if (!seasonId) return;
-    void reload();
-    // eslint-disable-next-line
-  }, [seasonId, dataVersion]);
-
-  const reload = async () => {
-    const [{ data: s }, { data: mt }] = await Promise.all([
-      supabase.from("league_substitutes" as never).select("*")
-        .eq("season_id", seasonId).order("created_at", { ascending: false }),
-      supabase.from("league_matches" as never).select("*")
-        .eq("season_id", seasonId).order("scheduled_time", { ascending: true }),
-    ]);
-    const subList = (s ?? []) as unknown as LeagueSubstitute[];
-    setSubs(subList);
-    const matchList = (mt ?? []) as unknown as LeagueMatch[];
-    setMatches(matchList);
-
-    // Build a group_id → batch (with week/batch ordering) map so a swap
-    // can be scoped to the *earliest* upcoming batch a player is in,
-    // rather than sweeping every scheduled batch in the season.
-    const groupIds = Array.from(new Set(
-      matchList.map((m) => m.ladder_batch_group_id).filter(Boolean),
-    )) as string[];
-    if (groupIds.length) {
-      const { data: groups } = await supabase
-        .from("ladder_batch_groups" as never)
-        .select("id, batch_id")
-        .in("id", groupIds);
-      const batchIds = Array.from(new Set(((groups ?? []) as { batch_id: string }[]).map((g) => g.batch_id)));
-      const { data: batches } = batchIds.length
-        ? await supabase
-            .from("ladder_batches" as never)
-            .select("id, week_number, batch_number")
-            .in("id", batchIds)
-        : { data: [] as { id: string; week_number: number; batch_number: number }[] };
-      const batchMap = new Map<string, { week_number: number; batch_number: number }>();
-      ((batches ?? []) as { id: string; week_number: number; batch_number: number }[]).forEach((b) => {
-        batchMap.set(b.id, { week_number: b.week_number, batch_number: b.batch_number });
-      });
-      const map: Record<string, { batch_id: string; week_number: number; batch_number: number }> = {};
-      ((groups ?? []) as { id: string; batch_id: string }[]).forEach((g) => {
-        const b = batchMap.get(g.batch_id);
-        if (b) map[g.id] = { batch_id: g.batch_id, ...b };
-      });
-      setBatchByGroup(map);
-    } else {
-      setBatchByGroup({});
-    }
-
-    // Names for subs + every slot occupant referenced by a match.
-    const ids = new Set<string>(subList.map((x) => x.user_id));
-    matchList.forEach((m) => {
-      [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id]
-        .forEach((id) => id && ids.add(id));
-    });
-    if (ids.size) {
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name, avatar_url")
-        .in("id", Array.from(ids));
-      const map: Record<string, PlayerRow> = {};
-      (profs ?? []).forEach((p) => { map[(p as PlayerRow).id] = p as PlayerRow; });
-      setProfilesById(map);
-    } else {
-      setProfilesById({});
-    }
-  };
 
   // How many match slots each sub currently fills this season — the
   // "track subs" signal so the organizer can see who's carrying the load.
@@ -153,7 +72,9 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
     return counts;
   }, [matches]);
 
-  if (loading) return <TabSkeleton lines={3} />;
+  if (seasonsError) return <EmptyState title="Couldn't load seasons" desc={leagueErrorMessage(seasonsError)} action={{ label: 'Try again', onClick: () => { void retry(); } }} />;
+  if (error) return <EmptyState title="Couldn't load substitutes" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void reload(); } }} />;
+  if (seasonsLoading || loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
       <EmptyState
@@ -166,13 +87,13 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />Add sub</Button>
           </DialogTrigger>
-          {seasonId && (
+          {addOpen && seasonId && (
             <SubEditorDialog
               mode="create"
               leagueId={league.id}
@@ -189,8 +110,8 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         <LifeBuoy className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           Keep a bench of fill-in players here, then use <strong>Swap in</strong> to
-          drop a sub into any match for a given week. Swaps are recorded in the
-          audit log and never touch PULSE Ratings.
+          fill a player slot in upcoming games. Ladder swaps target the earliest open batch.
+          Swaps are audited; any later verified, rating-eligible results belong to the players who actually played.
         </span>
       </div>
 
@@ -205,7 +126,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         <ul className="space-y-2">
           {subs.map((sub) => {
             const p = profilesById[sub.user_id];
-            const name = p ? resolvePlayerName(p) : "Loading…";
+            const name = p ? resolvePlayerName(p) : "Player";
             const initials = name
               .split(/\s+/).filter(Boolean).slice(0, 2)
               .map((s) => s[0]).join("").toUpperCase() || "?";
@@ -322,10 +243,11 @@ function SubInlineActions({
   const inactive = sub.status === "inactive";
 
   const toggleStatus = async () => {
+    if (busy) return;
     setBusy(true);
     const next: SubstituteStatus = inactive ? "active" : "inactive";
     const { error } = await supabase.from("league_substitutes" as never)
-      .update({ status: next } as never).eq("id", sub.id);
+      .update({ status: next } as never).eq("id", sub.id).select("id").single();
     if (error) { toast.error(error.message); setBusy(false); return; }
     await logLeagueAction({
       leagueId, seasonId: sub.season_id,
@@ -338,9 +260,10 @@ function SubInlineActions({
   };
 
   const remove = async () => {
+    if (busy) return;
     setBusy(true);
     const { error } = await supabase.from("league_substitutes" as never)
-      .delete().eq("id", sub.id);
+      .delete().eq("id", sub.id).select("id").single();
     if (error) { toast.error(error.message); setBusy(false); return; }
     await logLeagueAction({
       leagueId, seasonId: sub.season_id,
@@ -450,6 +373,7 @@ function SubEditorDialog({
 
   const submit = async () => {
     if (!pickedId) { toast.error("Pick a player"); return; }
+    if (saving) return;
     setSaving(true);
     if (mode === "create") {
       const payload = {
@@ -474,7 +398,7 @@ function SubEditorDialog({
         status,
       };
       const { error } = await supabase
-        .from("league_substitutes" as never).update(payload as never).eq("id", initial.id);
+        .from("league_substitutes" as never).update(payload as never).eq("id", initial.id).select("id").single();
       if (error) { toast.error(error.message); setSaving(false); return; }
       await logLeagueAction({
         leagueId, seasonId,
@@ -667,6 +591,7 @@ function SubSwapDialog({
 
   const submit = async () => {
     if (!outPlayerId) { toast.error("Pick the player who's out"); return; }
+    if (saving) return;
     setSaving(true);
     const { data, error } = await (supabase.rpc as unknown as (
       fn: string, args: Record<string, unknown>,

@@ -158,12 +158,12 @@ export function HeroStat({
   value: number | string;
 }) {
   return (
-    <div className="flex flex-col items-start px-4 py-3 first:pl-0">
+    <div className="min-w-0 flex flex-col items-start px-2 sm:px-4 py-3 first:pl-0">
       <div className="flex items-center gap-1.5 text-[color:var(--lg-hero-gold)]">
         {icon}
         <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
       </div>
-      <div className="lg-num text-3xl sm:text-4xl mt-1 leading-none text-[color:var(--lg-hero-text)]">
+      <div className={cn("mt-1 break-words text-[color:var(--lg-hero-text)]", typeof value === 'number' || /^[\d–.%+-]+$/.test(String(value)) ? "lg-num text-3xl sm:text-4xl leading-none" : "text-sm sm:text-base font-semibold leading-snug")}>
         {value}
       </div>
     </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { LeagueMatch, LeagueTeam } from "@/lib/leagues/types";
 import { haptic } from "@/lib/haptics";
+import { parseWholeNumber, validateScorePair } from '@/lib/leagues/operations';
 
 /**
  * Per-match action bar shown to a participant on the player league
@@ -125,9 +126,10 @@ export function LeagueMatchActions({
               size="sm" variant="outline" className="h-8 text-xs"
               onClickAsync={async () => {
                 const { error } = await supabase
-                  .rpc("verify_league_match" as never, { p_match_id: match.id } as never);
+                  .rpc("confirm_league_match_score" as never, { p_match_id: match.id, p_team_a_score: match.team_a_score, p_team_b_score: match.team_b_score } as never);
                 if (error) {
                   toast.error(error.message);
+                  await onChanged();
                   return;
                 }
                 toast.success("Score confirmed");
@@ -165,7 +167,7 @@ export function LeagueMatchActions({
           : "Enter score"}
       </ActionButton>
 
-      <SubmitScoreDialog
+      {scoreOpen && <SubmitScoreDialog
         open={scoreOpen}
         onOpenChange={setScoreOpen}
         match={match}
@@ -174,13 +176,13 @@ export function LeagueMatchActions({
         sideBLabel={sideBLabel}
         ladderSeasonId={ladderSeasonId}
         onSubmitted={onChanged}
-      />
-      <DisputeDialog
+      />}
+      {disputeOpen && <DisputeDialog
         open={disputeOpen}
         onOpenChange={setDisputeOpen}
         matchId={match.id}
         onDisputed={onChanged}
-      />
+      />}
     </div>
   );
 }
@@ -213,17 +215,12 @@ function SubmitScoreDialog({
   const teamBName =
     sideBLabel ?? (match.team_b_id && teamsById[match.team_b_id]?.name) ?? "Side B";
 
-  const parseScore = (s: string): number | null => {
-    const trimmed = s.trim();
-    if (!trimmed) return null;
-    const n = Number(trimmed);
-    if (!Number.isInteger(n) || n < 0) return null;
-    return n;
-  };
-
   const submit = async () => {
-    const a = parseScore(aScore);
-    const b = parseScore(bScore);
+    if (saving) return;
+    const validation = validateScorePair(aScore, bScore, true);
+    if (validation) { toast.error(validation); return; }
+    const a = parseWholeNumber(aScore);
+    const b = parseWholeNumber(bScore);
     if (a === null || b === null) {
       toast.error("Enter non-negative whole numbers for both teams");
       return;
@@ -241,7 +238,7 @@ function SubmitScoreDialog({
       } as never);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Score submitted — waiting for a teammate or opponent to confirm");
+    toast.success("Score saved — your match status will update now");
     haptic("success");
     onOpenChange(false);
     await nudgeLadderAdvance(ladderSeasonId);

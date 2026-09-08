@@ -1,3 +1,6 @@
+import { useLeagueWorkspace } from '@/hooks/useLeagueWorkspace';
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,29 +46,18 @@ interface PlayerRow {
 }
 
 export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [members, setMembers] = useState<LeagueMember[]>([]);
-  const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const { members, profilesById, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['members']);
+  const loading = seasonsLoading || rowsLoading;
+  const error = seasonsError ?? rowsError;
   const [primaryManager, setPrimaryManager] = useState<PlayerRow | null>(null);
-  const [loading, setLoading] = useState(true);
+
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   // Season list — subscribes to dataVersion so new seasons show up here.
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoading(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
+
 
   // Primary manager (league creator) — pinned at top of the roster.
   useEffect(() => {
@@ -80,32 +72,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
     })();
   }, [league.created_by]);
 
-  useEffect(() => {
-    if (!seasonId) return;
-    void reload();
-    // eslint-disable-next-line
-  }, [seasonId, dataVersion]);
-
-  const reload = async () => {
-    const { data: mems } = await supabase.from("league_members" as never).select("*")
-      .eq("league_id", league.id).eq("season_id", seasonId).order("joined_at", { ascending: false });
-    const memList = (mems ?? []) as unknown as LeagueMember[];
-    setMembers(memList);
-    if (memList.length) {
-      const ids = Array.from(new Set(memList.map((m) => m.user_id)));
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name, avatar_url")
-        .in("id", ids);
-      const map: Record<string, PlayerRow> = {};
-      (profs ?? []).forEach((p) => { map[(p as PlayerRow).id] = p as PlayerRow; });
-      setProfilesById(map);
-    } else {
-      setProfilesById({});
-    }
-  };
-
-
+  if (error) return <EmptyState title="Couldn't load this season" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void retry(); void reload(); } }} />;
   if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
@@ -204,13 +171,13 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
+      <div className="flex flex-wrap items-center gap-2">
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="w-full sm:w-auto sm:flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />Add member</Button>
           </DialogTrigger>
-          {seasonId && (
+          {addOpen && seasonId && (
             <AddMemberDialog
               league={league}
               seasonId={seasonId}
@@ -225,7 +192,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
               <ClipboardList className="w-4 h-4 mr-1" />Bulk
             </Button>
           </DialogTrigger>
-          {seasonId && (
+          {bulkOpen && seasonId && (
             <BulkAddMembersDialog
               league={league}
               seasonId={seasonId}
@@ -343,11 +310,12 @@ function MemberInlineActions({
   const isLadder = league.league_type === "ladder";
 
   const patch = async (fields: Partial<LeagueMember>, action: string) => {
+    if (busy) return;
     setBusy(true);
     try {
       await withPulseActivity(`Updating ${memberName}…`, async () => {
         const { error } = await supabase.from("league_members" as never)
-          .update(fields as never).eq("id", member.id);
+          .update(fields as never).eq("id", member.id).select("id").single();
         if (error) throw error;
         await logLeagueAction({
           leagueId: league.id, seasonId: member.season_id,
@@ -357,8 +325,8 @@ function MemberInlineActions({
         });
       }, "Roster updated");
       await onChanged();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+    } catch (e: unknown) {
+      toast.error(leagueErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -368,6 +336,7 @@ function MemberInlineActions({
   return (
     <div className="flex items-center gap-1 w-full sm:w-auto">
       <Select
+        disabled={busy}
         value={member.role === "manager" ? "manager" : "player"}
         onValueChange={(v) => {
           const next = v as MemberRole;
@@ -412,6 +381,7 @@ function MemberInlineActions({
       </AlertDialog>
 
       {/* Restore is benign — direct action. Remove needs a confirm. */}
+      {member.status === 'pending' && <Button size="sm" disabled={busy} onClick={() => patch({ status: 'active' }, 'member.approved')}>Approve</Button>}
       {isRemoved ? (
         <Button
           variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground"
@@ -613,8 +583,8 @@ function AddMemberDialog({
         "Added to the roster",
       );
       await onDone();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Add failed");
+    } catch (e: unknown) {
+      toast.error(leagueErrorMessage(e));
     } finally {
       setSaving(false);
     }

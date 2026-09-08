@@ -43,6 +43,7 @@ export function InviteCodeCard({
   const validForSave = trimmed === "" || format.test(trimmed);
 
   const save = async () => {
+    if (saving) return;
     if (!validForSave) {
       toast.error("Code must be 4–32 letters, numbers, hyphens or underscores");
       return;
@@ -59,16 +60,16 @@ export function InviteCodeCard({
     }
     setSaving(true);
     const nextValue: string | null = trimmed === "" ? null : trimmed;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("leagues" as never)
       .update({ invite_code: nextValue } as never)
-      .eq("id", league.id);
-    if (error) {
+      .eq("id", league.id).select('id').single();
+    if (error || !data) {
       // Uniqueness violations bubble up as 23505. Give the admin a real
       // hint rather than the raw Postgres message.
-      const msg = error.code === "23505"
+      const msg = error?.code === "23505"
         ? "That code is already in use by another league. Pick a different one."
-        : error.message;
+        : error?.message ?? 'The invite code was not saved. Please refresh.';
       toast.error(msg);
       setSaving(false);
       return;

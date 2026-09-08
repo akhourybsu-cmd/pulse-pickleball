@@ -1,3 +1,6 @@
+import { useLeagueWorkspace } from '@/hooks/useLeagueWorkspace';
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -26,77 +29,18 @@ function teamInitials(name: string): string {
 }
 
 export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [teams, setTeams] = useState<LeagueTeam[]>([]);
-  const [members, setMembers] = useState<LeagueMember[]>([]);
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const { teams, members, profilesById, rosterCounts, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['teams', 'members', 'rosters']);
+  const loading = seasonsLoading || rowsLoading;
+  const error = seasonsError ?? rowsError;
   /** count of active roster rows per team_id (for the badge on the team card) */
-  const [rosterCounts, setRosterCounts] = useState<Record<string, number>>({});
-  const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
-  const [loading, setLoading] = useState(true);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [rosterFor, setRosterFor] = useState<LeagueTeam | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoading(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
 
-  useEffect(() => {
-    if (!seasonId) return;
-    void reload();
-    // eslint-disable-next-line
-  }, [seasonId, dataVersion]);
 
-  const reload = async () => {
-    const [{ data: t }, { data: mems }] = await Promise.all([
-      supabase.from("league_teams" as never).select("*")
-        .eq("season_id", seasonId).order("created_at", { ascending: false }),
-      supabase.from("league_members" as never).select("*")
-        .eq("season_id", seasonId).eq("status", "active"),
-    ]);
-    const teamList = (t ?? []) as unknown as LeagueTeam[];
-    setTeams(teamList);
-    const memList = (mems ?? []) as unknown as LeagueMember[];
-    setMembers(memList);
-
-    // Active roster counts — one grouped select, avoids N queries.
-    if (teamList.length) {
-      const { data: rows } = await supabase
-        .from("league_team_members" as never)
-        .select("team_id")
-        .in("team_id", teamList.map((tm) => tm.id))
-        .eq("status", "active");
-      const counts: Record<string, number> = {};
-      (rows ?? []).forEach((r) => {
-        const tid = (r as { team_id: string }).team_id;
-        counts[tid] = (counts[tid] ?? 0) + 1;
-      });
-      setRosterCounts(counts);
-    } else {
-      setRosterCounts({});
-    }
-
-    const userIds = Array.from(new Set(memList.map((m) => m.user_id)));
-    if (userIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
-        .in("id", userIds);
-      const map: Record<string, PlayerRow> = {};
-      (profs ?? []).forEach((p) => { map[(p as PlayerRow).id] = p as PlayerRow; });
-      setProfilesById(map);
-    }
-  };
-
+  if (error) return <EmptyState title="Couldn't load this season" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void retry(); void reload(); } }} />;
   if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
@@ -110,16 +54,16 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />New team</Button>
           </DialogTrigger>
-          {seasonId && (
+          {createOpen && seasonId && (
             <TeamEditor
               league={league} seasonId={seasonId}
-              members={members} profilesById={profilesById}
+              members={members.filter(m => m.status === 'active')} profilesById={profilesById}
               onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -184,7 +128,7 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           onOpenChange={(o) => !o && setRosterFor(null)}
           league={league}
           team={rosterFor}
-          eligibleMembers={members}
+          eligibleMembers={members.filter(m => m.status === 'active')}
           profilesById={profilesById}
           onChanged={async () => { await reload(); onMutated(); }}
         />

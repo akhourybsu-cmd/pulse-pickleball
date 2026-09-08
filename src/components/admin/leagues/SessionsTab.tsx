@@ -1,3 +1,7 @@
+import { useLeagueWorkspace } from '@/hooks/useLeagueWorkspace';
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { validateSessionInputs } from '@/lib/leagues/operations';
+import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,38 +39,17 @@ function fmtTime(t: string | null): string {
 }
 
 export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [sessions, setSessions] = useState<LeagueSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const { sessions, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['sessions']);
+  const loading = seasonsLoading || rowsLoading;
+  const error = seasonsError ?? rowsError;
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSession | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoading(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
 
-  useEffect(() => {
-    if (!seasonId) return;
-    void reload();
-    // eslint-disable-next-line
-  }, [seasonId, dataVersion]);
 
-  const reload = async () => {
-    const { data: sess } = await supabase.from("league_sessions" as never).select("*")
-      .eq("season_id", seasonId).order("scheduled_date", { ascending: true });
-    setSessions((sess ?? []) as unknown as LeagueSession[]);
-  };
-
+  if (error) return <EmptyState title="Couldn't load this season" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void retry(); void reload(); } }} />;
   if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
@@ -80,13 +63,13 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />New session</Button>
           </DialogTrigger>
-          {seasonId && (
+          {createOpen && seasonId && (
             <SessionEditor
               mode="create"
               league={league} seasonId={seasonId} initial={null}
@@ -201,7 +184,10 @@ function SessionEditor({
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
+    if (saving) return;
     if (!name.trim()) { toast.error("Name is required"); return; }
+    const inputError = validateSessionInputs(startTime, endTime, courtCount);
+    if (inputError) { toast.error(inputError); return; }
     setSaving(true);
     const payload = {
       league_id: league.id,
@@ -262,6 +248,7 @@ function SessionEditor({
               { value: "canceled",  label: "Canceled",  desc: "Called off" },
             ]}
           />
+          <p className="text-xs text-muted-foreground">Before completing or canceling a session, finish or cancel its open matches. Reducing courts requires reassigning affected matches first.</p>
         </FormRow>
       </FormSection>
 

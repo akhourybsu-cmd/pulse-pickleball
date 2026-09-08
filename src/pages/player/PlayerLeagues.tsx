@@ -132,7 +132,7 @@ export default function PlayerLeagues() {
           <div className="space-y-3">
             <SectionHeader label="Your leagues" />
             <ul className="grid gap-3 lg:grid-cols-2">
-              {rows.map(({ league, membership, season }, i) => {
+              {rows.map(({ league, membership, season, isSubstitute }, i) => {
                 const isOrganizer = membership.role !== "player";
                 return (
                   <motion.li
@@ -178,6 +178,7 @@ export default function PlayerLeagues() {
                                   {membership.role}
                                 </span>
                               )}
+                              {isSubstitute && !isOrganizer && <span className="text-[10px] font-semibold uppercase tracking-wide">Substitute</span>}
                             </div>
                             {league.location && (
                               <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-1 inline-flex items-center gap-1">

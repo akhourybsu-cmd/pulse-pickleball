@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -16,7 +17,7 @@ import type { LeagueTeaser } from "@/lib/leagues/types";
  *   1. Player types a code → we call find_league_by_invite_code() to
  *      show a teaser (name / description / location / type).
  *   2. Player confirms → we call join_league_by_code() which creates
- *      (or reactivates) an active membership and returns the league id.
+ *      an active membership for the open season and returns the league id.
  *
  * Separating lookup + join gives the player a "yes this is the right
  * league" moment before they're joined. It also lets us surface a
@@ -37,6 +38,7 @@ export function JoinByCodeDialog({
   initialCode?: string;
 }) {
   const navigate = useNavigate();
+  const client = useQueryClient();
   const [code, setCode] = useState("");
   const [teaser, setTeaser] = useState<LeagueTeaser | null>(null);
   const [looking, setLooking] = useState(false);
@@ -103,13 +105,15 @@ export function JoinByCodeDialog({
       // the raw message for anything else.
       const friendly =
         error.code === "02000" ? "No league matches that code" :
-        error.code === "22023" ? "Registration for this league has closed" :
+        error.code === "22023" ? "Registration isn't open. Ask the organizer about the next season." :
         error.message;
       toast.error(friendly);
       setJoining(false);
       return;
     }
     const leagueId = data as unknown as string;
+    void client.invalidateQueries({ queryKey: ['my-leagues'] });
+    void client.invalidateQueries({ queryKey: ['player-league-detail'] });
     toast.success(`Joined ${teaser.name}`);
     handleOpenChange(false);
     if (onJoined) onJoined(leagueId);
@@ -211,10 +215,10 @@ export function JoinByCodeDialog({
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
                 <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  <div className="font-semibold">Registration closed</div>
+                  <div className="font-semibold">Registration isn't open</div>
                   <div className="text-xs mt-0.5 opacity-90">
-                    The registration deadline has passed. Reach out to the
-                    organizer if you think this is a mistake.
+                    There isn't an active season accepting new players. Ask the
+                    organizer about joining the next season.
                   </div>
                 </div>
               </div>

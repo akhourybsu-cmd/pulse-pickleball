@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLeagueSeasons } from "@/hooks/useLeagueSeasons";
+import { useAuthState } from "@/hooks/useAuthState";
+import { leagueErrorMessage } from "@/lib/leagues/data";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +26,7 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
+import { validateSeasonDates } from '@/lib/leagues/operations';
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
   FormShell, FormSection, FormRow, FIELD_H,
@@ -42,17 +47,35 @@ const EMPTY_STATS: SeasonStats = {
 };
 
 export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [stats, setStats] = useState<Record<string, SeasonStats>>({});
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuthState();
+  const { seasons, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+  const aggregates = useQuery({
+    queryKey: ['league-season-aggregates', user?.id, league.id],
+    enabled: !!user,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_league_season_aggregates" as never, { p_league_id: league.id } as never);
+      if (error) throw error;
+      const stats: Record<string, SeasonStats> = {};
+      for (const row of (data ?? []) as { season_id: string; matches: number; verified: number; awaiting_confirm: number; pending: number; disputed: number; forfeits: number; members: number }[]) {
+        stats[row.season_id] = { ...row, awaitingConfirm: row.awaiting_confirm };
+      }
+      return stats;
+    },
+  });
+  const { refetch: refetchAggregates } = aggregates;
+  useEffect(() => { if (dataVersion && user?.id) void refetchAggregates(); }, [dataVersion, refetchAggregates, user?.id]);
+  const stats = aggregates.data ?? {};
+  const loading = seasonsLoading || aggregates.isPending;
+  const error = seasonsError ?? aggregates.error;
+  const refresh = async () => { await Promise.all([retry(), aggregates.refetch()]); };
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSeason | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   // Show the "Sync statuses" button only when at least one season is
   // eligible for auto-advancement today. Keeps the toolbar quiet when
-  // there's nothing to do. Uses the local today string so no clock
-  // skew between browser and DB matters — the RPC also re-checks.
+  // there's nothing to do. Match the database UTC date; the RPC re-checks.
   const today = new Date().toISOString().slice(0, 10);
   const syncable = seasons.some((s) => {
     if (s.status === "draft" && s.start_date && s.start_date <= today &&
@@ -62,6 +85,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   });
 
   const syncStatuses = async () => {
+    if (syncing) return;
     setSyncing(true);
     const { data, error } = await supabase.rpc(
       "sync_league_season_statuses" as never,
@@ -69,79 +93,31 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
     );
     setSyncing(false);
     if (error) { toast.error(error.message); return; }
-    const result = (data ?? {}) as { activated?: number; completed?: number };
+    const result = (data ?? {}) as { activated?: number; completed?: number; needs_attention?: number };
     const activated = result.activated ?? 0;
     const completed = result.completed ?? 0;
-    if (activated === 0 && completed === 0) {
+    if (activated === 0 && completed === 0 && !result.needs_attention) {
       toast.info("Everything is already in sync");
     } else {
       const parts: string[] = [];
       if (activated > 0) parts.push(`${activated} activated`);
       if (completed > 0) parts.push(`${completed} completed`);
-      toast.success(`Seasons synced — ${parts.join(", ")}`);
+      if (parts.length) toast.success(`Seasons synced — ${parts.join(", ")}`);
+      if (result.needs_attention) toast.warning(`${result.needs_attention} season(s) still have open matches or unprocessed ladder results. Resolve those before completing.`);
     }
     await refresh();
     onMutated();
   };
 
-  // dataVersion in deps → sibling-tab mutations trigger a refetch.
-  useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [league.id, dataVersion]);
-
-  const refresh = async () => {
-    setLoading(true);
-
-    // Seasons list + server-side aggregates in parallel. The RPC does
-    // all match/member grouping in Postgres so we don't ship every
-    // row to the client — matters once a season has 100+ matches.
-    const [seasonsRes, aggRes] = await Promise.all([
-      supabase.from("league_seasons" as never).select("*")
-        .eq("league_id", league.id)
-        .order("created_at", { ascending: false }),
-      supabase.rpc("get_league_season_aggregates" as never, {
-        p_league_id: league.id,
-      } as never),
-    ]);
-    if (seasonsRes.error) toast.error(seasonsRes.error.message);
-    const list = (seasonsRes.data ?? []) as unknown as LeagueSeason[];
-    setSeasons(list);
-
-    const nextStats: Record<string, SeasonStats> = {};
-    list.forEach((s) => { nextStats[s.id] = { ...EMPTY_STATS }; });
-
-    interface AggRow {
-      season_id: string;
-      matches: number;
-      verified: number;
-      awaiting_confirm: number;
-      pending: number;
-      disputed: number;
-      forfeits: number;
-      members: number;
-    }
-    const rows = (aggRes.data ?? []) as unknown as AggRow[];
-    for (const r of rows) {
-      const row = nextStats[r.season_id];
-      if (!row) continue;
-      row.matches = r.matches;
-      row.verified = r.verified;
-      row.awaitingConfirm = r.awaiting_confirm;
-      row.pending = r.pending;
-      row.disputed = r.disputed;
-      row.forfeits = r.forfeits;
-      row.members = r.members;
-    }
-
-    setStats(nextStats);
-    setLoading(false);
-  };
+  if (error) return <EmptyState title="Couldn't load seasons" desc={leagueErrorMessage(error)} action={{ label: 'Try again', onClick: () => { void refresh(); } }} />;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {loading ? "Loading…" : `${seasons.length} season${seasons.length === 1 ? "" : "s"}`}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {syncable && (
             <Button
               size="sm" variant="outline" onClick={syncStatuses}
@@ -157,6 +133,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
               <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />New season</Button>
             </DialogTrigger>
             <SeasonEditor
+              key={createOpen ? 'new-open' : 'new-closed'}
               league={league}
               initial={null}
               onDone={async () => { setCreateOpen(false); await refresh(); onMutated(); }}
@@ -216,6 +193,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SeasonEditor
+          key={editing?.id ?? 'closed'}
           league={league}
           initial={editing}
           onDone={async () => { setEditing(null); await refresh(); onMutated(); }}
@@ -256,9 +234,11 @@ function SeasonEditor({
   const isNew = !initial;
 
   const submit = async (opts?: { confirmed?: boolean }) => {
+    if (saving) return;
     if (!name.trim()) { toast.error("Name is required"); return; }
-    // Moving a live season to a terminal status is impactful and, importantly,
-    // does NOT stop an in-progress ladder on its own — confirm and say so.
+    const dateError = validateSeasonDates(startDate, endDate, regDeadline);
+    if (dateError) { toast.error(dateError); return; }
+    // Closing a season preserves its history and stops automatic ladder play.
     if (!isNew && initial && (status === "completed" || status === "archived")
         && initial.status !== status && !opts?.confirmed) {
       setConfirmTerminal(status);
@@ -315,8 +295,8 @@ function SeasonEditor({
               {confirmTerminal === "archived"
                 ? "Archiving moves the season out of active views."
                 : "Completing ends the season for standings and registration."}{" "}
-              This does not stop an in-progress ladder on its own — if a ladder is still
-              running for this season, pause or finish it from the Ladder tab too.
+              Finish, resolve, or cancel all open matches and process any remaining ladder results first.
+              Closing the season also completes its ladder and turns off automatic progression. Results and membership history are preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -348,7 +328,7 @@ function SeasonEditor({
       </FormSection>
 
       <FormSection label="Schedule" hint="Optional">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormRow label="Start date">
             <Input type="date" value={startDate}
               onChange={(e) => setStartDate(e.target.value)}

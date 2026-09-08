@@ -7,7 +7,7 @@ import type { LeagueMatch, LeagueTeam } from "./types";
  *   Side A = player_a_id, player_b_id   (1 for singles, 2 for doubles)
  *   Side B = player_c_id, player_d_id
  *
- * Only score-based results count (verified / score_submitted, both side
+ * Only score-based results count (verified, both side
  * scores set, not tied, at least one player per side). Team forfeits are
  * ignored here since forfeit_winner_team_id is a team id, not a player —
  * individual leagues record results by score.
@@ -33,7 +33,7 @@ export function computePlayerStandings(
     if (!inScope(m)) return false;
     if (m.team_a_score == null || m.team_b_score == null) return false;
     if (m.team_a_score === m.team_b_score) return false;
-    if (m.status !== "verified" && m.status !== "score_submitted") return false;
+    if (m.status !== "verified") return false;
     const sideA = [m.player_a_id, m.player_b_id].filter(Boolean) as string[];
     const sideB = [m.player_c_id, m.player_d_id].filter(Boolean) as string[];
     return sideA.length > 0 && sideB.length > 0;
@@ -169,8 +169,7 @@ interface StandingsOpts {
  * either admin or player surfaces.
  *
  * A match counts toward standings when EITHER:
- *   (a) both team scores are set + not tied + status ∈ (verified,
- *       score_submitted) + both team ids resolve, OR
+ *   (a) both team scores are set + not tied + status = verified + both team ids resolve, OR
  *   (b) status = 'forfeit' + forfeit_winner_team_id resolves to a
  *       team + both team_a_id/team_b_id resolve.
  *
@@ -207,7 +206,7 @@ export function computeTeamStandings(
     if (!inScope(m)) return false;
     if (m.team_a_score == null || m.team_b_score == null) return false;
     if (m.team_a_score === m.team_b_score) return false;
-    if (m.status !== "verified" && m.status !== "score_submitted") return false;
+    if (m.status !== "verified") return false;
     if (!m.team_a_id || !m.team_b_id) return false;
     return true;
   });
@@ -216,7 +215,7 @@ export function computeTeamStandings(
     if (!inScope(m)) return false;
     if (m.status !== "forfeit") return false;
     if (!m.team_a_id || !m.team_b_id) return false;
-    if (!m.forfeit_winner_team_id) return false;
+    if (!m.forfeit_winner_team_id || ![m.team_a_id, m.team_b_id].includes(m.forfeit_winner_team_id)) return false;
     return true;
   });
 

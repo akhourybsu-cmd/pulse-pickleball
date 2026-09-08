@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthState } from "@/hooks/useAuthState";
+import { selectLeagueSeason } from '@/lib/leagues/operations';
+import { leagueErrorMessage, leagueRows, leagueRowsByIds } from '@/lib/leagues/data';
 import type {
-  League, LeagueMember, LeagueSeason,
+  League, LeagueMember, LeagueSeason, LeagueSubstitute,
 } from "@/lib/leagues/types";
 
 export interface MyLeagueRow {
   league: League;
   membership: LeagueMember;
   season: LeagueSeason | null;
+  isSubstitute?: boolean;
 }
 
 /**
@@ -121,26 +124,37 @@ export function useMyLeagues() {
     queryKey: ["my-leagues", user?.id],
     enabled: Boolean(user),
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: 'always',
     queryFn: async (): Promise<MyLeagueRow[]> => {
       if (!user) return [];
 
       // Membership context and owner-only fallback are independent once the
       // shared auth provider supplies the user id. Run them together and let
       // React Query dedupe the dashboard wrapper/card consumers.
-      const [membershipResult, ownedResult] = await Promise.all([
+      const [membershipResult, ownedResult, subs] = await Promise.all([
         supabase.rpc("get_my_leagues_with_context" as never),
         supabase
           .from("leagues" as never)
           .select("*")
           .eq("created_by", user.id),
+        leagueRows<LeagueSubstitute>('league_substitutes', { user_id: user.id, status: 'active' }),
       ]);
 
       if (membershipResult.error) throw membershipResult.error;
       const list = ((membershipResult.data ?? []) as unknown as RpcRow[]).map(mapRow);
 
-      if (ownedResult.error) {
-        console.error("useMyLeagues: owned-leagues fetch failed", ownedResult.error);
-        return list;
+      if (ownedResult.error) throw ownedResult.error;
+      const [subLeagues, subSeasons] = await Promise.all([
+        leagueRowsByIds<League>('leagues', subs.map(s => s.league_id)),
+        leagueRowsByIds<LeagueSeason>('league_seasons', subs.map(s => s.season_id)),
+      ]);
+      for (const sub of subs) {
+        const league = subLeagues.find(l => l.id === sub.league_id);
+        if (!league || list.some(r => r.league.id === league.id && r.season?.id === sub.season_id)) continue;
+        list.push({ league, season: subSeasons.find(s => s.id === sub.season_id) ?? null, isSubstitute: true,
+          membership: { ...sub, id: `sub:${sub.id}`, role: 'player', status: 'active', joined_at: sub.created_at },
+        });
       }
 
       const owned = (ownedResult.data ?? []) as unknown as League[];
@@ -163,7 +177,15 @@ export function useMyLeagues() {
           season: null,
         }));
 
-      return [...list, ...synthetic].sort((a, b) =>
+      const byLeague = new Map<string, MyLeagueRow[]>();
+      for (const row of [...list, ...synthetic]) byLeague.set(row.league.id, [...(byLeague.get(row.league.id) ?? []), row]);
+      const unique = [...byLeague.values()].map(group => {
+        const season = selectLeagueSeason(group.map(row => row.season).filter((s): s is LeagueSeason => !!s));
+        const chosen = group.find(row => row.season?.id === season?.id) ?? group[0];
+        const manager = group.some(row => row.membership.role === 'manager') || chosen.league.created_by === user.id;
+        return manager ? { ...chosen, membership: { ...chosen.membership, role: 'manager' as const } } : chosen;
+      });
+      return unique.sort((a, b) =>
         a.league.name.localeCompare(b.league.name),
       );
     },
@@ -171,7 +193,7 @@ export function useMyLeagues() {
 
   const rows = query.data ?? [];
   const loading = Boolean(user) && query.isPending;
-  const error = query.error instanceof Error ? query.error.message : null;
+  const error = query.error ? leagueErrorMessage(query.error) : null;
 
   // Archived leagues are tucked away: `rows` (what every surface renders
   // by default) holds only live leagues, while `archivedRows` is opt-in

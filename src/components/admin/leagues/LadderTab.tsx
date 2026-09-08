@@ -1,3 +1,6 @@
+import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
+import { parseWholeNumber, validateSessionInputs } from '@/lib/leagues/operations';
+import { leagueErrorMessage } from '@/lib/leagues/data';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,25 +71,13 @@ async function scheduleLadderWeek(
 }
 
 export function LadderTab({ league, dataVersion, onMutated, onNavigate }: LeagueTabProps) {
-  const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
-  const [seasonId, setSeasonId] = useState<string | "">("");
-  const [loadingSeasons, setLoadingSeasons] = useState(true);
+  const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
+
   const [ver, setVer] = useState(0);
   const ladder = useLadder(league.id, seasonId, dataVersion + ver);
   const bump = () => { setVer((v) => v + 1); onMutated(); };
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("league_seasons" as never).select("*")
-        .eq("league_id", league.id).order("created_at", { ascending: false });
-      const list = (data ?? []) as unknown as LeagueSeason[];
-      setSeasons(list);
-      if (list.length && !seasonId) setSeasonId(list[0].id);
-      setLoadingSeasons(false);
-    })();
-    // eslint-disable-next-line
-  }, [league.id, dataVersion]);
+
 
   if (league.league_type !== "ladder") {
     return (
@@ -97,7 +88,8 @@ export function LadderTab({ league, dataVersion, onMutated, onNavigate }: League
       />
     );
   }
-  if (loadingSeasons) return <TabSkeleton lines={4} />;
+  if (seasonsError) return <EmptyState title="Couldn't load seasons" desc={leagueErrorMessage(seasonsError)} action={{ label: 'Try again', onClick: () => { void retry(); } }} />;
+  if (seasonsLoading) return <TabSkeleton lines={4} />;
   if (seasons.length === 0) {
     return (
       <EmptyState
@@ -123,7 +115,7 @@ export function LadderTab({ league, dataVersion, onMutated, onNavigate }: League
         </div>
       )}
 
-      {ladder.loading ? (
+      {ladder.error ? <EmptyState title="Couldn't load the ladder" desc={ladder.error} action={{ label: 'Try again', onClick: ladder.refresh }} /> : ladder.loading ? (
         <TabSkeleton lines={4} />
       ) : !ladder.settings ? (
         <LadderSetup leagueId={league.id} seasonId={seasonId} onSaved={bump} />
@@ -157,6 +149,10 @@ function LadderSetup({
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
+    if (saving) return;
+    if ((parseWholeNumber(String(courts)) ?? 0) < 1 || (weeks && (parseWholeNumber(String(weeks)) ?? 0) < 1)) {
+      toast.error('Courts and weeks must be positive whole numbers.'); return;
+    }
     setSaving(true);
     const { error } = await supabase.from("ladder_settings" as never).insert({
       league_id: leagueId, season_id: seasonId,
@@ -2007,12 +2003,16 @@ function WeekSessionDialog({
         primaryLabel={submitLabel ?? `Generate Week ${weekNumber}`}
         primaryDisabled={!canSubmit}
         primaryLoading={busy}
-        onPrimary={() => onConfirm({
+        onPrimary={() => {
+          const error = validateSessionInputs(start, end, courts);
+          if (error) { toast.error(error); return; }
+          if (cap.trim() && (parseWholeNumber(cap) ?? 0) < 4) { toast.error('Capacity must be a whole number of at least 4 players, or blank.'); return; }
+          return onConfirm({
           scheduled_date: date, start_time: start,
           end_time: end, location: loc,
           court_count: courts ? Number(courts) : null,
           capacity: cap ? Number(cap) : null,
-        })}
+        }); }}
         secondary={
           <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 sm:w-28">
             Cancel

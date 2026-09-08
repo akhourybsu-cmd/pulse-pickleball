@@ -46,7 +46,7 @@ export function MyLeaguesCard() {
 
   return (
     <div className="space-y-2">
-      {visible.map(({ league, season, membership }) => {
+      {visible.map(({ league, season, membership, isSubstitute }) => {
         const meta = TYPE_META[league.league_type];
         const Icon = meta.icon;
         const isOfficer = membership.role !== "player";
@@ -83,6 +83,7 @@ export function MyLeaguesCard() {
                         {membership.role}
                       </span>
                     )}
+                    {isSubstitute && !isOfficer && <span className="text-[10px] font-semibold text-muted-foreground">Substitute</span>}
                   </div>
                   <div className="text-sm font-semibold text-foreground truncate leading-tight">
                     {league.name}

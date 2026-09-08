@@ -33,7 +33,7 @@ export function StandingsTable({
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
       {/* Header row */}
-      <div className="grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         <div className="text-center">#</div>
         <div>{nameHeader}</div>
         <div className="text-right">W</div>
@@ -43,7 +43,7 @@ export function StandingsTable({
           <span className="sm:hidden">±</span>
           <span className="hidden sm:inline">Diff</span>
         </div>
-        <div className="text-right">Win%</div>
+        <div className="text-right hidden sm:block">Win%</div>
         <div className="text-right hidden sm:block">Form</div>
       </div>
 
@@ -59,7 +59,7 @@ export function StandingsTable({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.24, delay: i * 0.03, ease: "easeOut" }}
               className={cn(
-                "grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
+                "grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
                 highlighted && "bg-primary/5",
               )}
             >
@@ -102,7 +102,7 @@ export function StandingsTable({
                 {row.pointDiff > 0 ? "+" : ""}
                 {row.pointDiff}
               </div>
-              <div className="text-right text-xs text-muted-foreground">
+              <div className="hidden sm:block text-right text-xs text-muted-foreground">
                 {(row.winPct * 100).toFixed(0)}%
               </div>
               <div className="hidden sm:flex items-center justify-end gap-0.5">

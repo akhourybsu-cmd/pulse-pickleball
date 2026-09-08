@@ -2,7 +2,9 @@
  * Shared primitives used across the League Management tabs.
  * Extract so every tab looks and behaves the same.
  */
-import { ReactNode, useId } from "react";
+import { ReactNode, useId, isValidElement, cloneElement } from "react";
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarDays, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -254,15 +256,15 @@ export function SeasonSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn("h-11 rounded-lg bg-card", className)}>
-        <span className="inline-flex items-center gap-2 min-w-0 flex-1">
+      <SelectTrigger aria-label="Season" className={cn("h-11 min-w-0 rounded-lg bg-card", className)}>
+        <span className="!flex items-center gap-2 min-w-0 flex-1 text-left">
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
             <CalendarDays className="w-3.5 h-3.5" />
           </span>
-          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground shrink-0">
+          <span className="hidden sm:inline text-[10px] font-black uppercase tracking-wider text-muted-foreground shrink-0">
             Season
           </span>
-          <span className="text-border shrink-0">·</span>
+          <span className="hidden sm:inline text-border shrink-0">·</span>
           <span className="min-w-0 truncate font-semibold"><SelectValue /></span>
         </span>
       </SelectTrigger>
@@ -399,7 +401,7 @@ export function FormShell({
   return (
     <DialogContent
       className={cn(
-        "p-0 overflow-hidden gap-0",
+        "p-0 overflow-hidden gap-0 flex flex-col max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-2xl",
         size === "lg" ? "sm:max-w-lg" : "sm:max-w-md",
       )}
     >
@@ -420,7 +422,7 @@ export function FormShell({
         />
         <div aria-hidden className={cn("absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none", t.glow)} />
 
-        <DialogHeader className="relative p-5 pb-4 space-y-0 text-left">
+        <DialogHeader className="relative p-5 pr-12 pb-4 space-y-0 text-left">
           <div className="flex items-start gap-3">
             <div
               className={cn(
@@ -450,11 +452,11 @@ export function FormShell({
         </DialogHeader>
       </div>
 
-      <div className="px-5 pb-4 pt-4 space-y-4 max-h-[65vh] overflow-y-auto">
+      <div className="px-5 pb-4 pt-4 space-y-4 min-h-0 overflow-y-auto overscroll-contain">
         {children}
       </div>
 
-      <DialogFooter className="p-4 pt-3 border-t border-border/60 bg-muted/20 gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
+      <DialogFooter className="shrink-0 p-4 pt-3 border-t border-border/60 bg-muted/20 gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
         {secondary}
         <Button
           onClick={() => void onPrimary()}
@@ -519,10 +521,15 @@ export function FormRow({
   required?: boolean;
   children: ReactNode;
 }) {
+  const generatedId = useId();
+  const fieldId = htmlFor ?? generatedId;
+  const labeledChild = isValidElement<{ id?: string }>(children)
+    && (children.type === Input || children.type === Textarea)
+    ? cloneElement(children, { id: children.props.id ?? fieldId }) : children;
   return (
-    <div className="space-y-1.5">
+    <div className="min-w-0 space-y-1.5">
       <Label
-        htmlFor={htmlFor}
+        htmlFor={fieldId}
         className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
       >
         {label}
@@ -530,7 +537,7 @@ export function FormRow({
           <span className="text-[color:var(--lg-accent-gold)] ml-0.5" aria-label="required">*</span>
         )}
       </Label>
-      {children}
+      {labeledChild}
       {hint && (
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           {hint}
@@ -545,7 +552,7 @@ export function FormRow({
  * a consistent touch-target on mobile. Import + apply to `<Input>`,
  * `<SelectTrigger>`, `<Textarea>`.
  */
-export const FIELD_H = "h-11 rounded-lg";
+export const FIELD_H = "h-11 min-w-0 max-w-full rounded-lg";
 
 /* ------------------------------------------------------------------ */
 /*  Sporty choice controls — replace plain dropdowns for small enum

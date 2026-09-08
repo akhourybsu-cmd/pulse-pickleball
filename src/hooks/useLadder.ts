@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolvePlayerName } from "@/lib/matchDisplay";
@@ -85,6 +85,7 @@ export interface LadderWeekSession {
 
 export interface LadderData {
   loading: boolean;
+  error: string | null;
   settings: LadderSettings | null;
   memberIds: string[];
   nameOf: (id: string) => string;
@@ -110,10 +111,11 @@ export function useLadder(
   seasonId: string | "",
   dataVersion = 0,
 ): LadderData {
+  const loadedScope = useRef<string | null>(null);
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   const [data, setData] = useState<LadderData>({
-    loading: true, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
+    loading: true, error: null, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
     started: false, activeBatch: null, groups: [], games: [],
     currentOrder: [], lastMovements: [], lastFinalBatch: null,
     lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0,
@@ -125,29 +127,29 @@ export function useLadder(
     let cancelled = false;
 
     (async () => {
-      setData((d) => ({ ...d, loading: true }));
+      setData((d) => ({ ...d, loading: loadedScope.current !== `${leagueId}:${seasonId}`, error: null }));
 
       const [{ data: settingsRow }, { data: mems }, { data: batchRows }, { data: snapRows },
              { data: sessRows }, { count: pendingCount }] =
         await Promise.all([
-          supabase.from("ladder_settings" as never).select("*").eq("season_id", seasonId).maybeSingle(),
+          supabase.from("ladder_settings" as never).select("*").eq("season_id", seasonId).maybeSingle().throwOnError(),
           supabase.from("league_members" as never).select("user_id")
-            .eq("season_id", seasonId).eq("status", "active"),
+            .eq("season_id", seasonId).eq("status", "active").neq("role", "manager").throwOnError(),
           supabase.from("ladder_batches" as never).select("*")
             .eq("season_id", seasonId)
             .order("week_number", { ascending: true })
-            .order("batch_number", { ascending: true }),
+            .order("batch_number", { ascending: true }).throwOnError(),
           supabase.from("ladder_snapshots" as never).select("*")
             .eq("season_id", seasonId)
             .order("week_number", { ascending: false })
-            .order("batch_number", { ascending: false }),
+            .order("batch_number", { ascending: false }).throwOnError(),
           supabase.from("league_sessions" as never).select("*")
             .eq("season_id", seasonId)
             .not("week_number", "is", null)
-            .order("week_number", { ascending: true }),
+            .order("week_number", { ascending: true }).throwOnError(),
           supabase.from("ladder_sub_requests" as never)
             .select("id", { count: "exact", head: true })
-            .eq("season_id", seasonId).eq("status", "pending"),
+            .eq("season_id", seasonId).eq("status", "pending").throwOnError(),
         ]);
 
       const settings = (settingsRow ?? null) as unknown as LadderSettings | null;
@@ -164,7 +166,7 @@ export function useLadder(
         const { data: profs } = await supabase
           .from("profiles_public" as never)
           .select("id, display_name, full_name, first_name, last_name")
-          .in("id", Array.from(nameIds));
+          .in("id", Array.from(nameIds)).throwOnError();
         (profs ?? []).forEach((p) => {
           const r = p as { id: string };
           namesById[r.id] = resolvePlayerName(p as never);
@@ -183,11 +185,11 @@ export function useLadder(
       if (activeBatch) {
         const { data: grpRows } = await supabase.from("ladder_batch_groups" as never)
           .select("*").eq("batch_id", activeBatch.id)
-          .order("group_index", { ascending: true });
+          .order("group_index", { ascending: true }).throwOnError();
         groups = (grpRows ?? []) as unknown as LadderGroup[];
         if (groups.length) {
           const { data: gameRows } = await supabase.from("league_matches" as never)
-            .select("*").in("ladder_batch_group_id", groups.map((g) => g.id));
+            .select("*").in("ladder_batch_group_id", groups.map((g) => g.id)).throwOnError();
           games = (gameRows ?? []) as unknown as LadderGame[];
         }
       }
@@ -201,17 +203,18 @@ export function useLadder(
       )[0] ?? null;
       if (lastFinal) {
         const [{ data: mv }, { data: fg }] = await Promise.all([
-          supabase.from("ladder_movements" as never).select("*").eq("batch_id", lastFinal.id),
+          supabase.from("ladder_movements" as never).select("*").eq("batch_id", lastFinal.id).throwOnError(),
           supabase.from("ladder_batch_groups" as never).select("*")
-            .eq("batch_id", lastFinal.id).order("group_index", { ascending: true }),
+            .eq("batch_id", lastFinal.id).order("group_index", { ascending: true }).throwOnError(),
         ]);
         lastMovements = (mv ?? []) as unknown as LadderMovementRow[];
         lastFinalGroups = (fg ?? []) as unknown as LadderGroup[];
       }
 
       if (!cancelled) {
+        loadedScope.current = `${leagueId}:${seasonId}`;
         setData((prev) => ({
-          loading: false, settings, memberIds, nameOf,
+          loading: false, error: null, settings, memberIds, nameOf,
           started: batches.length > 0, activeBatch, groups, games,
           currentOrder, lastMovements, lastFinalBatch: lastFinal,
           lastFinalGroups, history, weekSessions,
@@ -227,7 +230,7 @@ export function useLadder(
         toast.error(
           e instanceof Error ? `Couldn't load the ladder: ${e.message}` : "Couldn't load the ladder",
         );
-        setData((d) => ({ ...d, loading: false }));
+        setData((d) => ({ ...d, loading: false, error: "Could not load the ladder. Please try again." }));
       }
     });
 

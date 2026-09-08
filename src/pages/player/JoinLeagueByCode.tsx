@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, CheckCircle2, AlertTriangle, Trophy, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,21 +37,25 @@ type Phase =
  *      stashing this URL so they land back here after auth.
  *   3. If logged in, call join_league_by_code, then show a success state
  *      with an Open league button. Registration-closed rejections
- *      (returning members bypass the deadline; only brand-new signups are
- *      blocked) surface as an explicit "registration closed" state.
+ *      (new-season enrollment also honors the deadline) surface explicitly.
  */
 export default function JoinLeagueByCode() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const client = useQueryClient();
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [league, setLeague] = useState<LeagueTeaser | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const joinAttempted = useRef(false);
+  const [previewCode, setPreviewCode] = useState<string | null>(null);
 
   // Step 1 — preview the league from the code.
   useEffect(() => {
     let cancelled = false;
+    joinAttempted.current = false;
+    setPhase('loading');
+    setPreviewCode(null);
     (async () => {
       if (!code) {
         setPhase("error");
@@ -68,6 +73,7 @@ export default function JoinLeagueByCode() {
         return;
       }
       const row = (Array.isArray(data) ? data[0] : data) as LeagueTeaser;
+      setPreviewCode(code);
       setLeague({
         id: row.id,
         name: row.name,
@@ -91,7 +97,7 @@ export default function JoinLeagueByCode() {
 
   // Step 2 — auto-join once we have a preview and a signed-in user.
   useEffect(() => {
-    if (phase !== "preview" || !code || joinAttempted.current) return;
+    if (phase !== "preview" || !code || previewCode !== code || joinAttempted.current) return;
     joinAttempted.current = true;
     (async () => {
       setPhase("joining");
@@ -119,9 +125,11 @@ export default function JoinLeagueByCode() {
         return;
       }
       setLeague((prev) => (prev ? { ...prev, id: String(data) } : prev));
+      void client.invalidateQueries({ queryKey: ['my-leagues'] });
+      void client.invalidateQueries({ queryKey: ['player-league-detail'] });
       setPhase("success");
     })();
-  }, [phase, code]);
+  }, [phase, code, previewCode, client]);
 
   const goToAuth = (mode: "signin" | "signup") => {
     stashPostAuthRedirect(`/player/leagues/join/${code}`);

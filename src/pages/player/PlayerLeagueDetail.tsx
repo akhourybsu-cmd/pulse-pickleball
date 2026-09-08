@@ -22,6 +22,9 @@ import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
 import { LeagueScope, LeagueHero, LgSectionHeader } from "@/components/leagues/_leagueScope";
 import { cn } from "@/lib/utils";
+import { SeasonSelect } from '@/components/admin/leagues/_shared';
+import { leagueErrorMessage } from '@/lib/leagues/data';
+import { needsMatchAction } from '@/lib/leagues/operations';
 
 const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
   scheduled:       "bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)]",
@@ -55,7 +58,7 @@ export default function PlayerLeagueDetail() {
     league, membership, season,
     matches, allMatches, allTeams, teamsById, playersById, teammates,
     myTeams, loading,
-    currentUserId, refresh,
+    currentUserId, refresh, error, canManage, seasons, setSeasonId, sessions, isActiveParticipant,
   } = detail;
 
   const isTeamMode =
@@ -120,6 +123,14 @@ export default function PlayerLeagueDetail() {
     );
   }
 
+  if (error) {
+    return <LeagueScope><div className="mx-auto max-w-md p-6 text-center space-y-3" role="alert">
+      <h1 className="font-semibold">Couldn't load this league</h1>
+      <p className="text-sm text-muted-foreground">{leagueErrorMessage(error)}</p>
+      <ActionButton onClick={refresh}>Try again</ActionButton>
+    </div></LeagueScope>;
+  }
+
   if (!league) {
     return (
       <LeagueScope>
@@ -140,15 +151,7 @@ export default function PlayerLeagueDetail() {
   }
 
   // Split matches into upcoming (no result yet) and past.
-  const now = Date.now();
-  const upcoming = matches.filter((m) => {
-    if (m.team_a_score !== null && m.team_b_score !== null) return false;
-    if (m.status === "canceled" || m.status === "forfeit") return false;
-    if (m.scheduled_time && new Date(m.scheduled_time).getTime() < now - 24 * 3600 * 1000) {
-      return false;
-    }
-    return true;
-  });
+  const upcoming = matches.filter(needsMatchAction);
   const past = matches
     .filter((m) => !upcoming.includes(m))
     .sort((a, b) => {
@@ -161,9 +164,6 @@ export default function PlayerLeagueDetail() {
   // Anyone who can manage the league — the creator OR an assistant manager
   // (membership.role === "manager") — gets the Manage entry. Gating on the
   // creator alone locked co-organizers out of the console entirely.
-  const canManage =
-    currentUserId != null &&
-    (league.created_by === currentUserId || membership?.role === "manager");
 
   // In-page jump nav (the single-page analog of the admin tabs). Only the
   // sections that actually render are offered, and a click updates the URL
@@ -188,7 +188,7 @@ export default function PlayerLeagueDetail() {
 
   return (
     <LeagueScope>
-      <div className="container mx-auto px-4 py-5 max-w-3xl space-y-5">
+      <div className="container mx-auto px-4 py-5 max-w-5xl space-y-5">
         <div className="flex items-center justify-between gap-2">
           <ActionButton
             variant="ghost" size="sm" onClick={() => navigate("/player/leagues")}
@@ -200,7 +200,7 @@ export default function PlayerLeagueDetail() {
           {canManage && (
             <ActionButton
               size="sm" variant="outline"
-              onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
+              onClick={() => navigate(`/player/leagues/${league.id}/manage${season ? `?season=${encodeURIComponent(season.id)}` : ''}`)}
               className="h-8 border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10"
             >
               <Settings className="w-4 h-4 mr-1.5" />
@@ -221,10 +221,29 @@ export default function PlayerLeagueDetail() {
           }
           kpis={[
             { icon: CalendarDays, label: "Season", value: season?.name ?? "—" },
-            { icon: Trophy, label: "Role", value: (membership?.role ?? "player") },
+            { icon: Trophy, label: "Role", value: canManage ? "Organizer" : membership?.role ?? "Guest / substitute" },
             { icon: Swords, label: "Record", value: record },
           ]}
         />
+
+        {seasons.length > 0 && <div className="flex flex-wrap items-center gap-3">
+          <SeasonSelect seasons={seasons} value={season?.id ?? ''} onChange={setSeasonId} className="min-w-0 basis-full sm:basis-auto sm:flex-1 sm:max-w-sm" />
+          <span className="text-xs text-muted-foreground capitalize">{season?.status} season</span>
+        </div>}
+        {sessions.filter(s => s.status === 'published').length > 0 && (
+          <section className="lg-card p-4 space-y-3" aria-label="Season schedule">
+            <LgSectionHeader icon={CalendarDays}>Scheduled play</LgSectionHeader>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {sessions.filter(s => s.status === 'published').sort((a,b) => (a.scheduled_date ?? '9999').localeCompare(b.scheduled_date ?? '9999')).map(s => (
+                <li key={s.id} className="min-w-0 rounded-xl border border-[color:var(--lg-border)] p-3">
+                  <p className="font-semibold text-sm break-words">{s.name}</p>
+                  <p className="text-xs text-[color:var(--lg-text-dim)] mt-1">{s.scheduled_date ? new Date(`${s.scheduled_date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date to be announced'}{s.start_time ? ` · ${s.start_time.slice(0,5)}` : ''}</p>
+                  {s.location && <p className="mt-1 text-xs break-words text-[color:var(--lg-text-dim)]">{s.location}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {sections.length > 1 && (
           <nav
@@ -268,6 +287,7 @@ export default function PlayerLeagueDetail() {
         {standings.length > 0 && (
           <div id="standings" className="lg-card p-4 space-y-3 scroll-mt-20">
             <LgSectionHeader icon={Trophy} className="mb-0">Standings</LgSectionHeader>
+            <p className="text-xs text-[color:var(--lg-text-dim)]">Confirmed results only. Scores awaiting confirmation or under review do not count yet.</p>
             <StandingsTable
               rows={standings}
               nameHeader={isTeamMode ? "Team" : "Player"}
@@ -344,7 +364,7 @@ export default function PlayerLeagueDetail() {
         ) : (
           <>
             <div id="upcoming" className="lg-card p-4 scroll-mt-20">
-              <LgSectionHeader icon={CalendarClock}>Upcoming matches</LgSectionHeader>
+              <LgSectionHeader icon={CalendarClock}>Your matches · upcoming &amp; to finish</LgSectionHeader>
               {upcoming.length === 0 ? (
                 <p className="text-xs text-[color:var(--lg-text-dim)]">
                   No upcoming matches right now. Your organizer will schedule
@@ -359,6 +379,7 @@ export default function PlayerLeagueDetail() {
                       teamsById={teamsById}
                       playersById={playersById}
                       currentUserId={currentUserId}
+                      canPlay={isActiveParticipant && league.status === 'active' && season?.status === 'active' && (!m.session_id || sessions.some(s => s.id === m.session_id && s.status === 'published'))}
                       isLadder={league?.league_type === "ladder"}
                       onChanged={refresh}
                     />
@@ -378,6 +399,7 @@ export default function PlayerLeagueDetail() {
                       teamsById={teamsById}
                       playersById={playersById}
                       currentUserId={currentUserId}
+                      canPlay={false}
                       isLadder={league?.league_type === "ladder"}
                       onChanged={refresh}
                     />
@@ -412,13 +434,14 @@ export default function PlayerLeagueDetail() {
 }
 
 function MatchRow({
-  match, teamsById, playersById, currentUserId, isLadder, onChanged,
+  match, teamsById, playersById, currentUserId, isLadder, canPlay, onChanged,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
   playersById: Record<string, { display_name: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>;
   currentUserId: string | null;
   isLadder?: boolean;
+  canPlay: boolean;
   onChanged: () => void;
 }) {
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
@@ -492,7 +515,7 @@ function MatchRow({
             match={match}
             teamsById={teamsById}
             currentUserId={currentUserId}
-            isParticipant
+            isParticipant={canPlay}
             sideALabel={aName}
             sideBLabel={bName}
             ladderSeasonId={isLadder ? match.season_id : undefined}

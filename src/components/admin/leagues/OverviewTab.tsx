@@ -58,6 +58,7 @@ export function OverviewTab({
     skillMax !== (league.skill_max != null ? String(league.skill_max) : "");
 
   const save = async (opts?: { archiveConfirmed?: boolean }) => {
+    if (saving) return;
     if (!name.trim()) {
       toast.error("Name is required");
       return;
@@ -98,12 +99,12 @@ export function OverviewTab({
       skill_min: sMin,
       skill_max: sMax,
     };
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("leagues" as never)
       .update(patch as never)
-      .eq("id", league.id);
-    if (error) {
-      toast.error(error.message);
+      .eq("id", league.id).select('id').single();
+    if (error || !data) {
+      toast.error(error?.message ?? 'Settings were not saved. Refresh and check your permissions.');
       setSaving(false);
       return;
     }
@@ -125,13 +126,14 @@ export function OverviewTab({
   };
 
   const archive = async () => {
+    if (saving) return;
     setSaving(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("leagues" as never)
       .update({ status: "archived" } as never)
-      .eq("id", league.id);
-    if (error) {
-      toast.error(error.message);
+      .eq("id", league.id).select('id').single();
+    if (error || !data) {
+      toast.error(error?.message ?? 'League was not archived. Refresh and check your permissions.');
       setSaving(false);
       return;
     }
@@ -155,8 +157,7 @@ export function OverviewTab({
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
-            Rating-eligibility is currently a display flag only — the
-            rating engine ignores league matches until Phase 2.
+            {league.league_type === 'ladder' ? 'Verified ladder games can affect PULSE Ratings. Changing the setting applies to future scoring; it does not recalculate past results.' : 'PULSE rating integration is available for ladder games only. This format uses league standings.'}
           </span>
         </div>
       )}
@@ -238,19 +239,19 @@ export function OverviewTab({
           <div className="grid gap-3 md:grid-cols-2">
             <ToggleCard
               label="Rating-eligible"
-              desc="Flag only — rating engine still ignores league matches."
+              desc={league.league_type === 'ladder' ? 'Verified ladder games feed PULSE Ratings.' : 'Only ladder games currently support PULSE Ratings.'}
               checked={ratingEligible} onChange={setRatingEligible}
             />
             <ToggleCard
               label="Guests allowed"
-              desc="Placeholder — no player-facing UI yet."
+              desc="Advertise that guests are welcome. Players still need a PULSE account to enroll or score."
               checked={guestsAllowed} onChange={setGuestsAllowed}
             />
           </div>
         </FormSection>
 
         {/* Save row */}
-        <div className="flex items-center justify-between pt-3 border-t border-border/40">
+        <div className="flex flex-wrap gap-2 items-center justify-between pt-3 border-t border-border/40">
           <Button
             onClick={() => save()} disabled={!dirty || saving}
             className={cn(
@@ -307,7 +308,7 @@ export function OverviewTab({
       {/* Invite code — separated from the main league form since it has
           its own lifecycle (set / regenerate / clear) and doesn't
           participate in the dirty/save pattern above. */}
-      <InviteCodeCard league={league} onMutated={onMutated} />
+      <InviteCodeCard league={league} onMutated={() => { onMutated(); void onRefresh(); }} />
 
       {/* Optional skill-eligibility config (feature-flagged; renders nothing
           when disabled). Inactive foundation — saved but not enforced yet. */}
