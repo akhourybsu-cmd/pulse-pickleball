@@ -1,9 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  planScheduleAdjustment,
+  type ScheduleAdjustmentPlan,
+  type ScheduleSubstitution,
+} from "../_shared/roundRobin/scheduleAdjustment.ts";
+import {
+  seatsOf,
+  type CoreMatch,
+  type EventFormat,
+  type SeatId,
+} from "../_shared/roundRobin/scheduleCore.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface Participant {
@@ -12,833 +23,539 @@ interface Participant {
 }
 
 interface ScheduleRequest {
+  request_id?: string;
   event_id: string;
-  // Back-compat: callers may still send player_ids only (all registered players).
+  // Retained for older clients. The active database roster is authoritative.
   player_ids?: string[];
-  // Preferred: mixed list of registered players and guests.
   participants?: Participant[];
   num_courts: number;
-  num_rounds: number;
+  num_rounds?: number;
   games_per_player: number;
   regenerate_from_round?: number;
-  format?: 'open' | 'mixed' | 'male' | 'female';
+  expected_version?: number;
+  format?: EventFormat;
+  reason?: string;
+  /** Optional host-authorized identity handoff committed atomically with the
+   * future-only schedule rebuild. It affects allocation credit, never standings. */
+  substitutions?: ScheduleSubstitution[];
 }
 
-interface PlayerStats {
-  playerId: string; // synthetic seat id: "p:<uuid>" or "g:<uuid>"
-  gamesPlayed: number;
-  byesReceived: number;
-  lastPlayedRound: number;
-  partnerCounts: Map<string, number>;
-  opponentCounts: Map<string, number>;
-  courtUsage: Map<number, number>;
-  lastPartner: string | null;
-  lastOpponents: string[];
+interface EventSnapshot {
+  id: string;
+  organizer_id: string;
+  format: string | null;
+  status: string;
+  current_round: number | null;
+  num_courts: number;
+  num_rounds: number;
+  games_per_player: number | null;
+  schedule_version: number | null;
+  voided: boolean | null;
 }
 
-interface ScheduleMatch {
+interface RosterRow {
+  id: string;
+  player_id: string | null;
+  guest_player_id: string | null;
+  active: boolean;
+  status: string;
+  replacement_participant_id: string | null;
+  replaced_participant_id: string | null;
+  effective_round: number | null;
+  schedule_game_credit: number | null;
+  schedule_first_eligible_round: number | null;
+}
+
+interface PersistedScheduleRow {
+  id: string;
   round_no: number;
   court_no: number;
-  // Synthetic seat ids during generation; split into player/guest at insert time.
-  a1_player_id: string | null;
-  a2_player_id: string | null;
-  b1_player_id: string | null;
-  b2_player_id: string | null;
   is_bye: boolean;
+  a1_player_id: string | null;
+  a1_guest_id: string | null;
+  a2_player_id: string | null;
+  a2_guest_id: string | null;
+  b1_player_id: string | null;
+  b1_guest_id: string | null;
+  b2_player_id: string | null;
+  b2_guest_id: string | null;
+  team1_score: number | null;
+  team2_score: number | null;
+  match_id: string | null;
+  locked_at: string | null;
+  voided_at: string | null;
+  superseded_by_schedule_id: string | null;
+  abandoned: boolean | null;
 }
 
-// Seeded random number generator for deterministic scheduling
-class SeededRandom {
-  private seed: number;
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-  constructor(seed: string) {
-    this.seed = seed.split('').reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0);
-  }
-
-  next(): number {
-    const x = Math.sin(this.seed++) * 10000;
-    return x - Math.floor(x);
-  }
-
-  shuffle<T>(array: T[]): T[] {
-    const result = [...array];
-    for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(this.next() * (i + 1));
-      [result[i], result[j]] = [result[j], result[i]];
-    }
-    return result;
-  }
+function respond(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
-// Calculate metrics based on games per player
-function calculateMetrics(players: number, courts: number, gamesPerPlayer: number) {
-  const maxPossibleMatches = Math.floor(players / 4); // Max matches we can run with available players
-  const matchesPerRound = Math.min(courts, maxPossibleMatches); // Limited by courts or players
-  const onCourtPerRound = 4 * matchesPerRound;
-  const byesPerRound = Math.max(0, players - onCourtPerRound);
-  
-  // Calculate games per round per player
-  // If everyone plays: gamesPerRoundPerPlayer = 1
-  // If there are byes: gamesPerRoundPerPlayer = onCourtPerRound / players
-  const gamesPerRoundPerPlayer = onCourtPerRound / players;
-  
-  // Calculate rounds needed for target games per player
-  const rounds = Math.ceil(gamesPerPlayer / gamesPerRoundPerPlayer);
-  
-  const targetGames = gamesPerPlayer;
-  const totalByes = rounds * byesPerRound;
-  const targetByes = totalByes > 0 ? Math.round(totalByes / players) : 0;
+function seatId(playerId: string | null, guestId: string | null): SeatId | null {
+  if (playerId) return `p:${playerId}`;
+  if (guestId) return `g:${guestId}`;
+  return null;
+}
 
+function coreMatch(row: PersistedScheduleRow): CoreMatch {
   return {
-    matchesPerRound,
-    onCourtPerRound,
-    byesPerRound,
-    targetGames,
-    targetByes,
-    totalCourts: courts,
-    rounds,
+    round_no: row.round_no,
+    court_no: row.court_no,
+    is_bye: row.is_bye,
+    a1: seatId(row.a1_player_id, row.a1_guest_id),
+    a2: seatId(row.a2_player_id, row.a2_guest_id),
+    b1: seatId(row.b1_player_id, row.b1_guest_id),
+    b2: seatId(row.b2_player_id, row.b2_guest_id),
   };
 }
 
-// Initialize player stats
-function initializePlayerStats(
-  playerIds: string[],
-  completedMatches: ScheduleMatch[]
-): Map<string, PlayerStats> {
-  const stats = new Map<string, PlayerStats>();
-
-  playerIds.forEach((id) => {
-    stats.set(id, {
-      playerId: id,
-      gamesPlayed: 0,
-      byesReceived: 0,
-      lastPlayedRound: 0,
-      partnerCounts: new Map(),
-      opponentCounts: new Map(),
-      courtUsage: new Map(),
-      lastPartner: null,
-      lastOpponents: [],
-    });
-  });
-
-  completedMatches.forEach((match) => {
-    if (match.is_bye) {
-      const byePlayer = match.a1_player_id;
-      if (byePlayer && stats.has(byePlayer)) {
-        stats.get(byePlayer)!.byesReceived++;
-      }
-      return;
-    }
-
-    const players = [
-      match.a1_player_id,
-      match.a2_player_id,
-      match.b1_player_id,
-      match.b2_player_id,
-    ].filter((id): id is string => id !== null);
-
-    if (players.length !== 4) return;
-
-    const [a1, a2, b1, b2] = players;
-    const teamA = [a1, a2];
-    const teamB = [b1, b2];
-
-    players.forEach((playerId) => {
-      const stat = stats.get(playerId)!;
-      stat.gamesPlayed++;
-      stat.lastPlayedRound = match.round_no;
-      stat.courtUsage.set(
-        match.court_no,
-        (stat.courtUsage.get(match.court_no) || 0) + 1
-      );
-
-      let partner: string;
-      let opponents: string[];
-
-      if (playerId === a1) {
-        partner = a2;
-        opponents = teamB;
-      } else if (playerId === a2) {
-        partner = a1;
-        opponents = teamB;
-      } else if (playerId === b1) {
-        partner = b2;
-        opponents = teamA;
-      } else {
-        partner = b1;
-        opponents = teamA;
-      }
-
-      stat.partnerCounts.set(partner, (stat.partnerCounts.get(partner) || 0) + 1);
-      stat.lastPartner = partner;
-
-      opponents.forEach((opp) => {
-        stat.opponentCounts.set(opp, (stat.opponentCounts.get(opp) || 0) + 1);
-      });
-      stat.lastOpponents = opponents;
-    });
-  });
-
-  return stats;
+function splitSeat(value: SeatId | null): { player_id: string | null; guest_id: string | null } {
+  if (!value) return { player_id: null, guest_id: null };
+  if (value.startsWith("p:")) return { player_id: value.slice(2), guest_id: null };
+  if (value.startsWith("g:")) return { player_id: null, guest_id: value.slice(2) };
+  throw new Error(`Unsupported schedule identity: ${value}`);
 }
 
-// Calculate pair penalty
-function calculatePairPenalty(
-  p1Stats: PlayerStats,
-  p2Stats: PlayerStats,
-  p2Id: string
-): number {
-  const partnerCount = p1Stats.partnerCounts.get(p2Id) || 0;
-  const teamedLast = p1Stats.lastPartner === p2Id ? 1 : 0;
-  return 3 * (partnerCount > 0 ? 1 : 0) + 2 * teamedLast;
+function insertableMatch(match: CoreMatch) {
+  const a1 = splitSeat(match.a1);
+  const a2 = splitSeat(match.a2);
+  const b1 = splitSeat(match.b1);
+  const b2 = splitSeat(match.b2);
+  return {
+    round_no: match.round_no,
+    court_no: match.court_no,
+    is_bye: match.is_bye,
+    a1_player_id: a1.player_id,
+    a1_guest_id: a1.guest_id,
+    a2_player_id: a2.player_id,
+    a2_guest_id: a2.guest_id,
+    b1_player_id: b1.player_id,
+    b1_guest_id: b1.guest_id,
+    b2_player_id: b2.player_id,
+    b2_guest_id: b2.guest_id,
+  };
 }
 
-// Calculate opponent penalty
-function calculateOpponentPenalty(
-  team1: [string, string],
-  team2: [string, string],
-  stats: Map<string, PlayerStats>
-): number {
-  let totalMeetings = 0;
-  let metLastRound = 0;
-
-  team1.forEach((p1) => {
-    team2.forEach((p2) => {
-      const p1Stats = stats.get(p1)!;
-      const meetings = p1Stats.opponentCounts.get(p2) || 0;
-      totalMeetings += meetings;
-
-      if (p1Stats.lastOpponents.includes(p2)) {
-        metLastRound = 1;
-      }
-    });
-  });
-
-  return 2 * (totalMeetings > 0 ? 1 : 0) + metLastRound;
+function publicPlan(plan: ScheduleAdjustmentPlan) {
+  return {
+    capacity: plan.capacity,
+    impact: plan.impact,
+    fairness: plan.fairness,
+    warnings: plan.warnings,
+  };
 }
 
-// Select players for round
-function selectPlayersForRound(
-  roundNo: number,
-  allPlayers: string[],
-  onCourtPerRound: number,
-  stats: Map<string, PlayerStats>,
-  rng: SeededRandom
-): { playing: string[]; resting: string[] } {
-  const sorted = [...allPlayers].sort((a, b) => {
-    const aStats = stats.get(a)!;
-    const bStats = stats.get(b)!;
-
-    if (aStats.gamesPlayed !== bStats.gamesPlayed) {
-      return aStats.gamesPlayed - bStats.gamesPlayed;
-    }
-
-    const aRest = roundNo - aStats.lastPlayedRound;
-    const bRest = roundNo - bStats.lastPlayedRound;
-    if (aRest !== bRest) {
-      return bRest - aRest;
-    }
-
-    return rng.next() - 0.5;
-  });
-
-  const playing = sorted.slice(0, onCourtPerRound);
-  const resting = sorted.slice(onCourtPerRound);
-
-  return { playing, resting };
-}
-
-// Assign byes
-function assignByes(
-  restingPlayers: string[],
-  byesNeeded: number,
-  stats: Map<string, PlayerStats>,
-  rng: SeededRandom
-): string[] {
-  const sorted = [...restingPlayers].sort((a, b) => {
-    const aStats = stats.get(a)!;
-    const bStats = stats.get(b)!;
-
-    if (aStats.gamesPlayed !== bStats.gamesPlayed) {
-      return bStats.gamesPlayed - aStats.gamesPlayed;
-    }
-
-    if (aStats.lastPlayedRound !== bStats.lastPlayedRound) {
-      return bStats.lastPlayedRound - aStats.lastPlayedRound;
-    }
-
-    if (aStats.byesReceived !== bStats.byesReceived) {
-      return aStats.byesReceived - bStats.byesReceived;
-    }
-
-    return rng.next() - 0.5;
-  });
-
-  return sorted.slice(0, byesNeeded);
-}
-
-// Form teams for Mixed format (1 male + 1 female)
-function formTeamsMixed(
-  males: string[],
-  females: string[],
-  stats: Map<string, PlayerStats>,
-  rng: SeededRandom
-): Array<[string, string]> {
-  const availableMales = new Set(males);
-  const availableFemales = new Set(females);
-  const teams: Array<[string, string]> = [];
-
-  while (availableMales.size >= 1 && availableFemales.size >= 1) {
-    const male = Array.from(availableMales)[0];
-    availableMales.delete(male);
-
-    let bestPartner: string | null = null;
-    let bestPenalty = Infinity;
-
-    Array.from(availableFemales).forEach((female) => {
-      const penalty = calculatePairPenalty(stats.get(male)!, stats.get(female)!, female);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestPartner = female;
-      } else if (penalty === bestPenalty && rng.next() < 0.5) {
-        bestPartner = female;
-      }
-    });
-
-    if (bestPartner) {
-      availableFemales.delete(bestPartner);
-      teams.push([male, bestPartner]);
-    }
-  }
-
-  return teams;
-}
-
-// Form teams
-function formTeams(
-  players: string[],
-  stats: Map<string, PlayerStats>,
-  rng: SeededRandom
-): Array<[string, string]> {
-  const available = new Set(players);
-  const teams: Array<[string, string]> = [];
-
-  while (available.size >= 2) {
-    const p1 = Array.from(available)[0];
-    available.delete(p1);
-
-    let bestPartner: string | null = null;
-    let bestPenalty = Infinity;
-
-    Array.from(available).forEach((p2) => {
-      const penalty = calculatePairPenalty(stats.get(p1)!, stats.get(p2)!, p2);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestPartner = p2;
-      } else if (penalty === bestPenalty && rng.next() < 0.5) {
-        bestPartner = p2;
-      }
-    });
-
-    if (bestPartner) {
-      available.delete(bestPartner);
-      teams.push([p1, bestPartner]);
-    }
-  }
-
-  return teams;
-}
-
-// Pair opponents
-function pairOpponents(
-  teams: Array<[string, string]>,
-  stats: Map<string, PlayerStats>,
-  rng: SeededRandom
-): Array<{ teamA: [string, string]; teamB: [string, string] }> {
-  const available = new Set(teams);
-  const pairings: Array<{ teamA: [string, string]; teamB: [string, string] }> = [];
-
-  while (available.size >= 2) {
-    const teamA = Array.from(available)[0];
-    available.delete(teamA);
-
-    let bestOpponent: [string, string] | null = null;
-    let bestPenalty = Infinity;
-
-    Array.from(available).forEach((teamB) => {
-      const penalty = calculateOpponentPenalty(teamA, teamB, stats);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestOpponent = teamB;
-      } else if (penalty === bestPenalty && rng.next() < 0.5) {
-        bestOpponent = teamB;
-      }
-    });
-
-    if (bestOpponent) {
-      available.delete(bestOpponent);
-      pairings.push({ teamA, teamB: bestOpponent });
-    }
-  }
-
-  return pairings;
-}
-
-// Update stats with match
-function updateStatsWithMatch(match: ScheduleMatch, stats: Map<string, PlayerStats>): void {
-  if (match.is_bye) {
-    const byePlayer = match.a1_player_id;
-    if (byePlayer && stats.has(byePlayer)) {
-      stats.get(byePlayer)!.byesReceived++;
-    }
-    return;
-  }
-
-  const players = [
-    match.a1_player_id,
-    match.a2_player_id,
-    match.b1_player_id,
-    match.b2_player_id,
-  ].filter((id): id is string => id !== null);
-
-  if (players.length !== 4) return;
-
-  const [a1, a2, b1, b2] = players;
-  const teamA = [a1, a2];
-  const teamB = [b1, b2];
-
-  players.forEach((playerId) => {
-    const stat = stats.get(playerId)!;
-    stat.gamesPlayed++;
-    stat.lastPlayedRound = match.round_no;
-    stat.courtUsage.set(
-      match.court_no,
-      (stat.courtUsage.get(match.court_no) || 0) + 1
-    );
-
-    let partner: string;
-    let opponents: string[];
-
-    if (playerId === a1) {
-      partner = a2;
-      opponents = teamB;
-    } else if (playerId === a2) {
-      partner = a1;
-      opponents = teamB;
-    } else if (playerId === b1) {
-      partner = b2;
-      opponents = teamA;
-    } else {
-      partner = b1;
-      opponents = teamA;
-    }
-
-    stat.partnerCounts.set(partner, (stat.partnerCounts.get(partner) || 0) + 1);
-    stat.lastPartner = partner;
-
-    opponents.forEach((opp) => {
-      stat.opponentCounts.set(opp, (stat.opponentCounts.get(opp) || 0) + 1);
-    });
-    stat.lastOpponents = opponents;
-  });
-}
-
-// Generate complete schedule
-function generateRoundRobinSchedule(
-  eventId: string,
-  playerIds: string[],
-  numCourts: number,
-  gamesPerPlayer: number,
-  completedMatches: ScheduleMatch[] = [],
-  startFromRound: number = 1,
-  format: string = 'open',
-  playerGenders: Map<string, string> = new Map()
-): ScheduleMatch[] {
-  if (playerIds.length < 4) {
-    throw new Error('Need at least 4 players for doubles round robin');
-  }
-
-  const metrics = calculateMetrics(playerIds.length, numCourts, gamesPerPlayer);
-  const stats = initializePlayerStats(playerIds, completedMatches);
-  const rng = new SeededRandom(eventId + startFromRound);
-  const schedule: ScheduleMatch[] = [...completedMatches];
-
-  for (let round = startFromRound; round <= metrics.rounds; round++) {
-    let matches: ScheduleMatch[] = [];
-
-    if (format === 'mixed') {
-      // Mixed format: separate males and females
-      const males = playerIds.filter(id => playerGenders.get(id) === 'male');
-      const females = playerIds.filter(id => playerGenders.get(id) === 'female');
-
-      // Select players for round (balanced by gender)
-      const malesNeeded = Math.min(males.length, metrics.totalCourts * 2);
-      const femalesNeeded = Math.min(females.length, metrics.totalCourts * 2);
-
-      const { playing: playingMales } = selectPlayersForRound(
-        round,
-        males,
-        malesNeeded,
-        stats,
-        rng
-      );
-
-      const { playing: playingFemales } = selectPlayersForRound(
-        round,
-        females,
-        femalesNeeded,
-        stats,
-        rng
-      );
-
-      // Form mixed teams (1 male + 1 female)
-      const teams = formTeamsMixed(playingMales, playingFemales, stats, rng);
-
-      // Pair opponents
-      const pairings = pairOpponents(teams, stats, rng);
-
-      // Assign courts
-      pairings.forEach((pairing, index) => {
-        const courtNo = (index % metrics.totalCourts) + 1;
-        matches.push({
-          round_no: round,
-          court_no: courtNo,
-          a1_player_id: pairing.teamA[0],
-          a2_player_id: pairing.teamA[1],
-          b1_player_id: pairing.teamB[0],
-          b2_player_id: pairing.teamB[1],
-          is_bye: false,
-        });
-      });
-
-      // Add byes for any remaining players
-      const allPlayingIds = new Set([...playingMales, ...playingFemales]);
-      const restingMales = males.filter(id => !allPlayingIds.has(id));
-      const restingFemales = females.filter(id => !allPlayingIds.has(id));
-      
-      const maleByesNeeded = Math.min(restingMales.length, Math.floor(restingMales.length / 2));
-      const femaleByesNeeded = Math.min(restingFemales.length, Math.floor(restingFemales.length / 2));
-
-      if (maleByesNeeded > 0) {
-        const maleByePlayers = assignByes(restingMales, maleByesNeeded, stats, rng);
-        maleByePlayers.forEach((playerId, index) => {
-          matches.push({
-            round_no: round,
-            court_no: metrics.totalCourts + matches.filter(m => m.is_bye).length + 1,
-            a1_player_id: playerId,
-            a2_player_id: null,
-            b1_player_id: null,
-            b2_player_id: null,
-            is_bye: true,
-          });
-        });
-      }
-
-      if (femaleByesNeeded > 0) {
-        const femaleByePlayers = assignByes(restingFemales, femaleByesNeeded, stats, rng);
-        femaleByePlayers.forEach((playerId, index) => {
-          matches.push({
-            round_no: round,
-            court_no: metrics.totalCourts + matches.filter(m => m.is_bye).length + 1,
-            a1_player_id: playerId,
-            a2_player_id: null,
-            b1_player_id: null,
-            b2_player_id: null,
-            is_bye: true,
-          });
-        });
-      }
-    } else {
-      // Open/Male/Female format: use standard logic
-      const { playing, resting } = selectPlayersForRound(
-        round,
-        playerIds,
-        metrics.onCourtPerRound,
-        stats,
-        rng
-      );
-
-      // Assign byes
-      if (resting.length > 0) {
-        const byePlayers = assignByes(resting, metrics.byesPerRound, stats, rng);
-        byePlayers.forEach((playerId, byeIndex) => {
-          const byeCourtNo = metrics.totalCourts + byeIndex + 1;
-          matches.push({
-            round_no: round,
-            court_no: byeCourtNo,
-            a1_player_id: playerId,
-            a2_player_id: null,
-            b1_player_id: null,
-            b2_player_id: null,
-            is_bye: true,
-          });
-        });
-      }
-
-      // Form teams
-      const teams = formTeams(playing, stats, rng);
-
-      // Pair opponents
-      const pairings = pairOpponents(teams, stats, rng);
-
-      // Assign courts
-      pairings.forEach((pairing, index) => {
-        const courtNo = (index % metrics.totalCourts) + 1;
-        matches.push({
-          round_no: round,
-          court_no: courtNo,
-          a1_player_id: pairing.teamA[0],
-          a2_player_id: pairing.teamA[1],
-          b1_player_id: pairing.teamB[0],
-          b2_player_id: pairing.teamB[1],
-          is_bye: false,
-        });
-      });
-    }
-
-    schedule.push(...matches);
-
-    // Update stats
-    matches.forEach((match) => {
-      updateStatsWithMatch(match, stats);
-    });
-  }
-
-  return schedule;
+function errorStatus(message: string): number {
+  if (message.includes("RR_UNAUTHORIZED")) return 403;
+  if (message.includes("RR_EVENT_NOT_FOUND")) return 404;
+  if (
+    message.includes("RR_STALE_VERSION") ||
+    message.includes("RR_PROTECTED_ROUND") ||
+    message.includes("RR_IDEMPOTENCY_CONFLICT") ||
+    message.includes("RR_REQUEST_IN_PROGRESS")
+  ) return 409;
+  if (
+    message.includes("RR_INVALID_PLAN") ||
+    message.includes("RR_INVALID_ROSTER") ||
+    message.includes("RR_INVALID_SUBSTITUTION") ||
+    message.includes("RR_INVALID_ALLOCATION") ||
+    message.includes("RR_INSUFFICIENT_PLAYERS") ||
+    message.includes("RR_EVENT_CLOSED")
+  ) return 422;
+  return 500;
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return respond(405, { error: "Method not allowed" });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const body: ScheduleRequest = await req.json();
-    const {
-      event_id,
-      num_courts,
-      num_rounds,
-      games_per_player,
-      regenerate_from_round,
-      format,
-    } = body;
-
-    // Normalize participants: prefer the new `participants` shape, fall back to
-    // `player_ids` for older callers (all registered players, no guests).
-    const rawParticipants: Participant[] = body.participants
-      ?? (body.player_ids ?? []).map((id) => ({ player_id: id }));
-
-    // Build synthetic seat ids — "p:<uuid>" for profiles, "g:<uuid>" for guests.
-    // The scheduler treats them opaquely; we split them again at insert time.
-    const seatIds: string[] = rawParticipants
-      .map((p) => p.player_id ? `p:${p.player_id}` : p.guest_id ? `g:${p.guest_id}` : null)
-      .filter((s): s is string => s !== null);
-
-    const registeredPlayerIds = rawParticipants
-      .map((p) => p.player_id)
-      .filter((id): id is string => !!id);
-
-    // Verify user is organizer and get event format
-    const { data: event, error: eventError } = await supabase
-      .from('round_robin_events')
-      .select('organizer_id, format')
-      .eq('id', event_id)
-      .single();
-
-    if (eventError || event.organizer_id !== user.id) {
-      return new Response(JSON.stringify({ error: 'Not authorized to modify this event' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const eventFormat = format || event.format || 'open';
-
-    // Fetch player genders if format requires it. Guests have no profile and
-    // therefore no gender — they're excluded from gender-gated formats below.
-    const playerGenders = new Map<string, string>();
-    if ((eventFormat === 'mixed' || eventFormat === 'male' || eventFormat === 'female') && registeredPlayerIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, gender')
-        .in('id', registeredPlayerIds);
-
-      if (profiles) {
-        profiles.forEach((p) => {
-          if (p.gender) {
-            // Key by the synthetic seat id so the generator can look it up.
-            playerGenders.set(`p:${p.id}`, p.gender);
-          }
-        });
-      }
-    }
-
-    let completedMatches: ScheduleMatch[] = [];
-    let startFromRound = 1;
-
-    // If regenerating, keep completed rounds
-    if (regenerate_from_round && regenerate_from_round > 1) {
-      const { data: existing } = await supabase
-        .from('round_robin_schedule')
-        .select('*')
-        .eq('event_id', event_id)
-        .lt('round_no', regenerate_from_round);
-
-      if (existing) {
-        // Rehydrate completed rows back into synthetic-seat form for stat carry-over.
-        completedMatches = (existing as Array<Record<string, unknown>>).map((row) => ({
-          round_no: row.round_no as number,
-          court_no: row.court_no as number,
-          is_bye: row.is_bye as boolean,
-          a1_player_id: row.a1_player_id ? `p:${row.a1_player_id}` : row.a1_guest_id ? `g:${row.a1_guest_id}` : null,
-          a2_player_id: row.a2_player_id ? `p:${row.a2_player_id}` : row.a2_guest_id ? `g:${row.a2_guest_id}` : null,
-          b1_player_id: row.b1_player_id ? `p:${row.b1_player_id}` : row.b1_guest_id ? `g:${row.b1_guest_id}` : null,
-          b2_player_id: row.b2_player_id ? `p:${row.b2_player_id}` : row.b2_guest_id ? `g:${row.b2_guest_id}` : null,
-        }));
-      }
-      startFromRound = regenerate_from_round;
-
-      // Delete future rounds
-      await supabase
-        .from('round_robin_schedule')
-        .delete()
-        .eq('event_id', event_id)
-        .gte('round_no', regenerate_from_round);
-    } else {
-      // Full regeneration - delete all
-      await supabase
-        .from('round_robin_schedule')
-        .delete()
-        .eq('event_id', event_id);
-    }
-
-    // Generate schedule using games per player
-    console.log('[generate-rr] inputs', JSON.stringify({
-      event_id,
-      seatIds,
-      num_courts,
-      games_per_player,
-      num_rounds,
-      startFromRound,
-      eventFormat,
-      completedMatches: completedMatches.length,
-    }));
-    let schedule: ScheduleMatch[];
-    try {
-      schedule = generateRoundRobinSchedule(
-        event_id,
-        seatIds,
-        num_courts,
-        games_per_player || num_rounds,
-        completedMatches,
-        startFromRound,
-        eventFormat,
-        playerGenders,
-      );
-    } catch (genErr) {
-      console.error('[generate-rr] generator threw', genErr, (genErr as Error)?.stack);
-      throw genErr;
-    }
-
-    // Split synthetic seat ids back into player/guest columns for insert.
-    const splitSeat = (seat: string | null): { player_id: string | null; guest_id: string | null } => {
-      if (!seat) return { player_id: null, guest_id: null };
-      if (seat.startsWith('p:')) return { player_id: seat.slice(2), guest_id: null };
-      if (seat.startsWith('g:')) return { player_id: null, guest_id: seat.slice(2) };
-      // Legacy raw UUID — treat as a registered player.
-      return { player_id: seat, guest_id: null };
-    };
-
-    const newRounds = schedule.filter((m) => m.round_no >= startFromRound);
-    const insertRows = newRounds.map((m) => {
-      const a1 = splitSeat(m.a1_player_id);
-      const a2 = splitSeat(m.a2_player_id);
-      const b1 = splitSeat(m.b1_player_id);
-      const b2 = splitSeat(m.b2_player_id);
-      return {
-        event_id,
-        round_no: m.round_no,
-        court_no: m.court_no,
-        is_bye: m.is_bye,
-        a1_player_id: a1.player_id,
-        a1_guest_id: a1.guest_id,
-        a2_player_id: a2.player_id,
-        a2_guest_id: a2.guest_id,
-        b1_player_id: b1.player_id,
-        b1_guest_id: b1.guest_id,
-        b2_player_id: b2.player_id,
-        b2_guest_id: b2.guest_id,
-      };
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { error: insertError } = await supabase
-      .from('round_robin_schedule')
-      .insert(insertRows);
-
-    if (insertError) {
-      console.error('Schedule insert failed:', insertError);
-      throw insertError;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return respond(401, { error: "Missing Authorization header" });
     }
 
-    // Sync round_robin_events.num_rounds with what was ACTUALLY generated.
-    // Pre-fix, num_rounds was stamped at wizard time using a different player
-    // count than what reached this function (e.g. maxPlayers cap for
-    // open_registration events vs. the actual confirmed seat count). The
-    // generator correctly uses the real player count, but the event row kept
-    // the stale estimate — so the UI showed "Round X of N" with N rounds that
-    // never had matches inserted. Always overwrite from the generator's truth.
-    const actualRounds = schedule.reduce((m, row) => Math.max(m, row.round_no), 0);
-    if (actualRounds > 0) {
-      const { error: updateError } = await supabase
-        .from('round_robin_events')
-        .update({ num_rounds: actualRounds })
-        .eq('id', event_id);
-      if (updateError) {
-        // Non-fatal: the schedule is already inserted. Log and move on.
-        console.error('[generate-rr] failed to sync num_rounds', updateError);
+    const token = authHeader.slice("Bearer ".length);
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData.user) {
+      return respond(401, { error: "Unauthorized" });
+    }
+
+    const body = (await req.json()) as ScheduleRequest;
+    const eventId = body.event_id;
+    const requestedCourts = Math.floor(Number(body.num_courts));
+    const requestedGames = Math.floor(Number(body.games_per_player));
+    if (!eventId || !Number.isFinite(requestedCourts) || !Number.isFinite(requestedGames)) {
+      return respond(400, { error: "event_id, num_courts, and games_per_player are required" });
+    }
+    if (requestedCourts < 1 || requestedCourts > 20 || requestedGames < 1 || requestedGames > 20) {
+      return respond(422, { error: "Courts and games per player must be between 1 and 20" });
+    }
+
+    // Authorize before loading any roster or schedule details. The database RPC
+    // repeats this check under the event row lock.
+    const { data: rawEvent, error: eventError } = await supabase
+      .from("round_robin_events")
+      .select("id, organizer_id, format, status, current_round, num_courts, num_rounds, games_per_player, schedule_version, voided")
+      .eq("id", eventId)
+      .single();
+    if (eventError || !rawEvent) {
+      return respond(404, { error: "Round robin not found" });
+    }
+    const event = rawEvent as EventSnapshot;
+    let canManage = event.organizer_id === authData.user.id;
+    if (!canManage) {
+      const { data: hasAdminRole, error: roleError } = await supabase.rpc("has_role", {
+        _user_id: authData.user.id,
+        _role: "admin",
+      });
+      if (roleError) throw roleError;
+      canManage = hasAdminRole === true;
+    }
+    if (!canManage) {
+      return respond(403, { error: "Only the organizer or an administrator can rebuild this schedule" });
+    }
+    if (event.voided || event.status === "completed" || event.status === "voided") {
+      return respond(422, { error: "This event is closed and its schedule is locked" });
+    }
+    if (
+      body.expected_version != null &&
+      body.expected_version !== (event.schedule_version ?? 0)
+    ) {
+      return respond(409, {
+        error: "The schedule changed in another session. Refresh and review the latest version.",
+        code: "RR_STALE_VERSION",
+        current_version: event.schedule_version ?? 0,
+      });
+    }
+
+    const rosterResult = await supabase
+      .from("round_robin_players")
+      .select("id, player_id, guest_player_id, active, status, replacement_participant_id, replaced_participant_id, effective_round, schedule_game_credit, schedule_first_eligible_round")
+      .eq("event_id", eventId);
+    if (rosterResult.error) throw rosterResult.error;
+
+    // PostgREST caps a response at the project's max_rows setting. Explicit
+    // bye rows can push a legal long rotation past that cap, so page until the
+    // authoritative snapshot is complete rather than planning from a silently
+    // truncated schedule.
+    const persisted: PersistedScheduleRow[] = [];
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data: page, error: scheduleError } = await supabase
+        .from("round_robin_schedule")
+        .select("id, round_no, court_no, is_bye, a1_player_id, a1_guest_id, a2_player_id, a2_guest_id, b1_player_id, b1_guest_id, b2_player_id, b2_guest_id, team1_score, team2_score, match_id, locked_at, voided_at, superseded_by_schedule_id, abandoned")
+        .eq("event_id", eventId)
+        .order("round_no")
+        .order("court_no")
+        .order("id")
+        .range(offset, offset + pageSize - 1);
+      if (scheduleError) throw scheduleError;
+      const rows = (page ?? []) as PersistedScheduleRow[];
+      persisted.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+
+    const roster = (rosterResult.data ?? []) as RosterRow[];
+    const activeRoster = roster.filter((row) => row.active);
+    const unresolved = activeRoster.filter((row) => !row.player_id && !row.guest_player_id);
+    if (unresolved.length > 0) {
+      return respond(422, {
+        error: `${unresolved.length} active roster slot${unresolved.length === 1 ? " is" : "s are"} not linked to a player or saved guest`,
+        code: "RR_INVALID_ROSTER",
+      });
+    }
+    const activeSeatIds = [...new Set(
+      activeRoster
+        .map((row) => seatId(row.player_id, row.guest_player_id))
+        .filter((value): value is SeatId => value !== null),
+    )].sort((left, right) => left.localeCompare(right));
+    if (activeSeatIds.length !== activeRoster.length) {
+      return respond(422, {
+        error: "The active roster contains a duplicate player identity",
+        code: "duplicate_player_identity",
+      });
+    }
+
+    if (body.substitutions != null && !Array.isArray(body.substitutions)) {
+      return respond(400, { error: "substitutions must be an array" });
+    }
+    if ((body.substitutions?.length ?? 0) > 1) {
+      return respond(400, { error: "Only one substitution can be applied per rebuild" });
+    }
+    const seatPattern = /^[pg]:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const substitutions = (body.substitutions ?? []).filter((substitution) => {
+      const outgoing = substitution?.outgoingSeatId;
+      const incoming = substitution?.incomingSeatId;
+      return typeof outgoing === "string" && seatPattern.test(outgoing) &&
+        typeof incoming === "string" && seatPattern.test(incoming) &&
+        outgoing !== incoming && activeSeatIds.includes(outgoing) &&
+        !activeSeatIds.includes(incoming);
+    });
+    if (substitutions.length !== (body.substitutions?.length ?? 0)) {
+      return respond(422, {
+        error: "The replacement must identify one active outgoing player and one player who is not already active in this event",
+        code: "RR_INVALID_ROSTER",
+      });
+    }
+    // The planner may accept optional allocation behavior, but the persistence
+    // RPC receives a deliberately narrow identity-only command surface.
+    const requestedSubstitution = substitutions[0]
+      ? {
+          outgoingSeatId: substitutions[0].outgoingSeatId,
+          incomingSeatId: substitutions[0].incomingSeatId,
+        }
+      : null;
+    const nextSeatIds = requestedSubstitution
+      ? activeSeatIds
+          .filter((seat) => seat !== requestedSubstitution.outgoingSeatId)
+          .concat(requestedSubstitution.incomingSeatId)
+          .sort((left, right) => left.localeCompare(right))
+      : activeSeatIds;
+
+    const canonical = persisted.filter(
+      (row) => row.voided_at == null && row.superseded_by_schedule_id == null,
+    );
+    const fairnessRows = canonical.filter((row) => !row.abandoned).map(coreMatch);
+
+    const requestedFromRound = Math.max(1, Math.floor(body.regenerate_from_round ?? 1));
+    const protectedRows = canonical.filter((row) =>
+      row.locked_at != null ||
+      row.match_id != null ||
+      row.team1_score != null ||
+      row.team2_score != null ||
+      row.abandoned === true
+    );
+    const explicitlyProtectedThrough = protectedRows.reduce(
+      (highest, row) => Math.max(highest, row.round_no),
+      0,
+    );
+    // The displayed round is an operational boundary even when its canonical
+    // rows are missing because of legacy drift. A general rebuild must never
+    // fill or rewrite that live round implicitly; the dedicated repair/current-
+    // round workflows must make any such intervention explicit.
+    const liveRound = event.status === "live" ? (event.current_round ?? 1) : 0;
+    const protectedThrough = Math.max(
+      requestedFromRound - 1,
+      explicitlyProtectedThrough,
+      liveRound,
+    );
+    const firstMutableRound = protectedThrough + 1;
+
+    // Detect players who existed in the previous rotation even if a roster
+    // mutation has just marked them inactive. This lets the planner explain
+    // adds/removals and prevents a departed identity from leaking into future rounds.
+    const scheduledSeatIds = [...new Set(
+      fairnessRows.flatMap(seatsOf),
+    )].sort((left, right) => left.localeCompare(right));
+    // During an explicit handoff, the authoritative pre-mutation roster must
+    // define `currentSeatIds` even when the outgoing seat has only abandoned
+    // history or no generated row. Otherwise the pure planner would reject
+    // the inheritance relationship and silently drop durable fairness credit.
+    const currentSeatIds = requestedSubstitution
+      ? activeSeatIds
+      : scheduledSeatIds.length > 0
+        ? scheduledSeatIds
+        : nextSeatIds;
+
+    const registeredIds = nextSeatIds
+      .filter((value) => value.startsWith("p:"))
+      .map((value) => value.slice(2));
+    const guestIds = nextSeatIds
+      .filter((value) => value.startsWith("g:"))
+      .map((value) => value.slice(2));
+    const guestLinks = new Map<string, string>();
+    const guestGenders = new Map<string, string>();
+    if (guestIds.length > 0) {
+      const { data: guests, error: guestError } = await supabase
+        .from("guest_players")
+        .select("id, linked_user_id, gender")
+        .in("id", guestIds);
+      if (guestError) throw guestError;
+      if ((guests ?? []).length !== guestIds.length) {
+        return respond(422, {
+          error: "A selected guest no longer exists",
+          code: "RR_INVALID_ROSTER",
+        });
+      }
+      for (const guest of guests ?? []) {
+        if (guest.linked_user_id) guestLinks.set(guest.id, guest.linked_user_id);
+        if (guest.gender) guestGenders.set(guest.id, guest.gender);
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        matches_created: newRounds.length,
-        total_matches: schedule.length,
-        num_rounds: actualRounds,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const profileIds = [...new Set([...registeredIds, ...guestLinks.values()])];
+    const genders = new Map<SeatId, string>();
+    if (profileIds.length > 0) {
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, gender")
+        .in("id", profileIds);
+      if (profileError) throw profileError;
+      const genderByProfile = new Map<string, string>();
+      const existingProfileIds = new Set<string>();
+      for (const profile of profiles ?? []) {
+        existingProfileIds.add(profile.id);
+        if (profile.gender) genderByProfile.set(profile.id, profile.gender);
+      }
+      if (registeredIds.some((profileId) => !existingProfileIds.has(profileId))) {
+        return respond(422, {
+          error: "A selected player profile no longer exists",
+          code: "RR_INVALID_ROSTER",
+        });
+      }
+      registeredIds.forEach((profileId) => {
+        const gender = genderByProfile.get(profileId);
+        if (gender) genders.set(`p:${profileId}`, gender);
+      });
+      guestLinks.forEach((profileId, guestId) => {
+        const gender = genderByProfile.get(profileId) ?? guestGenders.get(guestId);
+        if (gender) genders.set(`g:${guestId}`, gender);
+      });
+    }
+    guestGenders.forEach((gender, guestId) => {
+      if (!genders.has(`g:${guestId}`)) genders.set(`g:${guestId}`, gender);
+    });
+
+    // Scheduling credits and availability boundaries are durable roster
+    // metadata, not standings. Carry them into every later court/game change
+    // so a fair late-join or substitution allocation is never forgotten.
+    const existingGameCredits = new Map<SeatId, number>();
+    const existingFirstEligibleRounds = new Map<SeatId, number>();
+    for (const row of roster) {
+      const seat = seatId(row.player_id, row.guest_player_id);
+      if (!seat) continue;
+      const credit = Math.max(0, Math.floor(row.schedule_game_credit ?? 0));
+      if (credit > 0) existingGameCredits.set(seat, credit);
+      if (
+        row.schedule_first_eligible_round != null &&
+        row.schedule_first_eligible_round >= 1
+      ) {
+        existingFirstEligibleRounds.set(
+          seat,
+          Math.floor(row.schedule_first_eligible_round),
+        );
+      }
+    }
+
+    const plan = planScheduleAdjustment({
+      seed: eventId,
+      currentMatches: fairnessRows,
+      currentSeatIds,
+      nextSeatIds,
+      currentNumCourts: event.num_courts,
+      currentGamesPerPlayer: event.games_per_player ?? 3,
+      currentTotalRounds: event.num_rounds,
+      firstMutableRound,
+      protectedRounds: protectedThrough > 0 ? [protectedThrough] : [],
+      numCourts: requestedCourts,
+      gamesPerPlayer: requestedGames,
+      // Event format is persisted configuration; never let a request body
+      // silently bypass mixed/gender scheduling requirements.
+      format: (event.format ?? "open") as EventFormat,
+      genders,
+      lateJoinCredit: "roster_median",
+      substitutions,
+      existingGameCredits,
+      existingFirstEligibleRounds,
+    });
+
+    if (!plan.ok) {
+      return respond(422, {
+        error: plan.warnings.find((warning) => warning.severity === "error")?.message ?? "The schedule cannot be rebuilt with these settings",
+        code: plan.code ?? "RR_INVALID_PLAN",
+        ...publicPlan(plan),
+      });
+    }
+
+    const replacementRows = plan.generatedMatches.map(insertableMatch);
+    const serializedPlan = publicPlan(plan);
+    const reason = body.reason?.trim() || plan.impact.summary;
+    const requestId = body.request_id?.trim() || crypto.randomUUID();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return respond(400, { error: "request_id must be a UUID" });
+    }
+    const allocation = plan.fairness.perPlayer.map((player) => ({
+      seat_id: player.seatId,
+      // Persist the full durable credit. Fairness exposes only the portion
+      // applied to this target, so an 8→3→8 game-target change can recover the
+      // original missed-play context instead of permanently truncating it.
+      game_credit: plan.gameCredits.get(player.seatId) ?? player.gameCredit,
+      first_eligible_round:
+        plan.firstEligibleRounds.get(player.seatId) ?? player.firstEligibleRound,
+    }));
+    const { data: applyResult, error: applyError } = await supabase.rpc(
+      "rr_apply_schedule_rebuild",
+      {
+        p_request_id: requestId,
+        p_event_id: eventId,
+        p_actor_id: authData.user.id,
+        p_expected_version: event.schedule_version ?? 0,
+        p_regenerate_from_round: firstMutableRound,
+        p_num_courts: requestedCourts,
+        p_num_rounds: plan.capacity.recommendedTotalRounds,
+        p_games_per_player: requestedGames,
+        p_schedule: replacementRows,
+        p_impact: serializedPlan,
+        p_reason: reason,
+        p_substitution: requestedSubstitution,
+        p_allocation: allocation,
+      },
     );
+    if (applyError) {
+      const message = applyError.message || "Schedule update failed";
+      console.error("[generate-rr] atomic apply failed", {
+        eventId,
+        message,
+        code: applyError.code,
+      });
+      return respond(errorStatus(message), {
+        error: message.includes("RR_STALE_VERSION")
+          ? "The schedule changed in another session. Refresh and try again."
+          : message.includes("RR_PROTECTED_ROUND")
+            ? "A match became active while the schedule was rebuilding. Nothing changed; refresh and try again."
+            : "The schedule could not be safely updated. Nothing was changed.",
+        code: message.split(":", 1)[0],
+      });
+    }
+
+    console.log("[generate-rr] schedule applied", JSON.stringify({
+      eventId,
+      playerCount: nextSeatIds.length,
+      requestedCourts,
+      usableCourts: plan.capacity.usableCourts,
+      protectedThrough,
+      totalRounds: plan.capacity.recommendedTotalRounds,
+      generatedRows: replacementRows.length,
+      fairnessScore: plan.fairness.score,
+    }));
+
+    return respond(200, {
+      success: true,
+      request_id: requestId,
+      matches_created: replacementRows.filter((row) => !row.is_bye).length,
+      schedule_rows_created: replacementRows.length,
+      num_rounds: plan.capacity.recommendedTotalRounds,
+      schedule_version: (applyResult as { schedule_version?: number } | null)?.schedule_version,
+      regenerate_from_round: firstMutableRound,
+      ...serializedPlan,
+    });
   } catch (error) {
-    console.error('Schedule generation failed:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to generate schedule' 
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const message = error instanceof Error ? error.message : "Failed to generate schedule";
+    console.error("[generate-rr] schedule generation failed", message);
+    return respond(500, { error: message });
   }
 });
