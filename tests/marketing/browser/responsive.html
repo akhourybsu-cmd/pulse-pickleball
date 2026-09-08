@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PULSE public-page responsive QA</title>
+<style>
+body{margin:0;background:#353a35;color:white;font:13px system-ui}header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px}label{display:flex;gap:6px;align-items:center}select,button{padding:8px}output{display:block;padding:0 12px 12px}iframe{display:block;border:0;margin:0 12px 20px;background:#f4f1e9;width:390px;height:610px}
+</style></head>
+<body>
+<header><strong>Local public-page QA</strong><label>Viewport <select id="width"><option>320</option><option selected>390</option><option>600</option><option>768</option><option>1024</option><option>1440</option><option>1920</option></select></label><label>Section <select id="section"><option value="">Hero</option><option value="features">Features</option><option value="organizers">Organizers</option><option value="how-it-works">Getting started</option><option value="questions">FAQs</option><option value="closing-heading">Final CTA</option><option value=".mkt-rr-preview">Round-robin preview</option><option value=".mkt-league-preview">League preview</option></select></label><button id="refresh">Reload</button></header>
+<output id="report" aria-live="polite">Loading the actual app in a separate, logged-out local origin.</output>
+<output id="history"></output>
+<iframe title="Responsive public landing page" src="/"></iframe>
+<script>
+const frame = document.querySelector('iframe');
+const sizes = new Map();
+const resize = () => {
+  frame.style.width=document.querySelector('#width').value+'px';
+};
+frame.addEventListener('load', resize);
+document.querySelector('#width').addEventListener('change', resize);
+document.querySelector('#section').addEventListener('change', event => {const doc=frame.contentDocument;if(event.target.value)(doc?.getElementById(event.target.value) ?? doc?.querySelector(event.target.value))?.scrollIntoView();else frame.contentWindow?.scrollTo(0,0);});
+document.querySelector('#refresh').addEventListener('click', () => {frame.src='/';});
+// Read-only layout diagnostics. No sessions, API calls, or live-data writes.
+setInterval(() => {
+  const doc=frame.contentDocument;if(!doc?.querySelector('.mkt-page'))return;
+  const width=doc.documentElement.clientWidth;
+  const viewport=frame.contentWindow.innerWidth;
+  const overflow=[...doc.querySelectorAll('.mkt-page *')].filter(el => {
+    const box=el.getBoundingClientRect();return box.width>0 && (box.left < -1 || box.right > width+1);
+  }).slice(0,8).map(el => el.className?.baseVal ?? el.className);
+  const headings=doc.querySelectorAll('h1').length;
+  const nav=doc.querySelector('.mkt-desktop-nav')?.getBoundingClientRect();
+  const actions=doc.querySelector('.mkt-nav-actions')?.getBoundingClientRect();
+  const navOverlap=Boolean(nav?.width && actions && nav.right>actions.left);
+  const result={viewport,contentWidth:width,documentWidth:doc.documentElement.scrollWidth,overflow,navOverlap,primaryHeadings:headings};
+  document.querySelector('#report').textContent=JSON.stringify(result);
+  sizes.set(viewport, result);
+  document.querySelector('#history').textContent='Checked: '+[...sizes.values()].map(item=>item.viewport+'px '+(item.overflow.length===0 && !item.navOverlap && item.documentWidth===item.contentWidth?'PASS':'OVERFLOW')).join(' · ');
+},1000);
+</script>
+</body></html>

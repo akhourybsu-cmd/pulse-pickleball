@@ -1,108 +1,53 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { RotateCcw, Trophy, Check, ArrowRight } from "lucide-react";
-import { CourtMotif } from "./CourtMotif";
+import { Link } from "react-router-dom";
+import { ArrowRight, Check, RotateCcw, Trophy } from "lucide-react";
+import { SIGNUP_URL } from "./marketingContent";
 
-/**
- * Two alternating deep-dive bands for the flagship organizer surfaces —
- * Round Robins and Leagues — that the top-level feature grid can only
- * name in a sentence. This is where the landing "showcases everything":
- * the depth (guests, kiosk, seasons, formats, freemium) lives here.
- */
+const CheckList = ({ items }: { items: string[] }) => (
+  <ul className="mkt-check-list">{items.map(item => <li key={item}><Check aria-hidden="true" /><span>{item}</span></li>)}</ul>
+);
 
-const spotlights = [
-  {
-    icon: RotateCcw,
-    eyebrow: "Round Robins",
-    title: "Open play, perfectly organized",
-    body: "Set the players and courts — PULSE builds fair, rotating matchups for you. Add guests who aren't on the app yet, run a big-screen scoring kiosk, and watch standings update every round.",
-    points: [
-      "Auto-balanced pairings & byes",
-      "Guest players, no account needed",
-      "Live kiosk scoring + standings",
-    ],
-    cta: "Host a round robin",
-    flip: false,
-  },
-  {
-    icon: Trophy,
-    eyebrow: "Leagues",
-    title: "Run a real season — your first is free",
-    body: "Singles, doubles, team, flex, or ladder. Set up seasons and divisions, track standings, and hand out an invite code so players join themselves. Create your first league free; add more anytime.",
-    points: [
-      "Five league formats",
-      "Seasons, divisions & standings",
-      "Shareable invite codes",
-    ],
-    cta: "Create your first league",
-    flip: true,
-  },
-];
-
-export const FeatureSpotlights = () => {
-  const navigate = useNavigate();
-
-  return (
-    <section className="py-8 md:py-12">
-      <div className="container mx-auto px-4 space-y-6 md:space-y-8">
-        {spotlights.map((s) => (
-          <div
-            key={s.eyebrow}
-            className="relative overflow-hidden rounded-3xl border border-border/60 bg-card"
-          >
-            <CourtMotif
-              className={`absolute top-1/2 -translate-y-1/2 w-[520px] max-w-none text-primary/[0.05] ${
-                s.flip ? "left-0 -translate-x-1/4" : "right-0 translate-x-1/4"
-              }`}
-            />
-            <div
-              className={`relative grid lg:grid-cols-2 gap-8 lg:gap-12 items-center p-7 md:p-12 ${
-                s.flip ? "lg:[&>*:first-child]:order-2" : ""
-              }`}
-            >
-              {/* Copy */}
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary mb-4">
-                  <s.icon className="h-3.5 w-3.5" />
-                  {s.eyebrow}
-                </div>
-                <h3 className="text-2xl md:text-3xl font-bold font-display mb-4">
-                  {s.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed mb-6 max-w-lg">
-                  {s.body}
-                </p>
-                <ul className="space-y-2.5 mb-8">
-                  {s.points.map((p) => (
-                    <li key={p} className="flex items-center gap-3 text-sm font-medium">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary shrink-0">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  onClick={() => navigate("/auth")}
-                  className="group h-12 px-6 font-semibold"
-                >
-                  {s.cta}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
-
-              {/* Visual placeholder tile — big iconographic panel keeps the
-                  band lively without a screenshot asset. */}
-              <div className="relative aspect-[4/3] rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/15 flex items-center justify-center">
-                <s.icon className="h-24 w-24 md:h-32 md:w-32 text-primary/25" strokeWidth={1.25} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-2.5 w-2.5 rounded-full bg-primary animate-ping" />
-                </div>
-              </div>
-            </div>
+export const FeatureSpotlights = () => (
+  <section id="organizers" className="mkt-organizers mkt-section" aria-labelledby="organizers-heading">
+    <div className="mkt-container">
+      <div className="mkt-section-heading"><p className="mkt-eyebrow">FOR THE PERSON WHO MAKES PLAY HAPPEN</p><h2 id="organizers-heading">Bring the players.<br />PULSE brings the structure.</h2><p>From a casual group on two courts to a season-long competition, keep the details organized and the players in the loop.</p></div>
+      <article className="mkt-spotlight">
+        <div className="mkt-spotlight-copy">
+          <span className="mkt-product-label"><RotateCcw aria-hidden="true" /> ROUND ROBINS</span>
+          <h3>A better flow<br />for your next open play.</h3>
+          <p>Set your roster and courts, generate the schedule, and see who's playing where. When the plan changes, review adjustments and keep the next round moving.</p>
+          <CheckList items={["Player rotations, byes, and court assignments", "Guest players, score entry, and live standings", "Scheduling and fairness tools for the host"]} />
+          <Link className="mkt-text-link" to={SIGNUP_URL}>Get started with round robins <ArrowRight aria-hidden="true" /></Link>
+        </div>
+        <figure className="mkt-rr-preview">
+          <div className="mkt-product-preview-title"><RotateCcw aria-hidden="true" /><div><strong>Saturday round robin</strong><span>8 players · 2 courts · Doubles</span></div></div>
+          <div className="mkt-round-strip" aria-label="Illustrative round progress"><span>Round 1 <Check aria-hidden="true" /></span><strong>Round 2</strong><span>Round 3</span></div>
+          <div className="mkt-courts">
+            <div className="mkt-court"><span>COURT 1</span><strong>Alex & Jamie</strong><span className="mkt-court-net">vs</span><strong>Morgan & Sam</strong></div>
+            <div className="mkt-court"><span>COURT 2</span><strong>Riley & Casey</strong><span className="mkt-court-net">vs</span><strong>Taylor & Jordan</strong></div>
           </div>
-        ))}
-      </div>
-    </section>
-  );
-};
+          <div className="mkt-rr-preview-footer"><span><Check aria-hidden="true" /> Everyone has a court</span><span>Next: rotate partners</span></div>
+          <figcaption>Illustrative round-robin schedule · Sample players</figcaption>
+        </figure>
+      </article>
+      <article className="mkt-spotlight mkt-spotlight-reverse">
+        <div className="mkt-spotlight-copy">
+          <span className="mkt-product-label"><Trophy aria-hidden="true" /> LEAGUES</span>
+          <h3>Give your weekly game<br />a bigger story.</h3>
+          <p>Build a league around the way your group likes to compete. Organizers manage the season; members have a clear place to follow their games, results, and standings.</p>
+          <CheckList items={["League formats for different ways to compete", "Invite codes and a shared home for your members", "Season settings, scheduling, and standings"]} />
+          <Link className="mkt-text-link" to={SIGNUP_URL}>Get started with leagues <ArrowRight aria-hidden="true" /></Link>
+        </div>
+        <figure className="mkt-league-preview">
+          <div className="mkt-product-preview-title"><Trophy aria-hidden="true" /><div><strong>The weeknight league</strong><span>A season worth showing up for</span></div></div>
+          <div className="mkt-season-strip"><span>SUMMER SEASON</span><strong>Week 4 of 8</strong></div>
+          <div className="mkt-standings">
+            <div className="mkt-standings-heading"><span>Standings</span><span>W – L</span></div>
+            {[{name:"Alex",record:"6 – 2"},{name:"Morgan",record:"5 – 3"},{name:"Riley",record:"4 – 4"}].map((player,index) => <div className="mkt-standing" key={player.name}><span className="mkt-standing-rank">0{index+1}</span><strong>{player.name}</strong><span>{player.record}</span></div>)}
+          </div>
+          <div className="mkt-league-note"><span className="mkt-preview-dot" aria-hidden="true" /> The next game is part of something bigger.</div>
+          <figcaption>Illustrative league standings · Sample season and results</figcaption>
+        </figure>
+      </article>
+    </div>
+  </section>
+);

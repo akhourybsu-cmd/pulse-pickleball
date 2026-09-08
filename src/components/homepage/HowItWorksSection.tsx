@@ -1,72 +1,14 @@
-import { UserPlus, Gamepad2, TrendingUp } from "lucide-react";
-
-/**
- * "How It Works" — Players only.
- *
- * The previous version had a Players/Venues tab switcher. Venue tab pulled
- * during the player-focused beta — the homepage no longer surfaces any
- * venue/organizer story.
- */
-const playerSteps = [
-  {
-    icon: UserPlus,
-    title: "Set your level",
-    description: "Sign up free and tell us where your game is today",
-  },
-  {
-    icon: Gamepad2,
-    title: "Hit the court",
-    description: "Log every match, round robin, and league in a tap",
-  },
-  {
-    icon: TrendingUp,
-    title: "Watch it climb",
-    description: "Your PULSE rating recalibrates after every game",
-  },
+const steps = [
+  { title: "Make it your game", text: "Create your free account and set up your player profile. Start with the level and interests that fit you." },
+  { title: "Find your people", text: "Connect with friends, explore available play, or bring your own crew together for a round robin or league." },
+  { title: "Keep the momentum", text: "Record your matches, follow your results, and stay connected with the people you'll play with next." },
 ];
 
-export const HowItWorksSection = () => {
-  return (
-    <section className="py-16 md:py-24 bg-muted/30">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold font-display text-center mb-4">
-          From first serve to season champ
-        </h2>
-        <p className="text-lg text-muted-foreground text-center mb-12 max-w-md mx-auto">
-          Three steps to get on the court
-        </p>
-
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Connection Line (desktop only) */}
-            <div className="hidden md:block absolute top-16 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
-
-            {playerSteps.map((step, index) => (
-              <div
-                key={index}
-                className="relative flex flex-col items-center text-center animate-fade-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {/* Step Number */}
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-background border-2 border-primary flex items-center justify-center text-xs font-bold text-primary z-10">
-                  {index + 1}
-                </div>
-
-                {/* Icon Circle */}
-                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 transition-transform hover:scale-105 bg-primary/10">
-                  <step.icon className="h-9 w-9 text-primary" />
-                </div>
-
-                {/* Text */}
-                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground max-w-[200px]">
-                  {step.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
+export const HowItWorksSection = () => (
+  <section id="how-it-works" className="mkt-section" aria-labelledby="getting-started-heading">
+    <div className="mkt-container">
+      <div className="mkt-section-heading mkt-heading-split"><div><p className="mkt-eyebrow">YOUR NEXT GAME STARTS HERE</p><h2 id="getting-started-heading">Easy to join.<br />Plenty to grow into.</h2></div><p>New to pickleball or already a regular? You don't need to run a league or know your rating to get started.</p></div>
+      <ol className="mkt-steps">{steps.map((step,index) => <li key={step.title}><span className="mkt-step-number">0{index+1}</span><h3>{step.title}</h3><p>{step.text}</p></li>)}</ol>
+    </div>
+  </section>
+);

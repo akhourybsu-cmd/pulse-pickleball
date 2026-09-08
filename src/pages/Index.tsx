@@ -1,16 +1,7 @@
 import { useState, useEffect } from "react";
-import { PageSEO } from "@/components/seo/PageSEO";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  HomepageNav,
-  HeroSection,
-  PlayerFeaturesSection,
-  FeatureSpotlights,
-  HowItWorksSection,
-  SplitCTASection,
-  HomepageFooter,
-} from "@/components/homepage";
+import { PublicHomepage } from "@/components/homepage/PublicHomepage";
 import { consumePostAuthRedirect } from "@/lib/authRedirect";
 
 /**
@@ -65,30 +56,7 @@ const Index = () => {
     return <Navigate to={consumePostAuthRedirect()} replace />;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <PageSEO
-        title="PULSE — Pickleball"
-        description="The home for pickleball players. Track matches, earn your rating, find events, and connect with your local community."
-        path="/"
-      />
-      <HomepageNav isLoggedIn={false} userMode="player" />
-      <main>
-        {/* Player-only public composition. Venue / tournament surfaces are
-            hidden during the player-focused beta — the routes still exist
-            for direct navigation, just no UI affordances surface them.
-            Flow: hook (hero) → full toolkit (features) → depth on the two
-            flagship surfaces (spotlights) → onboarding (how it works) →
-            close (CTA). */}
-        <HeroSection />
-        <PlayerFeaturesSection />
-        <FeatureSpotlights />
-        <HowItWorksSection />
-        <SplitCTASection />
-      </main>
-      <HomepageFooter />
-    </div>
-  );
+  return <PublicHomepage />;
 };
 
 export default Index;
