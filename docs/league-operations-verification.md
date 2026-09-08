@@ -57,4 +57,8 @@ Deploy the backend before the frontend, because the frontend uses `confirm_leagu
 
 The complete, copy/paste migration is [20260914100000_league_operational_integrity.sql](../supabase/migrations/20260914100000_league_operational_integrity.sql). It includes its transaction and can be opened/copied as a whole; no hidden SQL steps are required. The migration was also applied twice in isolated tests to check repeatability.
 
-The repository's approved main-branch workflows apply the migration/edge functions to Supabase and publish the frontend to Firebase Hosting. Production deployment results should be checked in GitHub Actions before calling the release complete.
+The repository's approved main-branch workflows applied the migration/edge functions to Supabase and published the frontend to Firebase Hosting, in that order:
+
+- Backend commit `2623a702`: [Deploy Supabase #103 — successful](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34186721657).
+- Frontend commit `c2a60e40`: [Deploy frontend #13 — successful](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34186897989).
+- After release, the production organizer overview showed the updated guidance; the seasons panel loaded its real aggregate counts; the substitute bench loaded its six existing fill-ins; the member-facing page loaded published sessions and all 32 standings entries. No browser runtime errors were observed in these checks. No live records were changed for verification.
