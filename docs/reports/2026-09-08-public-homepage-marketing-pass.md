@@ -37,4 +37,6 @@ Run `npx vitest run tests/marketing/publicHomepage.test.tsx` for the focused reg
 
 ## Release
 
-Publish through the existing main-branch Firebase Hosting workflow. Deployment outcome is recorded after the workflow finishes. SQL is not required.
+Implementation commit: `aba45bb0` on main. Firebase Hosting deployment #15 completed successfully: https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34222668500.
+
+An anonymous HTTP request to `https://pulsepb.com/` returned 200 with the new title and description after deployment. Opening the Firebase hosting domain in the existing signed-in browser correctly redirected to the unchanged player dashboard; no user was signed out. A separate logged-out local preview was left open for visual review. SQL is not required.
