@@ -60,7 +60,13 @@ Deno.serve(async (req) => {
       .from('ladder_settings').select('*').eq('season_id', season_id).maybeSingle()
     if (!settings) return json({ skipped: 'no_settings' })
     if (!settings.auto_advance) return json({ skipped: 'auto_advance_off' })
-    if (settings.status === 'paused') return json({ skipped: 'paused' })
+    if (settings.status !== 'active') return json({ skipped: settings.status })
+    const { data: season, error: seasonError } = await supabase
+      .from('league_seasons').select('status, leagues!inner(status)').eq('id', season_id).single()
+    if (seasonError) throw seasonError
+    if (season.status !== 'active' || (season.leagues as unknown as { status: string }).status !== 'active') {
+      return json({ skipped: 'season_or_league_not_active' })
+    }
     const batchesPerWeek = Math.max(1, settings.batches_per_week ?? 1)
     const courtCount = Math.max(1, settings.court_count ?? 1)
     // Auto-advance must not bypass the confirmation the league requires. When
@@ -142,7 +148,7 @@ Deno.serve(async (req) => {
       // A new week may only start on a session the organizer already scheduled.
       const { data: sessRow } = await supabase
         .from('league_sessions').select('id')
-        .eq('season_id', season_id).eq('week_number', nextWeek)
+        .eq('season_id', season_id).eq('week_number', nextWeek).eq('status', 'published')
         .order('scheduled_date', { ascending: true }).limit(1).maybeSingle()
       const nextSessionId = (sessRow as { id?: string } | null)?.id ?? null
       if (!nextSessionId) {
