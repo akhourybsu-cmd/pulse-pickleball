@@ -9964,6 +9964,10 @@ export type Database = {
         Returns: undefined
       }
       resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
+      rr_close_round: {
+        Args: { p_event_id: string; p_expected_round: number }
+        Returns: number
+      }
       rr_kiosk_participant_names: {
         Args: { _event_id: string }
         Returns: {

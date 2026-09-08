@@ -613,7 +613,7 @@ const AppContent = () => {
               </AuthGuard>
             }
           />
-          <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
+          <Route path="/round-robin/:id" element={<AuthGuard><RoundRobinDetail /></AuthGuard>} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
           {/* Tournament surface — under reconstruction and invisible to
               everyone (players, organizers, other admins) until the

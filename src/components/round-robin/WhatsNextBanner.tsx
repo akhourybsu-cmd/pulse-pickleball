@@ -27,6 +27,7 @@ interface WhatsNextBannerProps {
   totalRounds: number;
   /** Whether the viewer is the host/organizer. Players see no banner. */
   isOrganizer: boolean;
+  busy?: boolean;
 
   /** Host-action callbacks the banner invokes when its primary CTA fires. */
   onAddPlayers?: () => void;
@@ -77,6 +78,7 @@ export function WhatsNextBanner({
   currentRound,
   totalRounds,
   isOrganizer,
+  busy = false,
   onAddPlayers,
   onGenerateSchedule,
   onStartEvent,
@@ -139,6 +141,8 @@ export function WhatsNextBanner({
             <div className="mt-3">
               <Button
                 onClick={prompt.onClick}
+                disabled={busy}
+                aria-busy={busy}
                 className="gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
                 size="sm"
               >
@@ -227,7 +231,7 @@ export function WhatsNextBanner({
         return {
           icon: Flag,
           pill: "FINAL",
-          title: "All rounds scored",
+          title: "Final round resolved",
           hint: "Submit to lock in standings. Scored matches are already in players' history.",
           cta: "Complete event",
           onClick: onCompleteEvent,
@@ -238,7 +242,7 @@ export function WhatsNextBanner({
         icon: ArrowRight,
         pill: "ACTION",
         title: `Round ${currentRound} is done — advance to Round ${(currentRound ?? 0) + 1}`,
-        hint: "Close the current round to lock its scores and move on.",
+        hint: "Saved scores and abandoned games are resolved. Advance to activate the next round; score corrections remain available.",
         cta: `Close Round ${currentRound}`,
         onClick: onCloseRound,
       };

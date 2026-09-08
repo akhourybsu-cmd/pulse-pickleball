@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthState } from '@/hooks/useAuthState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -35,7 +36,7 @@ export function AuthGuard({
   requireActive = false,
   allowOnboarding = false,
 }: AuthGuardProps) {
-  const { loading, isAuthenticated, isOnboarding, profile } = useAuthState();
+  const { loading, isAuthenticated, isOnboarding, profile, sessionError, refresh } = useAuthState();
   const location = useLocation();
 
   if (loading) {
@@ -49,6 +50,17 @@ export function AuthGuard({
   // the auth bounce and leave the player on the dashboard wondering why
   // their share link "didn't work". (Audit-flagged.)
   if (!isAuthenticated) {
+    if (sessionError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+          <div role="alert" className="max-w-sm text-center space-y-4">
+            <h1 className="text-xl font-semibold">Connection interrupted</h1>
+            <p className="text-sm text-muted-foreground">{sessionError}</p>
+            <Button onClick={() => void refresh()}>Retry connection</Button>
+          </div>
+        </div>
+      );
+    }
     const returnTo = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate

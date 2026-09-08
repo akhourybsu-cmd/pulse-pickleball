@@ -11,6 +11,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { isTransientAuthError } from '@/lib/authErrors';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type AuthProfile = Pick<
@@ -67,7 +68,7 @@ interface AuthState {
   isActive: boolean;
 }
 
-type AuthStateValue = AuthState & { refresh: () => Promise<void> };
+type AuthStateValue = AuthState & { refresh: () => Promise<void>; sessionError: string | null };
 
 const AuthStateContext = createContext<AuthStateValue | null>(null);
 
@@ -146,6 +147,7 @@ const SIGNED_OUT_STATE: AuthState = {
  * The provider keeps one listener and one profile request for the whole app.
  */
 export function AuthStateProvider({ children }: { children: ReactNode }) {
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
@@ -159,6 +161,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
 
   const loadSession = useCallback(async (session: Session | null, showLoader: boolean) => {
     const requestId = ++requestIdRef.current;
+    if (mountedRef.current) setSessionError(null);
 
     if (!session?.user) {
       clearCachedProfile();
@@ -228,13 +231,24 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
+    const generation = requestIdRef.current;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (!mountedRef.current || generation !== requestIdRef.current) return;
+      if (error) throw error;
+      await loadSession(session, true);
+    } catch (error) {
+      if (!mountedRef.current || generation !== requestIdRef.current) return;
       console.error('Error reading auth session:', error);
-      if (mountedRef.current) setState(SIGNED_OUT_STATE);
-      return;
+      if (isTransientAuthError(error)) {
+        // A network outage must not pretend the user signed out. On a cold
+        // start, show an explicit retry surface without claiming authentication.
+        setSessionError('Unable to reconnect to your session. Check your connection and retry.');
+        setState(current => ({ ...current, loading: false }));
+      } else {
+        await loadSession(null, false);
+      }
     }
-    await loadSession(session, true);
   }, [loadSession]);
 
   useEffect(() => {
@@ -261,7 +275,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     AuthStateContext.Provider,
-    { value: { ...state, refresh } },
+    { value: { ...state, refresh, sessionError } },
     children,
   );
 }

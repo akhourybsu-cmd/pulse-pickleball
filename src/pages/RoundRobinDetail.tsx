@@ -94,6 +94,8 @@ import {
 } from "@/lib/roundRobin/scheduleCore";
 import { participantGenderEligibility } from "@/lib/roundRobin/participantGender";
 import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
+import { useAuthState } from "@/hooks/useAuthState";
+import { roundProgress } from "@/lib/roundRobin/roundProgress";
 
 
 // Score validation schema
@@ -253,6 +255,7 @@ function SeatAvatars({
 
 export default function RoundRobinDetail() {
   const { id } = useParams();
+  const { user: authUser } = useAuthState();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Back-nav lands on the player's own round-robin history page.
@@ -273,6 +276,10 @@ export default function RoundRobinDetail() {
   const [activeTab, setActiveTab] = useState<"schedule" | "players" | "standings">("schedule");
   const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
+  const [closingRound, setClosingRound] = useState(false);
+  const closingRoundRef = useRef(false);
+  const fetchRequestRef = useRef(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [regenConfirmOpen, setRegenConfirmOpen] = useState(false);
@@ -303,6 +310,7 @@ export default function RoundRobinDetail() {
   const [resolvingActiveMatch, setResolvingActiveMatch] = useState(false);
 
   useEffect(() => {
+    if (!id || !authUser) return;
     fetchEventDetails();
     fetchAuditHistory();
     
@@ -343,12 +351,13 @@ export default function RoundRobinDetail() {
       .subscribe();
 
     return () => {
+      fetchRequestRef.current += 1;
       if (realtimeRefreshTimerRef.current) {
         clearTimeout(realtimeRefreshTimerRef.current);
       }
       supabase.removeChannel(channel);
     };
-  }, [id]);
+  }, [id, authUser?.id]);
 
   // A transactional rebuild inserts many schedule rows, and Supabase emits a
   // realtime event for each one. Coalesce that burst into one authoritative
@@ -405,12 +414,12 @@ export default function RoundRobinDetail() {
   };
 
   const fetchEventDetails = async () => {
+    if (!id || !authUser) return;
+    const request = ++fetchRequestRef.current;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
+      // AuthGuard owns session redirects. A transient network failure while
+      // refreshing scores is not a sign-out; the database still enforces RLS.
+      const user = authUser;
       setUserId(user.id);
 
       // Keep the base reads independent and portable. Cross-table embeds
@@ -430,12 +439,8 @@ export default function RoundRobinDetail() {
         fetchCanonicalRoundRobinSchedule(supabase, id!),
       ]);
 
-      setIsAdmin(adminFlag);
-
       const { data: eventData, error: eventError } = eventResult;
       if (eventError) throw eventError;
-      setEvent(eventData);
-      setIsOrganizer(eventData.organizer_id === user.id);
 
       const { data: playersData, error: playersError } = playersResult;
       if (playersError) throw playersError;
@@ -530,6 +535,11 @@ export default function RoundRobinDetail() {
         b2_guest: match.b2_guest_id ? guestsById.get(match.b2_guest_id) ?? null : null,
       }));
 
+      if (request !== fetchRequestRef.current) return;
+      setIsAdmin(adminFlag);
+      setEvent(eventData as Event);
+      setIsOrganizer(eventData.organizer_id === user.id);
+      setLoadError(null);
       setPlayers(hydratedPlayers);
       setSchedule(hydratedSchedule);
       setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
@@ -537,7 +547,8 @@ export default function RoundRobinDetail() {
 
       setLoading(false);
     } catch (error: unknown) {
-      toast.error("Failed to load event details. Please try again.");
+      if (request !== fetchRequestRef.current) return;
+      setLoadError("Could not refresh the event. Your saved scores have not been changed.");
       console.error(error);
       setLoading(false);
     }
@@ -619,31 +630,29 @@ export default function RoundRobinDetail() {
   };
 
   const handleCloseRound = async (roundNo: number) => {
-    if (!event) return;
-    
-    const roundMatches = schedule.filter(s => s.round_no === roundNo && !s.is_bye);
-    const allScored = roundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
-    
-    if (!allScored) {
-      toast.error("All matches in this round must be scored before closing");
+    if (!event || closingRoundRef.current) return;
+    if (savingScore) {
+      toast.info("Wait for the score to finish saving before closing the round.");
       return;
     }
-
+    closingRoundRef.current = true;
+    setClosingRound(true);
     try {
-      const nextRound = roundNo + 1;
-      if (nextRound <= event.num_rounds) {
-        await supabase
-          .from("round_robin_events")
-          .update({ current_round: nextRound })
-          .eq("id", id);
-        toast.success(`Round ${roundNo} closed! Round ${nextRound} is now active.`);
-      } else {
-        toast.info("This is the final round. Complete the event to submit to match history.");
-      }
-      fetchEventDetails();
+      const { data: nextRound, error } = await supabase.rpc("rr_close_round", {
+        p_event_id: event.id,
+        p_expected_round: roundNo,
+      });
+      if (error) throw error;
+      if (nextRound !== roundNo + 1) throw new Error("Round advancement was not confirmed. Refresh and try again.");
+      toast.success(`Round ${roundNo} closed! Round ${nextRound} is now active.`);
+      await fetchEventDetails();
     } catch (error: unknown) {
-      toast.error("Failed to close round");
+      toast.error(getErrorMessage(error, "Could not close this round. Please retry."));
       console.error(error);
+      await fetchEventDetails();
+    } finally {
+      closingRoundRef.current = false;
+      setClosingRound(false);
     }
   };
 
@@ -807,8 +816,8 @@ export default function RoundRobinDetail() {
     if (!event) return;
     
     // Check if all matches have scores, show confirmation for partial submission
-    const unscoredMatches = schedule.filter(m => !m.is_bye && (m.team1_score === null || m.team2_score === null));
-    const scoredMatches = schedule.filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null);
+    const unscoredMatches = schedule.filter(m => !m.is_bye && !m.abandoned && (m.team1_score === null || m.team2_score === null));
+    const scoredMatches = schedule.filter(m => !m.is_bye && !m.abandoned && m.team1_score !== null && m.team2_score !== null);
     
     if (unscoredMatches.length > 0) {
       const totalMatches = schedule.filter(m => !m.is_bye).length;
@@ -1906,7 +1915,8 @@ export default function RoundRobinDetail() {
           className="text-center"
         >
           <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-muted-foreground mb-4">Event not found</p>
+          <p className="text-muted-foreground mb-4">{loadError || "Event not found"}</p>
+          {loadError && <Button onClick={() => void fetchEventDetails()} className="mr-2">Retry</Button>}
           <Button onClick={() => navigate(backHref)} variant="outline">
             Go Back
           </Button>
@@ -1926,6 +1936,7 @@ export default function RoundRobinDetail() {
   const canGenerate = activeRoster.length >= 4;
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
   const currentRound = event.current_round || 1;
+  const progress = roundProgress(schedule.filter(m => m.round_no === currentRound));
 
   const buildScheduleImpactPlan = ({
     numCourts,
@@ -2323,6 +2334,13 @@ export default function RoundRobinDetail() {
           </Alert>
         )}
 
+        {loadError && (
+          <Alert className="mb-4" role="status">
+            <AlertDescription className="flex items-center justify-between gap-3">
+              {loadError}<Button size="sm" variant="outline" onClick={() => void fetchEventDetails()}>Retry</Button>
+            </AlertDescription>
+          </Alert>
+        )}
         {/* What's next — the single host action surface.
             All earlier duplicates (lifecycle stepper, Alert,
             standalone InviteCodeCard) have been removed in favor of
@@ -2339,24 +2357,9 @@ export default function RoundRobinDetail() {
               courtCount={event.num_courts}
               currentRound={event.current_round}
               totalRounds={event.num_rounds}
-              currentRoundScoredCount={
-                event.current_round != null
-                  ? schedule.filter(
-                      (m) =>
-                        m.round_no === event.current_round &&
-                        !m.is_bye &&
-                        m.team1_score != null &&
-                        m.team2_score != null,
-                    ).length
-                  : 0
-              }
-              currentRoundTotalCount={
-                event.current_round != null
-                  ? schedule.filter(
-                      (m) => m.round_no === event.current_round && !m.is_bye,
-                    ).length
-                  : 0
-              }
+              currentRoundScoredCount={progress.resolved}
+              currentRoundTotalCount={progress.total}
+              busy={closingRound || !!savingScore}
               isOrganizer={isOrganizer}
               onAddPlayers={() => setPlayerManagementOpen(true)}
               onGenerateSchedule={handleGenerateSchedule}
@@ -2524,7 +2527,7 @@ export default function RoundRobinDetail() {
                     const byeMatches = allMatches.filter(m => m.is_bye);
                     const isCurrentRound = roundNo === currentRound;
                     const isFutureRound = roundNo > currentRound;
-                    const allRoundScored = courtMatches.every(m => m.team1_score !== null && m.team2_score !== null);
+                    const allRoundScored = roundProgress(courtMatches).canClose;
                     
                     return (
                       <div className={`space-y-3 ${isFutureRound ? 'opacity-60' : ''}`}>
@@ -2546,10 +2549,11 @@ export default function RoundRobinDetail() {
                             <Button 
                               size="sm" 
                               onClick={() => handleCloseRound(roundNo)}
+                              disabled={closingRound || !!savingScore}
                               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 h-8"
                             >
                               <CheckCircle className="h-4 w-4 mr-1.5" />
-                              Close Round
+                              {closingRound ? "Closing…" : `Close Round ${roundNo}`}
                             </Button>
                           )}
                         </div>

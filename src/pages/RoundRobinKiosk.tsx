@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { kioskClient as supabase } from "@/integrations/supabase/kioskClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
-import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { computeStandings, participantsFromSchedule } from "@/lib/roundRobin/standings";
-import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
+import { fetchRoundRobinKioskSnapshot } from "@/lib/roundRobin/kioskData";
+import { roundProgress } from "@/lib/roundRobin/roundProgress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,6 +109,7 @@ interface ScheduleMatch {
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
+  abandoned?: boolean | null;
   a1_profile?: { display_name: string | null; full_name: string } | null;
   a2_profile?: { display_name: string | null; full_name: string } | null;
   b1_profile?: { display_name: string | null; full_name: string } | null;
@@ -133,243 +135,67 @@ export default function RoundRobinKiosk() {
   const eventId = id;
   const navigate = useNavigate();
   
-  const [event, setEvent] = useState<Event | null>(null);
-  const [currentRoundMatches, setCurrentRoundMatches] = useState<ScheduleMatch[]>([]);
-  const [nextRoundMatches, setNextRoundMatches] = useState<ScheduleMatch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ['round-robin-kiosk', eventId], [eventId]);
+  const snapshot = useQuery({
+    queryKey,
+    queryFn: ({ signal }) => fetchRoundRobinKioskSnapshot(supabase, eventId!, signal),
+    enabled: !!eventId,
+    staleTime: 2_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    retry: 2,
+  });
+  const event = snapshot.data?.event ?? null;
+  const currentRoundMatches = snapshot.data?.current ?? [];
+  const nextRoundMatches = snapshot.data?.next ?? [];
+  const loading = !!eventId && snapshot.isPending && snapshot.fetchStatus !== 'paused';
   const [currentTime, setCurrentTime] = useState(new Date());
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [standings, setStandings] = useState<StandingsRow[]>([]);
-  const [allSchedule, setAllSchedule] = useState<ScheduleMatch[]>([]);
-  
-  // Theme state with localStorage persistence
+  const standings: StandingsRow[] = useMemo(() =>
+    computeStandings(snapshot.data?.schedule ?? [], participantsFromSchedule(snapshot.data?.schedule ?? [])).map(r => ({
+      player_id: r.key, player_name: r.name, wins: r.wins, losses: r.losses,
+      points_for: r.pointsFor, points_against: r.pointsAgainst, point_diff: r.pointDiff,
+    })), [snapshot.data]);
+  const reconnecting = snapshot.isError || snapshot.fetchStatus === 'paused'
+    || (snapshot.dataUpdatedAt > 0 && currentTime.getTime() - snapshot.dataUpdatedAt > 30_000);
+  const retry = () => { void snapshot.refetch({ cancelRefetch: false }); };
+
   const [theme, setTheme] = useState<KioskTheme>(() => {
-    const saved = localStorage.getItem('kioskTheme');
-    return (saved as KioskTheme) || 'proBroadcast';
+    try {
+      const saved = localStorage.getItem('kioskTheme');
+      return saved && Object.prototype.hasOwnProperty.call(THEME_CONFIG, saved) ? saved as KioskTheme : 'proBroadcast';
+    } catch { return 'proBroadcast'; }
   });
-  
   const themeColors = THEME_CONFIG[theme];
-  
+
   useEffect(() => {
-    localStorage.setItem('kioskTheme', theme);
+    try { localStorage.setItem('kioskTheme', theme); } catch { /* Display still works without storage. */ }
   }, [theme]);
 
-  // Update time every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Load event data
   useEffect(() => {
     if (!eventId) return;
-    fetchEventData();
-    
-    // Set up real-time subscriptions
-    const eventsChannel = supabase
-      .channel(`kiosk-events-${eventId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_events',
-          filter: `id=eq.${eventId}`,
-        },
-        (payload) => {
-          fetchEventData();
-        }
-      )
-      .subscribe((status) => {
-      });
-
-    const scheduleChannel = supabase
-      .channel(`kiosk-schedule-${eventId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_schedule',
-          filter: `event_id=eq.${eventId}`,
-        },
-        (payload) => {
-          fetchEventData();
-        }
-      )
-      .subscribe((status) => {
-      });
-
-    // Auto-refresh every 5 seconds for immediate score updates
-    const refreshInterval = setInterval(() => {
-      fetchEventData();
-    }, 5000);
-
-    return () => {
-      supabase.removeChannel(eventsChannel);
-      supabase.removeChannel(scheduleChannel);
-      clearInterval(refreshInterval);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // A schedule rebuild emits many changes. One query owns the full snapshot;
+    // never mix a newer event row with an older current/next-round response.
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
+      }, 180);
     };
-  }, [eventId]);
-
-  const calculateStandings = (schedule: ScheduleMatch[]): StandingsRow[] => {
-    // Canonical math shared with the organizer page and player view.
-    return computeStandings(schedule, participantsFromSchedule(schedule as any)).map((r) => ({
-      player_id: r.key,
-      player_name: r.name,
-      wins: r.wins,
-      losses: r.losses,
-      points_for: r.pointsFor,
-      points_against: r.pointsAgainst,
-      point_diff: r.pointDiff,
-    }));
-  };
-
-  const fetchEventData = async () => {
-    if (!eventId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Fetch event details
-      const { data: eventData, error: eventError } = await supabase
-        .from("round_robin_events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-
-      if (eventError) throw eventError;
-      if (!eventData) {
-        toast.error("Event not found");
-        setLoading(false);
-        return;
-      }
-
-      setEvent(eventData);
-
-      // Completed events still render — the kiosk shows the celebratory final leaderboard.
-
-      const currentRound = eventData.current_round || 1;
-
-      // Fetch ALL schedule with profiles for standings calculation
-      const fullSchedule = await fetchCanonicalRoundRobinSchedule(
-        supabase,
-        eventId!,
-      );
-
-      // Fetch current round schedule
-      const { data: currentSchedule, error: currentError } = await supabase
-        .from("round_robin_schedule")
-        .select("*")
-        .eq("event_id", eventId)
-        .eq("round_no", currentRound)
-        .eq("is_bye", false)
-        .is("voided_at", null)
-        .is("superseded_by_schedule_id", null)
-        .order("court_no");
-
-      if (currentError) throw currentError;
-
-      // Collect every player and guest id referenced anywhere in the schedule.
-      const allPlayerIds = new Set<string>();
-      const allGuestIds = new Set<string>();
-      fullSchedule?.forEach((match: any) => {
-        if (match.a1_player_id) allPlayerIds.add(match.a1_player_id);
-        if (match.a2_player_id) allPlayerIds.add(match.a2_player_id);
-        if (match.b1_player_id) allPlayerIds.add(match.b1_player_id);
-        if (match.b2_player_id) allPlayerIds.add(match.b2_player_id);
-        if (match.a1_guest_id) allGuestIds.add(match.a1_guest_id);
-        if (match.a2_guest_id) allGuestIds.add(match.a2_guest_id);
-        if (match.b1_guest_id) allGuestIds.add(match.b1_guest_id);
-        if (match.b2_guest_id) allGuestIds.add(match.b2_guest_id);
-      });
-
-      // Names come from a single public lookup so the kiosk renders correctly
-      // on an unauthenticated display: `profiles_public` requires a session
-      // (auth.uid() IS NOT NULL) and guest_players is participant-scoped, so
-      // both return zero rows on a lobby TV. The RPC only exposes names for
-      // schedules of live/completed events.
-      const { data: nameRows, error: namesError } = await supabase.rpc(
-        "rr_kiosk_participant_names",
-        { _event_id: eventId },
-      );
-
-      if (namesError) {
-        console.error("Participant names error:", namesError);
-      }
-
-      const profiles = (nameRows || [])
-        .filter((r: any) => !r.is_guest)
-        .map((r: any) => ({ id: r.participant_id, display_name: r.name, full_name: r.name }));
-
-      const guests = (nameRows || [])
-        .filter((r: any) => r.is_guest)
-        .map((r: any) => ({ id: r.participant_id, display_name: r.name, linked_user_id: null }));
-
-      const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
-      const guestMap = new Map<string, any>(
-        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name, linked_user_id: g.linked_user_id }]),
-      );
-
-      // Backwards-compat for downstream code that previously merged guests
-      // into profileMap. Keep both maps available.
-      (guests || []).forEach((g: any) => {
-        if (!profileMap.has(g.id)) {
-          profileMap.set(g.id, { id: g.id, display_name: g.display_name, full_name: g.display_name, is_guest: true });
-        }
-      });
-
-      // Attach profile + guest joins to each schedule row so downstream code
-      // can resolve every seat's display name regardless of whether it's a
-      // registered player or a guest.
-      const attach = (match: any) => ({
-        ...match,
-        a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
-        a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
-        b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
-        b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-        a1_guest: match.a1_guest_id ? guestMap.get(match.a1_guest_id) : null,
-        a2_guest: match.a2_guest_id ? guestMap.get(match.a2_guest_id) : null,
-        b1_guest: match.b1_guest_id ? guestMap.get(match.b1_guest_id) : null,
-        b2_guest: match.b2_guest_id ? guestMap.get(match.b2_guest_id) : null,
-      });
-
-      const fullScheduleWithProfiles = (fullSchedule || []).map(attach);
-      setAllSchedule(fullScheduleWithProfiles);
-      setStandings(calculateStandings(fullScheduleWithProfiles));
-
-      const currentWithProfiles = (currentSchedule || []).map(attach);
-      setCurrentRoundMatches(currentWithProfiles);
-
-      // Fetch next round if not last round
-      if (currentRound < eventData.num_rounds) {
-        const { data: nextSchedule, error: nextError } = await supabase
-          .from("round_robin_schedule")
-          .select("*")
-          .eq("event_id", eventId)
-          .eq("round_no", currentRound + 1)
-          .eq("is_bye", false)
-          .is("voided_at", null)
-          .is("superseded_by_schedule_id", null)
-          .order("court_no");
-
-        if (nextError) {
-          console.error("Error loading next round:", nextError);
-        } else {
-          const nextWithProfiles = (nextSchedule || []).map(attach);
-          setNextRoundMatches(nextWithProfiles);
-        }
-      } else {
-        setNextRoundMatches([]);
-      }
-    } catch (error: any) {
-      console.error("Error fetching event data:", error);
-      toast.error("Failed to load event data");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const channel = supabase.channel(`kiosk-${eventId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'round_robin_events', filter: `id=eq.${eventId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'round_robin_schedule', filter: `event_id=eq.${eventId}` }, refresh)
+      .subscribe();
+    return () => { clearTimeout(timer); void supabase.removeChannel(channel); };
+  }, [eventId, queryClient, queryKey]);
 
   /**
    * Resolve a single seat (a1/a2/b1/b2) to a display name.
@@ -419,7 +245,11 @@ export default function RoundRobinKiosk() {
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: themeColors.bg }}>
-        <div className="text-2xl" style={{ color: themeColors.text }}>Event not found</div>
+        <div className="max-w-lg p-6 text-center space-y-4" style={{ color: themeColors.text }}>
+          <h1 className="text-2xl font-semibold">{snapshot.isError || snapshot.fetchStatus === 'paused' ? "Reconnecting to the event" : "Event unavailable"}</h1>
+          <p>{snapshot.isError || snapshot.fetchStatus === 'paused' ? "We couldn't reach the live scores. The display will retry automatically." : "The event may not be live yet, or it is no longer available for public display."}</p>
+          <Button onClick={retry} disabled={snapshot.isFetching}>Try again</Button>
+        </div>
       </div>
     );
   }
@@ -454,7 +284,7 @@ export default function RoundRobinKiosk() {
 
 
   const currentRound = event.current_round || 1;
-  const allFinal = currentRoundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
+  const allFinal = roundProgress(currentRoundMatches).canClose;
   const isLastRound = currentRound >= event.num_rounds;
 
   const courtCount = currentRoundMatches.length;
@@ -487,7 +317,7 @@ export default function RoundRobinKiosk() {
   });
 
   const ticker = allFinal
-    ? `All scores received · ${isLastRound ? "Event complete" : `Round ${currentRound + 1} coming up next`}`
+    ? `Round resolved · ${isLastRound ? "Waiting for the host to complete the event" : `Waiting for the host to start Round ${currentRound + 1}`}`
     : `Waiting on scores · Round ${currentRound} in progress`;
 
   const courtsLabel =
@@ -504,6 +334,12 @@ export default function RoundRobinKiosk() {
         }}
       >
         {/* Hidden admin controls (appear on hover top-right) */}
+        {reconnecting && (
+          <div role="status" className="absolute bottom-14 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-amber-100 text-amber-950 px-4 py-2 text-sm shadow-lg flex items-center gap-3">
+            <span>Connection interrupted — showing last saved scores{snapshot.dataUpdatedAt ? ` from ${new Date(snapshot.dataUpdatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}.</span>
+            <Button size="sm" variant="outline" onClick={retry} disabled={snapshot.isFetching}>Retry</Button>
+          </div>
+        )}
         <div className="group absolute top-0 right-0 z-50 w-48 h-16">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-end gap-2 p-3">
             <DropdownMenu>

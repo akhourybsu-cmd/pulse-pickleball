@@ -17,6 +17,7 @@ export const ROUND_ROBIN_SCHEDULE_PAGE_SIZE = 1_000;
 export async function fetchCanonicalRoundRobinSchedule(
   client: SupabaseClient<Database>,
   eventId: string,
+  signal?: AbortSignal,
 ): Promise<RoundRobinScheduleRow[]> {
   const schedule: RoundRobinScheduleRow[] = [];
 
@@ -25,7 +26,7 @@ export async function fetchCanonicalRoundRobinSchedule(
     ;
     offset += ROUND_ROBIN_SCHEDULE_PAGE_SIZE
   ) {
-    const { data, error } = await client
+    const query = client
       .from("round_robin_schedule")
       .select("*")
       .eq("event_id", eventId)
@@ -35,6 +36,7 @@ export async function fetchCanonicalRoundRobinSchedule(
       .order("court_no", { ascending: true })
       .order("id", { ascending: true })
       .range(offset, offset + ROUND_ROBIN_SCHEDULE_PAGE_SIZE - 1);
+    const { data, error } = await (signal ? query.abortSignal(signal) : query);
 
     if (error) throw error;
 
