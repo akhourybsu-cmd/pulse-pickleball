@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canManageLeague, needsMatchAction, parseWholeNumber, selectLeagueSeason, selectSeasonMembership, validateMatchInputs, validateScorePair, validateSeasonDates, validateSessionInputs } from './operations';
+import { canManageLeague, ladderActivationIssues, needsMatchAction, parseWholeNumber, selectLeagueSeason, selectSeasonMembership, validateMatchInputs, validateScorePair, validateSeasonDates, validateSessionInputs } from './operations';
 import { computePlayerStandings, computeTeamStandings } from './standings';
 import type { LeagueMatch, LeagueMember, LeagueSeason, LeagueSession, LeagueTeam } from './types';
 
@@ -47,6 +47,20 @@ describe('league form validation',()=>{
   });
   it.each(['scheduled','in_progress','score_submitted','disputed'] as const)('keeps %s actionable, even when overdue',status=>expect(needsMatchAction(match({status,scheduled_time:'2000-01-01'}))).toBe(true));
   it.each(['verified','forfeit','canceled'] as const)('moves %s into history',status=>expect(needsMatchAction(match({status}))).toBe(false));
+});
+
+describe('ladder activation guidance',()=>{
+  it('permits an active league and season',()=>expect(ladderActivationIssues('active',{status:'active'})).toEqual([]));
+  it.each(['draft','archived'] as const)('routes an inactive league (%s) to Overview',status=>{
+    expect(ladderActivationIssues(status,{status:'active'})).toEqual([{tab:'overview',label:'Review league status',message:expect.stringContaining(`league is ${status}`)}]);
+  });
+  it.each(['draft','completed','archived'] as const)('routes an inactive season (%s) to Seasons',status=>{
+    expect(ladderActivationIssues('active',{status})).toEqual([{tab:'seasons',label:'Review season status',message:expect.stringContaining(`season is ${status}`)}]);
+  });
+  it('explains both blockers and fails closed while the season is unavailable',()=>{
+    expect(ladderActivationIssues('draft',{status:'draft'}).map(i=>i.tab)).toEqual(['overview','seasons']);
+    expect(ladderActivationIssues('active')).toHaveLength(1);
+  });
 });
 describe('official standings',()=>{
   it('counts verified scores identically for players and teams',()=>{

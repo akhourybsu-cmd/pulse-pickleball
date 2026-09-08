@@ -4,6 +4,7 @@ import {MemoryRouter,Routes,Route,useNavigate} from 'react-router-dom';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {Toaster} from 'sonner';
+import {PulseActivityBar} from '@/components/ui/pulse-activity';
 import AdminLeagueDetail from '@/pages/admin/AdminLeagueDetail';
 import PlayerLeagueDetail from '@/pages/player/PlayerLeagueDetail';
 import {QaAuth} from './stub';
@@ -16,6 +17,7 @@ export function Preview(){const [user,setUser]=useState('owner');const navigate=
     <button className="rounded border p-2" onClick={()=>{setUser('player');navigate('/player/leagues/league')}}>Member preview</button>
   </div>
   <Routes><Route path="/player/leagues/:leagueId/manage" element={<AdminLeagueDetail/>}/><Route path="/player/leagues/:leagueId" element={<PlayerLeagueDetail/>}/></Routes>
-  <Toaster/>
+  <Toaster/><PulseActivityBar/>
 </QaAuth>}
-createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><TooltipProvider><MemoryRouter initialEntries={['/player/leagues/league/manage?tab=seasons']}><Preview/></MemoryRouter></TooltipProvider></QueryClientProvider>);
+const initialTab=new URLSearchParams(window.location.search).has('ladder')?'ladder':'seasons';
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><TooltipProvider><MemoryRouter initialEntries={[`/player/leagues/league/manage?tab=${initialTab}`]}><Preview/></MemoryRouter></TooltipProvider></QueryClientProvider>);

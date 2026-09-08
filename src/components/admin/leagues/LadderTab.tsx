@@ -1,6 +1,7 @@
 import { useLeagueSeasons } from '@/hooks/useLeagueSeasons';
-import { parseWholeNumber, validateSessionInputs } from '@/lib/leagues/operations';
+import { ladderActivationIssues, parseWholeNumber, validateSessionInputs } from '@/lib/leagues/operations';
 import { leagueErrorMessage } from '@/lib/leagues/data';
+import { LeagueFunctionError, requireLeagueFunctionData } from '@/lib/leagues/functionResult';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,21 @@ import {
   SeasonSelect, ChoiceGrid, SegmentedControl,
 } from "./_shared";
 
+async function runLadderAction(
+  label: string,
+  invoke: () => Promise<{ data: unknown; error: unknown; response?: Response }>,
+  doneLabel: string,
+) {
+  try {
+    const data = await withPulseActivity(label, async () => requireLeagueFunctionData(await invoke()), doneLabel);
+    return { data, error: null };
+  } catch (error) {
+    return {
+      data: error instanceof LeagueFunctionError ? error.data : null,
+      error: error instanceof Error ? error : new Error(leagueErrorMessage(error)),
+    };
+  }
+}
 
 /**
  * Schedule (or reschedule) a ladder week's session via the RPC, which binds
@@ -76,6 +92,8 @@ export function LadderTab({ league, dataVersion, onMutated, onNavigate }: League
   const [ver, setVer] = useState(0);
   const ladder = useLadder(league.id, seasonId, dataVersion + ver);
   const bump = () => { setVer((v) => v + 1); onMutated(); };
+  const activationIssues = ladderActivationIssues(league.status, seasons.find(s => s.id === seasonId));
+  const activationBlocked = activationIssues.length > 0;
 
 
 
@@ -104,6 +122,24 @@ export function LadderTab({ league, dataVersion, onMutated, onNavigate }: League
     <div className="space-y-3">
       <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="w-full" />
 
+      {activationBlocked && (
+        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Activation required to generate games</h3>
+              <p className="mt-1 text-xs text-muted-foreground">You can still prepare settings and review existing results. Generating games requires both the league and selected season to be Active.</p>
+            </div>
+          </div>
+          {activationIssues.map(issue => (
+            <div key={issue.tab} className="space-y-2 text-xs">
+              <p>{issue.message}</p>
+              {onNavigate && <ActionButton size="sm" variant="outline" onClick={() => onNavigate(issue.tab)}>{issue.label}</ActionButton>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {onNavigate && !ladder.loading && ladder.started && (
         <div className="flex flex-wrap gap-2">
           <ActionButton size="sm" variant="outline" onClick={() => onNavigate("matches")} className="h-8 text-xs gap-1.5">
@@ -120,9 +156,9 @@ export function LadderTab({ league, dataVersion, onMutated, onNavigate }: League
       ) : !ladder.settings ? (
         <LadderSetup leagueId={league.id} seasonId={seasonId} onSaved={bump} />
       ) : !ladder.started ? (
-        <LadderStart league={league} seasonId={seasonId} ladder={ladder} onStarted={bump} />
+        <LadderStart league={league} seasonId={seasonId} ladder={ladder} onStarted={bump} onNavigate={onNavigate} activationBlocked={activationBlocked} />
       ) : (
-        <LadderManage league={league} ladder={ladder} onChanged={bump} />
+        <LadderManage league={league} ladder={ladder} onChanged={bump} onNavigate={onNavigate} activationBlocked={activationBlocked} />
       )}
     </div>
   );
@@ -255,13 +291,14 @@ function LadderSetup({
 /* ------------------------------------------------------------------ */
 
 function LadderStart({
-  league, seasonId, ladder, onStarted, onNavigate,
+  league, seasonId, ladder, onStarted, onNavigate, activationBlocked,
 }: {
   league: League;
   seasonId: string;
   ladder: ReturnType<typeof useLadder>;
   onStarted: () => void;
   onNavigate?: LeagueTabProps["onNavigate"];
+  activationBlocked: boolean;
 }) {
   const [order, setOrder] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -307,8 +344,9 @@ function LadderStart({
   const divisibleByFour = order.length > 0 && order.length % 4 === 0;
 
   const invokeStart = async (session_id: string | null) => {
+    if (activationBlocked) return;
     setStarting(true);
-    const { data, error } = await withPulseActivity(
+    const { data, error } = await runLadderAction(
       "Building Week 1 courts…",
       async () => supabase.functions.invoke("ladder-generate-first-batch", {
         body: { season_id: seasonId, order, session_id },
@@ -319,6 +357,7 @@ function LadderStart({
 
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Couldn't start ladder");
+      onStarted(); // Reload status if another organizer changed it meanwhile.
       return;
     }
     toast.success("Ladder started — Week 1, Batch 1 generated");
@@ -327,6 +366,7 @@ function LadderStart({
   };
 
   const start = async () => {
+    if (activationBlocked) return;
     // Every batch must be assigned to a week (league_sessions row). Look for
     // an existing Week 1 session; if none exists, prompt the manager to
     // schedule one before we generate the first batch.
@@ -404,7 +444,7 @@ function LadderStart({
         ))}
       </ol>
 
-      <ActionButton onClick={start} loading={starting} disabled={!divisibleByFour}
+      <ActionButton onClick={start} loading={starting} disabled={!divisibleByFour || activationBlocked}
         className="w-full h-11 font-bold uppercase tracking-wide">
         <Play className="w-4 h-4 mr-1.5" />
         Start ladder
@@ -431,12 +471,13 @@ function LadderStart({
 /* ------------------------------------------------------------------ */
 
 function LadderManage({
-  league, ladder, onChanged, onNavigate,
+  league, ladder, onChanged, onNavigate, activationBlocked,
 }: {
   league: League;
   ladder: ReturnType<typeof useLadder>;
   onChanged: () => void;
   onNavigate?: LeagueTabProps["onNavigate"];
+  activationBlocked: boolean;
 }) {
   const { activeBatch, groups, games, settings } = ladder;
   const [processing, setProcessing] = useState(false);
@@ -495,7 +536,7 @@ function LadderManage({
   const processResults = async (tieResolutions?: Record<number, string[]>) => {
     if (!activeBatch) return;
     setProcessing(true);
-    const { data, error } = await withPulseActivity(
+    const { data, error } = await runLadderAction(
       "Processing results & movement…",
       async () => supabase.functions.invoke("ladder-finalize-batch", {
         body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
@@ -637,9 +678,9 @@ function LadderManage({
   const weekBlocked = nextStage?.kind === "week" && !weekRosterValid;
 
   const runGenerate = async (session_id?: string) => {
-    if (!settings) return;
+    if (!settings || activationBlocked || paused) return;
     setGenerating(true);
-    const { data, error } = await withPulseActivity(
+    const { data, error } = await runLadderAction(
       "Generating next round of courts…",
       async () => supabase.functions.invoke("ladder-generate-next", {
         body: { season_id: settings.season_id, session_id: session_id ?? null },
@@ -650,10 +691,13 @@ function LadderManage({
     setGenerating(false);
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Generation failed");
+      onChanged();
       return;
     }
     const kind = (data as { kind?: string })?.kind;
-    toast.success(kind === "week" ? "Next week generated" : "Next batch generated");
+    toast.success(data?.done ? String(data.message ?? 'The ladder is complete')
+      : data?.already_existed ? 'This stage was already generated — showing the current schedule'
+      : kind === "week" ? "Next week generated" : "Next batch generated");
     // A sub was assigned but couldn't be seeded into the new batch (e.g. the
     // fill-in was double-booked). The week still generated — flag it so the
     // organizer can fix it with a manual swap instead of it failing silently.
@@ -669,7 +713,7 @@ function LadderManage({
   };
 
   const generateNext = () => {
-    if (!nextStage) return;
+    if (!nextStage || activationBlocked || paused) return;
     // Starting a new week is only ever an explicit organizer action AND
     // requires confirming the date/time up front — scores can't be entered
     // before that moment (safeguard when self-report scoring is on).
@@ -710,7 +754,7 @@ function LadderManage({
   const unresolvedTieCount = pendingTies.length;
   const advancedForRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAdvance || paused || !seasonId || !activeBatch) return;
+    if (!autoAdvance || paused || activationBlocked || !seasonId || !activeBatch) return;
     if (!batchComplete) { advancedForRef.current = null; return; }
     const attemptKey = `${activeBatch.id}:${verifiedGameCount}:${unresolvedTieCount}`;
     if (advancedForRef.current === attemptKey) return;
@@ -734,7 +778,7 @@ function LadderManage({
       // dialog remain available as the manual path.
     })().catch(() => { advancedForRef.current = null; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoAdvance, paused, seasonId, activeBatch?.id, batchComplete, verifiedGameCount, unresolvedTieCount]);
+  }, [autoAdvance, paused, activationBlocked, seasonId, activeBatch?.id, batchComplete, verifiedGameCount, unresolvedTieCount]);
 
   const toggleAuto = async () => {
     if (!settings) return;
@@ -914,6 +958,7 @@ function LadderManage({
           </AlertDialog>
           <div className="flex items-center gap-2">
             <ActionButton variant="outline" onClick={togglePause} loading={pauseBusy}
+              disabled={paused && activationBlocked}
               className="h-12 shrink-0">
               {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
               {paused ? "Resume" : "Pause"}
@@ -991,6 +1036,7 @@ function LadderManage({
           paused={paused}
           generating={generating}
           blocked={weekBlocked}
+          activationBlocked={activationBlocked}
           onGenerate={generateNext}
         />
       )}
@@ -1885,12 +1931,13 @@ function SubRequestsPanel({
 }
 
 function GenerateNextPanel({
-  nextStage, paused, generating, blocked = false, onGenerate,
+  nextStage, paused, generating, blocked = false, activationBlocked = false, onGenerate,
 }: {
   nextStage: { kind: "batch" | "week" | "complete"; week: number; batch: number; label: string };
   paused: boolean;
   generating: boolean;
   blocked?: boolean;
+  activationBlocked?: boolean;
   onGenerate: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -1924,7 +1971,7 @@ function GenerateNextPanel({
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
       <div className="text-lg font-black mt-0.5">
-        {isWeek
+        {activationBlocked ? 'Activate before the next stage' : isWeek
           ? `Ready to start Week ${nextStage.week}`
           : `Ready for Batch ${nextStage.batch}`}
       </div>
@@ -1939,12 +1986,13 @@ function GenerateNextPanel({
       <ActionButton
         onClick={onGenerate}
         loading={generating}
-        disabled={paused || blocked}
+        disabled={paused || blocked || activationBlocked}
         className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[color:var(--lg-gold)] text-[#1a1408] hover:bg-[color:var(--lg-gold-bright)]"
       >
         <Play className="w-4 h-4 mr-1.5" />
         {nextStage.label}
       </ActionButton>
+      {activationBlocked && <p className="text-xs text-amber-300 mt-2">Review the league and season status using the links above. Existing results are preserved.</p>}
       {blocked && !paused && (
         <p className="text-[11px] text-amber-300 mt-2">
           Adjust the week roster above so the number of players is a multiple of four.

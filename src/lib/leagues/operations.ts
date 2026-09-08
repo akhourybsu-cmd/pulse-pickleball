@@ -1,4 +1,14 @@
-import type { LeagueMatch, LeagueMember, LeagueSeason, LeagueSession } from './types';
+import type { LeagueMatch, LeagueMember, LeagueSeason, LeagueSession, LeagueStatus } from './types';
+
+export function ladderActivationIssues(leagueStatus: LeagueStatus, season?: Pick<LeagueSeason, 'status'>) {
+  const issues: { tab: 'overview' | 'seasons'; message: string; label: string }[] = [];
+  if (leagueStatus !== 'active') issues.push({tab:'overview',label:'Review league status',
+    message:`The league is ${leagueStatus}. Set its status to Active in Overview and save before generating more games.`});
+  if (!season || season.status !== 'active') issues.push({tab:'seasons',label:'Review season status',
+    message:season ? `This season is ${season.status}. Edit it in Seasons and set its status to Active before generating more games.`
+      : 'Select an active season before generating games.'});
+  return issues;
+}
 
 const priority = { active: 0, draft: 1, completed: 2, archived: 3 };
 export function sortLeagueSeasons(seasons: LeagueSeason[]) {

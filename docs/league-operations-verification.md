@@ -62,3 +62,16 @@ The repository's approved main-branch workflows applied the migration/edge funct
 - Backend commit `2623a702`: [Deploy Supabase #103 — successful](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34186721657).
 - Frontend commit `c2a60e40`: [Deploy frontend #13 — successful](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34186897989).
 - After release, the production organizer overview showed the updated guidance; the seasons panel loaded its real aggregate counts; the substitute bench loaded its six existing fill-ins; the member-facing page loaded published sessions and all 32 standings entries. No browser runtime errors were observed in these checks. No live records were changed for verification.
+
+## Follow-up: second-batch activation error
+
+The September 8, 06:31:42 EDT `ladder-generate-next` request returned HTTP 400. Supabase's PostgreSQL log at the same timestamp recorded SQLSTATE `22023`: “Activate the league and season before starting or advancing its ladder.” This was a lifecycle rejection, not an authentication or connectivity failure. The league being tested has not been identified by the user, so no live status was changed.
+
+- The Ladder tab now explains inactive league and season statuses separately, with working links to Overview and Seasons. Starting/generating and automatic advancement are disabled while either is inactive; preparation and existing results stay accessible.
+- Non-2xx function responses are decoded from Supabase's response body. The actual explanation appears in the toast, structured tiebreak payloads survive, and the progress bar no longer reports a failed request as successful. Busy state also clears on a rejected invocation.
+- Isolated PostgreSQL coverage now runs the production generic generation procedure after finalizing batch 1. Batch 2 is generated exactly once, uses the same session, and leaves the first batch's verified results unchanged.
+- Verification: **708 tests passed**, 32 skipped, 10 todo. Production build passed. Changed-source lint passed. Full app type-check retains the previously documented unrelated errors, with none in the changed league files.
+- Browser fixtures verified the inactive warning and disabled Generate Batch 2 button at 390px and 320px, navigation to Seasons, the enabled button when both statuses are Active, and a simulated HTTP 400 displaying the exact database explanation. This was an isolated in-memory fixture, not live generation.
+- No SQL migration or backend deployment is required. Existing production scores, schedules, standings, and statuses were not changed. To proceed in an intended running league, its organizer must set both the league (Overview) and selected season (Seasons → Edit) to Active and save.
+
+Reproduce browser cases with `phone.html?ladder=1` (inactive) or `index.html?ladder=1&active=1` (active with simulated server rejection) under the isolated QA server above.

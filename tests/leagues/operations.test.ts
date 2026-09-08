@@ -56,6 +56,7 @@ beforeAll(async () => {
   await db.exec('ALTER TABLE leagues ADD COLUMN invite_code text; ALTER TABLE ladder_settings ADD COLUMN self_report_scoring boolean DEFAULT false, ADD COLUMN auto_advance boolean DEFAULT true;');
   await db.exec(readFunction('20260721124511_60ef9065-76c5-4e5c-92f3-10cbbc04a8fa.sql','ladder_generate_first_batch'));
   await db.exec(readFunction('20260728004926_3b24b2a5-051e-44f2-bb75-35a3aab4b03a.sql','ladder_finalize_batch'));
+  await db.exec(readFunction('20260728004926_3b24b2a5-051e-44f2-bb75-35a3aab4b03a.sql','ladder_generate_batch'));
   const migration=read('20260914100000_league_operational_integrity.sql');
   await db.exec(migration); await db.exec(migration);
   await db.exec('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;');
@@ -236,6 +237,21 @@ describe('season completion and ladder lifecycle', () => {
     await db.exec("UPDATE league_matches SET status='verified' WHERE ladder_batch_group_id IS NOT NULL");
     await expect(asUser(assistant,'SELECT ladder_finalize_batch($1,$2)',[batch,plan])).resolves.toBeDefined();
     expect((await db.query('SELECT status FROM ladder_batches')).rows[0].status).toBe('finalized');
+  });
+  it('generates a second batch from processed results without changing the first batch', async () => {
+    const batch=((await startLadder()).rows[0].result as {first_batch_id:string}).first_batch_id;
+    await db.exec("UPDATE league_matches SET team_a_score=11,team_b_score=7,status='verified' WHERE ladder_batch_group_id IS NOT NULL");
+    await asUser(assistant,'SELECT ladder_finalize_batch($1,$2)',[batch,JSON.stringify({result_snapshot:{week:1,batch:1,player_ids:order,idempotency_key:`result:${season}:1:1`},movements:[]})]);
+    const snapshot=(await db.query('SELECT result_snapshot_id FROM ladder_batches WHERE id=$1',[batch])).rows[0].result_snapshot_id;
+    const plan=JSON.stringify({batch:{...firstPlan().first_batch,batch:2,idempotency_key:`batch:${season}:1:2`}});
+    const generate=()=>asUser(assistant,'SELECT ladder_generate_batch($1,$2,$3) AS result',[season,snapshot,plan]);
+    await generate();
+    expect((await generate()).rows[0].result).toMatchObject({already_existed:true});
+    expect((await db.query('SELECT batch_number,status,session_id FROM ladder_batches ORDER BY batch_number')).rows).toEqual([
+      {batch_number:1,status:'finalized',session_id:session}, {batch_number:2,status:'generated',session_id:session},
+    ]);
+    expect((await db.query("SELECT id FROM league_matches WHERE status='verified' AND ladder_batch_group_id IS NOT NULL")).rows).toHaveLength(3);
+    expect((await db.query("SELECT id FROM league_matches WHERE status='scheduled' AND ladder_batch_group_id IS NOT NULL")).rows).toHaveLength(3);
   });
   it('rolls back the entire start operation for a draft season', async () => {
     await db.query("UPDATE league_seasons SET status='draft' WHERE id=$1",[season]);

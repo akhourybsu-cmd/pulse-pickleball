@@ -23,6 +23,15 @@ export const tables:Record<string,Row[]>={
   league_substitutes:[{...base,id:'subrow',league_id:'league',season_id:'season',user_id:'sub',notes:'Available for evening play',status:'active'}],
   league_audit_log:[],
 };
+const ladderPreview = new URLSearchParams(window.location.search);
+if (ladderPreview.has('ladder')) {
+  league.league_type='ladder'; league.status=ladderPreview.has('active')?'active':'draft';
+  seasons[0].status=ladderPreview.has('active')?'active':'draft';
+  tables.ladder_settings=[{...base,id:'settings',league_id:'league',season_id:'season',status:'active',batches_per_week:2,total_weeks:5,court_count:1,movement_rule:'one_up_one_down',initial_order_source:'manual',auto_advance:false}];
+  tables.ladder_batches=[{...base,id:'batch1',league_id:'league',season_id:'season',session_id:'session',week_number:1,batch_number:1,status:'finalized',start_snapshot_id:'initial',result_snapshot_id:'result'}];
+  tables.ladder_snapshots=[{id:'result',season_id:'season',player_ids:['owner','player','p3','p4']}];
+  tables.league_sessions[0].week_number=1;
+}
 function from(table:string) {
   const filters:((r:Row)=>boolean)[]=[];let single=false;let range:[number,number]=[0,999999];let op='read';let payload:Row|Row[]={};let opts:Row={};
   const q:Row={
@@ -45,5 +54,7 @@ function from(table:string) {
 }
 export const supabase={from,auth:{getUser:async()=>({data:{user:{id:currentUser}},error:null}),getSession:async()=>({data:{session:{user:{id:currentUser}}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
   rpc:async(name:string)=>({data:name==='is_league_admin'?currentUser==='owner'||currentUser==='assistant':[],error:null}),
-  functions:{invoke:async()=>({data:{},error:null})},channel:()=>{const c={on:()=>c,subscribe:()=>c};return c},removeChannel:async()=>{},
+  functions:{invoke:async()=>({data:null,error:Object.assign(new Error('Edge Function returned a non-2xx status code'),{
+    context:Response.json({error:'Activate the league and season before starting or advancing its ladder'},{status:400}),
+  })})},channel:()=>{const c={on:()=>c,subscribe:()=>c};return c},removeChannel:async()=>{},
 };
