@@ -393,14 +393,14 @@ export async function checkPermission(context: PermissionContext): Promise<Permi
  * helper exists for in-component conditionals (e.g. showing an admin-only
  * button on a shared page) and as a defense-in-depth backup.
  */
-export async function isPlatformAdmin(userId: string | null): Promise<boolean> {
+export async function isPlatformAdmin(userId: string | null, signal?: AbortSignal): Promise<boolean> {
   if (!userId) return false;
-  const { data } = await supabase
+  const query = supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
-    .eq('role', 'admin')
-    .maybeSingle();
+    .eq('role', 'admin');
+  const { data } = await (signal ? query.abortSignal(signal) : query).maybeSingle();
   return !!data;
 }
 

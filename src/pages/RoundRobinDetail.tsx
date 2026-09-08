@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
+import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -383,7 +384,7 @@ export default function RoundRobinDetail() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching audit history:", error);
+      console.error("Error fetching audit history:", getErrorCode(error), getErrorMessage(error));
       return;
     }
 
@@ -417,139 +418,141 @@ export default function RoundRobinDetail() {
     if (!id || !authUser) return;
     const request = ++fetchRequestRef.current;
     try {
-      // AuthGuard owns session redirects. A transient network failure while
-      // refreshing scores is not a sign-out; the database still enforces RLS.
-      const user = authUser;
-      setUserId(user.id);
+      await withReadDeadline(async (signal) => {
+        // AuthGuard owns session redirects. A transient network failure while
+        // refreshing scores is not a sign-out; the database still enforces RLS.
+        const user = authUser;
+        setUserId(user.id);
 
-      // Keep the base reads independent and portable. Cross-table embeds
-      // through profiles_public worked in Lovable's PostgREST schema cache but
-      // fail on the external Supabase project, zeroing the roster and schedule.
-      const [adminFlag, eventResult, playersResult, scheduleData] = await Promise.all([
-        isPlatformAdmin(user.id),
-        supabase
-          .from("round_robin_events")
-          .select("*")
-          .eq("id", id)
-          .single(),
-        supabase
-          .from("round_robin_players")
-          .select("*")
-          .eq("event_id", id),
-        fetchCanonicalRoundRobinSchedule(supabase, id!),
-      ]);
+        // Keep the base reads independent and portable. Cross-table embeds
+        // through profiles_public worked in Lovable's PostgREST schema cache but
+        // fail on the external Supabase project, zeroing the roster and schedule.
+        const [adminFlag, eventResult, playersResult, scheduleData] = await Promise.all([
+          isPlatformAdmin(user.id, signal),
+          supabase
+            .from("round_robin_events")
+            .select("*")
+            .eq("id", id)
+            .abortSignal(signal).single(),
+          supabase
+            .from("round_robin_players")
+            .select("*")
+            .eq("event_id", id).abortSignal(signal),
+          fetchCanonicalRoundRobinSchedule(supabase, id!, signal),
+        ]);
 
-      const { data: eventData, error: eventError } = eventResult;
-      if (eventError) throw eventError;
+        const { data: eventData, error: eventError } = eventResult;
+        if (eventError) throw eventError;
 
-      const { data: playersData, error: playersError } = playersResult;
-      if (playersError) throw playersError;
+        const { data: playersData, error: playersError } = playersResult;
+        if (playersError) throw playersError;
 
-      const rawPlayers = (playersData ?? []) as unknown as Player[];
-      const rawSchedule = (scheduleData ?? []) as unknown as ScheduleMatch[];
-      const profileIds = new Set<string>();
-      const guestIds = new Set<string>();
+        const rawPlayers = (playersData ?? []) as unknown as Player[];
+        const rawSchedule = (scheduleData ?? []) as unknown as ScheduleMatch[];
+        const profileIds = new Set<string>();
+        const guestIds = new Set<string>();
 
-      rawPlayers.forEach((player) => {
-        if (player.player_id) profileIds.add(player.player_id);
-        if (player.guest_player_id) guestIds.add(player.guest_player_id);
-      });
-      rawSchedule.forEach((match) => {
-        [match.a1_player_id, match.a2_player_id, match.b1_player_id, match.b2_player_id]
-          .forEach((playerId) => { if (playerId) profileIds.add(playerId); });
-        [match.a1_guest_id, match.a2_guest_id, match.b1_guest_id, match.b2_guest_id]
-          .forEach((guestId) => { if (guestId) guestIds.add(guestId); });
-      });
+        rawPlayers.forEach((player) => {
+          if (player.player_id) profileIds.add(player.player_id);
+          if (player.guest_player_id) guestIds.add(player.guest_player_id);
+        });
+        rawSchedule.forEach((match) => {
+          [match.a1_player_id, match.a2_player_id, match.b1_player_id, match.b2_player_id]
+            .forEach((playerId) => { if (playerId) profileIds.add(playerId); });
+          [match.a1_guest_id, match.a2_guest_id, match.b1_guest_id, match.b2_guest_id]
+            .forEach((guestId) => { if (guestId) guestIds.add(guestId); });
+        });
 
-      const [profilesResult, guestsResult] = await Promise.all([
-        profileIds.size > 0
-          ? supabase
-              .from("profiles_public")
-              .select("id, full_name, display_name, avatar_url, gender")
-              .in("id", [...profileIds])
-          : Promise.resolve({ data: [], error: null }),
-        guestIds.size > 0
-          ? supabase
-              .from("guest_players")
-              .select("id, display_name, linked_user_id, email, gender")
-              .in("id", [...guestIds])
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      // Roster identities decorate the already-loaded event data. If a
-      // migrated view or guest policy is unavailable, keep the schedule and
-      // roster usable with fallback labels instead of failing the whole page.
-      if (profilesResult.error) console.error("Error hydrating round-robin profiles:", profilesResult.error);
-      if (guestsResult.error) console.error("Error hydrating round-robin guests:", guestsResult.error);
+        const [profilesResult, guestsResult] = await Promise.all([
+          profileIds.size > 0
+            ? supabase
+                .from("profiles_public")
+                .select("id, full_name, display_name, avatar_url, gender")
+                .in("id", [...profileIds]).abortSignal(signal)
+            : Promise.resolve({ data: [], error: null }),
+          guestIds.size > 0
+            ? supabase
+                .from("guest_players")
+                .select("id, display_name, linked_user_id, email, gender")
+                .in("id", [...guestIds]).abortSignal(signal)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        // Roster identities decorate the already-loaded event data. If a
+        // migrated view or guest policy is unavailable, keep the schedule and
+        // roster usable with fallback labels instead of failing the whole page.
+        if (profilesResult.error) console.error("Error hydrating round-robin profiles:", profilesResult.error);
+        if (guestsResult.error) console.error("Error hydrating round-robin guests:", guestsResult.error);
 
-      const profilesById = new Map(
-        (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
-      );
-      const missingLinkedProfileIds = [...new Set(
-        (guestsResult.data ?? []).flatMap((guest) =>
-          guest.linked_user_id && !profilesById.has(guest.linked_user_id)
-            ? [guest.linked_user_id]
-            : [],
-        ),
-      )];
-      if (missingLinkedProfileIds.length > 0) {
-        const { data: linkedProfiles, error: linkedProfilesError } = await supabase
-          .from("profiles_public")
-          .select("id, full_name, display_name, avatar_url, gender")
-          .in("id", missingLinkedProfileIds);
-        if (linkedProfilesError) {
-          console.error("Error hydrating linked guest profiles:", linkedProfilesError);
-        } else {
-          (linkedProfiles ?? []).forEach((profile) => profilesById.set(profile.id, profile));
+        const profilesById = new Map(
+          (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
+        );
+        const missingLinkedProfileIds = [...new Set(
+          (guestsResult.data ?? []).flatMap((guest) =>
+            guest.linked_user_id && !profilesById.has(guest.linked_user_id)
+              ? [guest.linked_user_id]
+              : [],
+          ),
+        )];
+        if (missingLinkedProfileIds.length > 0) {
+          const { data: linkedProfiles, error: linkedProfilesError } = await supabase
+            .from("profiles_public")
+            .select("id, full_name, display_name, avatar_url, gender")
+            .in("id", missingLinkedProfileIds).abortSignal(signal);
+          if (linkedProfilesError) {
+            console.error("Error hydrating linked guest profiles:", linkedProfilesError);
+          } else {
+            (linkedProfiles ?? []).forEach((profile) => profilesById.set(profile.id, profile));
+          }
         }
-      }
-      const guestsById = new Map(
-        (guestsResult.data ?? []).map((guest) => [
-          guest.id,
-          {
-            ...guest,
-            effective_gender:
-              (guest.linked_user_id
-                ? profilesById.get(guest.linked_user_id)?.gender
-                : null) ?? guest.gender,
-          },
-        ]),
-      );
-      const hydratedPlayers: Player[] = rawPlayers.map((player) => ({
-        ...player,
-        profiles: player.player_id
-          ? (profilesById.get(player.player_id) as Player["profiles"] | undefined) ?? null
-          : null,
-        guest_players: player.guest_player_id
-          ? (guestsById.get(player.guest_player_id) as Player["guest_players"] | undefined) ?? null
-          : null,
-      }));
-      const hydratedSchedule: ScheduleMatch[] = rawSchedule.map((match) => ({
-        ...match,
-        a1_profile: match.a1_player_id ? profilesById.get(match.a1_player_id) ?? null : null,
-        a2_profile: match.a2_player_id ? profilesById.get(match.a2_player_id) ?? null : null,
-        b1_profile: match.b1_player_id ? profilesById.get(match.b1_player_id) ?? null : null,
-        b2_profile: match.b2_player_id ? profilesById.get(match.b2_player_id) ?? null : null,
-        a1_guest: match.a1_guest_id ? guestsById.get(match.a1_guest_id) ?? null : null,
-        a2_guest: match.a2_guest_id ? guestsById.get(match.a2_guest_id) ?? null : null,
-        b1_guest: match.b1_guest_id ? guestsById.get(match.b1_guest_id) ?? null : null,
-        b2_guest: match.b2_guest_id ? guestsById.get(match.b2_guest_id) ?? null : null,
-      }));
+        const guestsById = new Map(
+          (guestsResult.data ?? []).map((guest) => [
+            guest.id,
+            {
+              ...guest,
+              effective_gender:
+                (guest.linked_user_id
+                  ? profilesById.get(guest.linked_user_id)?.gender
+                  : null) ?? guest.gender,
+            },
+          ]),
+        );
+        const hydratedPlayers: Player[] = rawPlayers.map((player) => ({
+          ...player,
+          profiles: player.player_id
+            ? (profilesById.get(player.player_id) as Player["profiles"] | undefined) ?? null
+            : null,
+          guest_players: player.guest_player_id
+            ? (guestsById.get(player.guest_player_id) as Player["guest_players"] | undefined) ?? null
+            : null,
+        }));
+        const hydratedSchedule: ScheduleMatch[] = rawSchedule.map((match) => ({
+          ...match,
+          a1_profile: match.a1_player_id ? profilesById.get(match.a1_player_id) ?? null : null,
+          a2_profile: match.a2_player_id ? profilesById.get(match.a2_player_id) ?? null : null,
+          b1_profile: match.b1_player_id ? profilesById.get(match.b1_player_id) ?? null : null,
+          b2_profile: match.b2_player_id ? profilesById.get(match.b2_player_id) ?? null : null,
+          a1_guest: match.a1_guest_id ? guestsById.get(match.a1_guest_id) ?? null : null,
+          a2_guest: match.a2_guest_id ? guestsById.get(match.a2_guest_id) ?? null : null,
+          b1_guest: match.b1_guest_id ? guestsById.get(match.b1_guest_id) ?? null : null,
+          b2_guest: match.b2_guest_id ? guestsById.get(match.b2_guest_id) ?? null : null,
+        }));
 
-      if (request !== fetchRequestRef.current) return;
-      setIsAdmin(adminFlag);
-      setEvent(eventData as Event);
-      setIsOrganizer(eventData.organizer_id === user.id);
-      setLoadError(null);
-      setPlayers(hydratedPlayers);
-      setSchedule(hydratedSchedule);
-      setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
-      calculateStandings(hydratedSchedule, hydratedPlayers);
+        if (signal.aborted || request !== fetchRequestRef.current) return;
+        setIsAdmin(adminFlag);
+        setEvent(eventData as Event);
+        setIsOrganizer(eventData.organizer_id === user.id);
+        setLoadError(null);
+        setPlayers(hydratedPlayers);
+        setSchedule(hydratedSchedule);
+        setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
+        calculateStandings(hydratedSchedule, hydratedPlayers);
 
-      setLoading(false);
+        setLoading(false);
+      });
     } catch (error: unknown) {
       if (request !== fetchRequestRef.current) return;
       setLoadError("Could not refresh the event. Your saved scores have not been changed.");
-      console.error(error);
+      console.error("Round-robin refresh failed:", getErrorCode(error), getErrorMessage(error));
       setLoading(false);
     }
   };
@@ -644,6 +647,12 @@ export default function RoundRobinDetail() {
       });
       if (error) throw error;
       if (nextRound !== roundNo + 1) throw new Error("Round advancement was not confirmed. Refresh and try again.");
+      // This is a server-confirmed change, not an optimistic advance. Keep it
+      // visible even if roster hydration fails during the following refresh.
+      fetchRequestRef.current += 1;
+      setEvent(current => current?.id === event.id && current.current_round === roundNo
+        ? { ...current, current_round: nextRound }
+        : current);
       toast.success(`Round ${roundNo} closed! Round ${nextRound} is now active.`);
       await fetchEventDetails();
     } catch (error: unknown) {
