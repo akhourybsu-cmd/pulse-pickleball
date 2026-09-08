@@ -67,14 +67,38 @@ tests. Production backend run `34291131911` applied this migration successfully:
 - Verified search narrows the fill-ins, selection enables confirmation, keyboard
   ArrowRight selects Sit out, and the 31-player foursome warning appears. These
   preview confirmations are synthetic and do not write to Supabase.
-- Local authenticated management redirected to `/auth`. A signed-in, live-data
-  end-to-end check remains after migration/deployment; no live league records
-  were changed. Viewport and preview theme were restored after QA.
+- Initial local authenticated management redirected to `/auth`; post-release
+  production checks used the existing signed-in session instead (see below).
+  Viewport and preview theme were restored after QA.
 
 ## Release state
 
 Backend commit `c45280ad` was pushed to main and its migration was applied to
-production on 2026-09-08. Frontend publication is in progress with the previously
-verified league typography pass included. The three unrelated Android Gradle
-changes remain excluded.
+production on 2026-09-08. Frontend commit `3e0441e1` was pushed to main and Firebase
+workflow run `34291259884` completed successfully, including a fresh 804 passing
+tests (32 skipped, 10 todo), production build and live Hosting deployment. The
+three unrelated Android Gradle changes remain excluded.
+
+Signed-in production smoke checks at `https://pulsepb.com` confirmed:
+
+- The existing SIM ladder league defaults to Actions, reads real all-season data
+  and shows the all-caught-up state without a query error.
+- Substitutes loads the six existing bench players and three historical requests.
+  Opening a resolved request correctly prevents another decision. No arrangement
+  was edited, reopened or canceled.
+- Manager/player navigation retains the selected season. The player view loads
+  the schedule, standings and request card; this past season correctly offers no
+  upcoming requestable weeks.
+- Live headings use Sora; controls use Manrope, including the portalled review
+  dialog and mobile navigation drawer. Review footer controls are 48px and the
+  close control is 44px.
+- 1280px desktop, 390x844 mobile player/Actions pages, and a 320x568 navigation
+  drawer were checked. No horizontal page overflow was observed. The narrow
+  drawer stayed inside the viewport (x=0, y=32, width=320, height=536).
+- No warning/error entries were returned by the production browser console during
+  these checks. The temporary viewport override was reset.
+
+The production smoke check was read-only: it did not create a new request or
+exercise a complete two-user live decision/notification cycle. Mutation behavior
+is covered by the automated SQL tests; no live league records were changed.
 The preview is development-only: `http://127.0.0.1:8080/__league-preview`.
