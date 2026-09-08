@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useFriends } from "@/hooks/useFriends";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useRecentCoPlayers } from "@/hooks/useRecentCoPlayers";
@@ -15,6 +22,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { startPulseActivity } from "@/components/ui/pulse-activity";
 import { cn } from "@/lib/utils";
+import type { EventFormat } from "@/lib/roundRobin/scheduleCore";
+import {
+  type BinaryGender,
+  participantGenderEligibility,
+  requiredGenderForFormat,
+  resolveGuestGenderForCreate,
+} from "@/lib/roundRobin/participantGender";
 
 
 export interface PickerPlayer {
@@ -31,6 +45,8 @@ interface PlayerPickerSheetProps {
   selectedPlayers: PickerPlayer[];
   onPlayersChange: (players: PickerPlayer[]) => void;
   genderFilter?: "male" | "female";
+  /** Full event format, used to validate guest creation and saved guests. */
+  eventFormat?: EventFormat;
   groupId?: string | null;
   trigger: React.ReactNode;
   /** "multi" keeps a Done button; "single" commits on the first tap. */
@@ -64,6 +80,7 @@ export function PlayerPickerSheet({
   selectedPlayers,
   onPlayersChange,
   genderFilter,
+  eventFormat,
   groupId,
   trigger,
   mode = "multi",
@@ -76,6 +93,15 @@ export function PlayerPickerSheet({
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
   const [guestName, setGuestName] = useState("");
+  const resolvedEventFormat: EventFormat = eventFormat ?? genderFilter ?? "open";
+  const fixedGuestGender = requiredGenderForFormat(resolvedEventFormat);
+  const constrainedGuestGender = fixedGuestGender ?? (
+    resolvedEventFormat === "mixed" ? genderFilter ?? null : null
+  );
+  const effectiveGenderFilter = fixedGuestGender ?? genderFilter;
+  const [guestGender, setGuestGender] = useState<BinaryGender | "">(
+    constrainedGuestGender ?? "",
+  );
 
   const showGuest = allowGuest ?? mode === "multi";
   const excludeSet = useMemo(
@@ -97,6 +123,10 @@ export function PlayerPickerSheet({
     if (tab === "guest" && !showGuest) setTab("friends");
     if (tab === "group" && !groupId) setTab("friends");
   }, [groupId, showGuest, tab]);
+
+  useEffect(() => {
+    setGuestGender(constrainedGuestGender ?? "");
+  }, [constrainedGuestGender]);
 
   const selectedIds = useMemo(() => new Set(local.map((p) => p.id)), [local]);
 
@@ -123,6 +153,14 @@ export function PlayerPickerSheet({
   const addGuest = async () => {
     const name = guestName.trim();
     if (!name) return;
+    const gender = resolveGuestGenderForCreate(
+      resolvedEventFormat,
+      guestGender || null,
+    );
+    if (resolvedEventFormat === "mixed" && !gender) {
+      toast.error("Choose male or female so this guest can be scheduled in mixed play.");
+      return;
+    }
     const pulse = startPulseActivity(`Creating guest ${name}…`);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -133,14 +171,16 @@ export function PlayerPickerSheet({
           display_name: name,
           created_by: user.id,
           group_id: groupId ?? null,
+          gender,
         } as never)
-        .select("id, display_name")
+        .select("id, display_name, gender")
         .single();
       if (error) throw error;
       const guest: PickerPlayer = {
         id: (data as { id: string }).id,
         full_name: name,
         display_name: name,
+        gender: (data as { gender: string | null }).gender,
         isGuest: true,
       };
       // Refresh the saved-guest roster query so the new entry shows up below
@@ -150,11 +190,13 @@ export function PlayerPickerSheet({
       if (mode === "single") {
         onPlayersChange([guest]);
         setGuestName("");
+        setGuestGender(constrainedGuestGender ?? "");
         setOpen(false);
         return;
       }
       setLocal((prev) => [...prev, guest]);
       setGuestName("");
+      setGuestGender(constrainedGuestGender ?? "");
     } catch (e) {
       pulse.fail();
       console.error("Failed to save guest:", e);
@@ -272,7 +314,8 @@ export function PlayerPickerSheet({
               <FriendsList
                 selectedIds={selectedIds}
                 onToggle={toggle}
-                genderFilter={genderFilter}
+                genderFilter={effectiveGenderFilter}
+                eventFormat={resolvedEventFormat}
                 excludeSet={excludeSet}
               />
             )}
@@ -282,7 +325,8 @@ export function PlayerPickerSheet({
                   groupId={groupId}
                   selectedIds={selectedIds}
                   onToggle={toggle}
-                  genderFilter={genderFilter}
+                  genderFilter={effectiveGenderFilter}
+                  eventFormat={resolvedEventFormat}
                   excludeSet={excludeSet}
                   showAddAll={mode === "multi"}
                 />
@@ -292,7 +336,8 @@ export function PlayerPickerSheet({
               <RecentList
                 selectedIds={selectedIds}
                 onToggle={toggle}
-                genderFilter={genderFilter}
+                genderFilter={effectiveGenderFilter}
+                eventFormat={resolvedEventFormat}
                 excludeSet={excludeSet}
               />
             )}
@@ -315,7 +360,8 @@ export function PlayerPickerSheet({
                 query={debouncedSearch}
                 selectedIds={selectedIds}
                 onToggle={toggle}
-                genderFilter={genderFilter}
+                genderFilter={effectiveGenderFilter}
+                eventFormat={resolvedEventFormat}
                 excludeSet={excludeSet}
               />
               </div>
@@ -325,6 +371,10 @@ export function PlayerPickerSheet({
               <GuestPanel
                 guestName={guestName}
                 onGuestNameChange={setGuestName}
+                guestGender={guestGender}
+                onGuestGenderChange={setGuestGender}
+                eventFormat={resolvedEventFormat}
+                genderConstraint={constrainedGuestGender}
                 onAddGuest={addGuest}
                 groupId={groupId}
                 selectedIds={selectedIds}
@@ -355,6 +405,10 @@ export function PlayerPickerSheet({
 function GuestPanel({
   guestName,
   onGuestNameChange,
+  guestGender,
+  onGuestGenderChange,
+  eventFormat,
+  genderConstraint,
   onAddGuest,
   groupId,
   selectedIds,
@@ -363,12 +417,20 @@ function GuestPanel({
 }: {
   guestName: string;
   onGuestNameChange: (value: string) => void;
+  guestGender: BinaryGender | "";
+  onGuestGenderChange: (value: BinaryGender) => void;
+  eventFormat: EventFormat;
+  genderConstraint: BinaryGender | null;
   onAddGuest: () => void;
   groupId?: string | null;
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   excludeSet?: Set<string>;
 }) {
+  const fixedGender = genderConstraint ?? requiredGenderForFormat(eventFormat);
+  const genderRequired = eventFormat === "mixed";
+  const canAdd = !!guestName.trim() && (!genderRequired || !!guestGender);
+
   return (
     <div className="h-full m-0 flex flex-col">
       <div className="px-4 pt-4 pb-3 border-b space-y-2">
@@ -377,10 +439,14 @@ function GuestPanel({
             Add new guest
           </p>
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 text-right">
-            Name only — reusable later
+            {eventFormat === "open"
+              ? "Name only — reusable later"
+              : fixedGender
+                ? "Gender set by event format"
+                : "Gender required for scheduling"}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             placeholder="e.g. Alex K"
             value={guestName}
@@ -391,9 +457,27 @@ function GuestPanel({
                 onAddGuest();
               }
             }}
-            className="h-11 text-base"
+            className="h-11 flex-1 text-base"
           />
-          <Button type="button" onClick={onAddGuest} disabled={!guestName.trim()}>
+          {eventFormat !== "open" && (
+            <Select
+              value={guestGender}
+              onValueChange={(value) => onGuestGenderChange(value as BinaryGender)}
+              disabled={!!fixedGender}
+            >
+              <SelectTrigger
+                className="h-11 w-full sm:w-36"
+                aria-label="Guest gender"
+              >
+                <SelectValue placeholder="Gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Button type="button" onClick={onAddGuest} disabled={!canAdd} className="h-11">
             <UserPlus className="h-4 w-4 mr-1" />
             Add
           </Button>
@@ -407,6 +491,8 @@ function GuestPanel({
         selectedIds={selectedIds}
         onToggle={onToggle}
         excludeSet={excludeSet}
+        eventFormat={eventFormat}
+        genderFilter={genderConstraint ?? undefined}
       />
     </div>
   );
@@ -420,16 +506,29 @@ interface RowProps {
   hint?: string;
   /** Optional trailing element rendered to the left of the check indicator. */
   trailing?: React.ReactNode;
+  disabled?: boolean;
+  disabledReason?: string | null;
 }
 
-function PlayerRow({ p, selected, onToggle, hint, trailing }: RowProps) {
+function PlayerRow({
+  p,
+  selected,
+  onToggle,
+  hint,
+  trailing,
+  disabled = false,
+  disabledReason,
+}: RowProps) {
   return (
     <button
       type="button"
       onClick={onToggle}
+      disabled={disabled}
+      aria-describedby={disabledReason ? `${p.id}-eligibility` : undefined}
       className={cn(
         "w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left",
         selected && "bg-primary/5",
+        disabled && "cursor-not-allowed opacity-55 hover:bg-transparent",
       )}
     >
       <Avatar className="h-10 w-10">
@@ -438,11 +537,17 @@ function PlayerRow({ p, selected, onToggle, hint, trailing }: RowProps) {
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{p.display_name || p.full_name}</p>
-        {(hint || p.current_rating) && (
-          <p className="text-xs text-muted-foreground truncate">
+        {(disabledReason || hint || p.current_rating) && (
+          <p
+            id={disabledReason ? `${p.id}-eligibility` : undefined}
+            className={cn(
+              "text-xs text-muted-foreground truncate",
+              disabledReason && "text-amber-600 dark:text-amber-400",
+            )}
+          >
             {p.current_rating ? `${p.current_rating.toFixed(2)}` : ""}
-            {hint && p.current_rating ? " · " : ""}
-            {hint}
+            {(disabledReason || hint) && p.current_rating ? " · " : ""}
+            {disabledReason || hint}
           </p>
         )}
       </div>
@@ -452,7 +557,9 @@ function PlayerRow({ p, selected, onToggle, hint, trailing }: RowProps) {
           "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
           selected
             ? "bg-primary border-primary"
-            : "border-muted-foreground/30",
+            : disabled
+              ? "border-muted-foreground/15"
+              : "border-muted-foreground/30",
         )}
       >
         {selected && <Check className="h-3 w-3 text-primary-foreground" />}
@@ -474,11 +581,13 @@ function FriendsList({
   selectedIds,
   onToggle,
   genderFilter,
+  eventFormat,
   excludeSet,
 }: {
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  eventFormat: EventFormat;
   excludeSet?: Set<string>;
 }) {
   const { friends, loading } = useFriends();
@@ -489,7 +598,9 @@ function FriendsList({
       display_name: f.profile.display_name,
       avatar_url: f.profile.avatar_url,
       current_rating: f.profile.current_rating,
+      gender: f.profile.gender,
     }))
+    .filter((p) => matchGender(p.gender, genderFilter))
     .filter((p) => (p.full_name || p.display_name) && !excludeSet?.has(p.id));
 
   if (loading) return <EmptyState message="Loading friends…" />;
@@ -501,14 +612,19 @@ function FriendsList({
   return (
     <ScrollArea className="h-full">
       <div className="py-2">
-        {items.map((p) => (
-          <PlayerRow
-            key={p.id}
-            p={p}
-            selected={selectedIds.has(p.id)}
-            onToggle={() => onToggle(p)}
-          />
-        ))}
+        {items.map((p) => {
+          const eligibility = participantGenderEligibility(eventFormat, p.gender);
+          return (
+            <PlayerRow
+              key={p.id}
+              p={p}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => onToggle(p)}
+              disabled={!eligibility.eligible}
+              disabledReason={eligibility.reason}
+            />
+          );
+        })}
       </div>
     </ScrollArea>
   );
@@ -519,6 +635,7 @@ function GroupList({
   selectedIds,
   onToggle,
   genderFilter,
+  eventFormat,
   excludeSet,
   showAddAll = true,
 }: {
@@ -526,6 +643,7 @@ function GroupList({
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  eventFormat: EventFormat;
   excludeSet?: Set<string>;
   showAddAll?: boolean;
 }) {
@@ -537,14 +655,20 @@ function GroupList({
       display_name: m.profile.display_name,
       avatar_url: m.profile.avatar_url,
       current_rating: m.profile.current_rating,
+      gender: m.profile.gender,
     }))
+    .filter((p) => matchGender(p.gender, genderFilter))
     .filter((p) => !excludeSet?.has(p.id));
 
   if (loading) return <EmptyState message="Loading group members…" />;
   if (items.length === 0)
     return <EmptyState message="No group members available." />;
 
-  const remaining = items.filter((p) => !selectedIds.has(p.id));
+  const remaining = items.filter(
+    (p) =>
+      participantGenderEligibility(eventFormat, p.gender).eligible &&
+      !selectedIds.has(p.id),
+  );
 
   return (
     <ScrollArea className="h-full">
@@ -561,14 +685,19 @@ function GroupList({
             </Button>
           </div>
         )}
-        {items.map((p) => (
-          <PlayerRow
-            key={p.id}
-            p={p}
-            selected={selectedIds.has(p.id)}
-            onToggle={() => onToggle(p)}
-          />
-        ))}
+        {items.map((p) => {
+          const eligibility = participantGenderEligibility(eventFormat, p.gender);
+          return (
+            <PlayerRow
+              key={p.id}
+              p={p}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => onToggle(p)}
+              disabled={!eligibility.eligible}
+              disabledReason={eligibility.reason}
+            />
+          );
+        })}
       </div>
     </ScrollArea>
   );
@@ -578,11 +707,13 @@ function RecentList({
   selectedIds,
   onToggle,
   genderFilter,
+  eventFormat,
   excludeSet,
 }: {
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  eventFormat: EventFormat;
   excludeSet?: Set<string>;
 }) {
   const { data = [], isLoading } = useRecentCoPlayers();
@@ -599,14 +730,19 @@ function RecentList({
   return (
     <ScrollArea className="h-full">
       <div className="py-2">
-        {items.map((p) => (
-          <PlayerRow
-            key={p.id}
-            p={p}
-            selected={selectedIds.has(p.id)}
-            onToggle={() => onToggle(p)}
-          />
-        ))}
+        {items.map((p) => {
+          const eligibility = participantGenderEligibility(eventFormat, p.gender);
+          return (
+            <PlayerRow
+              key={p.id}
+              p={p}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => onToggle(p)}
+              disabled={!eligibility.eligible}
+              disabledReason={eligibility.reason}
+            />
+          );
+        })}
       </div>
     </ScrollArea>
   );
@@ -617,12 +753,14 @@ function SearchList({
   selectedIds,
   onToggle,
   genderFilter,
+  eventFormat,
   excludeSet,
 }: {
   query: string;
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  eventFormat: EventFormat;
   excludeSet?: Set<string>;
 }) {
   const { data = [], isFetching } = useQuery({
@@ -651,14 +789,19 @@ function SearchList({
   return (
     <ScrollArea className="h-[calc(100%-72px)]">
       <div className="py-2">
-        {items.map((p) => (
-          <PlayerRow
-            key={p.id}
-            p={p}
-            selected={selectedIds.has(p.id)}
-            onToggle={() => onToggle(p)}
-          />
-        ))}
+        {items.map((p) => {
+          const eligibility = participantGenderEligibility(eventFormat, p.gender);
+          return (
+            <PlayerRow
+              key={p.id}
+              p={p}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => onToggle(p)}
+              disabled={!eligibility.eligible}
+              disabledReason={eligibility.reason}
+            />
+          );
+        })}
       </div>
     </ScrollArea>
   );
@@ -669,11 +812,15 @@ function GuestRosterList({
   selectedIds,
   onToggle,
   excludeSet,
+  eventFormat,
+  genderFilter,
 }: {
   groupId?: string | null;
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   excludeSet?: Set<string>;
+  eventFormat: EventFormat;
+  genderFilter?: BinaryGender;
 }) {
   const { data = [], isLoading } = useQuery({
     queryKey: ["guest-players-roster", groupId ?? "personal"],
@@ -682,7 +829,7 @@ function GuestRosterList({
       if (!user) return [];
       let q = supabase
         .from("guest_players")
-        .select("id, display_name, linked_user_id, created_at")
+        .select("id, display_name, linked_user_id, created_at, gender")
         .order("display_name", { ascending: true })
         .limit(100);
       if (groupId) {
@@ -721,12 +868,22 @@ function GuestRosterList({
             day: "numeric",
           })
         : null;
+      const formatEligibility = participantGenderEligibility(eventFormat, g.gender);
+      const eligibility = eventFormat !== "mixed" || matchGender(g.gender, genderFilter)
+        ? formatEligibility
+        : {
+            eligible: false,
+            normalizedGender: formatEligibility.normalizedGender,
+            reason: `This substitution needs a ${genderFilter} guest.`,
+          };
       return {
         id: g.id,
         full_name: g.display_name,
         display_name: g.display_name,
+        gender: g.gender,
         isGuest: true,
         linked: !!g.linked_user_id,
+        eligibility,
         hint: g.linked_user_id
           ? "Linked to a registered player"
           : isDup && created
@@ -751,6 +908,8 @@ function GuestRosterList({
             selected={selectedIds.has(p.id)}
             onToggle={() => onToggle(p)}
             hint={p.hint}
+            disabled={!p.eligibility.eligible}
+            disabledReason={p.eligibility.reason}
             trailing={
               p.linked ? (
                 <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0">
@@ -758,8 +917,20 @@ function GuestRosterList({
                   Linked
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  Guest
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] px-1.5 py-0",
+                    !p.eligibility.eligible && "border-amber-500/40 text-amber-600 dark:text-amber-400",
+                  )}
+                >
+                  {p.gender === "male"
+                    ? "Male"
+                    : p.gender === "female"
+                      ? "Female"
+                      : eventFormat === "open"
+                        ? "Guest"
+                        : "Gender needed"}
                 </Badge>
               )
             }

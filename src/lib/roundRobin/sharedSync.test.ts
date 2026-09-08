@@ -38,4 +38,10 @@ describe("edge-function shared planner drift guard", () => {
     const sharedContent = normalize(read(path.join(sharedDir, "scoreRemainingSchedule.ts")));
     expect(sharedContent).toBe(srcContent);
   });
+
+  it("scheduleAdjustment.ts is identical in src and the shared edge copy (modulo import extension)", () => {
+    const srcContent = normalize(read(path.join(srcDir, "scheduleAdjustment.ts")));
+    const sharedContent = normalize(read(path.join(sharedDir, "scheduleAdjustment.ts")));
+    expect(sharedContent).toBe(srcContent);
+  });
 });

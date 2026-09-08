@@ -18,6 +18,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { motion } from "framer-motion";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
+import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import {
   Table,
   TableBody,
@@ -129,14 +130,10 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       if (playersError) throw playersError;
 
       // Fetch schedule
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from("round_robin_schedule")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("round_no", { ascending: true })
-        .order("court_no", { ascending: true });
-
-      if (scheduleError) throw scheduleError;
+      const scheduleData = await fetchCanonicalRoundRobinSchedule(
+        supabase,
+        eventId,
+      );
 
       // Collect referenced user-IDs and guest-IDs from roster + schedule
       const userIdSet = new Set<string>();

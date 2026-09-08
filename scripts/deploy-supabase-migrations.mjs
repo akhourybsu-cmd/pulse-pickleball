@@ -169,6 +169,14 @@ export async function deployMigrations({
   const remoteVersions = rows.map(({ version }) => String(version));
   const pending = findPendingMigrations(localMigrations, remoteVersions);
 
+  // Validate every transaction envelope before making the first database
+  // change. This also makes --dry-run catch a dangling BEGIN/COMMIT instead of
+  // reporting a deployable plan that would fail only during the real release.
+  const prepared = pending.map((migration) => ({
+    migration,
+    query: buildTransactionalMigrationSql(migration),
+  }));
+
   console.log(
     `Migration audit: ${localMigrations.length} local, ${remoteVersions.length} recorded, ${pending.length} pending.`,
   );
@@ -183,7 +191,7 @@ export async function deployMigrations({
     return { applied: [], pending: [] };
   }
 
-  for (const migration of pending) {
+  for (const { migration } of prepared) {
     console.log(`${dryRun ? "Would apply" : "Applying"} ${migration.filename}`);
   }
 
@@ -193,11 +201,11 @@ export async function deployMigrations({
   }
 
   const applied = [];
-  for (const migration of pending) {
+  for (const { migration, query } of prepared) {
     await executeSql({
       accessToken,
       projectRef,
-      query: buildTransactionalMigrationSql(migration),
+      query,
       readOnly: false,
       fetchImpl,
     });

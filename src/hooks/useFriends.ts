@@ -9,6 +9,7 @@ export interface FriendProfile {
   full_name: string | null;
   avatar_url: string | null;
   current_rating: number | null;
+  gender: string | null;
 }
 
 export interface Friendship {
@@ -93,7 +94,7 @@ export function useFriends(options?: { realtime?: boolean; includeSent?: boolean
       const { data: profiles, error: profileError } = profileIds.length
         ? await supabase
             .from('profiles_public')
-            .select('id, display_name, full_name, avatar_url, current_rating')
+            .select('id, display_name, full_name, avatar_url, current_rating, gender')
             .in('id', profileIds)
         : { data: [], error: null };
       if (profileError) throw profileError;

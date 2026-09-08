@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { rosterGenderIssue } from "@/lib/roundRobin/participantGender";
 
 export interface WizardFormData {
   eventMode: "immediate" | "open_registration";
@@ -92,7 +93,13 @@ export function useWizardSteps(formData: WizardFormData) {
             return formData.playerCount >= 4;
           }
           if (formData.playerInputMethod === "add") {
-            return formData.selectedPlayers.length >= 4;
+            return (
+              formData.selectedPlayers.length >= 4 &&
+              rosterGenderIssue(
+                formData.format,
+                formData.selectedPlayers.map((player) => player.gender),
+              ) === null
+            );
           }
           return false; // Must choose an input method first
         }

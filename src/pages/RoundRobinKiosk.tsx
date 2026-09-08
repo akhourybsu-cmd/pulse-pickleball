@@ -10,6 +10,7 @@ import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { computeStandings, participantsFromSchedule } from "@/lib/roundRobin/standings";
+import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -252,14 +253,10 @@ export default function RoundRobinKiosk() {
       const currentRound = eventData.current_round || 1;
 
       // Fetch ALL schedule with profiles for standings calculation
-      const { data: fullSchedule, error: fullScheduleError } = await supabase
-        .from("round_robin_schedule")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("round_no")
-        .order("court_no");
-
-      if (fullScheduleError) throw fullScheduleError;
+      const fullSchedule = await fetchCanonicalRoundRobinSchedule(
+        supabase,
+        eventId!,
+      );
 
       // Fetch current round schedule
       const { data: currentSchedule, error: currentError } = await supabase
@@ -268,6 +265,8 @@ export default function RoundRobinKiosk() {
         .eq("event_id", eventId)
         .eq("round_no", currentRound)
         .eq("is_bye", false)
+        .is("voided_at", null)
+        .is("superseded_by_schedule_id", null)
         .order("court_no");
 
       if (currentError) throw currentError;
@@ -351,6 +350,8 @@ export default function RoundRobinKiosk() {
           .eq("event_id", eventId)
           .eq("round_no", currentRound + 1)
           .eq("is_bye", false)
+          .is("voided_at", null)
+          .is("superseded_by_schedule_id", null)
           .order("court_no");
 
         if (nextError) {

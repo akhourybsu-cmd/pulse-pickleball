@@ -1,21 +1,31 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Grid3x3, Gamepad2, RotateCcw } from "lucide-react";
-import { suggestRounds } from "@/lib/roundRobinFairness";
+import { Grid3x3, Gamepad2, Info, RotateCcw, Save } from "lucide-react";
 import { NumericStepper } from "./NumericStepper";
 import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal";
+import { ScheduleImpactPreview } from "./ScheduleImpactPreview";
+import type { ScheduleAdjustmentPlan } from "@/lib/roundRobin/scheduleAdjustment";
+import type { SeatId } from "@/lib/roundRobin/scheduleCore";
+
+export interface RoundRobinScheduleSettings {
+  numCourts: number;
+  gamesPerPlayer: number;
+}
 
 interface CourtsRoundsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentCourts: number;
   currentGamesPerPlayer: number;
+  currentTotalRounds?: number;
   currentRound: number | null;
   hasScores: boolean;
+  hasSchedule: boolean;
   totalPlayers: number;
-  onUpdateCourts: (newCourts: number) => Promise<void>;
-  onUpdateGamesPerPlayer: (newGamesPerPlayer: number, courtsOverride?: number) => Promise<void>;
+  estimatedPlayerCount?: number;
+  onApply: (settings: RoundRobinScheduleSettings) => Promise<void>;
+  getImpactPlan?: (settings: RoundRobinScheduleSettings) => ScheduleAdjustmentPlan | null;
+  getPlayerName?: (seatId: SeatId) => string;
 }
 
 export function CourtsRoundsDialog({
@@ -23,11 +33,15 @@ export function CourtsRoundsDialog({
   onOpenChange,
   currentCourts,
   currentGamesPerPlayer,
+  currentTotalRounds,
   currentRound,
   hasScores,
+  hasSchedule,
   totalPlayers,
-  onUpdateCourts,
-  onUpdateGamesPerPlayer,
+  estimatedPlayerCount,
+  onApply,
+  getImpactPlan,
+  getPlayerName,
 }: CourtsRoundsDialogProps) {
   const [newCourts, setNewCourts] = useState(currentCourts);
   const [newGamesPerPlayer, setNewGamesPerPlayer] = useState(currentGamesPerPlayer);
@@ -42,9 +56,6 @@ export function CourtsRoundsDialog({
     }
   }, [open, currentCourts, currentGamesPerPlayer]);
 
-  // Calculate rounds based on courts and games per player
-  const calculatedRounds = suggestRounds(totalPlayers, newCourts, newGamesPerPlayer);
-
   const handleUpdate = async () => {
     const courtsChanged = newCourts !== currentCourts;
     const gamesChanged = newGamesPerPlayer !== currentGamesPerPlayer;
@@ -53,14 +64,12 @@ export function CourtsRoundsDialog({
 
     setLoading(true);
     try {
-      if (courtsChanged) {
-        await onUpdateCourts(newCourts);
-      }
-      if (gamesChanged) {
-        // Pass the new court count through: the parent's `event` state is still
-        // the pre-update copy when both settings change in one apply.
-        await onUpdateGamesPerPlayer(newGamesPerPlayer, newCourts);
-      }
+      // One callback keeps both settings together: scheduled events rebuild
+      // once, while pre-schedule setup persists one configuration update.
+      await onApply({
+        numCourts: newCourts,
+        gamesPerPlayer: newGamesPerPlayer,
+      });
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -74,13 +83,28 @@ export function CourtsRoundsDialog({
   };
 
   const hasChanges = newCourts !== currentCourts || newGamesPerPlayer !== currentGamesPerPlayer;
+  const isPreScheduleSetup = !hasSchedule && totalPlayers < 4;
+  const previewPlayerCount = isPreScheduleSetup
+    ? Math.max(4, estimatedPlayerCount ?? totalPlayers)
+    : totalPlayers;
+  // There is no valid schedule plan below four active players. Keep this path
+  // configuration-only so hosts can save setup without accidentally invoking
+  // (or being blocked by) schedule generation.
+  const impactPlan = isPreScheduleSetup
+    ? null
+    : getImpactPlan?.({
+        numCourts: newCourts,
+        gamesPerPlayer: newGamesPerPlayer,
+      }) ?? null;
 
   return (
     <ResponsiveSettingsModal
       open={open}
       onOpenChange={(next) => { if (!next) handleClose(); }}
       title="Courts & Games"
-      description="Rounds recalculate automatically when either setting changes."
+      description={isPreScheduleSetup
+        ? "Save the setup now, then generate the rotation when at least four active players are ready."
+        : "Preview the impact, then rebuild the remaining rotation in one step."}
       footer={
         <ModalActions>
           <Button variant="outline" onClick={handleClose}>
@@ -88,11 +112,22 @@ export function CourtsRoundsDialog({
           </Button>
           <Button
             onClick={handleUpdate}
-            disabled={!hasChanges || newCourts < 1 || newGamesPerPlayer < 1 || loading}
+            disabled={
+              !hasChanges ||
+              newCourts < 1 ||
+              newGamesPerPlayer < 1 ||
+              loading ||
+              (!isPreScheduleSetup && impactPlan?.ok === false)
+            }
             className="gap-1.5"
           >
-            <RotateCcw className="h-4 w-4" />
-            {loading ? "Updating…" : "Apply Changes"}
+            {isPreScheduleSetup
+              ? <Save className="h-4 w-4" />
+              : <RotateCcw className="h-4 w-4" />}
+            {loading
+              ? isPreScheduleSetup ? "Saving setup…" : "Rebuilding schedule…"
+              : hasChanges ? isPreScheduleSetup ? "Save setup" : "Apply & rebuild"
+              : "No changes"}
           </Button>
         </ModalActions>
       }
@@ -114,46 +149,37 @@ export function CourtsRoundsDialog({
           max={20}
           icon={Gamepad2}
           label="Games per player"
-          suffix="Total matches each player gets"
+          suffix="Target games for each player"
         />
 
-        {/* Calculated-rounds preview — visually weighted as the outcome of
-            the two inputs above. Primary-tinted background, large numeric. */}
-        <div
-          className="rounded-xl border border-primary/20 p-3.5 sm:p-4"
-          style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-primary uppercase tracking-[0.14em]">
-                Schedule preview
-              </div>
-              <div className="text-sm text-muted-foreground mt-0.5">
-                {newCourts} {newCourts === 1 ? "court" : "courts"} ·{" "}
-                {newGamesPerPlayer} {newGamesPerPlayer === 1 ? "game" : "games"} ·{" "}
-                {totalPlayers} players
-              </div>
-            </div>
-            <div className="flex-shrink-0 text-right">
-              <div className="text-3xl font-bold text-primary tabular-nums leading-none">
-                {calculatedRounds}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {calculatedRounds === 1 ? "round" : "rounds"}
-              </div>
-            </div>
+        {isPreScheduleSetup && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2.5">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <strong className="font-semibold text-foreground">
+                Setup estimate for {previewPlayerCount} players.
+              </strong>{" "}
+              These settings save immediately without creating matches. The final round count, rests, and fairness adapt to the active roster when you generate the schedule.
+            </p>
           </div>
-        </div>
-
-        {hasChanges && hasScores && (
-          <Alert>
-            <AlertTriangle className="w-4 h-4" />
-            <AlertDescription className="text-xs leading-snug">
-              <strong>Heads up:</strong> completed rounds and their scores are kept.
-              Only the current and upcoming rounds are rebuilt with the new court count.
-            </AlertDescription>
-          </Alert>
         )}
+
+        <ScheduleImpactPreview
+          playerCount={previewPlayerCount}
+          courtCount={newCourts}
+          gamesPerPlayer={newGamesPerPlayer}
+          previous={isPreScheduleSetup ? undefined : {
+            courtCount: currentCourts,
+            gamesPerPlayer: currentGamesPerPlayer,
+            rounds: currentTotalRounds,
+          }}
+          currentRound={currentRound}
+          preserveCompleted={hasScores || (currentRound ?? 1) > 1}
+          title={isPreScheduleSetup ? "Setup estimate" : "Impact preview"}
+          compact
+          plan={impactPlan}
+          getPlayerName={getPlayerName}
+        />
       </div>
     </ResponsiveSettingsModal>
   );

@@ -5,6 +5,7 @@ import { StepHeader } from "../StepHeader";
 import { WizardStepper } from "../WizardStepper";
 import { cn } from "@/lib/utils";
 import { PRESSABLE_CARD } from "@/lib/motion";
+import { rosterGenderIssue } from "@/lib/roundRobin/participantGender";
 
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,6 +52,9 @@ export function PlayersStep({
   onAllowGuestsChange,
   onRatingEligibleChange,
 }: PlayersStepProps) {
+  const rosterGenderWarning = selectedPlayers.length > 0
+    ? rosterGenderIssue(format, selectedPlayers.map((player) => player.gender))
+    : null;
   const guestToggle = onAllowGuestsChange ? (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
@@ -240,6 +244,7 @@ export function PlayersStep({
           selectedPlayers={selectedPlayers}
           onPlayersChange={onPlayersChange}
           genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
+          eventFormat={format}
           groupId={groupId}
           allowGuest={allowGuests}
           trigger={
@@ -297,6 +302,13 @@ export function PlayersStep({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {rosterGenderWarning && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{rosterGenderWarning}</span>
           </div>
         )}
       </div>

@@ -67,6 +67,7 @@ function setupSteps(playerCount: number, hasSchedule: boolean, status: string) {
 export function RRLeftSidebar(props: RRSidebarProps) {
   const steps = setupSteps(props.playerCount, props.hasSchedule, props.status);
   const completed = steps.filter((s) => s.done).length;
+  const eventLocked = props.status === "completed" || props.status === "voided";
 
   return (
     <div className="space-y-4">
@@ -116,7 +117,8 @@ export function RRLeftSidebar(props: RRSidebarProps) {
           <button
             type="button"
             onClick={props.onAddPlayers}
-            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
+            disabled={eventLocked}
+            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] disabled:opacity-50 disabled:pointer-events-none"
           >
             <UserPlus className="w-4 h-4" />
             Add Players
@@ -124,7 +126,8 @@ export function RRLeftSidebar(props: RRSidebarProps) {
           <button
             type="button"
             onClick={props.onEditEvent}
-            className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all"
+            disabled={eventLocked}
+            className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             <Pencil className="w-4 h-4" />
             Edit Event
@@ -132,7 +135,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
           <button
             type="button"
             onClick={props.onGenerateSchedule}
-            disabled={props.playerCount < MIN_PLAYERS}
+            disabled={eventLocked || props.playerCount < MIN_PLAYERS}
             className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             <Zap className="w-4 h-4" />

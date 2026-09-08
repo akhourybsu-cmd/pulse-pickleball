@@ -22,6 +22,7 @@ import { DateTimeStep } from "./steps/DateTimeStep";
 import { RatingsStep } from "./steps/RatingsStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { GroupShareStep } from "./steps/GroupShareStep";
+import { rosterGenderIssue } from "@/lib/roundRobin/participantGender";
 
 interface Court {
   id: string;
@@ -162,19 +163,12 @@ export function WizardContainer() {
 
     // Validate format requirements for immediate mode with specific players
     if (formData.eventMode === "immediate" && formData.selectedPlayers.length > 0) {
-      const males = formData.selectedPlayers.filter((p) => p.gender === "male").length;
-      const females = formData.selectedPlayers.filter((p) => p.gender === "female").length;
-
-      if (formData.format === "mixed" && (males < 2 || females < 2)) {
-        toast.error("Mixed format requires at least 2 male and 2 female players");
-        return;
-      }
-      if (formData.format === "male" && males < 4) {
-        toast.error("Men's format requires at least 4 male players");
-        return;
-      }
-      if (formData.format === "female" && females < 4) {
-        toast.error("Women's format requires at least 4 female players");
+      const genderIssue = rosterGenderIssue(
+        formData.format,
+        formData.selectedPlayers.map((player) => player.gender),
+      );
+      if (genderIssue) {
+        toast.error(genderIssue);
         return;
       }
     }
@@ -410,10 +404,22 @@ export function WizardContainer() {
         // Combined Courts + Games — see ScheduleStep for rationale.
         return (
           <ScheduleStep
+            playerCount={
+              formData.eventMode === "open_registration"
+                ? formData.maxPlayers
+                : formData.playerInputMethod === "add"
+                  ? formData.selectedPlayers.length
+                  : formData.playerCount
+            }
             courtCount={formData.courtCount}
             onCourtCountChange={(v) => updateFormData("courtCount", v)}
             gamesPerPlayer={formData.gamesPerPlayer}
             onGamesPerPlayerChange={(v) => updateFormData("gamesPerPlayer", v)}
+            format={formData.format}
+            selectedPlayers={formData.selectedPlayers}
+            rosterCompositionKnown={
+              formData.eventMode === "immediate" && formData.playerInputMethod === "add"
+            }
           />
         );
       case "datetime":

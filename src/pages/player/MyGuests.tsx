@@ -5,6 +5,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -43,7 +50,12 @@ import { GlassRowGroup } from "@/components/round-robin/PremiumDialogHeader";
 import { PageSEO } from "@/components/seo/PageSEO";
 import { withPulseActivity } from "@/components/ui/pulse-activity";
 import { cn } from "@/lib/utils";
+import {
+  type BinaryGender,
+  normalizeBinaryGender,
+} from "@/lib/roundRobin/participantGender";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 type Guest = {
   id: string;
@@ -53,13 +65,23 @@ type Guest = {
   linked_user_id: string | null;
   created_at: string;
   group_id: string | null;
+  gender: string | null;
+};
+
+type ClaimantProfile = {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  email: string | null;
 };
 
 export default function MyGuests() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [name, setName] = useState("");
+  const [newGuestGender, setNewGuestGender] = useState<BinaryGender | "">("");
   const [creating, setCreating] = useState(false);
+  const [updatingGenderId, setUpdatingGenderId] = useState<string | null>(null);
   const [inviteGuest, setInviteGuest] = useState<Guest | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Guest | null>(null);
@@ -84,7 +106,7 @@ export default function MyGuests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("guest_players")
-        .select("id, display_name, email, phone, linked_user_id, created_at, group_id")
+        .select("id, display_name, email, phone, linked_user_id, created_at, group_id, gender")
         .eq("created_by", userId!)
         .order("display_name", { ascending: true });
       if (error) throw error;
@@ -135,14 +157,14 @@ export default function MyGuests() {
               .from("profiles")
               .select("id, display_name, full_name, email")
               .in("id", userIds)
-          : Promise.resolve({ data: [] as any[] } as any),
+          : Promise.resolve({ data: [] as ClaimantProfile[], error: null }),
       ]);
-      const gMap = new Map((gs ?? []).map((g: any) => [g.id, g.display_name]));
-      const pMap = new Map((ps ?? []).map((p: any) => [p.id, p]));
+      const gMap = new Map((gs ?? []).map((g) => [g.id, g.display_name]));
+      const pMap = new Map((ps ?? []).map((p) => [p.id, p]));
       return rows
         .filter((r) => r.accepted_by_user_id)
         .map((r) => {
-          const p = pMap.get(r.accepted_by_user_id!) as any;
+          const p = pMap.get(r.accepted_by_user_id!);
           return {
             invite_id: r.id,
             guest_player_id: r.guest_player_id,
@@ -178,8 +200,8 @@ export default function MyGuests() {
         "Linked — removed from your guest list",
       );
       refresh();
-    } catch (e: any) {
-      toast.error(e?.message || "Could not approve claim.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Could not approve claim."));
     } finally {
       setApprovingId(null);
     }
@@ -216,15 +238,40 @@ export default function MyGuests() {
       await withPulseActivity(`Adding ${display}…`, async () => {
         const { error } = await supabase
           .from("guest_players")
-          .insert({ display_name: display, created_by: userId } as never);
+          .insert({
+            display_name: display,
+            created_by: userId,
+            gender: newGuestGender || null,
+          } as never);
         if (error) throw error;
       });
       setName("");
+      setNewGuestGender("");
       refresh();
     } catch {
       toast.error("Could not add guest.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const updateGuestGender = async (guestId: string, gender: BinaryGender) => {
+    setUpdatingGenderId(guestId);
+    try {
+      const { error } = await supabase
+        .from("guest_players")
+        .update({ gender })
+        .eq("id", guestId);
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-guest-players", userId] }),
+        qc.invalidateQueries({ queryKey: ["guest-players-roster"] }),
+      ]);
+      toast.success("Guest gender updated");
+    } catch {
+      toast.error("Could not update guest gender.");
+    } finally {
+      setUpdatingGenderId(null);
     }
   };
 
@@ -282,8 +329,8 @@ export default function MyGuests() {
       setMergeConfirm(null);
       exitMergeMode();
       refresh();
-    } catch (e: any) {
-      toast.error(e?.message || "Merge failed.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Merge failed."));
     } finally {
       setMerging(false);
     }
@@ -357,7 +404,7 @@ export default function MyGuests() {
       <main className="container max-w-2xl mx-auto px-4 py-5 space-y-4">
         {/* Add + search */}
         <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-3 space-y-2.5 shadow-[0_8px_30px_-18px_hsl(var(--foreground)/0.25)]">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_auto] gap-2">
             <Input
               placeholder="Add a guest by name"
               value={name}
@@ -365,6 +412,18 @@ export default function MyGuests() {
               onKeyDown={(e) => e.key === "Enter" && addGuest()}
               className="h-11"
             />
+            <Select
+              value={newGuestGender}
+              onValueChange={(value) => setNewGuestGender(value as BinaryGender)}
+            >
+              <SelectTrigger className="h-11" aria-label="New guest gender (optional)">
+                <SelectValue placeholder="Gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               onClick={addGuest}
               disabled={creating || !name.trim()}
@@ -586,6 +645,26 @@ export default function MyGuests() {
                       <p className="text-[11.5px] text-muted-foreground truncate">
                         {g.email}
                       </p>
+                    )}
+                    {!mergeMode && (
+                      <Select
+                        value={normalizeBinaryGender(g.gender) ?? undefined}
+                        onValueChange={(value) => {
+                          void updateGuestGender(g.id, value as BinaryGender);
+                        }}
+                        disabled={updatingGenderId === g.id}
+                      >
+                        <SelectTrigger
+                          className="mt-1 h-7 w-[116px] px-2 text-[11px]"
+                          aria-label={`Gender for ${g.display_name}`}
+                        >
+                          <SelectValue placeholder="Set gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                   {!mergeMode && (

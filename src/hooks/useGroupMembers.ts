@@ -18,6 +18,7 @@ export interface GroupMemberWithProfile {
     full_name: string;
     avatar_url: string | null;
     current_rating: number | null;
+    gender: string | null;
   };
 }
 
@@ -35,7 +36,7 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
   const userIds = (membersData || []).map(m => m.user_id);
   const { data: profilesData } = await supabase
     .from('profiles_public')
-    .select('id, display_name, full_name, avatar_url, current_rating')
+    .select('id, display_name, full_name, avatar_url, current_rating, gender')
     .in('id', userIds);
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
@@ -55,6 +56,7 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
               full_name: 'Player',
               avatar_url: null,
               current_rating: null,
+              gender: null,
             },
       };
     });

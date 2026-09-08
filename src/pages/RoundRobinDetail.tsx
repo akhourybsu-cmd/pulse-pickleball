@@ -46,6 +46,7 @@ import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero"
 import { HostControlsMenu } from "@/components/round-robin/HostControlsMenu";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
+import { ScheduleImpactPreview } from "@/components/round-robin/ScheduleImpactPreview";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
 import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementDialog";
 import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog";
@@ -80,6 +81,19 @@ import { resolvePlayerInitials } from "@/lib/matchDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { startPulseActivity } from "@/components/ui/pulse-activity";
+import {
+  planScheduleAdjustment,
+  type ScheduleAdjustmentPlan,
+  type ScheduleSubstitution,
+} from "@/lib/roundRobin/scheduleAdjustment";
+import {
+  seatsOf,
+  type CoreMatch,
+  type EventFormat,
+  type SeatId,
+} from "@/lib/roundRobin/scheduleCore";
+import { participantGenderEligibility } from "@/lib/roundRobin/participantGender";
+import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 
 
 // Score validation schema
@@ -106,7 +120,7 @@ interface Event {
   status: "draft" | "live" | "completed" | "voided";
   rating_eligible: boolean;
   rating_type: "ladder" | "league" | "playoffs" | "casual";
-  format?: string;
+  format?: EventFormat;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -121,6 +135,8 @@ interface Event {
   /** When true, this event accepts guest_players and is excluded from PULSE
    *  Ratings. Surfaced in the hero so the host always sees why. */
   allow_guests?: boolean;
+  /** Incremented by every transactional schedule mutation. */
+  schedule_version: number;
 
 }
 
@@ -132,18 +148,32 @@ interface Player {
   guest_name: string | null;
   joined_at: string;
   active: boolean;
+  status?: string;
+  effective_round?: number | null;
+  schedule_game_credit?: number | null;
+  schedule_first_eligible_round?: number | null;
   profiles: {
     id: string;
     full_name: string | null;
     display_name: string | null;
     avatar_url?: string | null;
+    gender?: string | null;
   } | null;
   guest_players?: {
     id: string;
     display_name: string;
     linked_user_id: string | null;
     email?: string | null;
+    gender?: string | null;
+    /** Linked profile gender takes precedence over the saved-guest fallback. */
+    effective_gender?: string | null;
   } | null;
+}
+
+interface RosterAdditionInput {
+  playerId: string | null;
+  guestPlayerId?: string | null;
+  guestName?: string;
 }
 
 
@@ -172,6 +202,10 @@ interface ScheduleMatch {
   team1_score: number | null;
   team2_score: number | null;
   match_id: string | null;
+  locked_at?: string | null;
+  voided_at?: string | null;
+  superseded_by_schedule_id?: string | null;
+  abandoned?: boolean | null;
 }
 
 interface StandingsRow {
@@ -229,6 +263,7 @@ export default function RoundRobinDetail() {
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const ratingRecalcCheckedRef = useRef(false);
+  const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -250,6 +285,7 @@ export default function RoundRobinDetail() {
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
   const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
   const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
+  const [repairingSchedule, setRepairingSchedule] = useState(false);
   const [auditEntries, setAuditEntries] = useState<any[]>([]);
   const [inviteGuest, setInviteGuest] = useState<{ id: string; name: string; email: string | null } | null>(null);
   // When an organizer pulls a player who is currently ON COURT in the live
@@ -282,9 +318,7 @@ export default function RoundRobinDetail() {
           table: 'round_robin_events',
           filter: `id=eq.${id}`
         },
-        () => {
-          fetchEventDetails();
-        }
+        () => scheduleRealtimeRefresh()
       )
       .on(
         'postgres_changes',
@@ -294,9 +328,7 @@ export default function RoundRobinDetail() {
           table: 'round_robin_schedule',
           filter: `event_id=eq.${id}`
         },
-        () => {
-          fetchEventDetails();
-        }
+        () => scheduleRealtimeRefresh()
       )
       .on(
         'postgres_changes',
@@ -306,16 +338,31 @@ export default function RoundRobinDetail() {
           table: 'round_robin_players',
           filter: `event_id=eq.${id}`
         },
-        () => {
-          fetchEventDetails();
-        }
+        () => scheduleRealtimeRefresh()
       )
       .subscribe();
 
     return () => {
+      if (realtimeRefreshTimerRef.current) {
+        clearTimeout(realtimeRefreshTimerRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, [id]);
+
+  // A transactional rebuild inserts many schedule rows, and Supabase emits a
+  // realtime event for each one. Coalesce that burst into one authoritative
+  // refresh so the host view does not flicker or launch dozens of duplicate
+  // roster/profile queries.
+  const scheduleRealtimeRefresh = () => {
+    if (realtimeRefreshTimerRef.current) {
+      clearTimeout(realtimeRefreshTimerRef.current);
+    }
+    realtimeRefreshTimerRef.current = setTimeout(() => {
+      realtimeRefreshTimerRef.current = null;
+      void fetchEventDetails();
+    }, 180);
+  };
 
   const fetchAuditHistory = async () => {
     if (!id) return;
@@ -369,7 +416,7 @@ export default function RoundRobinDetail() {
       // Keep the base reads independent and portable. Cross-table embeds
       // through profiles_public worked in Lovable's PostgREST schema cache but
       // fail on the external Supabase project, zeroing the roster and schedule.
-      const [adminFlag, eventResult, playersResult, scheduleResult] = await Promise.all([
+      const [adminFlag, eventResult, playersResult, scheduleData] = await Promise.all([
         isPlatformAdmin(user.id),
         supabase
           .from("round_robin_events")
@@ -380,12 +427,7 @@ export default function RoundRobinDetail() {
           .from("round_robin_players")
           .select("*")
           .eq("event_id", id),
-        supabase
-          .from("round_robin_schedule")
-          .select("*")
-          .eq("event_id", id)
-          .order("round_no")
-          .order("court_no"),
+        fetchCanonicalRoundRobinSchedule(supabase, id!),
       ]);
 
       setIsAdmin(adminFlag);
@@ -397,9 +439,6 @@ export default function RoundRobinDetail() {
 
       const { data: playersData, error: playersError } = playersResult;
       if (playersError) throw playersError;
-
-      const { data: scheduleData, error: scheduleError } = scheduleResult;
-      if (scheduleError) throw scheduleError;
 
       const rawPlayers = (playersData ?? []) as unknown as Player[];
       const rawSchedule = (scheduleData ?? []) as unknown as ScheduleMatch[];
@@ -421,13 +460,13 @@ export default function RoundRobinDetail() {
         profileIds.size > 0
           ? supabase
               .from("profiles_public")
-              .select("id, full_name, display_name, avatar_url")
+              .select("id, full_name, display_name, avatar_url, gender")
               .in("id", [...profileIds])
           : Promise.resolve({ data: [], error: null }),
         guestIds.size > 0
           ? supabase
               .from("guest_players")
-              .select("id, display_name, linked_user_id, email")
+              .select("id, display_name, linked_user_id, email, gender")
               .in("id", [...guestIds])
           : Promise.resolve({ data: [], error: null }),
       ]);
@@ -440,8 +479,35 @@ export default function RoundRobinDetail() {
       const profilesById = new Map(
         (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
       );
+      const missingLinkedProfileIds = [...new Set(
+        (guestsResult.data ?? []).flatMap((guest) =>
+          guest.linked_user_id && !profilesById.has(guest.linked_user_id)
+            ? [guest.linked_user_id]
+            : [],
+        ),
+      )];
+      if (missingLinkedProfileIds.length > 0) {
+        const { data: linkedProfiles, error: linkedProfilesError } = await supabase
+          .from("profiles_public")
+          .select("id, full_name, display_name, avatar_url, gender")
+          .in("id", missingLinkedProfileIds);
+        if (linkedProfilesError) {
+          console.error("Error hydrating linked guest profiles:", linkedProfilesError);
+        } else {
+          (linkedProfiles ?? []).forEach((profile) => profilesById.set(profile.id, profile));
+        }
+      }
       const guestsById = new Map(
-        (guestsResult.data ?? []).map((guest) => [guest.id, guest]),
+        (guestsResult.data ?? []).map((guest) => [
+          guest.id,
+          {
+            ...guest,
+            effective_gender:
+              (guest.linked_user_id
+                ? profilesById.get(guest.linked_user_id)?.gender
+                : null) ?? guest.gender,
+          },
+        ]),
       );
       const hydratedPlayers: Player[] = rawPlayers.map((player) => ({
         ...player,
@@ -531,45 +597,9 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    // Show confirmation dialog
-    const hasExistingSchedule = schedule.length > 0;
-    const maxPossibleMatches = Math.floor(activePlayers.length / 4);
-    const matchesPerRound = Math.min(event.num_courts, maxPossibleMatches);
-    const gamesPerRoundPerPlayer = (4 * matchesPerRound) / activePlayers.length;
-    const calculatedRounds = Math.ceil((event.games_per_player || 3) / gamesPerRoundPerPlayer);
-    
-    const confirmMessage = hasExistingSchedule 
-      ? `This will DELETE the existing schedule and generate a new one.\n\nNew schedule will have:\n• ${calculatedRounds} rounds\n• ${matchesPerRound} matches per round (using ${matchesPerRound} of ${event.num_courts} courts)\n• ${event.games_per_player || 3} games per player\n\nAre you sure?`
-      : `Generate schedule with:\n• ${calculatedRounds} rounds\n• ${matchesPerRound} matches per round (using ${matchesPerRound} of ${event.num_courts} courts)\n• ${event.games_per_player || 3} games per player\n\nProceed?`;
-    
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
-    const pulse = startPulseActivity("Building schedule…");
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
-        body: {
-          event_id: event.id,
-          participants: activePlayers.map((p) => ({
-            player_id: p.player_id,
-            guest_id: (p as { guest_player_id?: string }).guest_player_id,
-          })),
-          num_courts: event.num_courts,
-          num_rounds: event.num_rounds,
-          games_per_player: event.games_per_player || 3,
-        },
-      });
-
-      if (error) throw error;
-      pulse.done(`Schedule ready · ${calculatedRounds} rounds`);
-      fetchEventDetails();
-    } catch (error: unknown) {
-      pulse.fail();
-      toast.error("Failed to generate schedule");
-      console.error(error);
-    }
-
+    // Use the in-app review surface below instead of a browser-native confirm.
+    // The preview and the eventual Edge call share the same planner inputs.
+    setRegenConfirmOpen(true);
   };
 
   const handleStartEvent = async () => {
@@ -953,194 +983,259 @@ export default function RoundRobinDetail() {
 
   const regenerateScheduleFromRound = async (
     fromRound: number,
-    overrides?: { numCourts?: number; gamesPerPlayer?: number },
-  ): Promise<{ previousRounds: number; targetRounds: number; roundsChanged: boolean } | undefined> => {
+    overrides?: {
+      numCourts?: number;
+      gamesPerPlayer?: number;
+      reason?: string;
+      /** null lets the server snapshot the version after another atomic RPC. */
+      expectedVersion?: number | null;
+      /** Explicit identity handoff used to carry only the outgoing player's
+       * protected-play allocation gap into the replacement's future rotation. */
+      substitutions?: ScheduleSubstitution[];
+    },
+  ): Promise<{
+    previousRounds: number;
+    targetRounds: number;
+    roundsChanged: boolean;
+    impact?: { summary?: string };
+    fairness?: { score?: number; gameRange?: { min: number; max: number; spread: number } };
+    warnings?: Array<{ code: string; severity: string; message: string }>;
+  } | undefined> => {
     if (!event) return;
 
+    const gamesPerPlayer = overrides?.gamesPerPlayer ?? (event.games_per_player || 3);
+    const numCourts = overrides?.numCourts ?? event.num_courts;
+    const previousRounds = event.num_rounds;
 
-    // Always read the live roster from the DB — React state may be stale
-    // immediately after an add/remove call.
-    const { data: liveRoster, error: rosterError } = await supabase
-      .from("round_robin_players")
-      .select("id, player_id, guest_player_id, active")
-      .eq("event_id", event.id);
-    if (rosterError) throw rosterError;
+    // The edge function snapshots the authoritative active roster and
+    // canonical schedule, plans the remaining player-game obligations, then
+    // commits settings + rows + version + audit in one database transaction.
+    // It also advances this boundary past the live/current or scored rounds.
+    const { data, error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
+      body: {
+        request_id: crypto.randomUUID(),
+        event_id: event.id,
+        num_courts: numCourts,
+        num_rounds: event.num_rounds,
+        games_per_player: gamesPerPlayer,
+        regenerate_from_round: Math.max(1, fromRound),
+        expected_version: overrides?.expectedVersion === null
+          ? undefined
+          : (overrides?.expectedVersion ?? event.schedule_version ?? 0),
+        reason: overrides?.reason,
+        substitutions: overrides?.substitutions,
+      },
+    });
+    if (generateError) throw generateError;
 
-    const activePlayers = (liveRoster || []).filter((p: any) => p.active !== false);
-    if (activePlayers.length < 4) {
-      toast.error("At least 4 active players are required");
-      return;
-    }
+    const result = data as {
+      num_rounds?: number;
+      impact?: { summary?: string };
+      fairness?: { score?: number; gameRange?: { min: number; max: number; spread: number } };
+      warnings?: Array<{ code: string; severity: string; message: string }>;
+    } | null;
+    const targetRounds = result?.num_rounds ?? previousRounds;
 
-    // Guests are first-class here: a row with guest_player_id schedules exactly
-    // like a registered player. Only legacy ad-hoc rows (a bare guest_name with
-    // no guest record) can't be seated by the generator.
-    const unfilled = activePlayers.filter(
-      (p: any) => !p.player_id && !p.guest_player_id,
-    );
-    if (unfilled.length > 0) {
-      toast.error(
-        `${unfilled.length} roster slot${unfilled.length === 1 ? "" : "s"} ${unfilled.length === 1 ? "is" : "are"} an unlinked legacy guest — substitute ${unfilled.length === 1 ? "it" : "them"} for a saved guest or player, then regenerate.`,
-      );
-      return;
-    }
+    await fetchEventDetails();
+    return {
+      previousRounds,
+      targetRounds,
+      roundsChanged: targetRounds !== previousRounds,
+      impact: result?.impact,
+      fairness: result?.fairness,
+      warnings: result?.warnings,
+    };
+  };
 
-
-
-    try {
-      // Auto-derive the round count from the host's games-per-player target
-      // and the new active roster size. Never shrink below already-played rounds.
-      const gamesPerPlayer = overrides?.gamesPerPlayer ?? (event.games_per_player || 3);
-      const numCourts = overrides?.numCourts ?? event.num_courts;
-      const desiredRounds = suggestRounds(
-        activePlayers.length,
-        numCourts,
-        gamesPerPlayer
-      );
-
-
-      // A round is "locked" if any of its rows carry a score OR a linked
-      // match_id (a match record already exists in history for it, e.g.
-      // submitted/verified play). Both must survive regeneration.
-      const { data: scoredRows } = await supabase
-        .from("round_robin_schedule")
-        .select("round_no")
-        .eq("event_id", event.id)
-        .or("team1_score.not.is.null,team2_score.not.is.null,match_id.not.is.null")
-        .order("round_no", { ascending: false })
-        .limit(1);
-      const completedRoundsCount = (scoredRows?.[0]?.round_no as number | undefined) || 0;
-
-      // Never regenerate a locked round — the edge function deletes every row
-      // >= regenerate_from_round, and losing a scored row also severs its
-      // match_id link into match history (breaking later void/complete).
-      const safeFromRound = Math.max(fromRound, completedRoundsCount + 1);
-
-
-      const previousRounds = event.num_rounds;
-      const targetRounds = Math.max(desiredRounds, completedRoundsCount, safeFromRound - 1, 1);
-      const roundsChanged = targetRounds !== previousRounds;
-
-      if (roundsChanged) {
-        const { error: updateRoundsError } = await supabase
-          .from("round_robin_events")
-          .update({ num_rounds: targetRounds })
-          .eq("id", event.id);
-        if (updateRoundsError) throw updateRoundsError;
-
-        if (userId) {
-          await supabase.from("round_robin_audit").insert({
-            event_id: event.id,
-            editor_id: userId,
-            change_type: "rounds_auto_adjusted",
-            changes: {
-              previous_rounds: previousRounds,
-              new_rounds: targetRounds,
-              active_players: activePlayers.length,
-              games_per_player: gamesPerPlayer,
-              num_courts: numCourts,
-            },
-            reason: `Rounds auto-adjusted from ${previousRounds} to ${targetRounds} to keep ${gamesPerPlayer} games/player for ${activePlayers.length} active players`,
-          });
-        }
+  const validateRosterInputsForFormat = async (
+    inputs: readonly RosterAdditionInput[],
+  ) => {
+    for (const input of inputs) {
+      if (!!input.playerId === !!input.guestPlayerId) {
+        throw new Error("Each roster addition must identify exactly one player or guest.");
       }
+    }
 
-      // Regenerate schedule. regenerate_from_round is load-bearing:
-      // without it the edge function takes its full-regeneration branch
-      // and deletes EVERY schedule row for the event — scored matches
-      // included. With it, rounds below safeFromRound are preserved and
-      // carried into the generator's fairness stats.
-      const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
-        body: {
-          event_id: event.id,
-          participants: activePlayers.map((p: any) => ({
-            player_id: p.player_id,
-            guest_id: p.guest_player_id,
-          })),
-          num_courts: numCourts,
-          num_rounds: targetRounds,
-          games_per_player: gamesPerPlayer,
-          regenerate_from_round: safeFromRound,
-        },
-      });
+    const format = (event?.format || "open") as EventFormat;
+    if (format === "open" || inputs.length === 0) return;
 
-      if (generateError) throw generateError;
+    const profileIds = [...new Set(
+      inputs.flatMap((input) => input.playerId ? [input.playerId] : []),
+    )];
+    const guestIds = [...new Set(
+      inputs.flatMap((input) => input.guestPlayerId ? [input.guestPlayerId] : []),
+    )];
+    const [profileResult, guestResult] = await Promise.all([
+      profileIds.length > 0
+        ? supabase
+            .from("profiles_public")
+            .select("id, gender")
+            .in("id", profileIds)
+        : Promise.resolve({ data: [], error: null }),
+      guestIds.length > 0
+        ? supabase
+            .from("guest_players")
+            .select("id, gender, linked_user_id")
+            .in("id", guestIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (profileResult.error) throw profileResult.error;
+    if (guestResult.error) throw guestResult.error;
 
-      await fetchEventDetails();
-      return { previousRounds, targetRounds, roundsChanged };
-    } catch (error: unknown) {
-      throw error;
+    const linkedProfileIds = [...new Set(
+      (guestResult.data ?? []).flatMap((guest) =>
+        guest.linked_user_id ? [guest.linked_user_id] : [],
+      ),
+    )];
+    const linkedProfileResult = linkedProfileIds.length > 0
+      ? await supabase
+          .from("profiles_public")
+          .select("id, gender")
+          .in("id", linkedProfileIds)
+      : { data: [], error: null };
+    if (linkedProfileResult.error) throw linkedProfileResult.error;
+
+    const genders = new Map<string, string | null>();
+    const linkedGenders = new Map<string, string | null>();
+    (profileResult.data ?? []).forEach((profile) => {
+      if (profile.id) genders.set(`p:${profile.id}`, profile.gender);
+    });
+    (linkedProfileResult.data ?? []).forEach((profile) => {
+      if (profile.id) linkedGenders.set(profile.id, profile.gender);
+    });
+    (guestResult.data ?? []).forEach((guest) => {
+      genders.set(
+        `g:${guest.id}`,
+        (guest.linked_user_id
+          ? linkedGenders.get(guest.linked_user_id)
+          : null) ?? guest.gender,
+      );
+    });
+
+    for (const input of inputs) {
+      const identity = input.playerId
+        ? `p:${input.playerId}`
+        : `g:${input.guestPlayerId}`;
+      const eligibility = participantGenderEligibility(format, genders.get(identity));
+      if (!eligibility.eligible) {
+        throw new Error(eligibility.reason || "That player is not eligible for this format.");
+      }
     }
   };
 
-  const handleAddPlayer = async ({
-    playerId,
-    guestPlayerId,
-    guestName,
-  }: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => {
-    if (!event || !userId) return;
+  const handleAddPlayers = async (
+    requestedAdditions: RosterAdditionInput[],
+  ): Promise<number> => {
+    if (!event || !userId || requestedAdditions.length === 0) return 0;
+    if (event.voided || event.status === "completed" || event.status === "voided") {
+      throw new Error("This event is closed. Its roster and results are locked.");
+    }
+
+    // De-duplicate by canonical participant identity before touching the DB.
+    // This also protects against a rapid double-tap returning the same picker
+    // entry twice.
+    const additions = [...new Map(
+      requestedAdditions
+        .filter((input) => input.playerId || input.guestPlayerId)
+        .map((input) => [
+          input.playerId ? `p:${input.playerId}` : `g:${input.guestPlayerId}`,
+          input,
+        ]),
+    ).values()];
+
+    const actionable = additions.flatMap((input) => {
+      const existing = players.find((player) =>
+        (input.playerId && player.player_id === input.playerId) ||
+        (input.guestPlayerId && player.guest_player_id === input.guestPlayerId)
+      );
+      return existing?.active ? [] : [{ input, existing }];
+    });
+
+    if (actionable.length === 0) {
+      return 0;
+    }
+
+    const reactivationCount = actionable.filter(({ existing }) => !!existing).length;
+    const rosterUpserts = actionable.map(({ input, existing }) => ({
+        id: existing?.id ?? crypto.randomUUID(),
+        event_id: event.id,
+        player_id: input.playerId,
+        guest_player_id: input.guestPlayerId ?? null,
+        guest_name: input.guestName ?? existing?.guest_name ?? null,
+        status: "active",
+      }));
 
     try {
-      // A previously removed / substituted-out member keeps an inactive
-      // roster row (and the partial unique indexes on (event_id, player_id)
-      // / (event_id, guest_player_id) still cover it), so adding them back
-      // must REACTIVATE that row — a blind insert hits 23505 and the add
-      // silently fails, which is exactly the "can't reliably replace a
-      // dropout" complaint.
-      const existing = players.find(p =>
-        (playerId && p.player_id === playerId) ||
-        (guestPlayerId && (p as any).guest_player_id === guestPlayerId)
+      await validateRosterInputsForFormat(
+        actionable.map(({ input }) => input),
       );
 
-      if (existing && existing.active) {
-        toast.info("They're already on the active roster");
-        return;
+      // One upsert statement makes a mixed batch of new players and returning
+      // dropouts all-or-nothing. A policy or identity failure cannot leave
+      // only half of the selected roster active.
+      const { error: rosterError } = await supabase
+        .from("round_robin_players")
+        .upsert(rosterUpserts as never, { onConflict: "id" });
+      if (rosterError) throw rosterError;
+
+      const auditPlayers = actionable.map(({ input, existing }) => ({
+        player_id: input.playerId,
+        guest_player_id: input.guestPlayerId ?? null,
+        guest_name: input.guestName ?? null,
+        was_reactivated: !!existing,
+      }));
+      const { error: auditError } = await supabase
+        .from("round_robin_audit")
+        .insert({
+          event_id: event.id,
+          editor_id: userId,
+          change_type: "player_add",
+          changes: {
+            players: auditPlayers,
+            added_count: auditPlayers.length,
+            reactivated_count: reactivationCount,
+          },
+          reason: auditPlayers.length === 1
+            ? "Player added by organizer"
+            : `${auditPlayers.length} players added by organizer`,
+        });
+      if (auditError) {
+        console.error("round-robin roster batch audit failed", auditError);
       }
 
-      if (existing) {
-        const { error: reactivateError } = await supabase
-          .from("round_robin_players")
-          .update({ active: true })
-          .eq("id", existing.id);
-        if (reactivateError) throw reactivateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from("round_robin_players")
-          .insert({
-            event_id: event.id,
-            player_id: playerId,
-            guest_player_id: guestPlayerId ?? null,
-            guest_name: guestName ?? null,
-          } as never);
-        if (insertError) throw insertError;
+      // Building a draft roster is configuration, not implicit publication.
+      // Keep the deliberate Generate Schedule step (and its preview) when no
+      // schedule exists yet; live/established schedules still rebalance once.
+      if (!hasSchedule) {
+        await fetchEventDetails();
+        return auditPlayers.length;
       }
 
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "player_add",
-        changes: {
-          player_id: playerId,
-          guest_player_id: guestPlayerId ?? null,
-          guest_name: guestName ?? null,
-          was_reactivated: !!existing,
-        },
-        reason: guestName
-          ? `Guest player added by organizer (${guestName})`
-          : "Player added by organizer",
-      });
-
-      // Refresh roster immediately so the new player shows up even if regen short-circuits.
-      await fetchEventDetails();
-
-      // Regenerate from current round (skipped automatically when guests are present)
+      // One rebuild for the whole batch. The server reads the fresh roster,
+      // preserves protected play, and recomputes every remaining obligation.
       const fromRound = event.current_round || 1;
-      await regenerateScheduleFromRound(fromRound).catch(() => null);
-      // No success toast here — the PULSE activity bar is the single
-      // completion signal for roster adds (stacked toasts felt noisy).
+      try {
+        await regenerateScheduleFromRound(fromRound, {
+          reason: auditPlayers.length === 1
+            ? "Player added; future rounds rebalanced"
+            : `${auditPlayers.length} players added; future rounds rebalanced`,
+        });
+      } catch (regenerationError) {
+        console.error("post-add schedule regeneration failed", regenerationError);
+        await fetchEventDetails();
+        toast.warning(
+          `${auditPlayers.length === 1 ? "The player was" : "The players were"} added, but the remaining schedule needs repair before play continues.`,
+        );
+      }
+
+      return auditPlayers.length;
     } catch (error: unknown) {
-      toast.error("Failed to add player");
+      const message = getErrorMessage(error);
+      toast.error(
+        message || (actionable.length === 1
+          ? "Failed to add player"
+          : "Failed to add players"),
+      );
       console.error(error);
       await fetchEventDetails();
       throw error;
@@ -1183,8 +1278,14 @@ export default function RoundRobinDetail() {
         // player_id / guest_player_id, so guests regenerate exactly like
         // registered players.
         const fromRound = event.current_round || 1;
-        const regenResult = await regenerateScheduleFromRound(fromRound).catch((err) => {
+        const regenResult = await regenerateScheduleFromRound(fromRound, {
+          expectedVersion: null,
+          reason: `${participantName} removed; future rounds rebalanced`,
+        }).catch((err) => {
           console.error("post-removal regeneration failed", err);
+          toast.warning(
+            `${participantName} was removed safely, but the optimized round count could not be applied. Use Repair schedule before continuing.`,
+          );
           return null;
         });
 
@@ -1292,451 +1393,317 @@ export default function RoundRobinDetail() {
   ) => {
     if (!event || !userId) return;
     if (rrMutationInFlightRef.current) return;
-
-    // The original is identified by its roster row id, so this works for a
-    // guest (no player_id) exactly as it does for a registered player.
-    const original = players.find(p => p.id === originalRosterId);
-    if (!original) return;
-
-    if (scope === 'global') {
-      // Ensure the substitute is an active roster row, then run the
-      // transactional replace. Unlike a removal, a replace never needs an
-      // active-match decision: the planner simply swaps the outgoing seat to
-      // the substitute in the current round's unscored match (scored matches
-      // are preserved), so there's no dead-end to resolve — we apply directly.
-      const doReplace = async () => {
-        if (rrMutationInFlightRef.current) return;
-        rrMutationInFlightRef.current = true;
-        try {
-          // Slice 2b: route global substitution through rr_manage_participant.
-          //
-          // The RPC requires the substitute to already be an ACTIVE roster row,
-          // so we do a small pre-step here (outside the RPC) to guarantee that:
-          //   - if the replacement is already on the roster, reactivate them
-          //     via a status update (the DB trigger keeps `active` in sync);
-          //   - otherwise insert a fresh row (defaults to status='active').
-          // Only THEN do we invoke the transactional replace.
-          const existing = players.find(p =>
-            (replacement.playerId && p.player_id === replacement.playerId) ||
-            (replacement.guestPlayerId && p.guest_player_id === replacement.guestPlayerId)
-          );
-          const wasInactive = !!existing && !existing.active;
-
-          let substituteRosterId: string;
-          try {
-            if (existing) {
-              substituteRosterId = existing.id;
-              if (!existing.active) {
-                const { error: reErr } = await supabase
-                  .from("round_robin_players")
-                  .update({ status: 'active' as any })
-                  .eq("id", existing.id);
-                if (reErr) throw reErr;
-              }
-            } else {
-              const { data: inserted, error: insErr } = await supabase
-                .from("round_robin_players")
-                .insert({
-                  event_id: event.id,
-                  player_id: replacement.playerId,
-                  guest_player_id: replacement.guestPlayerId ?? null,
-                  guest_name: replacement.guestName ?? null,
-                  active: true,
-                } as never)
-                .select("id")
-                .single();
-              if (insErr || !inserted) throw insErr;
-              substituteRosterId = (inserted as any).id;
-            }
-          } catch (preErr: unknown) {
-            // Pre-step (roster insert/reactivate) failure — generic surface.
-            toast.error("Failed to substitute player");
-            console.error(preErr);
-            throw preErr;
-          }
-
-          const replaceReason = wasInactive
-            ? "Player reactivated and substituted globally"
-            : "Global player substitution";
-          const successMsg = wasInactive
-            ? "Player reactivated and substituted."
-            : "Player substituted.";
-
-          // Prefer the orchestration layer (auto-escalates minimal→reoptimize);
-          // fall back to the direct RPC when it isn't deployed. Returns true
-          // when handled (success or surfaced application error).
-          const handledByOrchestration = async (): Promise<boolean> => {
-            const res = await manageParticipantWithEscalation({
-              eventId: event.id,
-              participantId: originalRosterId,
-              action: "replace",
-              substituteId: substituteRosterId,
-              reason: replaceReason,
-            });
-            if (res.ok) {
-              await fetchEventDetails();
-              toast.success(successMsg);
-              return true;
-            }
-            if (isInfrastructureError(res)) return false;
-            toast.error(friendlyParticipantError(res));
-            await fetchEventDetails();
-            throw new Error(res.code ?? "replace_failed");
-          };
-
-          if (!(await handledByOrchestration())) {
-            // Fallback: direct transactional RPC (local-repair only).
-            try {
-              await callRrManageParticipant({
-                eventId: event.id,
-                playerId: originalRosterId,
-                action: "replace",
-                substituteParticipantId: substituteRosterId,
-                reason: replaceReason,
-                regenMode: "minimal",
-              });
-            } catch (rpcErr: unknown) {
-              const err = rpcErr as RRManageParticipantError;
-              toast.error(friendlyRpcError(err));
-              console.error("rr_manage_participant replace failed", err);
-              await fetchEventDetails();
-              throw err;
-            }
-            await fetchEventDetails();
-            toast.success(successMsg);
-          }
-        } finally {
-          rrMutationInFlightRef.current = false;
-        }
-      };
-
-      await doReplace();
-      return;
-    }
-
-    // Single-round substitution: patch the original's seat in each unscored,
-    // still-canonical match of that round. Guest-aware — a seat holds EITHER a
-    // player_id OR a guest_id (DB XOR constraint), so we always set both columns
-    // (one to the replacement id, the other to null).
+    // Acquire before format validation, which performs async profile/guest
+    // reads. Otherwise two rapid taps can both clear the initial guard and
+    // launch competing versioned mutations after validation resolves.
     rrMutationInFlightRef.current = true;
+
     try {
-      {
-        const origPid = original.player_id;
-        const origGid = original.guest_player_id;
-        const seats = ['a1', 'a2', 'b1', 'b2'] as const;
+      // The original is identified by its roster row id, so this works for a
+      // guest (no player_id) exactly as it does for a registered player.
+      const original = players.find(p => p.id === originalRosterId);
+      if (!original) return;
 
-        // Only touch live, unscored rows — never a voided or superseded row
-        // (those are historical records the standings-eligibility invariant
-        // relies on staying frozen).
-        const roundMatches = schedule.filter((s) => {
-          const row = s as unknown as LiveMatchRow;
-          return (
-            s.round_no === scope &&
-            !s.is_bye &&
-            s.team1_score === null &&
-            s.team2_score === null &&
-            row.voided_at == null &&
-            row.superseded_by_schedule_id == null
+      try {
+        await validateRosterInputsForFormat([replacement]);
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error));
+        throw error;
+      }
+
+      if (scope === 'global') {
+        const outgoingSeatId = original.player_id
+          ? `p:${original.player_id}` as SeatId
+          : original.guest_player_id
+            ? `g:${original.guest_player_id}` as SeatId
+            : null;
+        const incomingSeatId = replacement.playerId
+          ? `p:${replacement.playerId}` as SeatId
+          : replacement.guestPlayerId
+            ? `g:${replacement.guestPlayerId}` as SeatId
+            : null;
+        if (!outgoingSeatId || !incomingSeatId) {
+          throw new Error("The outgoing player and replacement must both have a saved identity.");
+        }
+
+        const pulse = startPulseActivity("Substituting player and rebalancing future rounds…");
+        try {
+          // The Edge planner proposes the post-handoff roster, then the service-
+          // only database RPC commits roster lifecycle, persistent fairness
+          // credit, event settings, schedule rows, version, and audit together.
+          // Current/live and completed play remain byte-for-byte unchanged.
+          const result = await regenerateScheduleFromRound(
+            event.status === "draft" ? 1 : (event.current_round || 1),
+            {
+              reason: "Global substitute applied; future rounds rebalanced",
+              substitutions: [{ outgoingSeatId, incomingSeatId }],
+            },
           );
+          const fairness = result?.fairness?.score;
+          pulse.done(fairness != null ? `Substituted · ${fairness}% fairness` : "Player substituted");
+          toast.success(
+            event.status === "live"
+              ? "Player substituted for future rounds. The current live round is unchanged."
+              : "Player substituted and the schedule was rebalanced.",
+          );
+        } catch (error: unknown) {
+          pulse.fail();
+          console.error("atomic global substitution failed", error);
+          await fetchEventDetails();
+          toast.error(
+            "We couldn't confirm the substitution. The latest roster and schedule are refreshed—verify them before retrying.",
+          );
+          throw error;
+        }
+        return;
+      }
+
+      // A one-round substitution is atomic and versioned in the database. The
+      // RPC locks the complete round, rejects saved/linked play, preserves seat
+      // XOR pairs for guests, and prevents the replacement from being assigned
+      // twice in the same round.
+      try {
+        if (event.status !== "live") {
+          throw new Error(
+            "RR_INVALID_SUBSTITUTE:Single-round substitutions are available only during live play. Use All Future Rounds for draft roster changes.",
+          );
+        }
+        if (event.current_round == null || scope !== event.current_round) {
+          throw new Error(
+            "RR_INVALID_SUBSTITUTE:Only the current live round can use a one-round substitution. Use All Future Rounds for later rounds.",
+          );
+        }
+        const { error } = await supabase.rpc("rr_substitute_round", {
+          p_request_id: crypto.randomUUID(),
+          p_event_id: event.id,
+          p_expected_version: event.schedule_version ?? 0,
+          p_round_no: scope,
+          p_original_roster_id: originalRosterId,
+          p_replacement_player_id: replacement.playerId,
+          p_replacement_guest_id: replacement.guestPlayerId,
+          p_reason: `One-round substitution for Round ${scope}`,
         });
-
-        const seatUpdates = roundMatches
-          .map((match) => {
-            const m = match as any;
-            const updates: any = {};
-            for (const seat of seats) {
-              const holdsOriginal =
-                (origPid && m[`${seat}_player_id`] === origPid) ||
-                (origGid && m[`${seat}_guest_id`] === origGid);
-              if (holdsOriginal) {
-                updates[`${seat}_player_id`] = replacement.playerId ?? null;
-                updates[`${seat}_guest_id`] = replacement.guestPlayerId ?? null;
-              }
-            }
-            return { id: match.id, updates };
-          })
-          .filter((u) => Object.keys(u.updates).length > 0);
-
-        const results = await Promise.all(
-          seatUpdates.map((u) =>
-            supabase.from("round_robin_schedule").update(u.updates).eq("id", u.id)
-          )
-        );
-        const failed = results.find((r) => r.error);
-        if (failed?.error) throw failed.error;
-
-        await supabase.from("round_robin_audit").insert({
-          event_id: event.id,
-          editor_id: userId,
-          change_type: "player_substitute",
-          changes: {
-            original_roster_id: originalRosterId,
-            original_player_id: origPid,
-            original_guest_id: origGid,
-            new_player_id: replacement.playerId,
-            new_guest_id: replacement.guestPlayerId,
-            scope,
-          },
-          reason: `Player substitution for Round ${scope}`,
-        });
+        if (error) throw error;
 
         await fetchEventDetails();
-        toast.success(`Player substituted for Round ${scope}`);
+        toast.success(`Player substituted for Round ${scope}; every other round is unchanged`);
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        toast.error(
+          message.includes("RR_STALE_VERSION")
+            ? "The schedule changed elsewhere. Refresh before applying this substitute."
+            : message.includes("RR_PROTECTED_ROUND")
+              ? "That match is already started, scored, or locked. No assignment changed."
+              : message.includes("RR_INVALID_SUBSTITUTE")
+                ? message.split("RR_INVALID_SUBSTITUTE:").pop() || "That substitute cannot be used in this round."
+                : "The substitute could not be applied. Nothing changed.",
+        );
+        console.error(error);
+        await fetchEventDetails();
+        throw error;
       }
-    } catch (error: unknown) {
-      toast.error("Failed to substitute player");
-      console.error(error);
-      throw error;
     } finally {
       rrMutationInFlightRef.current = false;
     }
   };
 
 
-  const handleUpdateCourts = async (newCourts: number) => {
+  const handleApplyScheduleSettings = async ({
+    numCourts,
+    gamesPerPlayer,
+  }: {
+    numCourts: number;
+    gamesPerPlayer: number;
+  }) => {
     if (!event || !userId) return;
 
-    try {
-      const before = { num_courts: event.num_courts };
+    const courtsChanged = numCourts !== event.num_courts;
+    const gamesChanged = gamesPerPlayer !== (event.games_per_player || 3);
+    if (!courtsChanged && !gamesChanged) return;
 
-      // Rounds are derived from the ACTIVE roster only — inactive/removed
-      // members must not inflate the round count.
-      const activeCount = players.filter((p: any) => p.active !== false).length;
-      const newRounds = suggestRounds(activeCount, newCourts, event.games_per_player || 3);
-      const after = { num_courts: newCourts, num_rounds: newRounds };
+    const activePlayerCount = players.filter((player) => player.active !== false).length;
+    const isPreScheduleSetup = schedule.length === 0 && activePlayerCount < 4;
 
+    if (isPreScheduleSetup) {
+      const estimatePlayerCount = Math.max(4, activePlayerCount, event.max_players ?? 0);
+      const estimatedRounds = suggestRounds(estimatePlayerCount, numCourts, gamesPerPlayer);
+      const pulse = startPulseActivity("Saving courts and game target…");
 
-      // Update event with both courts and rounds
-      const { error: updateError } = await supabase
-        .from("round_robin_events")
-        .update({ 
-          num_courts: newCourts,
-          num_rounds: newRounds
-        })
-        .eq("id", event.id);
+      try {
+        // One guarded row update keeps the saved configuration internally
+        // consistent while avoiding schedule generation below four players.
+        // The version predicate prevents a stale client from overwriting
+        // settings if another host generated a schedule in the meantime.
+        const { data: updatedEvent, error } = await supabase
+          .from("round_robin_events")
+          .update({
+            num_courts: numCourts,
+            games_per_player: gamesPerPlayer,
+            num_rounds: estimatedRounds,
+            schedule_version: (event.schedule_version ?? 0) + 1,
+          })
+          .eq("id", event.id)
+          .eq("schedule_version", event.schedule_version ?? 0)
+          .select("id")
+          .maybeSingle();
 
-      if (updateError) throw updateError;
+        if (error) throw error;
+        if (!updatedEvent) {
+          throw new Error("The event changed elsewhere. Refresh and review the latest setup before saving again.");
+        }
 
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "courts_update",
-        changes: { before, after },
-        reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}, rounds adjusted to ${newRounds}`,
-      });
-
-      // In draft mode, regenerate the entire schedule from round 1.
-      // Live events regenerate from the current round forward; scored rounds
-      // are protected inside regenerateScheduleFromRound. The new court count
-      // is passed explicitly because `event` state is still the pre-update copy.
-      const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
-      const pulse = startPulseActivity("Rebuilding rounds for new court count…");
-      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts })
-        .catch((e) => { pulse.fail(); throw e; });
-      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
-
-      toast.success(
-        `Courts updated to ${newCourts} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
-      );
-
-      await fetchEventDetails();
-    } catch (error: unknown) {
-      toast.error("Failed to update courts");
-      console.error(error);
-      throw error;
+        await fetchEventDetails();
+        pulse.done(`Setup saved · estimated ${estimatedRounds} ${estimatedRounds === 1 ? "round" : "rounds"}`);
+        toast.success("Courts and game target saved. Generate the schedule when at least four active players are ready.");
+        return;
+      } catch (error: unknown) {
+        pulse.fail();
+        const message = getErrorMessage(error, "Failed to save schedule setup");
+        toast.error(message);
+        console.error(error);
+        await fetchEventDetails();
+        throw error;
+      }
     }
 
-  };
-
-  const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number, courtsOverride?: number) => {
-    if (!event || !userId) return;
-
+    const fromRound = event.status === "draft" ? 1 : (event.current_round || 1);
+    const pulse = startPulseActivity("Rebalancing courts, games, and rests…");
     try {
-      const before = { games_per_player: event.games_per_player };
-      const after = { games_per_player: newGamesPerPlayer };
-
-      const numCourts = courtsOverride ?? event.num_courts;
-      const activeCount = players.filter((p: any) => p.active !== false).length;
-      const newRounds = suggestRounds(activeCount, numCourts, newGamesPerPlayer);
-
-      // Update event
-      const { error: updateError } = await supabase
-        .from("round_robin_events")
-        .update({ 
-          games_per_player: newGamesPerPlayer,
-          num_rounds: newRounds
-        })
-        .eq("id", event.id);
-
-      if (updateError) throw updateError;
-
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "games_per_player_update",
-        changes: { before, after, rounds_adjusted_to: newRounds },
-        reason: `Games per player updated to ${newGamesPerPlayer}, rounds adjusted to ${newRounds}`,
-      });
-
-      // Regenerate schedule from current round
-      const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
-      const pulse = startPulseActivity("Rebuilding rounds…");
+      const reasonParts = [
+        courtsChanged ? `courts ${event.num_courts}→${numCourts}` : null,
+        gamesChanged ? `games/player ${event.games_per_player || 3}→${gamesPerPlayer}` : null,
+      ].filter(Boolean);
       const result = await regenerateScheduleFromRound(fromRound, {
         numCourts,
-        gamesPerPlayer: newGamesPerPlayer,
-      }).catch((e) => { pulse.fail(); throw e; });
-      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
+        gamesPerPlayer,
+        reason: `Host changed ${reasonParts.join(" and ")}`,
+      });
 
-
-      toast.success(
-        `Games per player updated to ${newGamesPerPlayer} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
+      const targetRounds = result?.targetRounds ?? event.num_rounds;
+      const fairness = result?.fairness?.score;
+      pulse.done(
+        fairness != null
+          ? `Rebuilt · ${targetRounds} rounds · ${fairness}% fairness`
+          : `Rebuilt · ${targetRounds} rounds`,
       );
-
-      await fetchEventDetails();
+      toast.success(
+        result?.impact?.summary ||
+          `Schedule rebuilt for ${numCourts} ${numCourts === 1 ? "court" : "courts"} and ${gamesPerPlayer} games per player.`,
+      );
     } catch (error: unknown) {
-      toast.error("Failed to update games per player");
+      pulse.fail();
+      const message = getErrorMessage(error);
+      if (message.includes("FunctionsHttpError")) {
+        toast.error("The schedule could not be safely rebuilt. Refresh and try again; no protected play was changed.");
+      } else {
+        toast.error(message || "Failed to rebuild schedule");
+      }
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
 
-  const handleSwapPartners = async (matchId: string, team: 'A' | 'B') => {
-    if (!event || !userId) return;
+  const applyAtomicScheduleEdit = async ({
+    action,
+    matchId,
+    secondMatchId = null,
+    newCourtNo = null,
+  }: {
+    action: "rotate_partners" | "swap_opponents" | "move_court";
+    matchId: string;
+    secondMatchId?: string | null;
+    newCourtNo?: number | null;
+  }) => {
+    if (!event) return;
 
+    const { error } = await supabase.rpc("rr_edit_schedule", {
+      p_request_id: crypto.randomUUID(),
+      p_event_id: event.id,
+      p_expected_version: event.schedule_version ?? 0,
+      p_action: action,
+      p_match_id: matchId,
+      p_second_match_id: secondMatchId,
+      p_new_court_no: newCourtNo,
+      p_reason: null,
+    });
+    if (error) throw error;
+    await fetchEventDetails();
+  };
+
+  const handleRotatePartners = async (matchId: string) => {
     try {
-      const match = schedule.find(m => m.id === matchId) as any;
-      if (!match) return;
-
-      // A seat is a (player_id, guest_id) PAIR — exactly one is set. Swapping
-      // only the player columns strands a guest in place (or collides two
-      // occupants in one seat) whenever a team mixes a player and a guest.
-      const updates = team === 'A'
-        ? {
-            a1_player_id: match.a2_player_id, a1_guest_id: match.a2_guest_id,
-            a2_player_id: match.a1_player_id, a2_guest_id: match.a1_guest_id,
-          }
-        : {
-            b1_player_id: match.b2_player_id, b1_guest_id: match.b2_guest_id,
-            b2_player_id: match.b1_player_id, b2_guest_id: match.b1_guest_id,
-          };
-
-      const { error } = await supabase
-        .from("round_robin_schedule")
-        .update(updates)
-        .eq("id", matchId);
-
-      if (error) throw error;
-
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "schedule_edit",
-        changes: {
-          action: "swap_partners",
-          match_id: matchId,
-          team,
-          before: team === 'A'
-            ? { a1: match.a1_player_id ?? match.a1_guest_id, a2: match.a2_player_id ?? match.a2_guest_id }
-            : { b1: match.b1_player_id ?? match.b1_guest_id, b2: match.b2_player_id ?? match.b2_guest_id },
-          after: updates,
-        },
-        reason: `Swapped partners in Team ${team} for Round ${match.round_no}, Court ${match.court_no}`,
-      });
-
-      toast.success("Partners swapped");
-      await fetchEventDetails();
+      await applyAtomicScheduleEdit({ action: "rotate_partners", matchId });
+      toast.success("Partners rotated — both teams now have a new pairing");
     } catch (error: unknown) {
-      toast.error("Failed to swap partners");
+      const message = getErrorMessage(error);
+      toast.error(
+        message.includes("RR_STALE_VERSION")
+          ? "The schedule changed elsewhere. Refresh and review it before editing."
+          : message.includes("RR_PROTECTED_ROUND")
+            ? "That round is already in play or has a saved result, so it remains locked."
+            : "The partner rotation could not be applied. Nothing changed.",
+      );
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
 
   const handleSwapOpponents = async (match1Id: string, match2Id: string) => {
-    if (!event || !userId) return;
-
     try {
-      const match1 = schedule.find(m => m.id === match1Id) as any;
-      const match2 = schedule.find(m => m.id === match2Id) as any;
-      if (!match1 || !match2) return;
-
-      // Swap Team B from match1 with Team A from match2. Each seat moves as
-      // a (player_id, guest_id) pair — moving only the player column strands
-      // guest occupants (they'd stay in the old match AND block the new
-      // occupant's seat).
-      await supabase
-        .from("round_robin_schedule")
-        .update({
-          b1_player_id: match2.a1_player_id, b1_guest_id: match2.a1_guest_id,
-          b2_player_id: match2.a2_player_id, b2_guest_id: match2.a2_guest_id,
-        })
-        .eq("id", match1Id);
-
-      await supabase
-        .from("round_robin_schedule")
-        .update({
-          a1_player_id: match1.b1_player_id, a1_guest_id: match1.b1_guest_id,
-          a2_player_id: match1.b2_player_id, a2_guest_id: match1.b2_guest_id,
-        })
-        .eq("id", match2Id);
-
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "schedule_edit",
-        changes: {
-          action: "swap_opponents",
-          match1_id: match1Id,
-          match2_id: match2Id,
-          moved_to_match1_b: [match2.a1_player_id ?? match2.a1_guest_id, match2.a2_player_id ?? match2.a2_guest_id],
-          moved_to_match2_a: [match1.b1_player_id ?? match1.b1_guest_id, match1.b2_player_id ?? match1.b2_guest_id],
-        },
-        reason: `Swapped opponents between Round ${match1.round_no} Court ${match1.court_no} and Court ${match2.court_no}`,
+      await applyAtomicScheduleEdit({
+        action: "swap_opponents",
+        matchId: match1Id,
+        secondMatchId: match2Id,
       });
-
-      toast.success("Opponents swapped");
-      await fetchEventDetails();
+      toast.success("Opponent teams swapped");
     } catch (error: unknown) {
-      toast.error("Failed to swap opponents");
+      const message = getErrorMessage(error);
+      toast.error(
+        message.includes("RR_STALE_VERSION")
+          ? "The schedule changed elsewhere. Refresh and review it before editing."
+          : message.includes("RR_PROTECTED_ROUND")
+            ? "One of those matches is already in play or scored, so both stayed unchanged."
+            : "The opponent swap could not be applied. Nothing changed.",
+      );
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
 
   const handleMoveCourt = async (matchId: string, newCourtNo: number) => {
-    if (!event || !userId) return;
+    const match = schedule.find((row) => row.id === matchId);
+    const destinationOccupied = !!match && schedule.some((row) =>
+      row.id !== matchId &&
+      row.round_no === match.round_no &&
+      !row.is_bye &&
+      row.court_no === newCourtNo
+    );
 
     try {
-      const match = schedule.find(m => m.id === matchId);
-      if (!match) return;
-
-      const { error } = await supabase
-        .from("round_robin_schedule")
-        .update({ court_no: newCourtNo })
-        .eq("id", matchId);
-
-      if (error) throw error;
-
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "schedule_edit",
-        changes: {
-          action: "move_court",
-          match_id: matchId,
-          before: { court_no: match.court_no },
-          after: { court_no: newCourtNo },
-        },
-        reason: `Moved match from Court ${match.court_no} to Court ${newCourtNo} in Round ${match.round_no}`,
+      await applyAtomicScheduleEdit({
+        action: "move_court",
+        matchId,
+        newCourtNo,
       });
-
-      toast.success(`Match moved to Court ${newCourtNo}`);
-      await fetchEventDetails();
+      toast.success(
+        destinationOccupied
+          ? `Court ${match?.court_no} and Court ${newCourtNo} assignments swapped`
+          : `Match moved to Court ${newCourtNo}`,
+      );
     } catch (error: unknown) {
-      toast.error("Failed to move match");
+      const message = getErrorMessage(error);
+      toast.error(
+        message.includes("RR_STALE_VERSION")
+          ? "The schedule changed elsewhere. Refresh and review it before editing."
+          : message.includes("RR_PROTECTED_ROUND")
+            ? "That court assignment is already in play or scored, so nothing changed."
+            : "The court move could not be applied. Nothing changed.",
+      );
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
@@ -1893,7 +1860,11 @@ export default function RoundRobinDetail() {
     try {
       const { error } = await supabase
         .from('round_robin_players')
-        .update({ active: false })
+        .update({
+          status: 'withdrawn' as never,
+          withdrawn_at: new Date().toISOString(),
+          withdrawal_reason: 'Player left before the event started',
+        })
         .eq('event_id', event.id)
         .eq('player_id', userId);
 
@@ -1956,6 +1927,131 @@ export default function RoundRobinDetail() {
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
   const currentRound = event.current_round || 1;
 
+  const buildScheduleImpactPlan = ({
+    numCourts,
+    gamesPerPlayer,
+  }: {
+    numCourts: number;
+    gamesPerPlayer: number;
+  }): ScheduleAdjustmentPlan | null => {
+    const toSeatId = (playerId: string | null, guestId: string | null): SeatId | null =>
+      playerId ? `p:${playerId}` : guestId ? `g:${guestId}` : null;
+    const activeSeatIds = activeRoster
+      .map((player) => toSeatId(player.player_id, player.guest_player_id))
+      .filter((seat): seat is SeatId => seat !== null);
+    const coreMatches: CoreMatch[] = schedule
+      .filter((match) => !match.abandoned)
+      .map((match) => ({
+        round_no: match.round_no,
+        court_no: match.court_no,
+        is_bye: match.is_bye,
+        a1: toSeatId(match.a1_player_id, match.a1_guest_id),
+        a2: toSeatId(match.a2_player_id, match.a2_guest_id),
+        b1: toSeatId(match.b1_player_id, match.b1_guest_id),
+        b2: toSeatId(match.b2_player_id, match.b2_guest_id),
+      }));
+    const scheduledSeats = [...new Set(coreMatches.flatMap(seatsOf))];
+    const previousSeatIds = scheduledSeats.length > 0 ? scheduledSeats : activeSeatIds;
+    const protectedRounds = schedule
+      .filter((match) =>
+        match.locked_at != null ||
+        match.match_id != null ||
+        match.team1_score != null ||
+        match.team2_score != null ||
+        match.abandoned === true ||
+        (event.status === "live" && match.round_no <= currentRound)
+      )
+      .map((match) => match.round_no);
+    const protectedThrough = Math.max(0, ...protectedRounds);
+    const firstMutableRound = Math.max(
+      event.status === "draft" ? 1 : currentRound,
+      protectedThrough + 1,
+    );
+    const genders = new Map<SeatId, string>();
+    const existingGameCredits = new Map<SeatId, number>();
+    const existingFirstEligibleRounds = new Map<SeatId, number>();
+    activeRoster.forEach((player) => {
+      const seat = toSeatId(player.player_id, player.guest_player_id);
+      if (player.player_id && player.profiles?.gender) {
+        genders.set(`p:${player.player_id}`, player.profiles.gender);
+      }
+      const guestGender = player.guest_players?.effective_gender ?? player.guest_players?.gender;
+      if (player.guest_player_id && guestGender) {
+        genders.set(`g:${player.guest_player_id}`, guestGender);
+      }
+      if (seat && (player.schedule_game_credit ?? 0) > 0) {
+        existingGameCredits.set(seat, player.schedule_game_credit ?? 0);
+      }
+      if (seat && (player.schedule_first_eligible_round ?? 0) >= 1) {
+        existingFirstEligibleRounds.set(
+          seat,
+          player.schedule_first_eligible_round as number,
+        );
+      }
+    });
+
+    return planScheduleAdjustment({
+      seed: event.id,
+      currentMatches: coreMatches,
+      currentSeatIds: previousSeatIds,
+      nextSeatIds: activeSeatIds,
+      currentNumCourts: event.num_courts,
+      currentGamesPerPlayer: event.games_per_player || 3,
+      currentTotalRounds: event.num_rounds,
+      firstMutableRound,
+      protectedRounds,
+      numCourts,
+      gamesPerPlayer,
+      format: (event.format || "open") as EventFormat,
+      genders,
+      lateJoinCredit: "roster_median",
+      existingGameCredits,
+      existingFirstEligibleRounds,
+    });
+  };
+
+  const getImpactPlayerName = (seatId: SeatId) => getPlayerName(seatId.slice(2));
+
+  const currentSchedulePlan = hasSchedule
+    ? buildScheduleImpactPlan({
+        numCourts: event.num_courts,
+        gamesPerPlayer: event.games_per_player || 3,
+      })
+    : null;
+  const repairFromRound = currentSchedulePlan
+    ? currentSchedulePlan.capacity.protectedThroughRound + 1
+    : (event.status === "draft" ? 1 : currentRound + 1);
+  const adjustableRows = schedule.filter((match) => match.round_no >= repairFromRound);
+  const adjustableRoundNumbers = [...new Set(adjustableRows.map((match) => match.round_no))];
+  const mutableShapeDrift = !!currentSchedulePlan?.ok && adjustableRoundNumbers.some((roundNo) => {
+    const rows = adjustableRows.filter((match) => match.round_no === roundNo);
+    const playable = rows.filter((match) => !match.is_bye).length;
+    const assignedIdentities = rows.reduce((count, match) => {
+      return count + [
+        match.a1_player_id ?? match.a1_guest_id,
+        match.a2_player_id ?? match.a2_guest_id,
+        match.b1_player_id ?? match.b1_guest_id,
+        match.b2_player_id ?? match.b2_guest_id,
+      ].filter(Boolean).length;
+    }, 0);
+    return playable !== currentSchedulePlan.capacity.matchesPerRound || assignedIdentities !== activeRoster.length;
+  });
+  const scheduleRoundDrift = !!currentSchedulePlan?.ok && (
+    currentSchedulePlan.capacity.recommendedTotalRounds !== event.num_rounds ||
+    (event.num_rounds >= repairFromRound &&
+      adjustableRoundNumbers.length !== event.num_rounds - repairFromRound + 1)
+  );
+  const scheduleStructureDrift = !!currentSchedulePlan && (
+    currentSchedulePlan.fairness.duplicateSeatAssignments > 0 ||
+    currentSchedulePlan.fairness.underfilledMatches > 0
+  );
+  const needsScheduleRepair = hasSchedule && (
+    currentSchedulePlan?.ok === false ||
+    mutableShapeDrift ||
+    scheduleRoundDrift ||
+    scheduleStructureDrift
+  );
+
   // Calculate progress step
   const getCurrentStep = () => {
     if (activeRoster.length < 4) return 1;
@@ -2010,14 +2106,59 @@ export default function RoundRobinDetail() {
   // Actual rebuild, run once the styled confirmation is accepted.
   const runRegenerateSchedule = async () => {
     setRegenConfirmOpen(false);
+    const pulse = startPulseActivity(hasSchedule ? "Rebalancing schedule…" : "Building schedule…");
     try {
-      toast.loading("Regenerating schedule...");
-      await regenerateScheduleFromRound(1);
-      await fetchEventDetails();
-      toast.success("Schedule regenerated successfully");
+      const result = await regenerateScheduleFromRound(1, {
+        reason: hasSchedule
+          ? "Host requested a schedule rebalance"
+          : "Initial schedule generated",
+      });
+      const fairness = result?.fairness?.score;
+      const rounds = result?.targetRounds ?? event.num_rounds;
+      pulse.done(
+        fairness != null
+          ? `Schedule ready · ${rounds} rounds · ${fairness}% fairness`
+          : `Schedule ready · ${rounds} rounds`,
+      );
+      toast.success(
+        result?.impact?.summary ||
+          (hasSchedule ? "The adjustable schedule was rebalanced." : "Schedule generated successfully."),
+      );
     } catch (error: unknown) {
-      toast.error("Failed to regenerate schedule");
+      pulse.fail();
       console.error(error);
+      await fetchEventDetails();
+      toast.error(
+        "We couldn't confirm the schedule update. The latest schedule is refreshed—verify it before retrying.",
+      );
+    }
+  };
+
+  const handleRepairSchedule = async () => {
+    if (repairingSchedule) return;
+    setRepairingSchedule(true);
+    const pulse = startPulseActivity("Repairing schedule consistency…");
+    try {
+      const result = await regenerateScheduleFromRound(
+        event.status === "draft" ? 1 : currentRound,
+        { reason: "Host repaired schedule configuration drift" },
+      );
+      const fairness = result?.fairness?.score;
+      pulse.done(
+        fairness != null
+          ? `Schedule repaired · ${fairness}% fairness`
+          : "Schedule repaired",
+      );
+      toast.success(result?.impact?.summary || "The schedule now matches the roster, courts, and game target.");
+    } catch (error) {
+      pulse.fail();
+      console.error("schedule repair failed", error);
+      await fetchEventDetails();
+      toast.error(
+        "We couldn't confirm the repair. The latest schedule is refreshed—verify it before retrying.",
+      );
+    } finally {
+      setRepairingSchedule(false);
     }
   };
 
@@ -2154,6 +2295,33 @@ export default function RoundRobinDetail() {
             is folded inline into the new RoundRobinHostHero. The host
             now sees exactly one primary action surface — the
             WhatsNextBanner — below the hero. */}
+
+        {isOrganizer && needsScheduleRepair && !event.voided && event.status !== "completed" && (
+          <Alert className="mb-4 overflow-hidden border-amber-500/35 bg-gradient-to-r from-amber-500/[0.11] via-card to-card shadow-sm">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="ml-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">Schedule and event settings are out of sync</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {currentSchedulePlan?.ok === false
+                    ? currentSchedulePlan.warnings.find((warning) => warning.severity === "error")?.message
+                    : `The saved rotation does not fully reflect ${event.num_courts} ${event.num_courts === 1 ? "court" : "courts"}, ${activeRoster.length} active players, and a ${event.games_per_player || 3}-game target.`}{" "}
+                  Current, completed, and scored play stays locked; repair begins with Round {repairFromRound}.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleRepairSchedule}
+                disabled={repairingSchedule || currentSchedulePlan?.ok === false}
+                className="h-9 shrink-0 gap-1.5 self-start sm:self-center"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", repairingSchedule && "animate-spin")} />
+                {repairingSchedule ? "Repairing…" : "Repair schedule"}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* What's next — the single host action surface.
             All earlier duplicates (lifecycle stepper, Alert,
@@ -2601,19 +2769,7 @@ export default function RoundRobinDetail() {
                                 onClick={async () => {
                                   if (!confirm(`Remove ${displayName} from this event?`)) return;
                                   
-                                  try {
-                                    const { error } = await supabase
-                                      .from('round_robin_players')
-                                      .update({ active: false })
-                                      .eq('id', player.id);
-                                    
-                                    if (error) throw error;
-                                    toast.success('Player removed');
-                                    fetchEventDetails();
-                                  } catch (error) {
-                                    console.error('Remove error:', error);
-                                    toast.error('Failed to remove player');
-                                  }
+                                  await handleMarkInactive(player.id);
                                 }}
                                 title="Remove player"
                               >
@@ -2784,25 +2940,44 @@ export default function RoundRobinDetail() {
         </div>{/* /desktop grid */}
       </main>
 
-      {/* Styled confirmation for a full schedule rebuild — replaces window.confirm
-          so the destructive-ish action matches the rest of the host surfaces. */}
+      {/* One schedule-review surface for first generation and later rebuilds. */}
       <AlertDialog open={regenConfirmOpen} onOpenChange={setRegenConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[min(90dvh,760px)] overflow-y-auto sm:max-w-xl">
           <AlertDialogHeader>
             <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
-              Round Robin
+              Schedule review
             </div>
             <AlertDialogTitle className="text-[20px] font-extrabold tracking-[-0.01em]">
-              Rebuild the whole schedule?
+              {hasSchedule ? "Rebalance the adjustable rounds?" : "Generate this rotation?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Every round is regenerated from the current roster and settings. Court assignments
-              will change.
+              {hasSchedule
+                ? repairFromRound > 1
+                  ? `Rounds 1–${repairFromRound - 1} stay protected. From Round ${repairFromRound} forward, courts, rests, partners, and opponents adapt together.`
+                  : "No rounds are locked yet. Courts, rests, partners, and opponents will all rebalance together."
+                : "Review the projected court use, rests, game totals, and fairness before creating matchups."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <ScheduleImpactPreview
+            playerCount={activeRoster.length}
+            courtCount={event.num_courts}
+            gamesPerPlayer={event.games_per_player || 3}
+            currentRound={event.current_round}
+            preserveCompleted={hasSchedule}
+            title={hasSchedule ? "Rebuild impact" : "First rotation"}
+            compact
+            plan={currentSchedulePlan}
+            getPlayerName={getImpactPlayerName}
+            showImpactSummary={hasSchedule}
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep current schedule</AlertDialogCancel>
-            <AlertDialogAction onClick={runRegenerateSchedule}>Regenerate</AlertDialogAction>
+            <AlertDialogCancel>{hasSchedule ? "Keep current schedule" : "Not yet"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={runRegenerateSchedule}
+              disabled={!canGenerate || currentSchedulePlan?.ok === false}
+            >
+              {hasSchedule ? "Apply rebuild" : "Generate schedule"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -2911,18 +3086,26 @@ export default function RoundRobinDetail() {
             event={event}
             onSave={handleSaveEventSettings}
             playerCount={activeRoster.length}
+            onOpenSchedule={() => {
+              setEditDialogOpen(false);
+              setCourtsRoundsOpen(true);
+            }}
           />
           
           <PlayerManagementDialog
             open={playerManagementOpen}
             onOpenChange={setPlayerManagementOpen}
             players={players}
+            eventStatus={event.status}
             currentRound={event.current_round}
             totalRounds={event.num_rounds}
+            hasSchedule={hasSchedule}
+            firstAdjustableRound={repairFromRound}
             groupId={event.group_id}
             genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
+            eventFormat={(event.format || "open") as EventFormat}
             ratingEligible={event.rating_eligible}
-            onAddPlayer={handleAddPlayer}
+            onAddPlayers={handleAddPlayers}
             onMarkInactive={handleMarkInactive}
             onSubstitute={handleSubstitute}
           />
@@ -2960,11 +3143,15 @@ export default function RoundRobinDetail() {
             onOpenChange={setCourtsRoundsOpen}
             currentCourts={event.num_courts}
             currentGamesPerPlayer={event.games_per_player || 3}
+            currentTotalRounds={event.num_rounds}
             currentRound={event.current_round}
             hasScores={hasScores}
+            hasSchedule={hasSchedule}
             totalPlayers={activeRoster.length}
-            onUpdateCourts={handleUpdateCourts}
-            onUpdateGamesPerPlayer={handleUpdateGamesPerPlayer}
+            estimatedPlayerCount={Math.max(4, activeRoster.length, event.max_players ?? 0)}
+            onApply={handleApplyScheduleSettings}
+            getImpactPlan={buildScheduleImpactPlan}
+            getPlayerName={getImpactPlayerName}
           />
 
           <ScheduleEditorDialog
@@ -2972,8 +3159,11 @@ export default function RoundRobinDetail() {
             onOpenChange={setScheduleEditorOpen}
             schedule={schedule}
             currentRound={event.current_round}
+            eventStatus={event.status}
+            eventFormat={event.format}
+            numCourts={event.num_courts}
             getPlayerName={getPlayerName}
-            onSwapPartners={handleSwapPartners}
+            onRotatePartners={handleRotatePartners}
             onSwapOpponents={handleSwapOpponents}
             onMoveCourt={handleMoveCourt}
           />

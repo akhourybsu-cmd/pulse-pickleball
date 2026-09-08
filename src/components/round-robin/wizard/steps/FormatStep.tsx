@@ -83,7 +83,7 @@ export function FormatStep({ value, onChange }: FormatStepProps) {
 
       {value !== "open" && (
         <p className="text-xs text-amber-600 dark:text-amber-400 mt-4">
-          ⚠ Players must have their gender set in their profile
+          ⚠ Registered players need gender on their profile; you'll set it when adding guests.
         </p>
       )}
     </div>

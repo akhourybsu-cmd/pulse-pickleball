@@ -2403,6 +2403,7 @@ export type Database = {
           created_by: string
           display_name: string
           email: string | null
+          gender: string | null
           group_id: string | null
           id: string
           linked_at: string | null
@@ -2416,6 +2417,7 @@ export type Database = {
           created_by: string
           display_name: string
           email?: string | null
+          gender?: string | null
           group_id?: string | null
           id?: string
           linked_at?: string | null
@@ -2429,6 +2431,7 @@ export type Database = {
           created_by?: string
           display_name?: string
           email?: string | null
+          gender?: string | null
           group_id?: string | null
           id?: string
           linked_at?: string | null
@@ -5510,6 +5513,8 @@ export type Database = {
           registration_status: string | null
           replaced_participant_id: string | null
           replacement_participant_id: string | null
+          schedule_first_eligible_round: number | null
+          schedule_game_credit: number
           status: Database["public"]["Enums"]["rr_participant_status"]
           updated_at: string
           updated_by: string | null
@@ -5529,6 +5534,8 @@ export type Database = {
           registration_status?: string | null
           replaced_participant_id?: string | null
           replacement_participant_id?: string | null
+          schedule_first_eligible_round?: number | null
+          schedule_game_credit?: number
           status?: Database["public"]["Enums"]["rr_participant_status"]
           updated_at?: string
           updated_by?: string | null
@@ -5548,6 +5555,8 @@ export type Database = {
           registration_status?: string | null
           replaced_participant_id?: string | null
           replacement_participant_id?: string | null
+          schedule_first_eligible_round?: number | null
+          schedule_game_credit?: number
           status?: Database["public"]["Enums"]["rr_participant_status"]
           updated_at?: string
           updated_by?: string | null
@@ -9980,12 +9989,38 @@ export type Database = {
         }
         Returns: Json
       }
+      rr_edit_schedule: {
+        Args: {
+          p_action: string
+          p_event_id: string
+          p_expected_version: number
+          p_match_id: string
+          p_new_court_no?: number | null
+          p_reason?: string | null
+          p_request_id: string
+          p_second_match_id?: string | null
+        }
+        Returns: Json
+      }
       rr_plan_participant_change: {
         Args: {
           p_action: string
           p_event_id: string
           p_participant_id: string
           p_substitute_id: string
+        }
+        Returns: Json
+      }
+      rr_substitute_round: {
+        Args: {
+          p_event_id: string
+          p_expected_version: number
+          p_original_roster_id: string
+          p_reason?: string | null
+          p_replacement_guest_id?: string | null
+          p_replacement_player_id?: string | null
+          p_request_id: string
+          p_round_no: number
         }
         Returns: Json
       }

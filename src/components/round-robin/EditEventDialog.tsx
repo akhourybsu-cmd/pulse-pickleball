@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Info, Star, CalendarClock, Grid3x3, Gamepad2, Users } from "lucide-react";
+import { Save, Info, Star, Grid3x3, ArrowRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NumericStepper } from "./NumericStepper";
 import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal";
+import { NumericStepper } from "./NumericStepper";
 
 interface Event {
   id: string;
@@ -27,7 +27,7 @@ interface Event {
   num_courts: number;
   num_rounds: number;
   games_per_player?: number;
-  max_players?: number;
+  max_players?: number | null;
   registration_mode?: string;
   registration_deadline?: string | null;
 }
@@ -37,27 +37,35 @@ interface EditEventDialogProps {
   onOpenChange: (open: boolean) => void;
   event: Event;
   onSave: (updates: Partial<Event>) => Promise<void>;
-  playerCount?: number; // Current player count for display
+  /** Kept for compatibility with existing callers; roster-sensitive schedule
+   *  settings now live exclusively in Courts & Games. */
+  playerCount?: number;
+  onOpenSchedule?: () => void;
 }
 
-type SectionKey = "basics" | "rating" | "schedule";
+type SectionKey = "basics" | "rating";
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof Info }[] = [
   { key: "basics", label: "Basics", icon: Info },
   { key: "rating", label: "Rating", icon: Star },
-  { key: "schedule", label: "Schedule", icon: CalendarClock },
 ];
 
-export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount }: EditEventDialogProps) {
+export function EditEventDialog({
+  open,
+  onOpenChange,
+  event,
+  onSave,
+  playerCount = 4,
+  onOpenSchedule,
+}: EditEventDialogProps) {
+  const normalizedMaxPlayers = Math.max(playerCount, event.max_players ?? 4);
   const [name, setName] = useState(event.name);
   const [date, setDate] = useState(event.date);
   const [startTime, setStartTime] = useState(event.start_time || "09:00");
   const [notes, setNotes] = useState(event.notes || "");
   const [ratingEligible, setRatingEligible] = useState(event.rating_eligible);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">(event.rating_type);
-  const [numCourts, setNumCourts] = useState(event.num_courts);
-  const [gamesPerPlayer, setGamesPerPlayer] = useState(event.games_per_player || 3);
-  const [maxPlayers, setMaxPlayers] = useState(event.max_players || playerCount || 8);
+  const [maxPlayers, setMaxPlayers] = useState(normalizedMaxPlayers);
   const [registrationDeadline, setRegistrationDeadline] = useState(
     event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""
   );
@@ -66,18 +74,22 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
    *  never-ending scroll. Desktop keeps every section stacked. */
   const [section, setSection] = useState<SectionKey>("basics");
 
-  // Calculate rounds automatically based on players, courts, and games
-  const calculateRounds = (players: number, courts: number, games: number) => {
-    const totalSlots = players * games;
-    const capacity = courts * 4;
-    return Math.ceil(totalSlots / capacity);
-  };
-
-  const calculatedRounds = calculateRounds(
-    event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8),
-    numCourts,
-    gamesPerPlayer
-  );
+  useEffect(() => {
+    if (!open) return;
+    setName(event.name);
+    setDate(event.date);
+    setStartTime(event.start_time || "09:00");
+    setNotes(event.notes || "");
+    setRatingEligible(event.rating_eligible);
+    setRatingType(event.rating_type);
+    setMaxPlayers(normalizedMaxPlayers);
+    setRegistrationDeadline(
+      event.registration_deadline
+        ? new Date(event.registration_deadline).toISOString().slice(0, 16)
+        : "",
+    );
+    setSection("basics");
+  }, [event, normalizedMaxPlayers, open]);
 
   const hasChanges = 
     name !== event.name ||
@@ -86,11 +98,8 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
     notes !== (event.notes || "") ||
     ratingEligible !== event.rating_eligible ||
     ratingType !== event.rating_type ||
-    numCourts !== event.num_courts ||
-    gamesPerPlayer !== (event.games_per_player || 3) ||
-    (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) ||
-    (event.registration_mode === 'open_registration' && registrationDeadline !== (event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : "")) ||
-    calculatedRounds !== event.num_rounds;
+    (event.registration_mode === "open_registration" && maxPlayers !== normalizedMaxPlayers) ||
+    (event.registration_mode === 'open_registration' && registrationDeadline !== (event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""));
 
   const handleSave = async () => {
     if (!hasChanges) return;
@@ -104,9 +113,10 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
       if (notes !== (event.notes || "")) updates.notes = notes || null;
       if (ratingEligible !== event.rating_eligible) updates.rating_eligible = ratingEligible;
       if (ratingType !== event.rating_type) updates.rating_type = ratingType;
-      if (numCourts !== event.num_courts) updates.num_courts = numCourts;
-      if (gamesPerPlayer !== (event.games_per_player || 3)) updates.games_per_player = gamesPerPlayer;
-      if (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) {
+      if (
+        event.registration_mode === "open_registration" &&
+        maxPlayers !== normalizedMaxPlayers
+      ) {
         updates.max_players = maxPlayers;
       }
       if (event.registration_mode === 'open_registration' && registrationDeadline) {
@@ -116,8 +126,6 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
           updates.registration_deadline = newDeadline;
         }
       }
-      if (calculatedRounds !== event.num_rounds) updates.num_rounds = calculatedRounds;
-
       await onSave(updates);
       onOpenChange(false);
     } finally {
@@ -167,6 +175,33 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
         </div>
       </div>
 
+      {event.registration_mode === "open_registration" && (
+        <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <NumericStepper
+            value={maxPlayers}
+            onChange={setMaxPlayers}
+            min={Math.max(4, playerCount)}
+            max={100}
+            icon={Users}
+            label="Registration capacity"
+            suffix={`${playerCount} currently on the roster`}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor="registration-deadline">Registration deadline</Label>
+            <Input
+              id="registration-deadline"
+              type="datetime-local"
+              className="h-11"
+              value={registrationDeadline}
+              onChange={(e) => setRegistrationDeadline(e.target.value)}
+            />
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              Capacity controls future sign-ups only. Actual roster changes are handled from Manage players and automatically rebalance the schedule.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label htmlFor="notes">Notes</Label>
         <Textarea
@@ -215,98 +250,12 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
     </section>
   );
 
-  const schedule = (
-    <section className={cn("space-y-3 sm:pt-4 sm:border-t sm:border-border/60", show("schedule"))}>
-      <SectionHeading>Schedule</SectionHeading>
-
-      <NumericStepper
-        value={numCourts}
-        onChange={setNumCourts}
-        min={1}
-        max={20}
-        icon={Grid3x3}
-        label="Courts available"
-        suffix="Simultaneous matches per round"
-      />
-      <NumericStepper
-        value={gamesPerPlayer}
-        onChange={setGamesPerPlayer}
-        min={1}
-        max={20}
-        icon={Gamepad2}
-        label="Games per player"
-        suffix="Total matches each player gets"
-      />
-
-      {event.registration_mode === 'open_registration' && (
-        <>
-          <NumericStepper
-            value={maxPlayers}
-            onChange={setMaxPlayers}
-            min={4}
-            max={100}
-            icon={Users}
-            label="Number of players"
-            suffix="Registration cap"
-          />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="registration-deadline">Registration deadline</Label>
-            <Input
-              id="registration-deadline"
-              type="datetime-local"
-              className="h-11"
-              value={registrationDeadline}
-              onChange={(e) => setRegistrationDeadline(e.target.value)}
-              min={new Date().toISOString().slice(0, 16)}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Players can register until this date and time
-            </p>
-          </div>
-        </>
-      )}
-
-      {/* Schedule preview — same visual language as CourtsRoundsDialog. */}
-      <div
-        className="rounded-xl border border-primary/20 p-3.5"
-        style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold text-primary uppercase tracking-[0.14em]">
-              Schedule preview
-            </div>
-            <div className="text-sm text-muted-foreground mt-0.5">
-              {event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8)} players ·{" "}
-              {numCourts} {numCourts === 1 ? 'court' : 'courts'} ·{" "}
-              {gamesPerPlayer} {gamesPerPlayer === 1 ? 'game' : 'games'}
-            </div>
-            {calculatedRounds !== event.num_rounds && (
-              <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Rounds will change from {event.num_rounds} to {calculatedRounds}
-              </div>
-            )}
-          </div>
-          <div className="flex-shrink-0 text-right">
-            <div className="text-2xl font-bold text-primary tabular-nums leading-none">
-              {calculatedRounds}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {calculatedRounds === 1 ? 'round' : 'rounds'}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-
   return (
     <ResponsiveSettingsModal
       open={open}
       onOpenChange={onOpenChange}
       title="Event settings"
-      description="Changes to rating settings only apply to future, unscored matches."
+      description="Update event details and rating rules without disturbing the schedule."
       footer={
         <ModalActions>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -322,7 +271,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
       {/* Mobile section switcher — keeps each screen to a thumb's worth of
           scrolling instead of one long form. Hidden at sm+. */}
       <div className="sm:hidden sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur border-b border-border/60 mb-3">
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/60 p-1">
+        <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-muted/60 p-1">
           {SECTIONS.map((s) => {
             const Icon = s.icon;
             const isActive = section === s.key;
@@ -350,7 +299,30 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
       <div className="space-y-4 sm:space-y-5 pb-2">
         {basics}
         {rating}
-        {schedule}
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.055] p-3.5 sm:mt-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-background/70 text-primary">
+            <Grid3x3 className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Need to change the rotation?</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              Courts and games are managed together so one save can safely rebuild every affected round.
+            </p>
+            {onOpenSchedule && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenSchedule();
+                }}
+                className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Open Courts & games
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </ResponsiveSettingsModal>
   );

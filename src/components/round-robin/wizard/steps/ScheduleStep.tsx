@@ -12,12 +12,22 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { PRESSABLE_CARD } from "@/lib/motion";
+import { ScheduleImpactPreview } from "@/components/round-robin/ScheduleImpactPreview";
+import {
+  planCreationSchedulePreview,
+  type CreationPreviewParticipant,
+} from "@/lib/roundRobin/creationSchedulePreview";
+import type { EventFormat } from "@/lib/roundRobin/scheduleCore";
 
 interface ScheduleStepProps {
+  playerCount: number;
   courtCount: number;
   onCourtCountChange: (v: number) => void;
   gamesPerPlayer: number;
   onGamesPerPlayerChange: (v: number) => void;
+  format: EventFormat;
+  selectedPlayers: CreationPreviewParticipant[];
+  rosterCompositionKnown: boolean;
 }
 
 const gamesPresets = [
@@ -33,10 +43,14 @@ const gamesPresets = [
  * play happens" rather than two minimally-different numeric screens.
  */
 export function ScheduleStep({
+  playerCount,
   courtCount,
   onCourtCountChange,
   gamesPerPlayer,
   onGamesPerPlayerChange,
+  format,
+  selectedPlayers,
+  rosterCompositionKnown,
 }: ScheduleStepProps) {
   const [showCustomGames, setShowCustomGames] = useState(
     !gamesPresets.some((p) => p.id === gamesPerPlayer)
@@ -52,15 +66,24 @@ export function ScheduleStep({
     if (!gamesPerPlayer || gamesPerPlayer < 1) onGamesPerPlayerChange(5);
   };
 
+  const creationPlan = rosterCompositionKnown
+    ? planCreationSchedulePreview({
+        participants: selectedPlayers,
+        numCourts: courtCount,
+        gamesPerPlayer,
+        format,
+      })
+    : null;
+
   return (
     <div className="flex flex-col h-full">
       <StepHeader
         icon={CalendarDays}
         title="Schedule setup"
-        description="Courts you have, and games each player gets."
+        description="Every change previews the new rotation instantly."
       />
 
-      <div className="flex-1 space-y-7">
+      <div className="flex-1 space-y-6">
         {/* Courts stepper */}
         <div>
           <label className="text-sm font-medium mb-3 block">
@@ -76,7 +99,7 @@ export function ScheduleStep({
             incrementLabel="Increase court count"
           />
           <p className="text-xs text-muted-foreground text-center mt-2">
-            More courts = more simultaneous games
+            The scheduler uses every court your roster can fill
           </p>
         </div>
 
@@ -174,6 +197,17 @@ export function ScheduleStep({
             </Select>
           )}
         </div>
+
+        <ScheduleImpactPreview
+          playerCount={playerCount}
+          courtCount={courtCount}
+          gamesPerPlayer={gamesPerPlayer}
+          title="Live schedule preview"
+          compact
+          plan={creationPlan}
+          mixedRosterEstimate={format === "mixed" && !rosterCompositionKnown}
+          showImpactSummary={false}
+        />
       </div>
     </div>
   );

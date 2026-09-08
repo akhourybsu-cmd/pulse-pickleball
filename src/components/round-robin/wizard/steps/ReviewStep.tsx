@@ -1,10 +1,11 @@
-import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, AlertTriangle, type LucideIcon } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardFormData, calculateScheduleMetrics } from "../hooks/useWizardSteps";
 import { StepHeader } from "../StepHeader";
 import { cn } from "@/lib/utils";
-import { DUR, EASE_OUT, PRESSABLE, PRESSABLE_CARD } from "@/lib/motion";
+import { PRESSABLE, PRESSABLE_CARD } from "@/lib/motion";
+import { ScheduleImpactPreview } from "@/components/round-robin/ScheduleImpactPreview";
+import { planCreationSchedulePreview } from "@/lib/roundRobin/creationSchedulePreview";
 
 interface ReviewStepProps {
   formData: WizardFormData;
@@ -45,13 +46,25 @@ interface ReviewGroup {
  * calculateScheduleMetrics call.
  */
 export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
-  const reduced = useReducedMotion();
   const playerCount =
     formData.eventMode === "immediate"
-      ? formData.selectedPlayers.length || formData.playerCount
+      ? formData.playerInputMethod === "add"
+        ? formData.selectedPlayers.length
+        : formData.playerCount
       : formData.maxPlayers;
 
   const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer);
+  const rosterCompositionKnown = formData.eventMode === "immediate" &&
+    formData.playerInputMethod === "add";
+  const creationPlan = rosterCompositionKnown
+    ? planCreationSchedulePreview({
+        participants: formData.selectedPlayers,
+        numCourts: formData.courtCount,
+        gamesPerPlayer: formData.gamesPerPlayer,
+        format: formData.format,
+      })
+    : null;
+  const projectedRounds = creationPlan?.capacity.recommendedTotalRounds ?? metrics.rounds;
 
   const locationName =
     [formData.locationLabel.trim(), formData.cityLabel.trim()]
@@ -129,7 +142,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
     {
       icon: Target,
       label: "Games / player",
-      value: `${formData.gamesPerPlayer} · ${metrics.rounds} round${metrics.rounds === 1 ? "" : "s"}`,
+      value: `${formData.gamesPerPlayer} · ${projectedRounds} round${projectedRounds === 1 ? "" : "s"}`,
       stepIndex: 4,
     },
   ];
@@ -186,21 +199,16 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
       />
 
       <div className="flex-1 space-y-3 -mx-1">
-        {/* Fairness warning — prominent, top of card stack so the host
-            can't miss it. Pre-overhaul this hid at the bottom. */}
-        {metrics.fairnessWarning && (
-          <motion.div
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: DUR.content, ease: EASE_OUT }}
-            className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5"
-          >
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 dark:text-amber-300 leading-snug">
-              {metrics.fairnessWarning}
-            </p>
-          </motion.div>
-        )}
+        <ScheduleImpactPreview
+          playerCount={playerCount}
+          courtCount={formData.courtCount}
+          gamesPerPlayer={formData.gamesPerPlayer}
+          title="Your rotation"
+          compact
+          plan={creationPlan}
+          mixedRosterEstimate={formData.format === "mixed" && !rosterCompositionKnown}
+          showImpactSummary={false}
+        />
 
         {groups.map((group) => (
           <div
