@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import {
   Check,
   ArrowLeft,
   Trophy,
+  Loader2,
 } from "lucide-react";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
@@ -27,6 +28,7 @@ import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { SkillProfileSection } from "@/components/skill/SkillProfileSection";
 import { useFriends } from "@/hooks/useFriends";
+import { interpretDmError } from "@/lib/dmErrors";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 
@@ -74,24 +76,19 @@ interface RecentMatch {
 }
 
 const ViewProfile = () => {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
-  const { getFriendshipStatus, sendFriendRequest } = useFriends();
+  const { currentUserId, getFriendshipStatus, sendFriendRequest, acceptRequest, cancelRequest, pendingRequests, sentRequests, isPending, loading: friendsLoading, error: friendsError, refetch: refetchFriends } = useFriends();
+  const [openingMessage, setOpeningMessage] = useState(false);
+  const openingRef = useRef(false);
+  const activeProfile = useRef(userId);
+  activeProfile.current = userId;
 
   // Self-redirect: own profile lives at /player/profile (command center).
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled) return;
-      setCurrentUserId(user?.id ?? null);
-      if (user?.id && userId && user.id === userId) {
-        navigate("/player/profile", { replace: true });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId, navigate]);
+    if (currentUserId && currentUserId === userId) navigate("/player/profile", { replace: true });
+  }, [currentUserId, userId, navigate]);
+  useEffect(() => () => { activeProfile.current = undefined; }, []);
 
   // Profile + recent matches, cached by React Query so revisiting a player
   // (from chat, a leaderboard, a match card) paints from cache instead of
@@ -371,16 +368,18 @@ const ViewProfile = () => {
   };
 
   const handleMessage = async () => {
-    if (!userId) return;
+    if (!userId || openingRef.current) return;
+    openingRef.current = true;
+    setOpeningMessage(true);
     try {
       const { data, error } = await supabase.rpc("get_or_create_dm_conversation", {
         other_user_id: userId,
       });
       if (error) throw error;
-      navigate(`/player/messages/${data}`);
-    } catch {
-      navigate(`/player/messages`);
-    }
+      if (activeProfile.current === userId) navigate(`/player/messages/${data}`);
+    } catch (error) {
+      toast.error(interpretDmError(error));
+    } finally { openingRef.current = false; setOpeningMessage(false); }
   };
 
   if (loading) {
@@ -507,19 +506,27 @@ const ViewProfile = () => {
             className="grid grid-cols-2 gap-3 opacity-0 animate-fade-up"
             style={{ animationDelay: "120ms", animationFillMode: "forwards" }}
           >
-            {isFriend ? (
-              <Button onClick={handleMessage} className="h-11 gap-2 font-medium">
-                <MessageCircle className="h-4 w-4" />
+            {friendsLoading || isPending(userId ?? '') ? (
+              <Button disabled className="h-11 gap-2"><Loader2 className="h-4 w-4 animate-spin" />Updating…</Button>
+            ) : friendsError ? (
+              <Button variant="outline" className="h-11" onClick={() => void refetchFriends()}>Retry connection</Button>
+            ) : isFriend ? (
+              <Button onClick={handleMessage} disabled={openingMessage} className="h-11 gap-2 font-medium">
+                {openingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                 Message
               </Button>
             ) : friendshipStatus === "pending_sent" ? (
-              <Button disabled variant="secondary" className="h-11 gap-2">
+              <Button variant="secondary" className="h-11 gap-2" aria-label="Cancel friend request" onClick={() => { const request = sentRequests.find(row => row.user_id === userId); if (request) void cancelRequest(request.id); }}>
                 <Check className="h-4 w-4" />
-                Request sent
+                Cancel request
               </Button>
+            ) : friendshipStatus === "pending_received" ? (
+              <Button className="h-11 gap-2" onClick={() => { const request = pendingRequests.find(row => row.user_id === userId); if (request) void acceptRequest(request.id); }}><Check className="h-4 w-4" />Accept request</Button>
+            ) : friendshipStatus === "blocked" ? (
+              <Button disabled variant="secondary" className="h-11">Connection unavailable</Button>
             ) : (
               <Button
-                onClick={() => userId && sendFriendRequest(userId)}
+                onClick={() => currentUserId ? userId && sendFriendRequest(userId, { ...profile, gender: null }) : navigate('/auth')}
                 className="h-11 gap-2 font-medium"
               >
                 <UserPlus className="h-4 w-4" />

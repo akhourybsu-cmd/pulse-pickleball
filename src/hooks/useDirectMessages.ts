@@ -250,7 +250,7 @@ function useDirectMessagesState(enabled = true) {
         other_user_id: otherUserId,
       });
       if (rpcErr) throw rpcErr;
-      await fetchConversations();
+      void fetchConversations();
       return data as string;
     } catch (err) {
       console.error('Error starting conversation:', err);

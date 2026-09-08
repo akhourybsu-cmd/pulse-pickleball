@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
 
 export interface NearbyPlayer {
   id: string;
@@ -14,11 +15,11 @@ export interface NearbyPlayer {
 }
 
 export type NearbyStatus =
-  | 'idle'         // not fetched yet
-  | 'loading'
-  | 'ready'        // fetched (players may be empty)
-  | 'not_enabled'  // caller hasn't opted in / set a location
-  | 'unavailable'; // RPC not deployed or errored
+  | "idle" // not fetched yet
+  | "loading"
+  | "ready" // fetched (players may be empty)
+  | "not_enabled" // caller hasn't opted in / set a location
+  | "unavailable"; // RPC not deployed or errored
 
 /**
  * Distance-ranked friend discovery (opt-in, reciprocal). Reads the caller's own
@@ -30,67 +31,63 @@ export type NearbyStatus =
  * `unavailable` rather than throwing, so the surrounding menu never breaks.
  */
 export function useNearbyPlayers(active: boolean, radiusKm = 40) {
-  const [players, setPlayers] = useState<NearbyPlayer[]>([]);
-  const [status, setStatus] = useState<NearbyStatus>('idle');
-  const [selfLocationName, setSelfLocationName] = useState<string | null>(null);
-
-  const run = useCallback(async () => {
-    setStatus('loading');
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setStatus('not_enabled');
-        return;
-      }
-
+  const { user } = useAuthState();
+  const query = useQuery({
+    queryKey: ["nearby-players", user?.id, radiusKm],
+    enabled: active && !!user,
+    staleTime: 60_000,
+    queryFn: async ({ signal }) => {
       const { data: me, error: meErr } = await supabase
-        .from('profiles')
-        .select('discoverable_by_location, location_lat, location_name')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("discoverable_by_location, location_lat, location_name")
+        .eq("id", user!.id)
+        .abortSignal(signal)
         .maybeSingle();
 
       // Column missing (migration not deployed) surfaces as an error here.
-      if (meErr) {
-        setStatus('unavailable');
-        return;
-      }
+      if (meErr) throw meErr;
 
-      const meRow = me as { discoverable_by_location?: boolean; location_lat?: number | null; location_name?: string | null } | null;
-      setSelfLocationName(meRow?.location_name ?? null);
+      const meRow = me as {
+        discoverable_by_location?: boolean;
+        location_lat?: number | null;
+        location_name?: string | null;
+      } | null;
 
       if (!meRow?.discoverable_by_location || meRow?.location_lat == null) {
-        setStatus('not_enabled');
-        setPlayers([]);
-        return;
+        return {
+          players: [] as NearbyPlayer[],
+          status: "not_enabled" as const,
+          selfLocationName: meRow?.location_name ?? null,
+        };
       }
 
-      // Cast: this RPC + the new profile columns aren't in the generated
-      // Supabase types until they're regenerated post-deploy.
-      const { data, error } = await (supabase.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: unknown }>)('discover_players_nearby', {
-        _radius_km: radiusKm,
-        _limit: 30,
-      });
-      if (error) {
-        console.warn('discover_players_nearby failed', error);
-        setStatus('unavailable');
-        setPlayers([]);
-        return;
-      }
-      setPlayers((data ?? []) as NearbyPlayer[]);
-      setStatus('ready');
-    } catch (e) {
-      console.warn('useNearbyPlayers error', e);
-      setStatus('unavailable');
-      setPlayers([]);
-    }
-  }, [radiusKm]);
-
-  useEffect(() => {
-    if (active) run();
-  }, [active, run]);
-
-  return { players, status, selfLocationName, refetch: run };
+      const { data, error } = await supabase
+        .rpc("discover_players_nearby", {
+          _radius_km: radiusKm,
+          _limit: 30,
+        })
+        .abortSignal(signal);
+      if (error) throw error;
+      return {
+        players: (data ?? []) as NearbyPlayer[],
+        status: "ready" as const,
+        selfLocationName: meRow?.location_name ?? null,
+      };
+    },
+  });
+  const status: NearbyStatus = !active
+    ? "idle"
+    : !user
+    ? "not_enabled"
+    : query.isPending
+    ? "loading"
+    : query.isError
+    ? "unavailable"
+    : query.data.status;
+  return {
+    players: query.data?.players ?? [],
+    status,
+    selfLocationName: query.data?.selfLocationName ?? null,
+    refetch: query.refetch,
+  };
 }

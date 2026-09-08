@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
 
 export interface RecentPlayPartner {
   id: string;
@@ -12,7 +13,7 @@ export interface RecentPlayPartner {
   last_played_at: string | null;
 }
 
-export type RecentStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
+export type RecentStatus = "idle" | "loading" | "ready" | "unavailable";
 
 /**
  * People the signed-in player has recently shared a match or round robin with
@@ -23,36 +24,28 @@ export type RecentStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
  * the surrounding Connect menu keeps working.
  */
 export function useRecentPlayPartners(active: boolean, limit = 24) {
-  const [players, setPlayers] = useState<RecentPlayPartner[]>([]);
-  const [status, setStatus] = useState<RecentStatus>('idle');
-
-  const run = useCallback(async () => {
-    setStatus('loading');
-    try {
-      const { data, error } = await (supabase.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: unknown }>)('recent_play_partners', {
-        _limit: limit,
-      });
-      if (error) {
-        console.warn('recent_play_partners failed', error);
-        setPlayers([]);
-        setStatus('unavailable');
-        return;
-      }
-      setPlayers((data ?? []) as RecentPlayPartner[]);
-      setStatus('ready');
-    } catch (e) {
-      console.warn('useRecentPlayPartners error', e);
-      setPlayers([]);
-      setStatus('unavailable');
-    }
-  }, [limit]);
-
-  useEffect(() => {
-    if (active) run();
-  }, [active, run]);
-
-  return { players, status, refetch: run };
+  const { user } = useAuthState();
+  const query = useQuery({
+    queryKey: ["recent-play-partners", user?.id, limit],
+    enabled: active && !!user,
+    staleTime: 60_000,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase
+        .rpc("recent_play_partners", {
+          _limit: limit,
+        })
+        .abortSignal(signal);
+      if (error) throw error;
+      return (data ?? []) as RecentPlayPartner[];
+    },
+  });
+  const status: RecentStatus =
+    !active || !user
+      ? "idle"
+      : query.isPending
+      ? "loading"
+      : query.isError
+      ? "unavailable"
+      : "ready";
+  return { players: query.data ?? [], status, refetch: query.refetch };
 }

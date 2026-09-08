@@ -18,7 +18,7 @@ export interface SearchFieldProps
  * Consistent search input used across the friend/player search menus.
  *
  * - leading search icon
- * - trailing inline spinner while `loading`, otherwise a clear (X) button once
+ * - trailing inline spinner while `loading`, plus a clear (X) button once
  *   there is text — so a stale query is always one tap from reset
  * - `type="text"` (not `"search"`) so the browser's native clear affordance
  *   doesn't collide with ours
@@ -27,7 +27,7 @@ export interface SearchFieldProps
  */
 export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
   ({ value, onValueChange, loading, onClear, className, containerClassName, ...props }, ref) => {
-    const showClear = value.length > 0 && !loading;
+    const showClear = value.length > 0;
     const hasTrailing = loading || showClear;
     return (
       <div className={cn("relative", containerClassName)}>
@@ -46,21 +46,23 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
           role="searchbox"
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
-          className={cn("pl-9", hasTrailing && "pr-9", className)}
+          className={cn("pl-9", hasTrailing && "pr-11", loading && showClear && "pr-16", className)}
           {...props}
         />
         {hasTrailing && (
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
-            {loading ? (
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
+            {loading && (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Searching" />
-            ) : (
+            )}
+            {showClear && (
               <button
                 type="button"
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => {
                   onValueChange("");
                   onClear?.();
                 }}
-                className="rounded-full p-0.5 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Clear search"
               >
                 <X className="h-4 w-4" />

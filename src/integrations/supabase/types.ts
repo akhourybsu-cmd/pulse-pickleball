@@ -10051,6 +10051,7 @@ export type Database = {
         }[]
       }
       send_friend_request: { Args: { p_friend_id: string }; Returns: string }
+      block_player: { Args: { p_user_id: string; p_reason?: string }; Returns: undefined }
       set_group_event_rsvp: {
         Args: { p_event_id: string; p_status: string }
         Returns: string

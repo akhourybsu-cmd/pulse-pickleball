@@ -1,363 +1,390 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useAuthState } from '@/hooks/useAuthState';
+import { useCallback, useEffect, useMemo } from "react";
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuthState } from "@/hooks/useAuthState";
+import {
+  emptyFriends,
+  fetchFriendsSnapshot,
+  friendActionKey,
+  friendName,
+  friendsKey,
+  optimisticFriendChange,
+  restoreFriendTarget,
+  type FriendChange,
+  type FriendProfile,
+  type FriendsSnapshot,
+} from "@/lib/social/friends";
+export type {
+  FriendProfile,
+  Friendship,
+  FriendWithProfile,
+  FriendRequest,
+} from "@/lib/social/friends";
 
-export interface FriendProfile {
-  id: string;
-  display_name: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  current_rating: number | null;
-  gender: string | null;
-}
+const locks = new WeakMap<QueryClient, Set<string>>();
+const subscriptions = new WeakMap<
+  QueryClient,
+  Map<string, { count: number; dispose: () => void }>
+>();
 
-export interface Friendship {
-  id: string;
-  user_id: string;
-  friend_id: string;
-  status: 'pending' | 'accepted' | 'blocked';
-  created_at: string;
-  accepted_at: string | null;
-}
-
-export interface FriendWithProfile extends Friendship {
-  profile: FriendProfile;
-}
-
-export interface FriendRequest {
-  id: string;
-  user_id: string;
-  created_at: string;
-  profile: FriendProfile;
-}
-
-export function useFriends(options?: { realtime?: boolean; includeSent?: boolean }) {
-  const realtime = options?.realtime ?? false;
-  const includeSent = options?.includeSent ?? true;
-  const { user } = useAuthState();
-  const [friends, setFriends] = useState<FriendWithProfile[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const currentUserId = user?.id ?? null;
-
-  const fetchFriends = useCallback(async () => {
-    try {
-      setError(null);
-      if (!currentUserId) {
-        setFriends([]);
-        setPendingRequests([]);
-        setSentRequests([]);
-        return;
-      }
-
-      // Relationship lists are independent. Fetch them together, then resolve
-      // every referenced user with one profile query. This changes the full
-      // friends load from as many as six sequential round trips to two.
-      const [acceptedResult, receivedResult, sentResult] = await Promise.all([
-        supabase
-          .from('friendships')
-          .select('*')
-          .eq('status', 'accepted')
-          .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`),
-        supabase
-          .from('friendships')
-          .select('id, user_id, created_at')
-          .eq('friend_id', currentUserId)
-          .eq('status', 'pending'),
-        includeSent
-          ? supabase
-              .from('friendships')
-              .select('id, friend_id, created_at')
-              .eq('user_id', currentUserId)
-              .eq('status', 'pending')
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-
-      if (acceptedResult.error) throw acceptedResult.error;
-      if (receivedResult.error) throw receivedResult.error;
-      if (sentResult.error) throw sentResult.error;
-
-      const friendships = acceptedResult.data || [];
-      const received = receivedResult.data || [];
-      const sent = sentResult.data || [];
-      const profileIds = [...new Set([
-        ...friendships.map((friendship) =>
-          friendship.user_id === currentUserId ? friendship.friend_id : friendship.user_id,
-        ),
-        ...received.map((request) => request.user_id),
-        ...sent.map((request) => request.friend_id),
-      ])];
-
-      const { data: profiles, error: profileError } = profileIds.length
-        ? await supabase
-            .from('profiles_public')
-            .select('id, display_name, full_name, avatar_url, current_rating, gender')
-            .in('id', profileIds)
-        : { data: [], error: null };
-      if (profileError) throw profileError;
-
-      const profileMap = new Map(
-        (profiles || []).map((profile) => [profile.id, profile as FriendProfile]),
-      );
-
-      setFriends(friendships.flatMap((friendship) => {
-        const otherUserId = friendship.user_id === currentUserId
-          ? friendship.friend_id
-          : friendship.user_id;
-        const profile = profileMap.get(otherUserId);
-        return profile ? [{
-          ...friendship,
-          status: friendship.status as Friendship['status'],
-          profile,
-        }] : [];
-      }));
-
-      setPendingRequests(received.flatMap((request) => {
-        const profile = profileMap.get(request.user_id);
-        return profile ? [{ ...request, profile }] : [];
-      }));
-
-      setSentRequests(sent.flatMap((request) => {
-        const profile = profileMap.get(request.friend_id);
-        return profile ? [{
-          id: request.id,
-          user_id: request.friend_id,
-          created_at: request.created_at,
-          profile,
-        }] : [];
-      }));
-
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-      // Surface a real error so the UI can distinguish "load failed" from
-      // "genuinely no friends yet" and offer a retry.
-      setError('Could not load your friends. Check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId, includeSent]);
-
-  useEffect(() => {
-    fetchFriends();
-  }, [fetchFriends]);
-
-  // Opt-in realtime (only the Friends surface passes realtime:true, so the
-  // lightweight rail/card consumers don't each open a channel). Incoming
-  // requests / accepts / removals update the list live instead of only on
-  // remount or after a local mutation.
-  useEffect(() => {
-    if (!realtime || !currentUserId) return;
+// A single subscription feeds every friends surface, including the dashboard.
+function subscribeToFriends(client: QueryClient, userId: string) {
+  let registry = subscriptions.get(client);
+  if (!registry) {
+    registry = new Map();
+    subscriptions.set(client, registry);
+  }
+  let entry = registry.get(userId);
+  if (!entry) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (client.isMutating({ mutationKey: friendActionKey(userId) })) return;
+        void client.invalidateQueries(
+          { queryKey: friendsKey(userId) },
+          { cancelRefetch: false }
+        );
+        void client.invalidateQueries({
+          queryKey: ["friend-suggestions", userId],
+        });
+      }, 180);
+    };
     const channel = supabase
-      .channel(`friendships-rt-${currentUserId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'friendships', filter: `user_id=eq.${currentUserId}` },
-        () => { void fetchFriends(); })
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${currentUserId}` },
-        () => { void fetchFriends(); })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [realtime, currentUserId, fetchFriends]);
-
-  const sendFriendRequest = useCallback(async (friendId: string) => {
-    try {
-      // The server RPC serializes concurrent A→B / B→A sends under an
-      // advisory lock — the previous client-side SELECT-then-INSERT
-      // raced, leaving both users stuck on "pending sent". It returns
-      // the resulting status: 'pending' (sent or already pending) or
-      // 'accepted' (the other side had a pending request — instant
-      // friends).
-      // The RPC is not in the generated types yet.
-      // types yet — same pattern as the user_blocks table below.
-      const { data: status, error } = await supabase.rpc('send_friend_request' as never, {
-        p_friend_id: friendId,
-      } as never);
-
-      if (error) throw error;
-
-      if (status === 'accepted') {
-        toast.success("You're now friends!");
-      } else {
-        toast.success('Friend request sent!');
-      }
-      // Background reconcile — we don't have the target's profile here to
-      // build an optimistic row, but no need to block the button on it.
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      toast.error('Failed to send friend request');
-      return false;
-    }
-  }, [fetchFriends]);
-
-  // Accept/decline/cancel/remove/block are all OPTIMISTIC: the local lists
-  // update instantly so the tap feels immediate, then the write runs and a
-  // background fetchFriends() reconciles. On failure we restore the snapshot
-  // and surface a toast. (fetchFriends never flips `loading`, so the
-  // reconcile is invisible.)
-  const acceptRequest = useCallback(async (friendshipId: string) => {
-    const prevPending = pendingRequests;
-    const prevFriends = friends;
-    const req = pendingRequests.find((r) => r.id === friendshipId);
-    setPendingRequests((p) => p.filter((r) => r.id !== friendshipId));
-    if (req && currentUserId) {
-      setFriends((f) => [
+      .channel(`friends:${userId}`)
+      .on(
+        "postgres_changes",
         {
-          id: friendshipId,
-          user_id: req.user_id,
-          friend_id: currentUserId,
-          status: 'accepted',
-          created_at: req.created_at,
-          accepted_at: new Date().toISOString(),
-          profile: req.profile,
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `user_id=eq.${userId}`,
         },
-        ...f,
-      ]);
+        refresh
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `friend_id=eq.${userId}`,
+        },
+        refresh
+      )
+      // Deleted rows have only their primary key; recipient filters cannot
+      // match them. Reconcile only ids already in this account's cache.
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "friendships" },
+        (payload) => {
+          if (
+            client
+              .getQueryData<FriendsSnapshot>(friendsKey(userId))
+              ?.relationships.some((row) => row.id === payload.old.id)
+          )
+            refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_blocks",
+          filter: `blocker_id=eq.${userId}`,
+        },
+        refresh
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_blocks",
+          filter: `blocked_id=eq.${userId}`,
+        },
+        refresh
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && client.getQueryData(friendsKey(userId)))
+          refresh();
+      });
+    entry = {
+      count: 0,
+      dispose: () => {
+        clearTimeout(timer);
+        void supabase.removeChannel(channel);
+      },
+    };
+    registry.set(userId, entry);
+  }
+  entry.count++;
+  return () => {
+    if (--entry.count === 0) {
+      entry.dispose();
+      registry.delete(userId);
     }
-    try {
-      const { error } = await supabase
-        .from('friendships')
-        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-        .eq('id', friendshipId);
-      if (error) throw error;
-      toast.success('Friend request accepted!');
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      setPendingRequests(prevPending);
-      setFriends(prevFriends);
-      console.error('Error accepting friend request:', error);
-      toast.error('Failed to accept friend request');
-      return false;
-    }
-  }, [pendingRequests, friends, currentUserId, fetchFriends]);
+  };
+}
 
-  const declineRequest = useCallback(async (friendshipId: string) => {
-    const prevPending = pendingRequests;
-    setPendingRequests((p) => p.filter((r) => r.id !== friendshipId));
-    try {
-      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
-      if (error) throw error;
-      toast.success('Friend request declined');
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      setPendingRequests(prevPending);
-      console.error('Error declining friend request:', error);
-      toast.error('Failed to decline friend request');
-      return false;
-    }
-  }, [pendingRequests, fetchFriends]);
+export function useFriends(options?: {
+  realtime?: boolean;
+  includeSent?: boolean;
+  enabled?: boolean;
+}) {
+  const { user, loading: authLoading } = useAuthState();
+  const currentUserId = user?.id ?? null;
+  const client = useQueryClient();
+  const enabled = !!currentUserId && (options?.enabled ?? true);
+  const key = friendsKey(currentUserId);
+  const mutationKey = friendActionKey(currentUserId);
+  const query = useQuery({
+    queryKey: key,
+    queryFn: ({ signal }) =>
+      fetchFriendsSnapshot(supabase, currentUserId!, signal),
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: () =>
+      client.isMutating({ mutationKey }) ? false : 60_000,
+    refetchOnWindowFocus: () => !client.isMutating({ mutationKey }),
+    refetchOnReconnect: () => !client.isMutating({ mutationKey }),
+  });
+  useEffect(() => {
+    if (!enabled || options?.realtime === false) return;
+    return subscribeToFriends(client, currentUserId!);
+  }, [client, currentUserId, enabled, options?.realtime]);
 
-  // Cancelling your OWN outbound request — same delete, correct copy.
-  const cancelRequest = useCallback(async (friendshipId: string) => {
-    const prevSent = sentRequests;
-    setSentRequests((s) => s.filter((r) => r.id !== friendshipId));
-    try {
-      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
-      if (error) throw error;
-      toast.success('Friend request canceled');
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      setSentRequests(prevSent);
-      console.error('Error canceling friend request:', error);
-      toast.error('Failed to cancel friend request');
-      return false;
-    }
-  }, [sentRequests, fetchFriends]);
-
-  const removeFriend = useCallback(async (friendshipId: string) => {
-    const prevFriends = friends;
-    setFriends((f) => f.filter((fr) => fr.id !== friendshipId));
-    try {
-      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
-      if (error) throw error;
-      toast.success('Friend removed');
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      setFriends(prevFriends);
-      console.error('Error removing friend:', error);
-      toast.error('Failed to remove friend');
-      return false;
-    }
-  }, [friends, fetchFriends]);
-
-  const blockUser = useCallback(async (userId: string) => {
-    const prevFriends = friends;
-    const prevPending = pendingRequests;
-    const prevSent = sentRequests;
-    // Optimistically drop the user from every list.
-    setFriends((f) => f.filter((fr) => fr.user_id !== userId && fr.friend_id !== userId));
-    setPendingRequests((p) => p.filter((r) => r.user_id !== userId));
-    setSentRequests((s) => s.filter((r) => r.user_id !== userId));
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error('Not authenticated');
-
-      // Insert into user_blocks (canonical block source of truth).
-      const { error: blockErr } = await supabase
-        .from('user_blocks' as never)
-        .insert({ blocker_id: user.id, blocked_id: userId });
-
-      if (blockErr && !/duplicate/i.test(blockErr.message)) throw blockErr;
-
-      // Remove any friendship so they no longer appear as a friend.
-      await supabase
-        .from('friendships')
+  const mutation = useMutation({
+    mutationKey,
+    mutationFn: async (change: FriendChange) => {
+      if (!currentUserId) throw new Error("Please sign in again.");
+      if (change.action === "send") {
+        const { data, error } = await supabase.rpc("send_friend_request", {
+          p_friend_id: change.targetId,
+        });
+        if (error) throw error;
+        return data;
+      }
+      if (change.action === "block") {
+        const { error } = await supabase.rpc("block_player", {
+          p_user_id: change.targetId,
+        });
+        if (error) throw error;
+        return "blocked";
+      }
+      if (!change.friendshipId || change.friendshipId.startsWith("optimistic:"))
+        throw new Error("This request is still syncing. Please try again.");
+      if (change.action === "accept") {
+        const { data, error } = await supabase
+          .from("friendships")
+          .update({ status: "accepted", accepted_at: new Date().toISOString() })
+          .eq("id", change.friendshipId)
+          .eq("friend_id", currentUserId)
+          .eq("status", "pending")
+          .select("id")
+          .maybeSingle();
+        if (error) throw error;
+        if (!data)
+          throw new Error(
+            "This request has changed. Your list has been refreshed."
+          );
+        return "accepted";
+      }
+      let request = supabase
+        .from("friendships")
         .delete()
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`);
-
-      toast.success('User blocked');
-      void fetchFriends();
-      return true;
-    } catch (error) {
-      setFriends(prevFriends);
-      setPendingRequests(prevPending);
-      setSentRequests(prevSent);
-      console.error('Error blocking user:', error);
-      toast.error('Failed to block user');
-      return false;
+        .eq("id", change.friendshipId)
+        .eq("status", change.action === "remove" ? "accepted" : "pending");
+      if (change.action === "cancel")
+        request = request.eq("user_id", currentUserId);
+      if (change.action === "decline")
+        request = request.eq("friend_id", currentUserId);
+      const { data, error } = await request.select("id").maybeSingle();
+      if (error) throw error;
+      if (!data)
+        throw new Error(
+          "This connection has changed. Your list has been refreshed."
+        );
+      return "removed";
+    },
+    onMutate: async (change) => {
+      await client.cancelQueries({ queryKey: key });
+      const previous =
+        client.getQueryData<FriendsSnapshot>(key) ?? emptyFriends();
+      client.setQueryData(
+        key,
+        optimisticFriendChange(
+          previous,
+          change,
+          currentUserId!,
+          new Date().toISOString()
+        )
+      );
+      return previous;
+    },
+    onError: (error, change, previous) => {
+      if (previous)
+        client.setQueryData<FriendsSnapshot>(key, (current) =>
+          restoreFriendTarget(
+            current ?? emptyFriends(),
+            previous,
+            change.targetId
+          )
+        );
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update this connection. Please try again."
+      );
+    },
+    onSuccess: (status, change) => {
+      const messages = {
+        send:
+          status === "accepted" ? "You're now friends!" : "Friend request sent",
+        accept: "You're now friends!",
+        decline: "Request declined",
+        cancel: "Request canceled",
+        remove: "Friend removed",
+        block: "Player blocked",
+      };
+      toast.success(messages[change.action]);
+    },
+    onSettled: async () => {
+      // The last concurrent write reconciles everything; earlier responses must
+      // not overwrite another person's optimistic update.
+      if (client.isMutating({ mutationKey }) <= 1)
+        await Promise.all([
+          client.invalidateQueries({ queryKey: key }),
+          client.invalidateQueries({
+            queryKey: ["friend-suggestions", currentUserId],
+          }),
+          client.invalidateQueries({
+            queryKey: ["user-blocks", currentUserId],
+          }),
+        ]);
+    },
+  });
+  const pendingTargets = useMutationState({
+    filters: { mutationKey, status: "pending" },
+    select: (item) => (item.state.variables as FriendChange).targetId,
+  });
+  const isPending = useCallback(
+    (userId: string) => pendingTargets.includes(userId),
+    [pendingTargets]
+  );
+  const run = async (change: FriendChange) => {
+    if (!currentUserId || change.targetId === currentUserId) return false;
+    let active = locks.get(client);
+    if (!active) {
+      active = new Set();
+      locks.set(client, active);
     }
-  }, [friends, pendingRequests, sentRequests, fetchFriends]);
-
-  const getFriendshipStatus = useCallback((userId: string): 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked' => {
-    if (!currentUserId) return 'none';
-    
-    const friend = friends.find(f => 
-      f.user_id === userId || f.friend_id === userId
-    );
-    if (friend) return 'accepted';
-
-    const sentReq = sentRequests.find(r => r.user_id === userId);
-    if (sentReq) return 'pending_sent';
-
-    const receivedReq = pendingRequests.find(r => r.user_id === userId);
-    if (receivedReq) return 'pending_received';
-
-    return 'none';
-  }, [currentUserId, friends, sentRequests, pendingRequests]);
+    const lock = `${currentUserId}:${change.targetId}`;
+    if (active.has(lock)) return false;
+    active.add(lock);
+    try {
+      await mutation.mutateAsync(change);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      active.delete(lock);
+    }
+  };
+  const byId = (action: FriendChange["action"], friendshipId: string) => {
+    const row = client
+      .getQueryData<FriendsSnapshot>(key)
+      ?.relationships.find((item) => item.id === friendshipId);
+    return row
+      ? run({ action, targetId: row.profile.id, friendshipId })
+      : Promise.resolve(false);
+  };
+  const state = query.data ?? emptyFriends();
+  const friends = useMemo(
+    () =>
+      state.relationships
+        .filter((row) => row.status === "accepted")
+        .sort((a, b) =>
+          friendName(a.profile).localeCompare(friendName(b.profile))
+        ),
+    [state.relationships]
+  );
+  const pendingRequests = useMemo(
+    () =>
+      state.relationships
+        .filter(
+          (row) => row.status === "pending" && row.friend_id === currentUserId
+        )
+        .map((row) => ({
+          id: row.id,
+          user_id: row.user_id,
+          created_at: row.created_at,
+          profile: row.profile,
+        })),
+    [state.relationships, currentUserId]
+  );
+  const sentRequests = useMemo(
+    () =>
+      state.relationships
+        .filter(
+          (row) => row.status === "pending" && row.user_id === currentUserId
+        )
+        .map((row) => ({
+          id: row.id,
+          user_id: row.friend_id,
+          created_at: row.created_at,
+          profile: row.profile,
+        })),
+    [state.relationships, currentUserId]
+  );
+  const getFriendshipStatus = useCallback(
+    (
+      userId: string
+    ):
+      | "none"
+      | "pending_sent"
+      | "pending_received"
+      | "accepted"
+      | "blocked" => {
+      if (state.blockedIds.includes(userId)) return "blocked";
+      const row = state.relationships.find(
+        (item) => item.profile.id === userId
+      );
+      if (!row) return "none";
+      if (row.status !== "pending") return row.status;
+      return row.user_id === currentUserId
+        ? "pending_sent"
+        : "pending_received";
+    },
+    [state, currentUserId]
+  );
 
   return {
     friends,
     pendingRequests,
     sentRequests,
-    loading,
-    error,
     currentUserId,
-    sendFriendRequest,
-    acceptRequest,
-    declineRequest,
-    cancelRequest,
-    removeFriend,
-    blockUser,
+    isPending,
+    loading: authLoading || (enabled && query.isPending),
+    error: query.isError
+      ? "Could not load your connections. Check your connection and try again."
+      : null,
+    sendFriendRequest: (friendId: string, profile?: FriendProfile) =>
+      run({ action: "send", targetId: friendId, profile }),
+    acceptRequest: (id: string) => byId("accept", id),
+    declineRequest: (id: string) => byId("decline", id),
+    cancelRequest: (id: string) => byId("cancel", id),
+    removeFriend: (id: string) => byId("remove", id),
+    blockUser: (id: string) => run({ action: "block", targetId: id }),
     getFriendshipStatus,
-    refetch: fetchFriends
+    refetch: query.refetch,
   };
 }

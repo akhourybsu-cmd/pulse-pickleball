@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
+import { toast } from "sonner";
 
 export interface SuggestedFriend {
   id: string;
@@ -12,48 +14,59 @@ export interface SuggestedFriend {
   weight: number;
 }
 
-export function useFriendSuggestions() {
-  const [suggestions, setSuggestions] = useState<SuggestedFriend[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchSuggestions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('suggest_friends');
+export function useFriendSuggestions(enabled = true) {
+  const { user } = useAuthState();
+  const client = useQueryClient();
+  const key = ["friend-suggestions", user?.id];
+  const query = useQuery({
+    queryKey: key,
+    enabled: enabled && !!user,
+    staleTime: 60_000,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase
+        .rpc("suggest_friends")
+        .abortSignal(signal);
       if (error) throw error;
-      setSuggestions((data || []) as SuggestedFriend[]);
-    } catch (err) {
-      console.error('Error fetching friend suggestions:', err);
-      setSuggestions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * Dismiss a suggestion. Optimistically removes the row from local
-   * state so the X-tap feels instant, then writes to
-   * friend_suggestion_dismissals via the dismiss_friend_suggestion RPC.
-   * On error we re-fetch the canonical list to roll back without
-   * having to remember the prior position.
-   */
-  const dismissSuggestion = useCallback(async (userId: string) => {
-    setSuggestions(prev => prev.filter(s => s.id !== userId));
-    try {
-      const { error } = await supabase.rpc('dismiss_friend_suggestion' as any, {
-        p_target_user_id: userId,
-      });
+      return (data || []) as SuggestedFriend[];
+    },
+  });
+  const dismiss = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!user) throw new Error("Sign in required");
+      const { error } = await supabase
+        .from("friend_suggestion_dismissals")
+        .upsert(
+          { user_id: user.id, dismissed_user_id: userId },
+          { onConflict: "user_id,dismissed_user_id", ignoreDuplicates: true }
+        );
       if (error) throw error;
-    } catch (err) {
-      console.error('Error dismissing suggestion:', err);
-      // Rollback by reloading the canonical list.
-      fetchSuggestions();
-    }
-  }, [fetchSuggestions]);
-
-  useEffect(() => {
-    fetchSuggestions();
-  }, [fetchSuggestions]);
-
-  return { suggestions, loading, refetch: fetchSuggestions, dismissSuggestion };
+    },
+    onMutate: async (userId) => {
+      await client.cancelQueries({ queryKey: key });
+      const previous = client.getQueryData<SuggestedFriend[]>(key) ?? [];
+      client.setQueryData(
+        key,
+        previous.filter((row) => row.id !== userId)
+      );
+      return previous.find((row) => row.id === userId);
+    },
+    onError: (_error, _userId, previous) => {
+      if (previous)
+        client.setQueryData<SuggestedFriend[]>(key, (current) =>
+          current?.some((row) => row.id === previous.id)
+            ? current
+            : [...(current ?? []), previous]
+        );
+      toast.error("Could not hide this suggestion. Please try again.");
+    },
+  });
+  return {
+    suggestions: query.data ?? [],
+    loading: query.isPending && enabled && !!user,
+    error: query.isError
+      ? "Could not load suggestions. Please try again."
+      : null,
+    refetch: query.refetch,
+    dismissSuggestion: dismiss.mutate,
+  };
 }

@@ -9,13 +9,13 @@ const initials = (name: string | null) =>
 
 export function FriendsEntryCard() {
   const navigate = useNavigate();
-  const { friends, pendingRequests, loading } = useFriends();
+  const { friends, pendingRequests, loading, error } = useFriends();
 
   // Land on the requests tab when something is waiting, otherwise the list.
   const go = () =>
     navigate(pendingRequests.length > 0 ? '/player/friends?tab=requests' : '/player/friends');
 
-  if (loading) {
+  if (loading || (error && !friends.length && !pendingRequests.length)) {
     return (
       <button
         onClick={go}
@@ -26,7 +26,7 @@ export function FriendsEntryCard() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium">Friends</div>
-          <div className="text-xs text-muted-foreground">Loading…</div>
+          <div className="text-xs text-muted-foreground">{error ? 'Unable to load · Open to retry' : 'Loading…'}</div>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
       </button>
@@ -40,7 +40,7 @@ export function FriendsEntryCard() {
   if (count === 0 && pending === 0) {
     return (
       <button
-        onClick={go}
+        onClick={() => navigate('/player/friends?connect=1')}
         className="w-full flex items-center gap-3 p-4 rounded-xl bg-card border border-border/40 hover:bg-muted/30 transition-colors active:scale-[0.99] text-left"
       >
         <div className="h-10 w-10 rounded-full bg-muted/40 flex items-center justify-center shrink-0">

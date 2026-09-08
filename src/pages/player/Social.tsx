@@ -4,6 +4,7 @@ import Friends from "./Friends";
 import { SocialInbox } from "@/components/social/SocialInbox";
 import { SocialHero } from "@/components/social/_shared";
 import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedControl";
+import { useFriends } from "@/hooks/useFriends";
 
 
 /**
@@ -19,6 +20,7 @@ import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedContr
 export default function Social() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { pendingRequests } = useFriends();
   const view: "chats" | "friends" =
     location.pathname.startsWith("/player/friends") ? "friends" : "chats";
 
@@ -34,7 +36,7 @@ export default function Social() {
           onValueChange={(next) => navigate(next === "chats" ? "/player/social" : "/player/friends")}
           options={[
             { value: "chats", label: "Chats", icon: MessageCircle },
-            { value: "friends", label: "Friends", icon: Users },
+            { value: "friends", label: "Friends", icon: Users, count: pendingRequests.length, accentCount: true },
           ]}
           ariaLabel="Social views"
           layoutId="social-seg-active"

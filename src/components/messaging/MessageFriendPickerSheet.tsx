@@ -1,11 +1,19 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Loader2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { SearchField } from '@/components/ui/search-field';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFriends } from '@/hooks/useFriends';
-import { useDirectMessages } from '@/hooks/useDirectMessages';
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, Loader2 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { SearchField } from "@/components/ui/search-field";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useFriends } from "@/hooks/useFriends";
+import { useDirectMessages } from "@/hooks/useDirectMessages";
+import { Button } from "@/components/ui/button";
+import { matchesFriend } from "@/lib/social/friends";
 
 interface Props {
   open: boolean;
@@ -13,45 +21,75 @@ interface Props {
 }
 
 const initials = (n: string | null) =>
-  (n || 'U').split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2);
+  (n || "U")
+    .split(" ")
+    .map((s) => s[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
 export function MessageFriendPickerSheet({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const { friends, loading } = useFriends();
+  const { friends, loading, error, refetch } = useFriends({ enabled: open });
   const { startConversation } = useDirectMessages();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [opening, setOpening] = useState<string | null>(null);
+  const busy = useRef(false);
+  const active = useRef(open);
+  active.current = open;
+  const requestVersion = useRef(0);
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      requestVersion.current++;
+    }
+  }, [open]);
+  useEffect(
+    () => () => {
+      active.current = false;
+      requestVersion.current++;
+    },
+    []
+  );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return friends;
-    return friends.filter(f => {
-      const name = f.profile.display_name || f.profile.full_name || '';
-      return name.toLowerCase().includes(q);
-    });
+    return friends.filter((f) => matchesFriend(f.profile, query));
   }, [friends, query]);
 
   const handleSelect = async (userId: string) => {
+    if (busy.current) return;
+    busy.current = true;
+    const version = ++requestVersion.current;
     setOpening(userId);
-    const convoId = await startConversation(userId);
-    setOpening(null);
-    if (convoId) {
-      onOpenChange(false);
-      navigate(`/player/messages/${convoId}`);
+    try {
+      const convoId = await startConversation(userId);
+      if (convoId && active.current && version === requestVersion.current) {
+        onOpenChange(false);
+        navigate(`/player/messages/${convoId}`);
+      }
+    } finally {
+      busy.current = false;
+      setOpening(null);
     }
   };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85dvh] p-0 flex flex-col">
+      <SheetContent
+        side="bottom"
+        className="flex h-[85dvh] min-h-0 flex-col rounded-t-2xl p-0 sm:inset-y-4 sm:left-auto sm:right-4 sm:h-[calc(100dvh-2rem)] sm:w-[480px] sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl [&>button]:right-3 [&>button]:top-3 [&>button]:h-11 [&>button]:w-11"
+      >
         {/* Premium header band — ambient bloom + accent-ruled eyebrow. */}
         <div className="relative overflow-hidden border-b border-border/50 bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-20 -left-10 h-44 w-44 rounded-full blur-3xl opacity-[0.18]"
-            style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)",
+            }}
           />
-          <SheetHeader className="relative px-4 pb-3 pt-4 text-left">
+          <SheetHeader className="relative px-4 pb-3 pt-5 pr-16 text-left">
             <div className="relative pl-3.5">
               <span
                 aria-hidden
@@ -65,48 +103,74 @@ export function MessageFriendPickerSheet({ open, onOpenChange }: Props) {
               </SheetTitle>
             </div>
           </SheetHeader>
+          <SheetDescription className="px-4 pb-4 text-sm">
+            Choose a friend to start or continue a conversation.
+          </SheetDescription>
         </div>
         <div className="px-4 pb-3 pt-3">
           <SearchField
             autoFocus
-            placeholder="Search friends..."
+            placeholder="Search name or @handle"
             value={query}
             onValueChange={setQuery}
-            className="h-10 rounded-xl border-border/60 bg-card/70 backdrop-blur-sm"
+            className="h-11 rounded-xl border-border/60 text-base"
             aria-label="Search your friends"
           />
         </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           {loading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : error ? (
+            <div role="alert" className="space-y-3 p-4 text-center text-sm">
+              <p>{error}</p>
+              <Button variant="outline" onClick={() => void refetch()}>
+                Retry
+              </Button>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-12 px-6">
               <div className="relative mb-3">
-                <div aria-hidden className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl"
+                />
                 <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
                   <MessageCircle className="h-5 w-5" />
                 </div>
               </div>
               <p className="text-sm font-medium mb-1">
-                {friends.length === 0 ? 'No friends yet' : 'No matches'}
+                {friends.length === 0 ? "No friends yet" : "No matches"}
               </p>
+              {friends.length === 0 && (
+                <Button
+                  className="mt-4 h-11 rounded-xl"
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate("/player/friends?connect=1");
+                  }}
+                >
+                  Find players
+                </Button>
+              )}
               <p className="text-xs text-muted-foreground max-w-[240px]">
                 {friends.length === 0
-                  ? 'Add friends to start a conversation.'
-                  : 'Try a different name.'}
+                  ? "Add friends to start a conversation."
+                  : "Try a different name."}
               </p>
             </div>
           ) : (
             <ul className="space-y-0.5">
-              {filtered.map(f => {
-                const name = f.profile.display_name || f.profile.full_name || 'Player';
+              {filtered.map((f) => {
+                const name =
+                  f.profile.display_name || f.profile.full_name || "Player";
                 return (
                   <li key={f.id}>
                     <button
                       onClick={() => handleSelect(f.profile.id)}
-                      disabled={opening === f.profile.id}
+                      disabled={!!opening}
+                      aria-label={`Message ${name}`}
                       className="w-full flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-left transition-colors hover:border-border/60 hover:bg-card/70 hover:backdrop-blur-sm disabled:opacity-60"
                     >
                       <Avatar className="h-10 w-10 ring-1 ring-border/60">
@@ -114,7 +178,9 @@ export function MessageFriendPickerSheet({ open, onOpenChange }: Props) {
                         <AvatarFallback>{initials(name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-semibold tracking-tight">{name}</p>
+                        <p className="truncate text-sm font-semibold tracking-tight">
+                          {name}
+                        </p>
                         {f.profile.current_rating != null && (
                           <p className="text-xs text-muted-foreground">
                             {Number(f.profile.current_rating).toFixed(2)} rating

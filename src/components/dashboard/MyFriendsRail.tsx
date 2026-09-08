@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserPlus, Users, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const MAX_VISIBLE = 10;
 
@@ -14,7 +15,7 @@ const MAX_VISIBLE = 10;
  * pulse dot so they're glanceable without their own section.
  */
 export function MyFriendsRail() {
-  const { friends, pendingRequests, loading } = useFriends({ includeSent: false });
+  const { friends, pendingRequests, loading, error, refetch } = useFriends({ includeSent: false });
 
   if (loading) {
     return (
@@ -27,11 +28,12 @@ export function MyFriendsRail() {
   }
 
   const hasPending = pendingRequests.length > 0;
+  if (error && !friends.length && !hasPending) return <div className="flex items-center gap-3 rounded-2xl border border-border p-4"><p className="flex-1 text-sm text-muted-foreground">Friends couldn't load.</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>;
 
   if (friends.length === 0 && !hasPending) {
     return (
       <Link
-        to="/player/friends"
+        to="/player/friends?connect=1"
         className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-dashed border-primary/30 bg-card/60 p-4 transition-[transform,background-color,border-color] hover:border-primary/45 hover:bg-card active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -86,7 +88,8 @@ export function MyFriendsRail() {
         return (
           <Link
             key={f.id}
-            to="/player/friends"
+            to={`/profile/${f.profile.id}`}
+            aria-label={`View ${name}'s profile`}
             className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)] transition-[transform,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
           >
             <Avatar className="h-14 w-14 rounded-2xl ring-1 ring-border/60">
@@ -103,7 +106,7 @@ export function MyFriendsRail() {
       })}
 
       <Link
-        to="/player/friends"
+        to="/player/friends?connect=1"
         className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 p-3 text-muted-foreground transition-[transform,color,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card hover:text-foreground active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
       >
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">

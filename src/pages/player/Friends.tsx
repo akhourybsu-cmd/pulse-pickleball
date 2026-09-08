@@ -1,16 +1,30 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User, Radio } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SearchField } from '@/components/ui/search-field';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+  ArrowLeft,
+  MessageCircle,
+  UserMinus,
+  Check,
+  X,
+  UserPlus,
+  Users,
+  AlertCircle,
+  MoreHorizontal,
+  User,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SearchField } from "@/components/ui/search-field";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,324 +34,353 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useFriends } from '@/hooks/useFriends';
-import { useFriendsPresence } from '@/hooks/useFriendsPresence';
-import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
-import { ConnectSheet } from '@/components/community/ConnectSheet';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { interpretDmError } from '@/lib/dmErrors';
-import { cn } from '@/lib/utils';
-import { SocialHero, SocialStatTile, glassRow } from '@/components/social/_shared';
+} from "@/components/ui/alert-dialog";
+import { useFriends } from "@/hooks/useFriends";
+import { useFriendsPresence } from "@/hooks/useFriendsPresence";
+import { useFriendSuggestions } from "@/hooks/useFriendSuggestions";
+import { useDirectMessages } from "@/hooks/useDirectMessages";
+import { ConnectSheet } from "@/components/community/ConnectSheet";
+import { SocialHero } from "@/components/social/_shared";
+import {
+  friendName,
+  matchesFriend,
+  type FriendProfile,
+} from "@/lib/social/friends";
+import { cn } from "@/lib/utils";
 
-const initials = (name: string | null) =>
-  (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+const VALID_TABS = ["friends", "requests", "suggestions"] as const;
+type FriendsTab = (typeof VALID_TABS)[number];
+const grid = "grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3";
+const card =
+  "min-w-0 rounded-2xl border border-border/60 bg-card p-3.5 shadow-sm";
 
-/** Consistent "3.00 rating · Online" metadata line for a person row. */
-const personMeta = (rating: number | null, online: boolean): string => {
-  const parts: string[] = [];
-  if (rating != null) parts.push(`${rating.toFixed(2)} rating`);
-  parts.push(online ? 'Online' : 'Offline');
-  return parts.join(' · ');
-};
-
-/** Only surface a suggestion reason when it's a real, specific one — never a
- *  generic placeholder. Presentation guard; the RPC stays the source. */
-const realReason = (reason: string | null | undefined): string | null => {
-  const r = (reason ?? '').trim();
-  if (!r) return null;
-  if (/^(suggested( for you)?|you might know)$/i.test(r)) return null;
-  return r;
-};
-
-/** Motion presets for request rows animating out (reduced-motion aware). */
-const rowExit = (reduced: boolean | null) =>
-  reduced
-    ? { transition: { duration: 0 } }
-    : {
-        initial: { opacity: 0, y: 4 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, x: 12, height: 0, marginBottom: 0 },
-        transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const },
-      };
-
-const VALID_TABS = ['friends', 'requests', 'suggestions'] as const;
-type FriendsTabValue = (typeof VALID_TABS)[number];
-
-export default function Friends({ embedded = false }: { embedded?: boolean } = {}) {
+export default function Friends({
+  embedded = false,
+}: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
-  const reduced = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
   const [connectOpen, setConnectOpen] = useState(false);
-  const [friendQuery, setFriendQuery] = useState('');
-
-  // Honor ?tab= deep links (e.g. MyFriendsRail -> ?tab=requests) and keep the
-  // URL in sync as the user switches tabs, so back/forward and shared links
-  // land on the right view.
-  const tabParam = searchParams.get('tab') as FriendsTabValue | null;
-  const activeTab: FriendsTabValue =
-    tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'friends';
+  const [friendQuery, setFriendQuery] = useState("");
+  const [onlineOnly, setOnlineOnly] = useState(false);
+  const [friendsShown, setFriendsShown] = useState(24);
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: string;
+    userId: string;
+    name: string;
+  } | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const openingRef = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const tabParam = searchParams.get("tab") as FriendsTab | null;
+  const activeTab =
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "friends";
   const setActiveTab = (value: string) => {
     const next = new URLSearchParams(searchParams);
-    if (value === 'friends') next.delete('tab');
-    else next.set('tab', value);
+    if (value === "friends") next.delete("tab");
+    else next.set("tab", value);
     setSearchParams(next, { replace: true });
   };
-  // Friend-removal confirmation. Previously the X icon called
-  // removeFriend() directly on click — a single-tap mistake (very
-  // easy to fat-finger on mobile) nuked the friendship with no undo.
-  // Now the tap opens a confirm dialog that names the person and the
-  // consequence.
-  const [removeTarget, setRemoveTarget] = useState<{ friendshipId: string; name: string } | null>(null);
-  // Friendship ids with an accept/decline in flight — a rapid double-tap
-  // on the same request otherwise fires two overlapping mutations.
-  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (searchParams.get("connect") !== "1") return;
+    setConnectOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("connect");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const {
     friends,
     pendingRequests,
     sentRequests,
     loading,
     error,
+    isPending,
     acceptRequest,
     declineRequest,
     cancelRequest,
     removeFriend,
     sendFriendRequest,
+    getFriendshipStatus,
     refetch,
-  } = useFriends({ realtime: true });
-  const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
-
-  // Live online presence for green dots + online-first ordering. Track every
-  // person shown on the page (friends, requests, suggestions) via the single
-  // global presence channel.
-  const presenceIds = useMemo(() => {
-    const ids = new Set<string>();
-    friends.forEach((f) => ids.add(f.profile.id));
-    pendingRequests.forEach((r) => ids.add(r.profile.id));
-    sentRequests.forEach((r) => ids.add(r.profile.id));
-    suggestions.forEach((s) => ids.add(s.id));
-    return Array.from(ids);
-  }, [friends, pendingRequests, sentRequests, suggestions]);
-  const { onlineFriends } = useFriendsPresence(presenceIds);
-
-  // Filter by the in-list search, then sort online-first, then alphabetical —
-  // so the people you can play with right now bubble to the top.
-  const visibleFriends = useMemo(() => {
-    const q = friendQuery.trim().toLowerCase();
-    const nameOf = (f: (typeof friends)[number]) =>
-      (f.profile.display_name || f.profile.full_name || 'Player');
-    return friends
-      .filter((f) => !q || nameOf(f).toLowerCase().includes(q))
-      .sort((a, b) => {
-        const aOn = onlineFriends.has(a.profile.id) ? 0 : 1;
-        const bOn = onlineFriends.has(b.profile.id) ? 0 : 1;
-        if (aOn !== bOn) return aOn - bOn;
-        return nameOf(a).localeCompare(nameOf(b));
-      });
-  }, [friends, friendQuery, onlineFriends]);
-
-  // Render the friends grid in windows so a large friends list doesn't mount
-  // hundreds of rows at once. "Show more" reveals the next window.
-  const FRIENDS_PAGE = 24;
-  const [friendsShown, setFriendsShown] = useState(FRIENDS_PAGE);
-  const windowedFriends = useMemo(
-    () => visibleFriends.slice(0, friendsShown),
-    [visibleFriends, friendsShown],
+  } = useFriends();
+  const {
+    suggestions,
+    loading: suggestionsLoading,
+    error: suggestionsError,
+    refetch: refetchSuggestions,
+    dismissSuggestion,
+  } = useFriendSuggestions(activeTab === "suggestions");
+  const { startConversation } = useDirectMessages();
+  const presenceIds = useMemo(
+    () => friends.map((friend) => friend.profile.id),
+    [friends]
   );
-
-  const onlineCount = useMemo(
-    () => friends.reduce((n, f) => n + (onlineFriends.has(f.profile.id) ? 1 : 0), 0),
-    [friends, onlineFriends],
+  const { onlineFriends, isConnected } = useFriendsPresence(presenceIds);
+  // Names stay in a predictable order while presence changes in the background.
+  const visibleFriends = useMemo(
+    () =>
+      friends.filter(
+        (friend) =>
+          matchesFriend(friend.profile, friendQuery) &&
+          (!onlineOnly || onlineFriends.has(friend.profile.id))
+      ),
+    [friends, friendQuery, onlineOnly, onlineFriends]
   );
-
-  const handleRequestAction = async (
-    friendshipId: string,
-    action: (id: string) => Promise<boolean>,
-  ) => {
-    if (processingIds.has(friendshipId)) return;
-    setProcessingIds(prev => new Set(prev).add(friendshipId));
-    try {
-      await action(friendshipId);
-    } finally {
-      setProcessingIds(prev => {
-        const next = new Set(prev);
-        next.delete(friendshipId);
-        return next;
-      });
-    }
-  };
-
+  useEffect(() => {
+    setFriendsShown(24);
+  }, [friendQuery, onlineOnly]);
+  const availableSuggestions = suggestions.filter(
+    (person) => getFriendshipStatus(person.id) === "none"
+  );
   const openDM = async (userId: string) => {
+    if (openingRef.current) return;
+    openingRef.current = true;
+    setOpening(userId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data, error } = await supabase.rpc('get_or_create_dm_conversation', {
-        other_user_id: userId,
-      });
-      if (error) throw error;
-      navigate(`/player/messages/${data}`);
-    } catch (e) {
-      console.error(e);
-      toast.error(interpretDmError(e));
+      const id = await startConversation(userId);
+      if (id && mounted.current) navigate(`/player/messages/${id}`);
+    } finally {
+      openingRef.current = false;
+      if (mounted.current) setOpening(null);
     }
   };
-
-  const totalRequests = pendingRequests.length + sentRequests.length;
+  const findPlayers = (
+    <Button className="h-11 rounded-xl" onClick={() => setConnectOpen(true)}>
+      <UserPlus className="mr-2 h-4 w-4" />
+      Find players
+    </Button>
+  );
 
   return (
-    <div className={cn("flex flex-col", !embedded && "min-h-[calc(100vh-120px)]")}>
-      {/* Premium hero (standalone only — the Social hub provides its own). */}
+    <div
+      className={cn(
+        "flex min-w-0 flex-col",
+        !embedded && "min-h-[calc(100dvh-120px)]"
+      )}
+    >
       {!embedded && (
         <SocialHero
-          eyebrow="Community"
+          eyebrow="Your community"
           title="Friends"
           action={
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/player/community')}
-                className="h-9 w-9 text-muted-foreground"
-                aria-label="Back to Community"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <Button
-                onClick={() => setConnectOpen(true)}
-                size="sm"
-                className="h-9 rounded-full btn-premium"
-              >
-                <UserPlus className="h-4 w-4 mr-1.5" />
-                Add
-              </Button>
-            </div>
-          }
-        >
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <SocialStatTile icon={Users} label="Friends" value={String(friends.length)} />
-            <SocialStatTile icon={Radio} label="Online" value={String(onlineCount)} accent />
-            <SocialStatTile icon={UserPlus} label="Requests" value={String(totalRequests)} accent />
-          </div>
-        </SocialHero>
-      )}
-
-      <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
-
-      {error && !loading && (
-        <div className="mx-4 sm:mx-6 mt-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => void refetch()} className="font-medium underline underline-offset-2">Retry</button>
-        </div>
-      )}
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        {/* Secondary underline tabs — deliberately lighter than the primary
-            Chats/Friends switch in the Social hero so the hierarchy reads. */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 pt-1 sm:px-6">
-          <TabsList className="no-scrollbar h-auto flex-1 justify-start gap-5 overflow-x-auto rounded-none bg-transparent p-0">
-            <UnderlineTab value="friends" label="Friends" count={friends.length > 0 ? friends.length : undefined} />
-            <UnderlineTab value="requests" label="Requests" count={totalRequests > 0 ? totalRequests : undefined} accent />
-            <UnderlineTab value="suggestions" label="Suggestions" />
-          </TabsList>
-          {embedded && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setConnectOpen(true)}
-              className="-mb-px h-10 w-10 shrink-0 rounded-xl text-primary active:scale-95"
-              aria-label="Add friend"
+              className="h-11 w-11 rounded-xl"
+              onClick={() => navigate("/player/social")}
+              aria-label="Back to Social"
             >
-              <UserPlus className="h-[18px] w-[18px]" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-          )}
+          }
+        >
+          <p className="mt-1 text-sm text-muted-foreground">
+            Good games start with good company.
+          </p>
+        </SocialHero>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+        <div>
+          <p className="text-sm font-semibold">Your circle</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {loading
+              ? "Loading connections…"
+              : error && !friends.length
+              ? "Connections unavailable"
+              : `${friends.length} ${
+                  friends.length === 1 ? "friend" : "friends"
+                }`}
+            {isConnected && onlineFriends.size > 0 && (
+              <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                • {onlineFriends.size} online
+              </span>
+            )}
+          </p>
         </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {/* Friends list */}
-          <TabsContent value="friends" className="m-0 space-y-3 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-            {loading ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[68px] w-full rounded-xl" />)}
-              </div>
-            ) : friends.length === 0 ? (
-              <EmptyState
-                icon={<Users className="h-6 w-6" />}
-                title="No friends yet"
-                description="Find people you play with in Suggestions or invite them to a group."
-              />
-            ) : (
-              <>
-                {/* Search + online summary — only once the list is long enough
-                    to warrant filtering. */}
-                {friends.length >= 6 && (
+        {findPlayers}
+      </div>
+      <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
+      {error && (
+        <div className="px-4 sm:px-6 lg:px-8">
+          <LoadError message={error} retry={() => void refetch()} />
+        </div>
+      )}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex min-w-0 flex-1 flex-col"
+      >
+        <div className="border-b border-border/50 px-4 sm:px-6 lg:px-8">
+          <TabsList className="h-auto w-full justify-start gap-5 overflow-x-auto rounded-none bg-transparent p-0 sm:gap-7">
+            <FriendTab value="friends" label="Friends" />
+            <FriendTab
+              value="requests"
+              label="Requests"
+              count={pendingRequests.length}
+            />
+            <FriendTab value="suggestions" label="Discover" />
+          </TabsList>
+        </div>
+        <TabsContent
+          value="friends"
+          className="m-0 space-y-4 px-4 py-5 sm:px-6 lg:px-8"
+        >
+          {loading ? (
+            <FriendsSkeleton />
+          ) : error && !friends.length ? null : !friends.length ? (
+            <EmptyState
+              title="Make your first connection"
+              description="Find a court partner, reconnect with someone you've played, or share your player code."
+              action={findPlayers}
+            />
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1 basis-48">
                   <SearchField
                     value={friendQuery}
                     onValueChange={setFriendQuery}
-                    placeholder="Search your friends..."
-                    className="h-10 bg-muted/40 border-border/30"
+                    placeholder="Search name or @handle"
                     aria-label="Search your friends"
+                    className="h-11 rounded-xl text-base sm:text-sm"
                   />
-                )}
-                {onlineCount > 0 && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                    {onlineCount} online now
-                  </p>
-                )}
-
-                {visibleFriends.length === 0 ? (
-                  <EmptyState
-                    icon={<Users className="h-6 w-6" />}
-                    title="No matches"
-                    description="No friends match that search."
+                </div>
+                <Button
+                  variant={onlineOnly ? "secondary" : "outline"}
+                  onClick={() => setOnlineOnly((value) => !value)}
+                  aria-pressed={onlineOnly}
+                  className="h-11 rounded-xl"
+                >
+                  <span
+                    className={cn(
+                      "mr-2 h-2 w-2 rounded-full",
+                      isConnected ? "bg-emerald-500" : "bg-muted-foreground"
+                    )}
                   />
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {windowedFriends.map(f => {
-                      const isOnline = onlineFriends.has(f.profile.id);
-                      const name = f.profile.display_name || f.profile.full_name || 'Player';
+                  Online{isConnected ? ` (${onlineFriends.size})` : ""}
+                </Button>
+              </div>
+              {onlineOnly && !isConnected ? (
+                <EmptyState
+                  title="Reconnecting to live status"
+                  description="Your friends list is still available. Live status will return when your connection recovers."
+                  action={
+                    <Button
+                      variant="outline"
+                      onClick={() => setOnlineOnly(false)}
+                    >
+                      Show all friends
+                    </Button>
+                  }
+                />
+              ) : !visibleFriends.length ? (
+                <EmptyState
+                  title={
+                    friendQuery
+                      ? "No matching friends"
+                      : "No friends online right now"
+                  }
+                  description={
+                    friendQuery
+                      ? "Try another name or handle."
+                      : "You can still send a message. They’ll see it when they return."
+                  }
+                  action={
+                    <Button
+                      variant="outline"
+                      className="h-11 rounded-xl"
+                      onClick={() => {
+                        setFriendQuery("");
+                        setOnlineOnly(false);
+                      }}
+                    >
+                      Show all friends
+                    </Button>
+                  }
+                />
+              ) : (
+                <>
+                  <div className={grid}>
+                    {visibleFriends.slice(0, friendsShown).map((friend) => {
+                      const name = friendName(friend.profile);
+                      const online = onlineFriends.has(friend.profile.id);
                       return (
-                        <div key={f.id} className={glassRow}>
-                          <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                            <PresenceAvatar src={f.profile.avatar_url} name={name} online={isOnline} />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/profile/${f.profile.id}`)}
-                            className="flex-1 min-w-0 text-left"
+                        <div
+                          key={friend.id}
+                          className={cn(card, "flex items-center gap-3")}
+                        >
+                          <PersonLink
+                            profile={friend.profile}
+                            online={online}
+                            meta={
+                              online
+                                ? "Online now"
+                                : friend.profile.handle
+                                ? `@${friend.profile.handle}`
+                                : friend.profile.current_rating != null
+                                ? `${friend.profile.current_rating.toFixed(
+                                    2
+                                  )} rating`
+                                : "View profile"
+                            }
+                          />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-11 w-11 shrink-0 rounded-xl"
+                            disabled={!!opening || isPending(friend.profile.id)}
+                            onClick={() => void openDM(friend.profile.id)}
+                            aria-label={`Message ${name}`}
                           >
-                            <div className="text-sm font-medium truncate">{name}</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {personMeta(f.profile.current_rating, isOnline)}
-                            </div>
-                          </button>
-                           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl active:scale-95" onClick={() => openDM(f.profile.id)} aria-label={`Message ${name}`}>
-                            <MessageCircle className="h-4 w-4" />
+                            {opening === friend.profile.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MessageCircle className="h-4 w-4" />
+                            )}
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                 className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground active:scale-95"
+                                className="-ml-2 h-11 w-9 shrink-0 rounded-xl text-muted-foreground"
                                 aria-label={`More actions for ${name}`}
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <DropdownMenuItem onClick={() => navigate(`/profile/${f.profile.id}`)}>
-                                <User className="h-4 w-4 mr-2" /> View profile
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openDM(f.profile.id)}>
-                                <MessageCircle className="h-4 w-4 mr-2" /> Message
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-48 rounded-xl p-1.5"
+                            >
+                              <DropdownMenuItem
+                                className="min-h-11 rounded-lg"
+                                onClick={() =>
+                                  navigate(`/profile/${friend.profile.id}`)
+                                }
+                              >
+                                <User className="mr-2 h-4 w-4" />
+                                View profile
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setRemoveTarget({ friendshipId: f.id, name })}
-                                className="text-destructive focus:text-destructive"
+                                className="min-h-11 rounded-lg text-destructive focus:text-destructive"
+                                disabled={isPending(friend.profile.id)}
+                                onClick={() =>
+                                  setRemoveTarget({
+                                    id: friend.id,
+                                    userId: friend.profile.id,
+                                    name,
+                                  })
+                                }
                               >
-                                <UserMinus className="h-4 w-4 mr-2" /> Remove friend
+                                <UserMinus className="mr-2 h-4 w-4" />
+                                Remove friend
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -345,197 +388,217 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                       );
                     })}
                   </div>
-                )}
-                {visibleFriends.length > friendsShown && (
-                  <div className="flex justify-center pt-1">
+                  {visibleFriends.length > friendsShown && (
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 rounded-full text-xs text-muted-foreground"
-                      onClick={() => setFriendsShown((c) => c + FRIENDS_PAGE)}
+                      variant="outline"
+                      className="h-11 w-full rounded-xl"
+                      onClick={() => setFriendsShown((count) => count + 24)}
                     >
-                      Show more friends
+                      Show more · {visibleFriends.length - friendsShown}{" "}
+                      remaining
                     </Button>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </TabsContent>
+        <TabsContent
+          value="requests"
+          className="m-0 space-y-7 px-4 py-5 sm:px-6 lg:px-8"
+        >
+          {loading ? (
+            <FriendsSkeleton />
+          ) : error &&
+            !pendingRequests.length &&
+            !sentRequests.length ? null : (
+            <>
+              <section className="space-y-3">
+                <SectionTitle
+                  title="Received"
+                  count={pendingRequests.length}
+                  description="Accept a request to connect and start chatting."
+                />
+                {!pendingRequests.length ? (
+                  <p className="rounded-xl bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
+                    You're all caught up. New requests will appear here.
+                  </p>
+                ) : (
+                  <div className={grid}>
+                    {pendingRequests.map((request) => (
+                      <div key={request.id} className={card}>
+                        <PersonLink
+                          profile={request.profile}
+                          meta={`Wants to connect · ${requestDate(
+                            request.created_at
+                          )}`}
+                        />
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            className="h-11 flex-1 rounded-xl"
+                            disabled={isPending(request.profile.id)}
+                            onClick={() => void acceptRequest(request.id)}
+                          >
+                            <Check className="mr-1.5 h-4 w-4" />
+                            Accept
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-11 flex-1 rounded-xl"
+                            disabled={isPending(request.profile.id)}
+                            onClick={() => void declineRequest(request.id)}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Requests */}
-          <TabsContent value="requests" className="m-0 space-y-6 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Received {pendingRequests.length > 0 && `(${pendingRequests.length})`}
-              </h2>
-              {pendingRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No incoming requests.</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  <AnimatePresence initial={false}>
-                    {pendingRequests.map(r => {
-                      const name = r.profile.display_name || r.profile.full_name || 'Player';
-                      return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
-                          <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                            <PresenceAvatar
-                              src={r.profile.avatar_url}
-                              name={name}
-                              online={onlineFriends.has(r.profile.id)}
-                            />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{name}</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {onlineFriends.has(r.profile.id) ? 'Online · wants to be friends' : 'Wants to be friends'}
-                            </div>
-                          </div>
-                          <Button size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label={`Accept ${name}`}>
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label={`Decline ${name}`}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </div>
-              )}
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Sent {sentRequests.length > 0 && `(${sentRequests.length})`}
-              </h2>
-              {sentRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending sent requests.</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  <AnimatePresence initial={false}>
-                    {sentRequests.map(r => {
-                      const name = r.profile.display_name || r.profile.full_name || 'Player';
-                      return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
-                          <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                            <PresenceAvatar
-                              src={r.profile.avatar_url}
-                              name={name}
-                              online={onlineFriends.has(r.profile.id)}
-                            />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{name}</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {onlineFriends.has(r.profile.id) ? 'Online · request sent' : 'Request sent'}
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, cancelRequest)}>
-                            Cancel
-                          </Button>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </div>
-              )}
-            </section>
-          </TabsContent>
-
-          {/* Suggestions */}
-          <TabsContent value="suggestions" className="m-0 space-y-3 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-            {suggestionsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
-              </div>
-            ) : suggestions.length === 0 ? (
-              <EmptyState
-                icon={<UserPlus className="h-6 w-6" />}
-                title="No suggestions right now"
-                description="Play matches or join groups — we'll suggest people you might know."
-              />
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {suggestions.map(s => {
-                  const name = s.display_name || s.full_name || 'Player';
-                  const reason = realReason(s.reason);
-                  // Prefer a real, specific reason; otherwise fall back to the
-                  // consistent rating · presence line (never a fake reason).
-                  const meta = reason ?? personMeta(s.current_rating, onlineFriends.has(s.id));
-                  return (
-                    <div key={s.id} className={cn(glassRow, "gap-2")}>
-                      <button onClick={() => navigate(`/profile/${s.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                        <PresenceAvatar
-                          src={s.avatar_url}
-                          name={name}
-                          online={onlineFriends.has(s.id)}
-                          className="ring-1 ring-border/40"
-                          fallbackClassName="bg-primary/10 text-primary font-semibold"
+              </section>
+              <section className="space-y-3">
+                <SectionTitle
+                  title="Sent"
+                  count={sentRequests.length}
+                  description="Waiting for the other player to accept."
+                />
+                {!sentRequests.length ? (
+                  <p className="text-sm text-muted-foreground">
+                    No requests waiting for a reply.
+                  </p>
+                ) : (
+                  <div className={grid}>
+                    {sentRequests.map((request) => (
+                      <div
+                        key={request.id}
+                        className={cn(card, "flex items-center gap-3")}
+                      >
+                        <PersonLink
+                          profile={request.profile}
+                          meta={`Request sent · ${requestDate(
+                            request.created_at
+                          )}`}
                         />
-                      </button>
-                      <button onClick={() => navigate(`/profile/${s.id}`)} className="flex-1 min-w-0 text-left">
-                        <div className="text-sm font-medium truncate">{name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {meta}
-                        </div>
-                      </button>
-                      {/* Dismiss — quiet, secondary affordance. Sits to the
-                          left of the primary Add CTA so the eye lands on
-                          Add first; X is for "not interested". */}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
-                        onClick={() => dismissSuggestion(s.id)}
-                        aria-label={`Dismiss ${name}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="shrink-0"
-                        onClick={async () => {
-                          const ok = await sendFriendRequest(s.id);
-                          if (ok) refetchSuggestions();
-                        }}
-                      >
-                        <UserPlus className="h-4 w-4 mr-1.5" />
-                        Add
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
-        </div>
+                        <Button
+                          variant="ghost"
+                          className="h-11 shrink-0 rounded-xl text-muted-foreground"
+                          disabled={
+                            isPending(request.profile.id) ||
+                            request.id.startsWith("optimistic:")
+                          }
+                          onClick={() => void cancelRequest(request.id)}
+                        >
+                          {isPending(request.profile.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Cancel"
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </TabsContent>
+        <TabsContent
+          value="suggestions"
+          className="m-0 space-y-4 px-4 py-5 sm:px-6 lg:px-8"
+        >
+          <SectionTitle
+            title="People you may know"
+            description="Familiar faces from your matches, groups, and events."
+          />
+          {suggestionsLoading ? (
+            <FriendsSkeleton />
+          ) : suggestionsError ? (
+            <LoadError
+              message={suggestionsError}
+              retry={() => void refetchSuggestions()}
+            />
+          ) : !availableSuggestions.length ? (
+            <EmptyState
+              title="Find your next court partner"
+              description="Suggestions grow as you play. You can also find someone by their handle or player code."
+              action={findPlayers}
+            />
+          ) : (
+            <div className={grid}>
+              {availableSuggestions.map((person) => (
+                <div key={person.id} className={card}>
+                  <div className="flex items-center gap-2">
+                    <PersonLink
+                      profile={{ ...person, gender: null }}
+                      meta={
+                        person.reason ||
+                        (person.handle
+                          ? `@${person.handle}`
+                          : "From your community")
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 rounded-xl text-muted-foreground"
+                      disabled={isPending(person.id)}
+                      onClick={() => dismissSuggestion(person.id)}
+                      aria-label={`Hide suggestion for ${friendName(person)}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="mt-3 h-11 w-full rounded-xl"
+                    disabled={isPending(person.id) || loading || !!error}
+                    onClick={() =>
+                      void sendFriendRequest(person.id, {
+                        ...person,
+                        gender: null,
+                      })
+                    }
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add friend
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
-
-      {/* Confirm before removing a friend — single-tap removal was a
-          mobile footgun pre-fix. */}
       <AlertDialog
         open={!!removeTarget}
-        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        onOpenChange={(open) => {
+          if (!open && !isPending(removeTarget?.userId ?? ""))
+            setRemoveTarget(null);
+        }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {removeTarget?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              You'll need to send a new friend request to reconnect. Direct messages and shared groups stay.
+              Your message history and shared groups stay. You’ll need to
+              reconnect before sending new direct messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending(removeTarget?.userId ?? "")}>
+              Keep friend
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                if (removeTarget) {
-                  await removeFriend(removeTarget.friendshipId);
+              disabled={isPending(removeTarget?.userId ?? "")}
+              onClick={async (event) => {
+                event.preventDefault();
+                if (removeTarget && (await removeFriend(removeTarget.id)))
                   setRemoveTarget(null);
-                }
               }}
             >
-              Remove friend
+              {isPending(removeTarget?.userId ?? "")
+                ? "Removing…"
+                : "Remove friend"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -544,75 +607,158 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
   );
 }
 
-function UnderlineTab({
-  value, label, count, accent,
-}: { value: string; label: string; count?: number; accent?: boolean }) {
+function PersonLink({
+  profile,
+  meta,
+  online = false,
+}: {
+  profile: FriendProfile;
+  meta: string;
+  online?: boolean;
+}) {
+  const navigate = useNavigate();
+  const name = friendName(profile);
+  return (
+    <button
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={() => navigate(`/profile/${profile.id}`)}
+      aria-label={`View ${name}'s profile`}
+    >
+      <span className="relative shrink-0">
+        <Avatar className="h-11 w-11">
+          <AvatarImage src={profile.avatar_url || undefined} />
+          <AvatarFallback className="bg-muted text-sm font-medium">
+            {name
+              .split(/\s+/)
+              .map((word) => word[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        {online && (
+          <span
+            aria-label="Online"
+            className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card"
+          />
+        )}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold">{name}</span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate text-xs",
+            online
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-muted-foreground"
+          )}
+        >
+          {meta}
+        </span>
+      </span>
+    </button>
+  );
+}
+function FriendTab({
+  value,
+  label,
+  count = 0,
+}: {
+  value: string;
+  label: string;
+  count?: number;
+}) {
   return (
     <TabsTrigger
       value={value}
-      className={cn(
-         "relative h-11 px-0 rounded-none bg-transparent shadow-none text-sm font-medium text-muted-foreground",
-        "data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground",
-        "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
-        "after:opacity-0 after:transition-opacity motion-reduce:after:transition-none data-[state=active]:after:opacity-100",
-      )}
+      className="relative h-12 shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-0 text-sm text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
     >
       {label}
-      {count != null && (
-        <Badge
-          variant="secondary"
-          className={cn(
-            "ml-1.5 h-5 px-1.5 text-[10px] font-semibold",
-            accent && "bg-primary/15 text-primary",
-          )}
-        >
+      {count > 0 && (
+        <Badge className="ml-1.5 h-5 bg-primary/15 px-1.5 text-[11px] text-primary hover:bg-primary/15">
           {count}
         </Badge>
       )}
     </TabsTrigger>
   );
 }
-
-function PresenceAvatar({
-  src,
-  name,
-  online,
-  className,
-  fallbackClassName,
+function SectionTitle({
+  title,
+  count,
+  description,
 }: {
-  src: string | null;
-  name: string;
-  online: boolean;
-  className?: string;
-  fallbackClassName?: string;
+  title: string;
+  count?: number;
+  description?: string;
 }) {
   return (
-    <div className="relative">
-      <Avatar className={cn('h-11 w-11', className)}>
-        <AvatarImage src={src || undefined} />
-        <AvatarFallback className={fallbackClassName}>{initials(name)}</AvatarFallback>
-      </Avatar>
-      {online && (
-        <span
-          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card"
-          aria-label="Online"
-        />
+    <div>
+      <h2 className="text-sm font-semibold">
+        {title}
+        {count != null && (
+          <span className="ml-2 text-muted-foreground">{count}</span>
+        )}
+      </h2>
+      {description && (
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {description}
+        </p>
       )}
     </div>
   );
 }
-
-function EmptyState({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 text-center">
-      <div className="relative mb-4">
-        <div aria-hidden className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-          {icon}
-        </div>
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-border/70 px-5 py-12 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+        <Users className="h-5 w-5" />
       </div>
-      <h3 className="mb-1 text-base font-bold tracking-tight text-foreground">{title}</h3>
-      <p className="text-sm text-muted-foreground max-w-[280px]">{description}</p>
+      <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+      <p className="mb-5 mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+      {action}
     </div>
   );
+}
+function FriendsSkeleton() {
+  return (
+    <div className={grid} aria-label="Loading connections">
+      {[1, 2, 3, 4].map((id) => (
+        <Skeleton key={id} className="h-20 rounded-2xl" />
+      ))}
+    </div>
+  );
+}
+function LoadError({ message, retry }: { message: string; retry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-3"
+    >
+      <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+      <p className="flex-1 text-sm">{message}</p>
+      <Button
+        variant="ghost"
+        className="h-11 shrink-0 rounded-lg"
+        onClick={retry}
+      >
+        Retry
+      </Button>
+    </div>
+  );
+}
+function requestDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Recently"
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

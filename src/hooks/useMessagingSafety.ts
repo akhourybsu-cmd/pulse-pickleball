@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuthState } from '@/hooks/useAuthState';
 
 export type DmPrivacy = 'friends' | 'nobody';
 
@@ -20,11 +21,8 @@ export interface BlockedUserRow {
 /** Live list of users the current user has blocked, plus block/unblock helpers. */
 export function useBlockedUsers() {
   const qc = useQueryClient();
-  const [me, setMe] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
-  }, []);
+  const { user } = useAuthState();
+  const me = user?.id ?? null;
 
   const query = useQuery({
     queryKey: ['user-blocks', me],
@@ -49,21 +47,15 @@ export function useBlockedUsers() {
 
   const block = useCallback(async (userId: string, reason?: string) => {
     if (!me || userId === me) return false;
-    const { error } = await (supabase as any)
-      .from('user_blocks')
-      .insert({ blocker_id: me, blocked_id: userId, reason: reason || null });
-    if (error && !/duplicate/i.test(error.message)) {
+    const { error } = await supabase.rpc('block_player', { p_user_id: userId, p_reason: reason || undefined });
+    if (error) {
       toast.error('Failed to block user');
       return false;
     }
-    // Also remove any friendship so they stop appearing in friends/suggestions.
-    await supabase
-      .from('friendships')
-      .delete()
-      .or(`and(user_id.eq.${me},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${me})`);
     toast.success('User blocked');
     qc.invalidateQueries({ queryKey: ['user-blocks'] });
     qc.invalidateQueries({ queryKey: ['friends'] });
+    qc.invalidateQueries({ queryKey: ['friend-suggestions'] });
     return true;
   }, [me, qc]);
 
@@ -80,6 +72,8 @@ export function useBlockedUsers() {
     }
     toast.success('User unblocked');
     qc.invalidateQueries({ queryKey: ['user-blocks'] });
+    qc.invalidateQueries({ queryKey: ['friends'] });
+    qc.invalidateQueries({ queryKey: ['friend-suggestions'] });
     return true;
   }, [me, qc]);
 

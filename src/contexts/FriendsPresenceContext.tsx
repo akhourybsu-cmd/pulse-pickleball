@@ -1,6 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuthState } from '@/hooks/useAuthState';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
 
 /**
  * App-wide friends presence.
@@ -30,48 +36,73 @@ export function FriendsPresenceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuthState();
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
-  // Guard against overlapping setup/teardown on fast auth changes.
-  const activeRef = useRef(true);
+  const userId = user?.id;
 
   useEffect(() => {
-    activeRef.current = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    const init = async () => {
-      if (!user || !activeRef.current) return;
-
-      channel = supabase.channel('friends-presence', {
-        config: { presence: { key: user.id } },
-      });
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          if (!activeRef.current || !channel) return;
-          const state = channel.presenceState();
-          const online = new Set<string>();
-          Object.values(state).forEach((presences) => {
-            (presences as Array<{ user_id?: string }>).forEach((p) => {
-              if (p.user_id) online.add(p.user_id);
+    let active = true;
+    let connected = false;
+    setIsConnected(false);
+    setOnlineUserIds(new Set());
+    if (!userId) return;
+    const channel = supabase.channel("friends-presence", {
+      config: { presence: { key: userId } },
+    });
+    // Serialize visibility changes so a slow track cannot overtake untrack.
+    let presenceWork = Promise.resolve();
+    const updateVisibility = () => {
+      presenceWork = presenceWork
+        .then(async () => {
+          if (!active || !connected) return;
+          setIsConnected(navigator.onLine);
+          if (document.visibilityState === "visible" && navigator.onLine) {
+            await channel.track({
+              user_id: userId,
+              online_at: new Date().toISOString(),
             });
-          });
-          setOnlineUserIds(online);
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED' && activeRef.current && channel) {
-            setIsConnected(true);
-            await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
+          } else {
+            await channel.untrack();
           }
+        })
+        .catch(() => {
+          /* Re-subscription reconciles transient socket failures. */
         });
     };
-
-    init();
+    const offline = () => {
+      setIsConnected(false);
+      setOnlineUserIds(new Set());
+      updateVisibility();
+    };
+    channel
+      .on("presence", { event: "sync" }, () => {
+        if (!active || !connected || !navigator.onLine) return;
+        const state = channel.presenceState();
+        const online = new Set<string>();
+        Object.values(state).forEach((presences) => {
+          (presences as Array<{ user_id?: string }>).forEach((p) => {
+            if (p.user_id) online.add(p.user_id);
+          });
+        });
+        setOnlineUserIds(online);
+      })
+      .subscribe((status) => {
+        if (!active) return;
+        connected = status === "SUBSCRIBED";
+        setIsConnected(connected && navigator.onLine);
+        if (connected) updateVisibility();
+        else setOnlineUserIds(new Set());
+      });
+    document.addEventListener("visibilitychange", updateVisibility);
+    window.addEventListener("online", updateVisibility);
+    window.addEventListener("offline", offline);
 
     return () => {
-      activeRef.current = false;
-      setIsConnected(false);
-      if (channel) supabase.removeChannel(channel);
+      active = false;
+      document.removeEventListener("visibilitychange", updateVisibility);
+      window.removeEventListener("online", updateVisibility);
+      window.removeEventListener("offline", offline);
+      void supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [userId]);
 
   return (
     <FriendsPresenceContext.Provider value={{ onlineUserIds, isConnected }}>
