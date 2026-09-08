@@ -75,3 +75,5 @@ The September 8, 06:31:42 EDT `ladder-generate-next` request returned HTTP 400. 
 - No SQL migration or backend deployment is required. Existing production scores, schedules, standings, and statuses were not changed. To proceed in an intended running league, its organizer must set both the league (Overview) and selected season (Seasons → Edit) to Active and save.
 
 Reproduce browser cases with `phone.html?ladder=1` (inactive) or `index.html?ladder=1&active=1` (active with simulated server rejection) under the isolated QA server above.
+
+Frontend commit `71ea2ebc` was published successfully by [Firebase Hosting deployment #14](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34217668758). No backend deployment was triggered.
