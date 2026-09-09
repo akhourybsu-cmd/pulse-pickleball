@@ -1,184 +1,85 @@
-import { motion } from "framer-motion";
-import { Trophy, Flag } from "lucide-react";
-import type { StandingRow, FormResult } from "@/lib/leagues/standings";
-import { cn } from "@/lib/utils";
+import { useId } from 'react';
+import { Trophy, Flag } from 'lucide-react';
+import type { StandingRow, FormResult } from '@/lib/leagues/standings';
+import { cn } from '@/lib/utils';
 import { LeaguePlayerName } from './LeaguePlayerName';
 
-/**
- * Presentation-only. Callers supply pre-computed rows so the same
- * component can render on the admin StandingsTab AND on the player
- * league detail page. The `highlightTeamIds` set lets the player
- * surface subtly highlight rows for the current player's own team(s).
- */
+/** Presentation only. Keep the caller's ordering, rankings, and computed results. */
 export function StandingsTable({
-  rows,
-  highlightTeamIds,
-  emptyMessage = "No results yet.",
-  nameHeader = "Team",
-  substituteIds,
+  rows, highlightTeamIds, emptyMessage = 'No results yet.', nameHeader = 'Team', substituteIds,
 }: {
   rows: StandingRow[];
   highlightTeamIds?: Set<string>;
   emptyMessage?: string;
-  /** Column header for the name column — "Player" for individual leagues. */
   nameHeader?: string;
   substituteIds?: Set<string>;
 }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border p-6 text-center">
-        <Trophy className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-xs text-muted-foreground">{emptyMessage}</p>
-      </div>
-    );
-  }
+  const legendId = useId();
+  if (!rows.length) return <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center">
+    <Trophy className="mx-auto mb-3 h-6 w-6 text-[color:var(--lg-accent-gold)]" aria-hidden />
+    <p className="text-sm leading-relaxed text-muted-foreground">{emptyMessage}</p>
+  </div>;
 
-  return (
-    <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
-      {/* Header row */}
-      <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2 bg-muted/40 border-b border-border/50 text-xs font-semibold text-muted-foreground">
-        <div className="text-center">#</div>
-        <div>{nameHeader}</div>
-        <div className="text-right">W</div>
-        <div className="text-right">L</div>
-        <div className="text-right hidden sm:block">GP</div>
-        <div className="text-right">
-          <span className="sm:hidden">±</span>
-          <span className="hidden sm:inline">Diff</span>
-        </div>
-        <div className="text-right hidden sm:block">Win%</div>
-        <div className="text-right hidden sm:block">Form</div>
-      </div>
-
-      {/* Rows */}
-      <ul>
-        {rows.map((row, i) => {
-          const highlighted = highlightTeamIds?.has(row.teamId);
-          const rank = i + 1;
-          return (
-            <motion.li
-              key={row.teamId}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.24, delay: Math.min(i, 6) * 0.025, ease: "easeOut" }}
-              className={cn(
-                "grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem_1.5rem_2rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-1 sm:gap-3 px-2 sm:px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
-                highlighted && "bg-primary/5",
-              )}
-            >
-              <div className="text-center">
-                <RankBadge rank={rank} />
-              </div>
-              <div
-                className={cn(
-                  "min-w-0 flex items-center gap-1.5",
-                  highlighted && "text-primary font-bold",
-                )}
-                title={row.teamName}
-              >
-                <LeaguePlayerName name={row.teamName} isSub={substituteIds?.has(row.teamId)} className={cn("min-w-0 break-words leading-tight font-medium",
-                  highlighted && "font-bold",
-                )} />
-                {(row.forfeitWins > 0 || row.forfeitLosses > 0) && (
-                  <span
-                    className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 shrink-0"
-                    title={`${row.forfeitWins} forfeit win${row.forfeitWins === 1 ? "" : "s"}, ${row.forfeitLosses} forfeit loss${row.forfeitLosses === 1 ? "" : "es"}`}
-                  >
-                    <Flag className="w-3 h-3" />
-                    {row.forfeitWins + row.forfeitLosses}
-                  </span>
-                )}
-              </div>
-              <div className="text-right font-bold">{row.wins}</div>
-              <div className="text-right text-muted-foreground">{row.losses}</div>
-              <div className="text-right text-muted-foreground hidden sm:block">
-                {row.gamesPlayed}
-              </div>
-              <div
-                className={cn(
-                  "text-right tabular-nums text-sm",
-                  row.pointDiff > 0 && "text-emerald-700 dark:text-emerald-300",
-                  row.pointDiff < 0 && "text-destructive",
-                  row.pointDiff === 0 && "text-muted-foreground",
-                )}
-              >
-                {row.pointDiff > 0 ? "+" : ""}
-                {row.pointDiff}
-              </div>
-              <div className="hidden sm:block text-right text-xs text-muted-foreground">
-                {(row.winPct * 100).toFixed(0)}%
-              </div>
-              <div className="hidden sm:flex items-center justify-end gap-0.5">
-                <FormChips form={row.recentForm} />
-              </div>
-            </motion.li>
-          );
-        })}
-      </ul>
-      {rows.some(row => substituteIds?.has(row.teamId)) && <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">Sub marks players with substitute appearances in these results. Wins and points belong to the person who played.</p>}
+  return <div className="lg-standings overflow-hidden rounded-xl border border-border/70 bg-card">
+    <table className="lg-standings-table text-sm tabular-nums" aria-describedby={legendId}>
+      <caption className="sr-only">{nameHeader} standings, ordered by rank</caption>
+      <thead><tr>
+        <th scope="col" className="lg-rank-col"><span aria-hidden>#</span><span className="sr-only">Rank</span></th>
+        <th scope="col" className="lg-name-col">{nameHeader}</th>
+        <th scope="col" className="lg-record-col"><abbr title="Wins" className="no-underline">W</abbr></th>
+        <th scope="col" className="lg-record-col"><abbr title="Losses" className="no-underline">L</abbr></th>
+        <th scope="col" className="lg-extra-col"><abbr title="Games played" className="no-underline">GP</abbr></th>
+        <th scope="col" className="lg-diff-col"><abbr title="Point difference" className="no-underline">±</abbr></th>
+        <th scope="col" className="lg-extra-col lg-percent-col"><abbr title="Win percentage" className="whitespace-nowrap no-underline">Win%</abbr></th>
+        <th scope="col" className="lg-extra-col lg-form-col">Last 5</th>
+      </tr></thead>
+      <tbody>{rows.map((row, i) => {
+        const highlighted = highlightTeamIds?.has(row.teamId) ?? false;
+        const forfeits = row.forfeitWins + row.forfeitLosses;
+        return <tr key={row.teamId} data-highlighted={highlighted}>
+          <td className="lg-rank-col"><RankBadge rank={i + 1} /></td>
+          <th scope="row" className="lg-name-col">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+              <LeaguePlayerName name={row.teamName} isSub={substituteIds?.has(row.teamId)} className={cn('min-w-0 break-words text-left font-medium leading-relaxed', highlighted && 'font-bold text-[color:var(--lg-accent-gold)]')} />
+              {highlighted && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-[color:var(--lg-accent-gold)]">{nameHeader === 'Player' ? 'You' : 'Your team'}</span>}
+              {forfeits > 0 && <span className="inline-flex items-center gap-1 text-xs font-normal text-amber-700 dark:text-amber-300" aria-label={`${row.forfeitWins} forfeit wins, ${row.forfeitLosses} forfeit losses`} title={`${row.forfeitWins} forfeit wins, ${row.forfeitLosses} forfeit losses`}><Flag className="h-3 w-3" aria-hidden />{forfeits}</span>}
+            </div>
+          </th>
+          <td className="lg-record-col font-semibold">{row.wins}</td>
+          <td className="lg-record-col text-muted-foreground">{row.losses}</td>
+          <td className="lg-extra-col text-muted-foreground">{row.gamesPlayed}</td>
+          <td className={cn('lg-diff-col font-medium', row.pointDiff > 0 ? 'text-emerald-700 dark:text-emerald-300' : row.pointDiff < 0 ? 'text-destructive' : 'text-muted-foreground')}>{row.pointDiff > 0 ? '+' : ''}{row.pointDiff}</td>
+          <td className="lg-extra-col lg-percent-col text-xs text-muted-foreground">{(row.winPct * 100).toFixed(0)}%</td>
+          <td className="lg-extra-col lg-form-col"><FormChips form={row.recentForm} /></td>
+        </tr>;
+      })}</tbody>
+    </table>
+    <div id={legendId} className="space-y-1 border-t border-border/70 bg-muted/20 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+      <p>W · Wins <span aria-hidden className="px-1">/</span> L · Losses <span aria-hidden className="px-1">/</span> ± · Point difference</p>
+      {rows.some(row => substituteIds?.has(row.teamId)) && <p>Sub marks players with substitute appearances in these results. Wins and points belong to the person who played.</p>}
     </div>
-  );
+  </div>;
 }
 
-/**
- * Last-N form chips. Empty pips fill from the right so a team with
- * only 2 results renders 3 empty + 2 filled — the trailing edge is
- * "most recent". Uses per-outcome tone: W = emerald, L = destructive,
- * FW = amber, FL = amber (dim), — no result → muted skeleton pip.
- */
+const FORM_LABELS: Record<FormResult, string> = { W: 'Win', L: 'Loss', FW: 'Won by forfeit', FL: 'Lost by forfeit' };
 function FormChips({ form }: { form: FormResult[] }) {
-  const CAP = 5;
-  const padded: (FormResult | null)[] = [
-    ...Array<FormResult | null>(Math.max(0, CAP - form.length)).fill(null),
-    ...form,
-  ];
-  return (
-    <>
-      {padded.map((r, i) => (
-        <span
-          key={i}
-          className={cn(
-            "inline-flex items-center justify-center h-4 w-4 rounded text-[9px] font-bold leading-none",
-            r === "W"  && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
-            r === "L"  && "bg-destructive/15 text-destructive",
-            r === "FW" && "bg-amber-500/20 text-amber-600",
-            r === "FL" && "bg-amber-500/10 text-amber-500/70",
-            r === null && "bg-muted/60 text-muted-foreground/40",
-          )}
-          title={
-            r === "W"  ? "Win" :
-            r === "L"  ? "Loss" :
-            r === "FW" ? "Won by forfeit" :
-            r === "FL" ? "Lost by forfeit" :
-            "No result yet"
-          }
-        >
-          {r === null ? "·" : r === "FW" ? "F" : r === "FL" ? "F" : r}
-        </span>
-      ))}
-    </>
-  );
+  const recent = form.slice(-5);
+  const padded: (FormResult | null)[] = [...Array<null>(Math.max(0, 5 - recent.length)).fill(null), ...recent];
+  return <div className="flex justify-end gap-1" aria-label={recent.length ? `Recent form, oldest to newest: ${recent.map(r => FORM_LABELS[r]).join(', ')}` : 'No results yet'}>
+    {padded.map((r, i) => <span key={i} aria-hidden title={r ? FORM_LABELS[r] : 'No result yet'} className={cn(
+      'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-semibold',
+      r === 'W' && 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+      r === 'L' && 'bg-destructive/10 text-destructive',
+      (r === 'FW' || r === 'FL') && 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      r === null && 'bg-muted text-muted-foreground',
+    )}>{r === null ? '·' : r === 'FW' || r === 'FL' ? 'F' : r}</span>)}
+  </div>;
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  // Top 3 get subtle gold / silver / bronze tint. Everyone else is
-  // muted text.
-  const tone =
-    rank === 1
-      ? "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/40"
-      : rank === 2
-      ? "bg-muted text-foreground/80 ring-1 ring-border"
-      : rank === 3
-      ? "bg-orange-500/15 text-orange-600 dark:text-orange-300 ring-1 ring-orange-500/30"
-      : "bg-muted text-muted-foreground";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center justify-center rounded-full text-[11px] font-bold h-6 w-6",
-        tone,
-      )}
-    >
-      {rank}
-    </span>
-  );
+  return <span className={cn('inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold',
+    rank === 1 ? 'bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/30' :
+    rank === 2 ? 'bg-muted text-foreground ring-1 ring-border' :
+    rank === 3 ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300' : 'text-muted-foreground',
+  )}>{rank}</span>;
 }

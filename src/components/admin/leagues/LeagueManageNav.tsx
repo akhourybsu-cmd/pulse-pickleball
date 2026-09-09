@@ -10,43 +10,45 @@ export type { ManageTab };
 
 /** One ordered, type-filtered navigation model for the desktop rail and mobile drawer. */
 export function LeagueManageNav({
-  active, onChange, tabs = MANAGE_TABS,
+  active, onChange, tabs = MANAGE_TABS, actionCount,
 }: {
   active: ManageTab;
   onChange: (tab: ManageTab) => void;
   tabs?: TabDef[];
+  actionCount?: number;
 }) {
   if (!tabs.length) return null;
   return (
     <>
       <aside className="hidden lg:block w-[248px] shrink-0 sticky top-24 self-start">
-        <nav aria-label="League management" className="max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-3 space-y-4">
+        <nav aria-label="League management" className="lg-scroll-area max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 space-y-3">
           {GROUPS.map(group => {
             const items = tabs.filter(tab => tab.group === group);
             if (!items.length) return null;
             return (
               <div key={group} className="space-y-1">
                 <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground">{group}</p>
-                {items.map(tab => <SectionButton key={tab.key} tab={tab} active={active === tab.key} onSelect={() => onChange(tab.key)} />)}
+                {items.map(tab => <SectionButton key={tab.key} tab={tab} active={active === tab.key} compact count={tab.key === 'actions' ? actionCount : undefined} onSelect={() => onChange(tab.key)} />)}
               </div>
             );
           })}
         </nav>
       </aside>
-      <MobileSectionPicker active={active} onChange={onChange} tabs={tabs} />
+      <MobileSectionPicker active={active} onChange={onChange} tabs={tabs} actionCount={actionCount} />
     </>
   );
 }
 
-function SectionButton({ tab, active, onSelect }: { tab: TabDef; active: boolean; onSelect: () => void }) {
+function SectionButton({ tab, active, onSelect, compact = false, count }: { tab: TabDef; active: boolean; onSelect: () => void; compact?: boolean; count?: number }) {
   const Icon = tab.icon;
   return (
     <button
       type="button"
       aria-current={active ? "page" : undefined}
+      title={tab.hint}
       onClick={onSelect}
       className={cn(
-        "flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
+        "flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         active ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent text-foreground hover:border-border hover:bg-muted/60 active:bg-muted",
       )}
@@ -54,17 +56,18 @@ function SectionButton({ tab, active, onSelect }: { tab: TabDef; active: boolean
       <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold leading-snug">{tab.label}</span>
-        <span className="mt-0.5 block text-xs font-normal leading-relaxed text-muted-foreground">{tab.hint}</span>
+        <span className={cn(compact && !active ? 'sr-only' : 'mt-1 block text-xs font-normal leading-relaxed text-muted-foreground')}>{tab.hint}</span>
       </span>
-      {active && <Check className="h-4 w-4 shrink-0 text-[color:var(--lg-accent-gold)]" aria-hidden />}
+      {count != null && count > 0 ? <span aria-label={`${count} pending items`} className="lg-count shrink-0">{count > 99 ? '99+' : count}</span> : active && <Check className="h-4 w-4 shrink-0 text-[color:var(--lg-accent-gold)]" aria-hidden />}
     </button>
   );
 }
 
-function MobileSectionPicker({ active, onChange, tabs }: {
+function MobileSectionPicker({ active, onChange, tabs, actionCount }: {
   active: ManageTab;
   onChange: (tab: ManageTab) => void;
   tabs: TabDef[];
+  actionCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const activeDef = tabs.find(tab => tab.key === active) ?? tabs[0];
@@ -105,7 +108,7 @@ function MobileSectionPicker({ active, onChange, tabs }: {
                 <div key={group} className="space-y-1">
                   <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground">{group}</p>
                   {items.map(tab => (
-                    <SectionButton key={tab.key} tab={tab} active={active === tab.key} onSelect={() => { onChange(tab.key); setOpen(false); }} />
+                    <SectionButton key={tab.key} tab={tab} active={active === tab.key} count={tab.key === 'actions' ? actionCount : undefined} onSelect={() => { onChange(tab.key); setOpen(false); }} />
                   ))}
                 </div>
               );

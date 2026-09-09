@@ -671,6 +671,7 @@ All colors MUST be HSL.
   --lg-eyebrow-bg: hsl(var(--primary) / 0.08);
   --lg-eyebrow-ring: hsl(var(--primary) / 0.25);
   color: var(--lg-text);
+  min-width: 0;
   font-family: 'Manrope', 'Inter', system-ui, sans-serif;
   line-height: 1.5;
 }
@@ -715,6 +716,59 @@ All colors MUST be HSL.
 }
 :is(.league-scope, .league-menu) .lg-card-hover:hover {
   background-color: var(--lg-surface-2);
+}
+
+/* Local refinements only: never change other tabs' controls or Android assets. */
+:is(.league-scope, .league-menu) .lg-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+:is(.league-scope, .league-menu) .lg-field {
+  background-color: var(--lg-surface);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.025);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+:is(.league-scope, .league-menu) .lg-field:focus-visible {
+  border-color: hsl(var(--ring));
+}
+:is(.league-scope, .league-menu) .lg-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.625rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--lg-eyebrow-bg);
+  color: var(--lg-accent-gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Respond to the actual table width, including the manager's narrower workspace. */
+.lg-standings { container-type: inline-size; }
+.lg-standings-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+.lg-standings-table :is(th, td) { padding: 0.875rem 0.375rem; text-align: right; overflow-wrap: anywhere; }
+.lg-standings-table .lg-rank-col { width: 2.25rem; text-align: center; }
+.lg-standings-table .lg-name-col { text-align: left; }
+.lg-standings-table .lg-record-col { width: 2rem; }
+.lg-standings-table .lg-diff-col { width: 2.875rem; }
+.lg-standings-table .lg-extra-col { display: none; }
+.lg-standings-table thead { background: hsl(var(--muted) / 0.5); color: var(--lg-text-dim); font-size: 0.75rem; }
+.lg-standings-table th { font-weight: 600; }
+.lg-standings-table tbody tr { border-top: 1px solid hsl(var(--border) / 0.65); }
+.lg-standings-table tbody tr[data-highlighted="true"] { background: hsl(var(--primary) / 0.08); }
+@container (min-width: 620px) {
+  .lg-standings-table :is(th, td) { padding: 0.875rem 0.5rem; }
+  .lg-standings-table .lg-rank-col { width: 3rem; }
+  .lg-standings-table .lg-record-col { width: 2.75rem; }
+  .lg-standings-table .lg-diff-col { width: 3.25rem; }
+  .lg-standings-table .lg-extra-col { display: table-cell; width: 3rem; }
+  .lg-standings-table .lg-percent-col { width: 4rem; }
+  .lg-standings-table .lg-form-col { width: 7.75rem; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .lg-standings-table tbody tr:hover { background: hsl(var(--muted) / 0.5); }
 }
 
 :is(.league-scope, .league-menu) .lg-hero-gradient {

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
+import { ArrowRight, CheckCircle2, RefreshCw, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { useLeagueActions } from '@/hooks/useLeagueActions';
 import { leagueErrorMessage } from '@/lib/leagues/data';
-import { resolvePlayerName } from '@/lib/matchDisplay';
+import { leaguePlayerName } from '@/lib/leagues/playerIdentity';
 import type { SubRequest } from '@/lib/leagues/subRequests';
 import type { ManageTab } from './leagueManageTabs';
 import { ReviewSubRequestDialog } from './SubRequestInbox';
@@ -18,19 +18,19 @@ export function ActionsTab({ query, onNavigate, onMutated, onReview }: {
   if (query.isPending) return <TabSkeleton lines={3} />;
   if (query.error) return <EmptyState title="Couldn't check pending actions" desc={leagueErrorMessage(query.error)} action={{ label: 'Retry actions', onClick: () => void query.refetch() }} />;
   const data = query.data;
-  const nameOf = (id: string) => data.profiles[id] ? resolvePlayerName(data.profiles[id]) : 'Player';
+  const nameOf = (id: string) => leaguePlayerName(data.profiles[id]);
   return <div className="space-y-4">
     <section className="lg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0"><h2 className="text-xl font-semibold">Needs attention</h2><p className="mt-1 text-sm text-muted-foreground">Across every season. Resolve player requests and keep results moving.</p></div>
-        <Button variant="outline" className="h-11 rounded-xl" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className={`h-4 w-4 ${query.isFetching ? 'animate-spin' : ''}`} />Refresh</Button>
+        <Button variant="outline" className="h-11 rounded-xl border" aria-label="Refresh pending league actions" aria-busy={query.isFetching || undefined} disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className={`h-4 w-4 ${query.isFetching ? 'motion-safe:animate-spin' : ''}`} />Refresh</Button>
       </div>
       {!data.seasons.length ? <div className="mt-4 space-y-3"><p className="text-sm">Start with a season, then add your players and schedule play.</p><Button className="h-11 rounded-xl" onClick={() => onNavigate('seasons')}>Set up your first season<ArrowRight className="h-4 w-4" /></Button></div> : !data.total ? <div className="mt-5 flex gap-3 rounded-xl bg-muted/50 p-4"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" /><div><p className="font-semibold">You’re all caught up</p><p className="text-sm text-muted-foreground">No pending substitute requests, season player approvals, disputes or submitted scores.</p></div></div> : <p role="status" className="mt-4 text-sm font-semibold">{data.total} item{data.total === 1 ? '' : 's'} to review</p>}
     </section>
-    {!!data.requests.length && <section className="lg-card p-4 sm:p-5"><h3 className="mb-1 text-base font-semibold">Substitute requests · {data.requests.length}</h3><p className="mb-3 text-sm text-muted-foreground">Oldest first. Resolve these before drawing the requested week.</p><ul className="divide-y divide-border">
+    {!!data.requests.length && <section className="lg-card p-4 sm:p-5"><h3 className="mb-2 flex flex-wrap items-center gap-2 text-base font-semibold"><LifeBuoy className="h-4 w-4 text-[color:var(--lg-accent-gold)]" aria-hidden />Substitute requests <span className="lg-count">{data.requests.length}</span></h3><p className="mb-3 text-sm text-muted-foreground">Oldest first. Resolve these before drawing the requested week.</p><ul className="divide-y divide-border">
       {data.requests.map(request => <li key={request.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0"><p className="break-words font-semibold">{nameOf(request.player_id)}</p><p className="mt-1 text-sm text-muted-foreground">{data.seasons.find(s => s.id === request.season_id)?.name ?? 'Season'} · Week {request.week_number}</p>{request.note && <p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm">{request.note}</p>}</div>
-        <Button className="h-11 shrink-0 rounded-xl" onClick={() => onReview ? onReview(request) : setReview(request)}>Review request<ArrowRight className="h-4 w-4" /></Button>
+        <div className="min-w-0"><p className="break-words font-semibold">{nameOf(request.player_id)}</p><p className="mt-1 break-words text-sm text-muted-foreground">{data.seasons.find(s => s.id === request.season_id)?.name ?? 'Season'} · Week {request.week_number}</p>{request.note && <p className="mt-3 line-clamp-2 whitespace-pre-wrap break-words border-l-2 border-primary/40 pl-3 text-sm leading-relaxed text-muted-foreground">{request.note}</p>}</div>
+        <Button className="min-h-11 h-auto max-w-full shrink-0 whitespace-normal rounded-xl" aria-label={`Review substitute request for ${nameOf(request.player_id)}`} onClick={() => onReview ? onReview(request) : setReview(request)}>Review request<ArrowRight className="h-4 w-4" /></Button>
       </li>)}
     </ul></section>}
     {data.seasons.map(season => {

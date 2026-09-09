@@ -13,7 +13,8 @@ import type { LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
-import { LeaguePlayerName, LeagueMatchSide } from '@/components/leagues/LeaguePlayerName';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
+import { LeagueScorecard } from '@/components/leagues/LeagueScorecard';
 import { leaguePlayerName, substitutePlayerIds, matchPlayerLabel } from '@/lib/leagues/playerIdentity';
 import type { LeagueMatchSubstitution } from '@/lib/leagues/types';
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
@@ -23,7 +24,7 @@ import { LadderMyWeekCard } from "@/components/leagues/LadderMyWeekCard";
 import { LadderHowItWorks } from "@/components/leagues/LadderHowItWorks";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
-import { LeagueScope, LeagueHero, LgSectionHeader } from "@/components/leagues/_leagueScope";
+import { LeagueScope, LeagueHero, LgSectionHeader, LeaguePageSkeleton } from "@/components/leagues/_leagueScope";
 import { cn } from "@/lib/utils";
 import { SeasonSelect } from '@/components/admin/leagues/_shared';
 import { leagueErrorMessage } from '@/lib/leagues/data';
@@ -117,13 +118,7 @@ export default function PlayerLeagueDetail() {
     : standings.find((r) => r.teamId === currentUserId);
 
   if (loading) {
-    return (
-      <LeagueScope>
-        <div className="container mx-auto px-4 py-10 text-center text-[color:var(--lg-text-dim)] text-sm">
-          Loading…
-        </div>
-      </LeagueScope>
-    );
+    return <LeaguePageSkeleton />;
   }
 
   if (error) {
@@ -334,7 +329,7 @@ export default function PlayerLeagueDetail() {
                       <LeaguePlayerName name={tm.display_name} isSub={tm.role === 'substitute'} />
                       {tm.is_me && <span className="text-[color:var(--lg-text-dim)] font-normal"> · you</span>}
                     </div>
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)]">
+                    <div className="text-xs capitalize text-[color:var(--lg-text-dim)]">
                       {tm.is_captain ? "Captain" : tm.role}
                       {myTeams.length > 1 && ` · ${tm.team_name}`}
                     </div>
@@ -459,17 +454,13 @@ function MatchRow({
     id ? matchPlayerLabel(match, id, leaguePlayerName(playersById[id]), substitutions) : null;
   const aName = sideName(teamA?.name ?? null, [nameOf(match.player_a_id), nameOf(match.player_b_id)]);
   const bName = sideName(teamB?.name ?? null, [nameOf(match.player_c_id), nameOf(match.player_d_id)]);
-  const scoreShown =
-    match.team_a_score !== null && match.team_b_score !== null;
-  const aWon = scoreShown && (match.team_a_score ?? 0) > (match.team_b_score ?? 0);
-  const bWon = scoreShown && (match.team_b_score ?? 0) > (match.team_a_score ?? 0);
 
   return (
-    <li className="rounded-lg border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[color:var(--lg-surface)] border-b border-[color:var(--lg-border)]">
-        <div className="flex items-center gap-2 flex-wrap text-[10px] text-[color:var(--lg-text-dim)]">
+    <li className="rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface)] overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-muted/30 border-b border-[color:var(--lg-border)]">
+        <div className="flex items-center gap-x-3 gap-y-2 flex-wrap text-xs text-[color:var(--lg-text-dim)]">
           <span className={cn(
-            "font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded",
+            "font-semibold px-2 py-1 rounded-md",
             MATCH_STATUS_TONE[match.status],
           )}>{MATCH_STATUS_LABEL[match.status] ?? match.status.replace("_", " ")}</span>
           {match.scheduled_time && (
@@ -484,39 +475,7 @@ function MatchRow({
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3">
-        <div className={cn(
-          "text-sm min-w-0 break-words text-right",
-          aWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
-        )}>
-          <LeagueMatchSide match={match} ids={[match.player_a_id, match.player_b_id]} nameOf={id => leaguePlayerName(playersById[id])} substitutions={substitutions} teamName={teamA?.name} />
-        </div>
-        <div className="flex items-center gap-2 lg-num">
-          {scoreShown ? (
-            <>
-              <span className={cn(
-                "text-2xl leading-none",
-                aWon ? "text-[color:var(--lg-accent-gold)]" : "text-[color:var(--lg-text-dim)]",
-              )}>{match.team_a_score}</span>
-              <span className="text-[color:var(--lg-text-dim)] text-xs font-bold">–</span>
-              <span className={cn(
-                "text-2xl leading-none",
-                bWon ? "text-[color:var(--lg-accent-gold)]" : "text-[color:var(--lg-text-dim)]",
-              )}>{match.team_b_score}</span>
-            </>
-          ) : (
-            <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)] font-bold">
-              vs
-            </span>
-          )}
-        </div>
-        <div className={cn(
-          "text-sm min-w-0 break-words text-left",
-          bWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
-        )}>
-          <LeagueMatchSide match={match} ids={[match.player_c_id, match.player_d_id]} nameOf={id => leaguePlayerName(playersById[id])} substitutions={substitutions} teamName={teamB?.name} />
-        </div>
-      </div>
+      <LeagueScorecard match={match} nameOf={id => leaguePlayerName(playersById[id])} substitutions={substitutions} teamAName={teamA?.name} teamBName={teamB?.name} />
 
       {currentUserId && (
         <div className="px-3 pb-3 pt-1 border-t border-[color:var(--lg-border)] bg-[color:var(--lg-surface)]/60">

@@ -23,7 +23,8 @@ import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
 import { LeagueSetupChecklist } from "@/components/admin/leagues/LeagueSetupChecklist";
 import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
 import { type ManageTab, MANAGE_TABS, visibleManageTabs } from "@/components/admin/leagues/leagueManageTabs";
-import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
+import { LeagueScope, LeagueHero, LeaguePageSkeleton } from "@/components/leagues/_leagueScope";
+import { cn } from '@/lib/utils';
 import { DUR, EASE_OUT, contentVariants } from "@/lib/leagues/motion";
 import { useLeagueLiveRefresh } from '@/hooks/useLeagueLiveRefresh';
 import { useQueryClient } from '@tanstack/react-query';
@@ -229,11 +230,7 @@ export default function AdminLeagueDetail() {
       : <AdminLayout title={title}>{children}</AdminLayout>;
 
   if (loading) {
-    return shell(
-      <div className="container mx-auto px-4 py-10 text-center text-muted-foreground text-sm">
-        Loading…
-      </div>
-    );
+    return shell(<LeaguePageSkeleton manager />);
   }
 
   if (loadError) {
@@ -313,8 +310,8 @@ export default function AdminLeagueDetail() {
         />}
 
         {activeTab !== 'actions' && <button type="button" onClick={() => setActiveTab('actions')}
-          className="flex min-h-14 w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm">
-          <span className="font-semibold">{actions.error ? 'Pending actions could not be checked' : actions.isPending ? 'Checking pending actions…' : `${actions.data?.total ?? 0} items need attention`}</span>
+          className={cn('flex min-h-14 w-full flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-left text-sm transition-colors hover:bg-muted/60', actions.data?.total ? 'border-primary/30 bg-primary/10' : 'border-border bg-card')}>
+          <span className="font-semibold">{actions.error ? 'Pending actions could not be checked' : actions.isPending ? 'Checking pending actions…' : actions.data?.total ? `${actions.data.total} ${actions.data.total === 1 ? 'item needs' : 'items need'} attention` : 'You’re all caught up'}</span>
           <span>Open Actions →</span>
         </button>}
 
@@ -330,7 +327,7 @@ export default function AdminLeagueDetail() {
 
         {/* Rail + workspace */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <LeagueManageNav active={activeTab} onChange={setActiveTab} tabs={visibleTabs} />
+          <LeagueManageNav active={activeTab} onChange={setActiveTab} tabs={visibleTabs} actionCount={actions.error ? undefined : actions.data?.total} />
 
           <div className="flex-1 min-w-0 space-y-3">
             {activeTabDef && (

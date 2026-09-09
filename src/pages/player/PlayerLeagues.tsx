@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays, Trophy, ChevronRight, MapPin,
@@ -22,6 +22,7 @@ import { toast } from "sonner";
 const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
+  const reducedMotion = useReducedMotion();
   const navigate = useNavigate();
   const { rows, archivedRows, loading, error } = useMyLeagues();
   const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
@@ -80,7 +81,7 @@ export default function PlayerLeagues() {
         <p className="mt-2 max-w-md text-sm leading-snug text-muted-foreground">
           Own, play in, and manage your leagues from one place.
         </p>
-        <div className="mt-3 grid max-w-sm grid-cols-2 gap-2">
+        <div className="mt-4 grid max-w-sm grid-cols-1 min-[360px]:grid-cols-2 gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -104,9 +105,10 @@ export default function PlayerLeagues() {
       <div className="container mx-auto max-w-[1400px] space-y-7 px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
 
         {loading ? (
-          <div className="grid animate-pulse gap-3 lg:grid-cols-2">
-            <div className="h-24 rounded-2xl bg-muted/50" />
-            <div className="h-24 rounded-2xl bg-muted/50" />
+          <div role="status" className="grid gap-3 lg:grid-cols-2">
+            <span className="sr-only">Loading your leagues…</span>
+            <div aria-hidden className="h-32 rounded-2xl bg-muted/50 motion-safe:animate-pulse" />
+            <div aria-hidden className="h-32 rounded-2xl bg-muted/50 motion-safe:animate-pulse" />
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -119,10 +121,10 @@ export default function PlayerLeagues() {
             description="Start your own league—your first one is free—or join an existing season with an invite code."
             action={
               <div className="flex flex-wrap justify-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)} className="h-10 rounded-full">
+                <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)} className="min-h-11 h-auto max-w-full whitespace-normal rounded-xl">
                   <KeyRound className="mr-1.5 h-4 w-4" />Enter invite code
                 </Button>
-                <Button size="sm" onClick={() => setCreateOpen(true)} className="h-10 rounded-full btn-premium">
+                <Button size="sm" onClick={() => setCreateOpen(true)} className="min-h-11 h-auto max-w-full whitespace-normal rounded-xl btn-premium">
                   <Plus className="mr-1.5 h-4 w-4" />Create a league
                 </Button>
               </div>
@@ -137,9 +139,9 @@ export default function PlayerLeagues() {
                 return (
                   <motion.li
                     key={membership.id}
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22, delay: i * 0.04, ease: "easeOut" }}
+                    transition={{ duration: reducedMotion ? 0 : 0.22, delay: reducedMotion ? 0 : Math.min(i, 5) * 0.04, ease: "easeOut" }}
                   >
                     <button
                       type="button"
@@ -153,37 +155,37 @@ export default function PlayerLeagues() {
                             "w-1.5 shrink-0",
                             isOrganizer
                               ? "bg-gradient-to-b from-[color:var(--lg-gold)]/40 via-[color:var(--lg-gold)] to-[color:var(--lg-gold)]/40"
-                              : "bg-gradient-to-b from-[color:var(--lg-gold)]/40 via-[color:var(--lg-gold)] to-[color:var(--lg-gold)]/40",
+                              : "bg-gradient-to-b from-[color:var(--lg-emerald)]/20 via-[color:var(--lg-emerald)]/60 to-[color:var(--lg-emerald)]/20",
                           )}
                           aria-hidden
                         />
-                        <div className="flex-1 min-w-0 p-3.5 flex items-center gap-3">
+                        <div className="flex-1 min-w-0 p-4 sm:p-5 flex items-start gap-3">
                           <LeagueRowIcon type={league.league_type} isOrganizer={isOrganizer} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-base truncate text-[color:var(--lg-text)]">
+                              <span className="font-semibold text-base break-words leading-snug text-[color:var(--lg-text)]">
                                 {league.name}
                               </span>
                               <LeagueTypeChip type={league.league_type} />
                             </div>
                             <div className="text-xs text-[color:var(--lg-text-dim)] mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               {season && (
-                                <span className="inline-flex items-center gap-1">
-                                  <CalendarDays className="w-3 h-3" />
-                                  {season.name}
+                                <span className="inline-flex min-w-0 items-center gap-1.5">
+                                  <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="min-w-0 break-words">{season.name}</span>
                                 </span>
                               )}
                               {isOrganizer && (
-                                <span className="uppercase tracking-[0.14em] text-[10px] font-bold text-[color:var(--lg-accent-gold)] bg-[color:var(--lg-gold)]/10 px-1.5 py-0.5 rounded ring-1 ring-[color:var(--lg-gold)]/30">
+                                <span className="capitalize text-xs font-semibold text-[color:var(--lg-accent-gold)] bg-[color:var(--lg-gold)]/10 px-2 py-0.5 rounded-md">
                                   {membership.role}
                                 </span>
                               )}
-                              {isSubstitute && !isOrganizer && <span className="text-[10px] font-semibold uppercase tracking-wide">Substitute</span>}
+                              {isSubstitute && !isOrganizer && <span className="text-xs font-semibold italic">Substitute</span>}
                             </div>
                             {league.location && (
-                              <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-1 inline-flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {league.location}
+                              <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 flex min-w-0 items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                <span className="min-w-0 break-words">{league.location}</span>
                               </div>
                             )}
                           </div>
@@ -202,7 +204,7 @@ export default function PlayerLeagues() {
         {!browseLoading && browseable.length > 0 && (
           <section className="pt-2">
             <SectionHeader label="Discover" />
-            <p className="text-[11px] text-[color:var(--lg-text-dim)] -mt-1.5 mb-3">
+            <p className="text-sm text-[color:var(--lg-text-dim)] -mt-1 mb-4">
               Public leagues you can join with an invite code
             </p>
 
@@ -221,7 +223,7 @@ export default function PlayerLeagues() {
                     >
                       <div className="flex items-stretch">
                         <div className="w-1.5 shrink-0 bg-gradient-to-b from-transparent via-[color:var(--lg-gold)] to-transparent opacity-60" aria-hidden />
-                        <div className="flex-1 min-w-0 p-3.5 flex items-start gap-3">
+                        <div className="flex-1 min-w-0 p-4 sm:p-5 flex items-start gap-3">
                           <LeagueRowIcon type={league.league_type} isOrganizer={false} />
                           <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
                             <div className="min-w-0 flex-1">
@@ -232,15 +234,15 @@ export default function PlayerLeagues() {
                                 <LeagueTypeChip type={league.league_type} />
                               </div>
                               {league.description && (
-                                <p className="text-xs text-[color:var(--lg-text-dim)] mt-1 line-clamp-2">
+                                <p className="text-sm leading-relaxed break-words text-[color:var(--lg-text-dim)] mt-2 line-clamp-2">
                                   {league.description}
                                 </p>
                               )}
-                              <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
                                 {league.location && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" />
-                                    {league.location}
+                                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="min-w-0 break-words">{league.location}</span>
                                   </span>
                                 )}
                                 <span className="inline-flex items-center gap-1 text-[color:var(--lg-accent-gold)] font-medium">
@@ -268,6 +270,7 @@ export default function PlayerLeagues() {
               type="button"
               onClick={() => setShowArchived((v) => !v)}
               aria-expanded={showArchived}
+              aria-controls="archived-league-list"
               className="flex min-h-[64px] w-full items-center gap-3 px-3.5 py-3 text-left lg-card transition-[transform,border-color] hover:border-[color:var(--lg-gold)]/40 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
             >
               <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--lg-text-dim)]/10 text-[color:var(--lg-text-dim)] ring-1 ring-inset ring-[color:var(--lg-border)]">
@@ -277,7 +280,7 @@ export default function PlayerLeagues() {
                 <div className="text-sm font-semibold text-[color:var(--lg-text)]">
                   Archived leagues
                 </div>
-                <div className="text-[11px] text-[color:var(--lg-text-dim)]">
+                <div className="text-xs text-[color:var(--lg-text-dim)]">
                   {archivedRows.length} finished {archivedRows.length === 1 ? "league" : "leagues"} — kept for records
                 </div>
               </div>
@@ -290,13 +293,13 @@ export default function PlayerLeagues() {
             </button>
 
             {showArchived && (
-              <ul className="mt-2 grid gap-3 lg:grid-cols-2">
+              <ul id="archived-league-list" className="mt-3 grid gap-3 lg:grid-cols-2">
                 {archivedRows.map(({ league, membership, season }) => (
                   <li key={membership.id}>
                     <button
                       type="button"
                       onClick={() => navigate(`/player/leagues/${league.id}`)}
-                      className="group w-full text-left lg-card lg-card-hover opacity-75 hover:opacity-100 transition-all overflow-hidden"
+                      className="group w-full text-left lg-card lg-card-hover transition-colors overflow-hidden"
                     >
                       <div className="flex items-center gap-3 p-3.5">
                         <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--lg-text-dim)]/10 text-[color:var(--lg-text-dim)] ring-1 ring-inset ring-[color:var(--lg-border)]">
@@ -310,9 +313,9 @@ export default function PlayerLeagues() {
                             <LeagueTypeChip type={league.league_type} />
                           </div>
                           {season && (
-                            <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-0.5 inline-flex items-center gap-1">
-                              <CalendarDays className="w-3 h-3" />
-                              {season.name}
+                            <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 flex min-w-0 items-center gap-1.5">
+                              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                              <span className="min-w-0 break-words">{season.name}</span>
                             </div>
                           )}
                         </div>

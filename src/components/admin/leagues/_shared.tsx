@@ -258,9 +258,9 @@ export function SeasonSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label="Season" className={cn("h-11 min-w-0 rounded-lg bg-card", className)}>
+      <SelectTrigger aria-label="Season" className={cn("lg-field h-12 min-w-0 rounded-xl bg-card", className)}>
         <span className="!flex items-center gap-2 min-w-0 flex-1 text-left">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-[color:var(--lg-accent-gold)] shrink-0">
             <CalendarDays className="w-3.5 h-3.5" />
           </span>
           <span className="hidden sm:inline text-xs font-medium text-muted-foreground shrink-0">
@@ -270,9 +270,9 @@ export function SeasonSelect({
           <span className="min-w-0 truncate font-semibold"><SelectValue /></span>
         </span>
       </SelectTrigger>
-      <SelectContent className="league-menu">
+      <SelectContent className="league-menu max-w-[calc(100vw-2rem)] rounded-xl">
         {seasons.map((s) => (
-          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+          <SelectItem key={s.id} value={s.id} className="break-words pr-4">{s.name}</SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -303,19 +303,19 @@ export function EmptyState({
   action?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-10 text-center">
+    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-8 text-center sm:p-10">
       {icon && (
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary ring-1 ring-primary/15">
           {icon}
         </div>
       )}
       <p className="text-sm font-semibold">{title}</p>
-      {desc && <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">{desc}</p>}
+      {desc && <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto break-words leading-relaxed">{desc}</p>}
       {action && (
         <Button
           size="sm"
           onClick={action.onClick}
-          className="mt-4"
+          className="mt-5 min-h-11 h-auto max-w-full whitespace-normal rounded-xl"
         >
           {action.label}
         </Button>
@@ -327,9 +327,10 @@ export function EmptyState({
 /** Cheap skeleton for tab loading — no shadcn Skeleton dep needed. */
 export function TabSkeleton({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="space-y-2 animate-pulse">
+    <div role="status" className="space-y-3">
+      <span className="sr-only">Loading league section…</span>
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="h-16 rounded-lg bg-muted/50" />
+        <div key={i} aria-hidden className="h-20 rounded-xl bg-muted/50 motion-safe:animate-pulse" />
       ))}
     </div>
   );
@@ -441,22 +442,25 @@ export function FormShell({
         </DialogHeader>
       </div>
 
-      <div className="px-5 pb-4 pt-4 space-y-4 min-h-0 overflow-y-auto overscroll-contain">
+      <div className="lg-scroll-area px-5 pb-5 pt-5 space-y-5 min-h-0 overflow-y-auto overscroll-contain">
         {children}
       </div>
 
       <DialogFooter className="shrink-0 p-4 pt-3 border-t border-border/60 bg-muted/20 gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
         {secondary}
         <Button
+          type="button"
           onClick={() => void onPrimary()}
+          aria-busy={primaryLoading || undefined}
           disabled={primaryDisabled || primaryLoading}
           className={cn(
-            "h-12 min-h-12 shrink-0 rounded-xl font-semibold text-sm shadow-sm",
-            "active:scale-[0.98] transition-transform",
+            "relative h-auto min-h-12 min-w-0 shrink-0 whitespace-normal rounded-xl font-semibold text-sm shadow-sm",
+            "motion-safe:active:scale-[0.98] transition-colors",
             secondary ? "flex-1" : "w-full",
           )}
         >
-          {primaryLoading ? "Saving…" : primaryLabel}
+          <span className={cn(primaryLoading && 'opacity-0')}>{primaryLabel}</span>
+          {primaryLoading && <span aria-hidden className="absolute inset-0 flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 motion-safe:animate-spin" />Saving…</span>}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -465,7 +469,7 @@ export function FormShell({
 
 /**
  * Section within a FormShell — group related fields under a small
- * uppercase eyebrow label with a divider hairline. Makes long forms
+ * sentence-case heading with a divider hairline. Makes long forms
  * scannable instead of a flat wall of inputs.
  */
 export function FormSection({
@@ -477,19 +481,15 @@ export function FormSection({
 }) {
   return (
     <section className="space-y-2.5">
-      {/* Chalk-line section header — accent tick + uppercase label +
-          a fading rule, like a stat sheet heading. */}
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="h-3.5 w-1 rounded-full bg-primary shrink-0" aria-hidden />
-        <span className="text-sm font-semibold text-foreground">
+      <div className="border-b border-border/70 pb-2.5">
+        <h3 className="text-sm font-semibold text-foreground">
           {label}
-        </span>
+        </h3>
         {hint && (
-          <span className="text-xs text-muted-foreground font-normal">
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground font-normal">
             {hint}
-          </span>
+          </p>
         )}
-        <span className="flex-1 h-px bg-gradient-to-r from-border/70 to-transparent" aria-hidden />
       </div>
       <div className="space-y-3">{children}</div>
     </section>
@@ -512,13 +512,15 @@ export function FormRow({
 }) {
   const generatedId = useId();
   const fieldId = htmlFor ?? (isValidElement<{ id?: string }>(children) ? children.props.id : undefined) ?? generatedId;
-  let labeledChild = isValidElement<{ id?: string }>(children)
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const describedBy = (existing?: string) => [existing, hintId].filter(Boolean).join(' ') || undefined;
+  let labeledChild = isValidElement<{ id?: string; 'aria-describedby'?: string }>(children)
     && (children.type === Input || children.type === Textarea)
-    ? cloneElement(children, { id: children.props.id ?? fieldId }) : children;
+    ? cloneElement(children, { id: children.props.id ?? fieldId, 'aria-describedby': describedBy(children.props['aria-describedby']) }) : children;
   if (isValidElement<{ children?: ReactNode }>(children) && children.type === Select) {
     labeledChild = cloneElement(children, { children: Children.map(children.props.children, child =>
-      isValidElement<{ id?: string; 'aria-labelledby'?: string }>(child) && child.type === SelectTrigger
-        ? cloneElement(child, { id: fieldId, 'aria-labelledby': `${fieldId}-label` }) : child,
+      isValidElement<{ id?: string; 'aria-labelledby'?: string; 'aria-describedby'?: string }>(child) && child.type === SelectTrigger
+        ? cloneElement(child, { id: fieldId, 'aria-labelledby': `${fieldId}-label`, 'aria-describedby': describedBy(child.props['aria-describedby']) }) : child,
     ) });
   }
   if (isValidElement<{ ariaLabel?: string }>(children) && children.type === SegmentedControl) {
@@ -538,7 +540,7 @@ export function FormRow({
       </Label>
       {labeledChild}
       {hint && (
-        <p className="text-xs text-muted-foreground leading-relaxed">
+        <p id={hintId} className="text-xs text-muted-foreground leading-relaxed">
           {hint}
         </p>
       )}
@@ -551,7 +553,7 @@ export function FormRow({
  * a consistent touch-target on mobile. Import + apply to `<Input>`,
  * `<SelectTrigger>`, `<Textarea>`.
  */
-export const FIELD_H = "h-11 min-w-0 max-w-full rounded-xl text-base sm:text-sm";
+export const FIELD_H = "lg-field h-11 min-w-0 max-w-full rounded-xl text-base sm:text-sm";
 
 /* ------------------------------------------------------------------ */
 /*  Sporty choice controls — replace plain dropdowns for small enum

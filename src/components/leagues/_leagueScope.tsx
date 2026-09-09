@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { League, LeagueType } from "@/lib/leagues/types";
@@ -64,11 +64,10 @@ export function LeagueHero({
   rightSlot?: ReactNode;
   eyebrow?: ReactNode;
 }) {
-  const typeMeta = LEAGUE_TYPE_META[league.league_type];
-  const TypeIcon = typeMeta.icon;
+  const reducedMotion = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="relative min-w-0 overflow-hidden rounded-2xl border border-[color:var(--lg-border)] lg-hero-gradient"
@@ -100,25 +99,25 @@ export function LeagueHero({
         </h1>
 
         {league.description && (
-          <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-2xl leading-relaxed">
+          <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-2xl break-words leading-relaxed">
             {league.description}
           </p>
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[color:var(--lg-hero-text-dim)]">
           {league.location && (
-            <span className="inline-flex min-w-0 items-center gap-1.5 break-words">
+            <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              {league.location}
+              <span className="min-w-0 break-words">{league.location}</span>
             </span>
           )}
           {managerName && (
-            <span className="inline-flex items-center gap-1.5">
-              <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-hero-gold)]" />
+            <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+              <UserCircle2 className="w-3.5 h-3.5 shrink-0 text-[color:var(--lg-hero-gold)]" />
               <span className="text-xs font-semibold text-[color:var(--lg-hero-gold)]">
                 Manager
               </span>
-              <span className="text-[color:var(--lg-hero-text)] font-medium">{managerName}</span>
+              <span className="min-w-0 break-words text-[color:var(--lg-hero-text)] font-medium">{managerName}</span>
             </span>
           )}
         </div>
@@ -128,7 +127,11 @@ export function LeagueHero({
           <div
             className={cn(
               "mt-5 grid gap-x-4 gap-y-1 border-t border-white/15",
-              kpis.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4",
+              kpis.length === 3
+                ? typeof kpis[0].value === 'string' && !/^[\d–.%+-]+$/.test(kpis[0].value)
+                  ? "grid-cols-2 sm:grid-cols-3 [&>div:first-child]:col-span-2 sm:[&>div:first-child]:col-span-1"
+                  : "grid-cols-3"
+                : "grid-cols-2 sm:grid-cols-4",
             )}
           >
             {kpis.map((k) => (
@@ -209,7 +212,7 @@ export function LeagueStatusPill({ status, onHero = false }: { status: League["s
 }
 
 /**
- * Uppercase gold section header with a hairline underline. Replaces
+ * Quiet section header with an icon well and a hairline underline. Replaces
  * the ad-hoc `text-xs font-bold uppercase text-muted-foreground` blocks
  * on player pages so section rhythm matches the organizer console.
  */
@@ -228,7 +231,7 @@ export function LgSectionHeader({
     <div className={cn("mb-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="inline-flex min-w-0 items-center gap-2 text-base font-semibold leading-snug text-[color:var(--lg-text)]">
-          {Icon && <Icon className="w-3.5 h-3.5" />}
+          {Icon && <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-accent-gold)]"><Icon className="h-4 w-4" aria-hidden /></span>}
           {children}
         </h2>
         {action && <div className="shrink-0">{action}</div>}
@@ -236,5 +239,22 @@ export function LgSectionHeader({
       <div className="mt-1.5 h-px lg-hairline" aria-hidden />
     </div>
   );
+}
+
+/** Stable page footprint while league data loads; no fake interactive controls. */
+export function LeaguePageSkeleton({ manager = false }: { manager?: boolean }) {
+  return <LeagueScope>
+    <div role="status" aria-label={manager ? 'Loading league management' : 'Loading league'} className={cn('mx-auto space-y-5 px-4 py-5 sm:px-6', manager ? 'max-w-[1440px] lg:px-8' : 'max-w-5xl')}>
+      <span className="sr-only">Loading your league…</span>
+      <div aria-hidden className="space-y-5 motion-safe:animate-pulse">
+        <div className="h-11 w-28 rounded-xl bg-muted" />
+        <div className="lg-card space-y-4 p-6"><div className="h-5 w-28 rounded bg-muted" /><div className="h-8 w-3/4 rounded bg-muted" /><div className="h-4 w-1/2 rounded bg-muted" /><div className="h-16 rounded-xl bg-muted/60" /></div>
+        <div className={cn('grid gap-5', manager && 'lg:grid-cols-[248px_minmax(0,1fr)]')}>
+          {manager && <div className="hidden h-96 rounded-2xl bg-muted/60 lg:block" />}
+          <div className="space-y-3">{[0,1,2].map(i => <div key={i} className="lg-card h-24" />)}</div>
+        </div>
+      </div>
+    </div>
+  </LeagueScope>;
 }
 

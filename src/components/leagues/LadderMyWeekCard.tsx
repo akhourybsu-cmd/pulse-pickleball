@@ -95,11 +95,11 @@ export function LadderMyWeekCard({
       </LgSectionHeader>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)]">
+        <div className="min-w-0 rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] p-3">
+          <div className="text-xs font-medium text-[color:var(--lg-text-dim)]">
             Ladder position
           </div>
-          <div className="text-2xl font-black tabular-nums text-[color:var(--lg-text)] flex items-baseline gap-1.5">
+          <div className="lg-num text-2xl text-[color:var(--lg-text)] flex items-baseline gap-1.5">
             {position ?? (currentUserId && subIds.has(currentUserId) ? 'Sub' : '—')}
             {ladderSize > 0 && position && (
               <span className="text-xs font-semibold text-[color:var(--lg-text-dim)]">
@@ -108,7 +108,7 @@ export function LadderMyWeekCard({
             )}
           </div>
           {movement && (
-            <div className={`mt-0.5 flex items-center gap-1 text-[11px] font-semibold ${moveTone}`}>
+            <div className={`mt-0.5 flex items-center gap-1 text-xs font-semibold ${moveTone}`}>
               <MoveIcon className="w-3 h-3" />
               {movement.direction === "stay"
                 ? "Held your spot last round"
@@ -117,15 +117,15 @@ export function LadderMyWeekCard({
           )}
         </div>
 
-        <div className="rounded-lg border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)]">
+        <div className="min-w-0 rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] p-3">
+          <div className="text-xs font-medium text-[color:var(--lg-text-dim)]">
             Your court
           </div>
-          <div className="text-2xl font-black tabular-nums text-[color:var(--lg-text)]">
+          <div className="lg-num text-2xl text-[color:var(--lg-text)]">
             {group?.court_number ?? "—"}
           </div>
           {group && group.wave > 1 && (
-            <div className="mt-0.5 text-[11px] text-[color:var(--lg-text-dim)]">
+            <div className="mt-0.5 text-xs text-[color:var(--lg-text-dim)]">
               Wave {group.wave}
             </div>
           )}
@@ -135,8 +135,8 @@ export function LadderMyWeekCard({
       {group ? (
         <div>
           {!!coveringForMe.length && <p className="mb-3 text-sm">Covering your games: {coveringForMe.map(id => <LeaguePlayerName key={id} name={names[id] ?? 'Name unavailable'} isSub />)}. Your ladder position is retained.</p>}
-          <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)] mb-1.5">
-            Your foursome — you rotate partners across three games
+          <div className="text-xs font-medium text-[color:var(--lg-text-dim)] mb-1.5">
+            Players on your court — partners rotate across games
           </div>
           <ul className="flex flex-wrap gap-1.5">
             {participants.map((pid) => (
@@ -144,8 +144,8 @@ export function LadderMyWeekCard({
                 key={pid}
                 className={
                   pid === currentUserId
-                    ? "rounded-full px-2.5 py-1 text-xs font-bold bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/40"
-                    : "rounded-full px-2.5 py-1 text-xs font-medium bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text)] border border-[color:var(--lg-border)]"
+                    ? "max-w-full break-words rounded-xl px-3 py-2 text-sm font-bold bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/40"
+                    : "max-w-full break-words rounded-xl px-3 py-2 text-sm font-medium bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text)] border border-[color:var(--lg-border)]"
                 }
               >
                 <LeaguePlayerName name={names[pid] ?? 'Name unavailable'} isSub={subIds.has(pid)} />{pid === currentUserId && ' · you'}
