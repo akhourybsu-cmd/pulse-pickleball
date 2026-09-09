@@ -36,6 +36,8 @@ import {
 import type { VenueRole } from '@/components/venue/VenueStaffContext';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import type { Group } from '@/hooks/useGroups';
+import { useVenueModules } from '@/hooks/useVenueModules';
+import { VenueModulesPanel } from '@/components/venue/VenueModulesPanel';
 
 export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -44,6 +46,7 @@ export default function GroupManage() {
   const queryClient = useQueryClient();
   
   const [group, setGroup] = useState<Group | null>(null);
+  const modules = useVenueModules(group?.venue_id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -373,7 +376,8 @@ export default function GroupManage() {
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
-          { value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' as const },
+          { value: 'modules', label: 'Features & verification', shortLabel: 'Features', description: 'Free essentials and optional facility tools', icon: ShieldCheck, section: 'venue' as const },
+          ...((modules.booking || modules.facility) ? [{ value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' as const }] : []),
           { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' as const },
         ]
       : []),
@@ -401,7 +405,7 @@ export default function GroupManage() {
       {showsVenueAdmin && canManageFacility && group.venue_id && (
         <>
           <TabsContent value="overview" className="mt-0">
-            <VenueAdminOverview
+            {modules.booking || modules.facility ? <VenueAdminOverview
               venueId={group.venue_id}
               groupId={groupId!}
               venueName={group.venue?.name ?? group.name}
@@ -416,8 +420,9 @@ export default function GroupManage() {
                   `/player/community/group/${groupId}${tab === 'home' ? '' : `?tab=${tab}`}`,
                 )
               }
-            />
+            /> : <VenueModulesPanel venueId={group.venue_id} verified={!!group.is_venue_verified} canVerify={isOwner || venueRole === 'owner'} />}
           </TabsContent>
+          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={!!group.is_venue_verified} canVerify={isOwner || venueRole === 'owner'} /></TabsContent>
           <TabsContent value="profile" className="mt-0">
             <AdminVenueTab
               groupId={groupId!}
@@ -427,12 +432,12 @@ export default function GroupManage() {
             />
           </TabsContent>
           <TabsContent value="facility" className="mt-0">
-            <AdminVenueTab
+            {(modules.booking || modules.facility) && <AdminVenueTab
               groupId={groupId!}
               venueId={group.venue_id}
               isVerified={!!group.is_venue_verified}
               mode="facility"
-            />
+            />}
           </TabsContent>
           <TabsContent value="staff" className="mt-0">
             <VenueStaffSection
@@ -532,7 +537,7 @@ export default function GroupManage() {
         onBack={() => navigate(`/player/community/group/${groupId}`)}
         onViewVenue={() => navigate(`/player/community/group/${groupId}`)}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
-        showOperations={canManageFacility}
+        showOperations={canManageFacility && modules.facility}
       >
         {panels}
       </VenueAdminShell>

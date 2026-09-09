@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import { Plus, QrCode, Users, Search, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +22,8 @@ type View = 'mine' | 'explore';
  * everything fits on mobile.
  */
 export default function Community() {
-  const { myGroups, publicGroups, loading, createGroup, createVenueCommunity, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
+  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
+  const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [view, setView] = useState<View>('mine');
@@ -40,7 +43,7 @@ export default function Community() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <PlayerSegmentedControl
             value={view}
-            onValueChange={setView}
+            onValueChange={value => setView(value as View)}
             options={[
               { value: 'mine', label: 'Mine', icon: Users, count: myGroups.length },
               { value: 'explore', label: 'Explore', icon: Compass, count: joinableCount, accentCount: true },
@@ -73,6 +76,7 @@ export default function Community() {
       </SocialHero>
 
       <div className="container mx-auto min-h-0 max-w-[1400px] flex-1 px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+        {isVenueCommunitiesEnabled() && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4"><div><p className="text-sm font-semibold">Run a venue?</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Start with a free, verified community. Add facility tools when you need them.</p></div><Button variant="outline" asChild className="h-11 rounded-xl"><Link to="/player/venue-requests">Venue requests</Link></Button></div>}
         {loading ? (
           <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -141,7 +145,7 @@ export default function Community() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSubmit={createGroup}
-        onSubmitVenue={createVenueCommunity}
+        onRequestVenue={() => navigate('/player/venue-requests?new=1')}
       />
       <JoinGroupDialog
         open={joinDialogOpen}

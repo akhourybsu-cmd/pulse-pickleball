@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
+import { useVenueModules } from '@/hooks/useVenueModules';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
 import { parseVenueHours } from '@/lib/venues/hours';
@@ -31,6 +32,7 @@ export default function VenueOps() {
   const navigate = useNavigate();
 
   const { group, membership, loading } = useGroupDetail(groupId);
+  const modules = useVenueModules(group?.venue_id);
   const [day, setDay] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -69,7 +71,7 @@ export default function VenueOps() {
   // run the day without being handed moderator powers over the conversation.
   // The group owner keeps access as a floor so a venue can never lock itself
   // out of its own operations.
-  const isStaff = canOperateVenue(venueRole) || membership?.role === 'owner';
+  const isStaff = modules.facility && (canOperateVenue(venueRole) || membership?.role === 'owner');
   const canCreateProgram =
     venueRole === 'owner' ||
     venueRole === 'manager' ||
@@ -89,10 +91,10 @@ export default function VenueOps() {
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
     // Wait for the role to resolve, or a staff member is bounced on first paint.
-    if (!loading && !roleLoading && group && !isStaff) {
+    if (!loading && !roleLoading && !modules.loading && group && !isStaff) {
       navigate(`/player/community/group/${groupId}`, { replace: true });
     }
-  }, [loading, roleLoading, group, isStaff, groupId, navigate]);
+  }, [loading, roleLoading, modules.loading, group, isStaff, groupId, navigate]);
 
   if (loading || roleLoading || !group || !isStaff) {
     return (
@@ -110,6 +112,13 @@ export default function VenueOps() {
   const bookCourt = courts.find((c) => c.id === bookCourtId) ?? null;
   const dayStart = grid[0]?.slots[0]?.start ?? null;
   const dayEnd = grid[0]?.slots[grid[0].slots.length - 1]?.end ?? null;
+  const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
+    if (modules.booking) {
+      setBookCourtId(courtId); setBookStart(start); setBookMinutes(minutes);
+    } else if (canCreateProgram) {
+      setEventCourtIds([courtId]); setEventStart(start); setEventEnd(new Date(start.getTime() + minutes * 60_000)); setEventCreatorOpen(true);
+    }
+  };
 
   return (
     <>
@@ -127,6 +136,7 @@ export default function VenueOps() {
         accent={chrome?.accentHex}
         canManage={canManageVenue(venueRole) || membership?.role === 'owner'}
         canCreateProgram={canCreateProgram}
+        canScheduleSlot={modules.booking || canCreateProgram}
         onBack={() => navigate(`/player/community/group/${groupId}`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
         onCloseCourt={() => {
@@ -148,17 +158,12 @@ export default function VenueOps() {
           } else {
             const nextSlot = grid.find((c) => c.court.id === courtId)?.slots.find((s) => s.bookable);
             if (nextSlot) {
-              setBookCourtId(courtId);
-              setBookStart(nextSlot.start);
+              openSlot(courtId, nextSlot.start);
             }
           }
         }}
         onDayChange={setDay}
-        onPickSlot={(courtId, start, minutes) => {
-          setBookCourtId(courtId);
-          setBookStart(start);
-          setBookMinutes(minutes || null);
-        }}
+        onPickSlot={openSlot}
         onPickSession={setSessionId}
         onFillGap={(gap) => {
           if (canCreateProgram) {
@@ -167,8 +172,7 @@ export default function VenueOps() {
             setEventCourtIds([gap.court.id]);
             setEventCreatorOpen(true);
           } else {
-            setBookCourtId(gap.court.id);
-            setBookStart(gap.start);
+            openSlot(gap.court.id, gap.start);
           }
         }}
       />

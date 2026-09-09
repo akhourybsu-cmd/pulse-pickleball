@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
+import { useVenueModules } from '@/hooks/useVenueModules';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
 import { parseVenueHours } from '@/lib/venues/hours';
@@ -239,7 +240,8 @@ export default function VenueCommunity() {
   // running the courts and moderating the conversation are different jobs.
   const isCommunityAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
   const canManageSettings = canManageVenue(venueRole) || isCommunityAdmin;
-  const isOperator = canOperateVenue(venueRole) || membership?.role === 'owner';
+  const modules = useVenueModules(group?.venue_id);
+  const isOperator = modules.facility && (canOperateVenue(venueRole) || membership?.role === 'owner');
   const chatEnabled = groupSettings.chat_enabled;
   const canSendChat = isCommunityAdmin || (isMember && groupSettings.allow_member_chat);
   const canCreatePosts = isCommunityAdmin || (isMember && groupSettings.allow_member_posts);
@@ -248,24 +250,24 @@ export default function VenueCommunity() {
   // the same setting that gates every other kind of session, so a venue has one
   // switch to think about rather than two.
   const canBook =
-    isMember &&
+    modules.booking && isMember &&
     (canManageSettings ||
       (group?.settings as Record<string, unknown> | null)?.allow_member_events !== false);
-  const canCreateProgram =
+  const canCreateProgram = modules.facility && (
     venueRole === 'owner' ||
     venueRole === 'manager' ||
     venueRole === 'organizer' ||
-    membership?.role === 'owner';
+    membership?.role === 'owner');
 
   useEffect(() => {
     const invalidChat = activeTab === 'chat' && !chatEnabled;
-    const invalidBook = activeTab === 'book' && !hasCourts;
+    const invalidBook = activeTab === 'book' && (!hasCourts || !modules.booking);
     if (!invalidChat && !invalidBook) return;
     setActiveTab('home');
     const next = new URLSearchParams(searchParams);
     next.delete('tab');
     setSearchParams(next, { replace: true });
-  }, [activeTab, chatEnabled, hasCourts, searchParams, setSearchParams]);
+  }, [activeTab, chatEnabled, hasCourts, modules.booking, searchParams, setSearchParams]);
 
   if (loading || !group) {
     return (
@@ -371,7 +373,7 @@ export default function VenueCommunity() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        <VenueMobileTabs hasCourts={hasCourts} chatEnabled={chatEnabled} />
+        <VenueMobileTabs hasCourts={hasCourts && modules.booking} chatEnabled={chatEnabled} />
 
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
@@ -382,7 +384,7 @@ export default function VenueCommunity() {
               )}
             >
               <VenueDesktopNavigation
-                hasCourts={hasCourts}
+                hasCourts={hasCourts && modules.booking}
                 chatEnabled={chatEnabled}
                 isOperator={isOperator}
                 isAdmin={canManageSettings}
@@ -401,7 +403,7 @@ export default function VenueCommunity() {
                     websiteUrl={venue?.website_url ?? null}
                     hours={hours}
                     nextUp={nextUp}
-                    hasCourts={hasCourts}
+                    hasCourts={hasCourts && modules.booking}
                     freeNow={freeNow}
                     courtCount={courts.length}
                     accent={chrome?.accentHex}
@@ -410,7 +412,7 @@ export default function VenueCommunity() {
                   />
                 </TabsContent>
 
-                {hasCourts && (
+                {hasCourts && modules.booking && (
                   <TabsContent value="book" className="mt-0">
                     {closed && (
                       <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
@@ -548,6 +550,7 @@ export default function VenueCommunity() {
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                     </button>
 
+                    <Button variant="outline" className="h-11 w-full rounded-xl" onClick={() => navigate(`/player/community/group/${groupId}?view=community&tab=more`)}>Community tools · Files, invites & notifications</Button>
                     <GroupMembers
                       groupId={groupId!}
                       isAdmin={isCommunityAdmin}
@@ -563,7 +566,7 @@ export default function VenueCommunity() {
                 <VenueDesktopRail
                   venueName={venue?.name ?? group.name}
                   activeTab={activeTab}
-                  hasCourts={hasCourts}
+                  hasCourts={hasCourts && modules.booking}
                   freeNow={freeNow}
                   courtCount={courts.length}
                   memberCount={group.member_count ?? 0}

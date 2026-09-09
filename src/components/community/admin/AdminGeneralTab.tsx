@@ -275,11 +275,12 @@ export function AdminGeneralTab({
 
           <div className="space-y-1.5">
             <Label htmlFor="group-type">Group Type</Label>
-            <Select value={type} onValueChange={onTypeChange}>
+            <Select value={type} onValueChange={onTypeChange} disabled={type === 'venue_official'}>
               <SelectTrigger id="group-type">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
+                {type === 'venue_official' && <SelectItem value="venue_official">Official venue community</SelectItem>}
                 {GROUP_TYPES.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     <div className="flex flex-col">

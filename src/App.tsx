@@ -150,6 +150,8 @@ const QRCheckIn = lazy(() => import("./pages/QRCheckIn"));
 const Kiosk = lazy(() => import("./pages/Kiosk"));
 const AdminManage = lazy(() => import("./pages/AdminManage"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminVenueRequests = lazy(() => import("./pages/AdminVenueRequests"));
+const VenueRequests = lazy(() => import("./pages/player/VenueRequests"));
 const AdminArchive = lazy(() => import("./pages/admin/AdminArchive"));
 const AdminPlayers = lazy(() => import("./pages/AdminPlayers"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
@@ -543,6 +545,7 @@ const AppContent = () => {
                 so the header + bottom nav don't remount. */}
             <Route element={<CommunityTransitionOutlet />}>
               <Route path="community" element={<Community />} />
+              <Route path="venue-requests" element={<VenueRequests />} />
               <Route path="community/group/:groupId" element={<GroupRoute />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
               <Route path="community/group/:groupId/ops" element={<VenueOps />} />
@@ -568,6 +571,7 @@ const AppContent = () => {
           <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />          <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
           <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+          <Route path="/admin/venue-requests" element={<AdminGuard><AdminVenueRequests /></AdminGuard>} />
           <Route path="/archive" element={<AdminGuard><AdminArchive /></AdminGuard>} />
           <Route path="/admin/session" element={<AdminGuard><AdminSession /></AdminGuard>} />
           <Route path="/admin/pairing" element={<AdminGuard><AdminPairing /></AdminGuard>} />

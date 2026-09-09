@@ -46,6 +46,7 @@ export interface OpsDashboardProps {
   accent?: string | null;
   canManage: boolean;
   canCreateProgram: boolean;
+  canScheduleSlot?: boolean;
   onBack: () => void;
   onSettings: () => void;
   onCloseCourt: () => void;
@@ -71,6 +72,7 @@ export function OpsDashboard({
   accent,
   canManage,
   canCreateProgram,
+  canScheduleSlot = true,
   onBack,
   onSettings,
   onCloseCourt,
@@ -217,7 +219,7 @@ export function OpsDashboard({
                   grid={grid}
                   day={day}
                   loading={loading}
-                  canBook
+                  canBook={canScheduleSlot}
                   accent={accent}
                   onDayChange={onDayChange}
                   onPickSlot={onPickSlot}

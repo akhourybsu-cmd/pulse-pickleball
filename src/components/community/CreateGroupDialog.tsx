@@ -27,20 +27,7 @@ interface CreateGroupDialogProps {
     join_method: Group['join_method'];
     venue_id?: string;
   }) => Promise<Group | null>;
-  /**
-   * Venue path. Separate from onSubmit because creating a venue community also
-   * creates the venue itself and the caller's staff record — one RPC, not an
-   * ordinary group insert.
-   */
-  onSubmitVenue?: (data: {
-    name: string;
-    description?: string;
-    visibility: Group['visibility'];
-    join_method: Group['join_method'];
-    venue_type?: string;
-    city?: string;
-    state?: string;
-  }) => Promise<Group | null>;
+  onRequestVenue?: () => void;
 }
 
 const baseGroupTypes = [
@@ -51,14 +38,13 @@ const baseGroupTypes = [
 ] as const;
 
 /**
- * The venue option. Picking it creates a real venue record alongside the
- * community, which is what unlocks branding, courts and reservations — so it
- * reads as an identity claim ("I run a venue"), not just another group type.
+ * The venue option starts a separate ownership request. It must never submit
+ * an ordinary group insert or bypass the PULSE review step.
  */
 const venueGroupType = {
   value: 'venue_official',
   label: "I'm a venue",
-  description: 'Facility, club or court owner \u2014 branded community with courts & programming',
+  description: 'Request a free venue community. Ownership review required; facility tools are optional.',
   icon: Store,
 } as const;
 
@@ -74,8 +60,8 @@ const joinOptions = [
   { value: 'invite_only', label: 'Invite Only', description: 'Manual invitations only', icon: Mail },
 ] as const;
 
-export function CreateGroupDialog({ open, onOpenChange, onSubmit, onSubmitVenue }: CreateGroupDialogProps) {
-  const venuesEnabled = isVenueCommunitiesEnabled() && !!onSubmitVenue;
+export function CreateGroupDialog({ open, onOpenChange, onSubmit, onRequestVenue }: CreateGroupDialogProps) {
+  const venuesEnabled = isVenueCommunitiesEnabled() && !!onRequestVenue;
   const groupTypes = venuesEnabled ? [...baseGroupTypes, venueGroupType] : baseGroupTypes;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -95,18 +81,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit, onSubmitVenue 
     if (!formData.name.trim()) return;
 
     setLoading(true);
-    // A venue creates its venue record and staff row too, so it takes the RPC
-    // path rather than a plain group insert.
-    const result = isVenue && onSubmitVenue
-      ? await onSubmitVenue({
-          name: formData.name,
-          description: formData.description,
-          visibility: formData.visibility,
-          join_method: formData.join_method,
-          city: formData.city,
-          state: formData.state,
-        })
-      : await onSubmit(formData);
+    const result = await onSubmit(formData);
     setLoading(false);
 
     if (result) {
@@ -184,7 +159,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit, onSubmitVenue 
             </RadioGroup>
 
             <div className="flex justify-end pt-4">
-              <Button onClick={() => setStep(2)}>Continue</Button>
+              <Button onClick={() => { if (isVenue && onRequestVenue) { handleClose(); onRequestVenue(); } else setStep(2); }}>Continue</Button>
             </div>
           </div>
         )}

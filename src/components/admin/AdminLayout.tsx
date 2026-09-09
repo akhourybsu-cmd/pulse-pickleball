@@ -34,6 +34,7 @@ const NAV: AdminNavItem[] = [
   { href: "/kiosk",                     label: "Kiosk Display",    icon: LayoutDashboard, group: "live" },
 
   { href: "/admin/players",             label: "Players",          icon: Users,         group: "manage" },
+  { href: "/admin/venue-requests",      label: "Venue requests",   icon: Shield,        group: "manage" },
   { href: "/admin/matches",             label: "Matches",          icon: FileText,      group: "manage" },
   { href: "/player/leagues",            label: "Leagues",          icon: ListChecks,    group: "manage" },
   { href: "/admin/badges",              label: "Badges",           icon: Trophy,        group: "manage" },

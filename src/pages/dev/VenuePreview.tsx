@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { VenueApplicationForm } from '@/components/venue/VenueApplicationForm';
+import { EMPTY_VENUE_APPLICATION } from '@/lib/venues/venueApplications';
 import {
   AlertTriangle,
   Camera,
@@ -248,6 +250,9 @@ const FEED_POSTS: GroupPost[] = [
 export default function VenuePreview() {
   const [day, setDay] = useState(DAY);
   const previewMode = new URLSearchParams(window.location.search).get('preview');
+  if (previewMode === 'request') return <div className="mx-auto min-h-screen max-w-3xl p-4 font-sans sm:p-8"><VenueApplicationForm busy={false}
+    initial={{ ...EMPTY_VENUE_APPLICATION, name: 'ELEVENO Pickleball', address: '100 Court Street', city: 'Bridgewater', state: 'MA', website: 'https://example.com', contact_name: 'Venue owner', contact_email: 'owner@example.com', contact_phone: '555-555-5555', evidence: 'The business registry lists me as the owner. Please confirm using the independently listed venue phone number.' }}
+    onSubmit={() => window.alert('Preview only — no request submitted.')} onCancel={() => window.history.back()} /></div>;
 
   if (previewMode === 'phone') {
     return (

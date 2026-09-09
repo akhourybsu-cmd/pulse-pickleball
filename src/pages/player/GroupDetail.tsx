@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar,
   FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell,
-  Lock, Globe, Eye
+  Lock, Globe, Eye, BadgeCheck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -49,8 +49,9 @@ export default function GroupDetail() {
   // Honor a ?tab= deep link (e.g. from the Social hub's group-chats list) so
   // a shared/tapped link can open straight to Chat, Events, etc.
   const [searchParams] = useSearchParams();
-  const initialTab = ['feed', 'events', 'chat', 'members', 'more'].includes(searchParams.get('tab') || '')
-    ? (searchParams.get('tab') as string)
+  const requestedTab = ['events', 'play'].includes(searchParams.get('tab') || '') ? 'schedule' : searchParams.get('tab');
+  const initialTab = ['feed', 'schedule', 'chat', 'members', 'more'].includes(requestedTab || '')
+    ? requestedTab!
     : 'feed';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -366,7 +367,7 @@ export default function GroupDetail() {
             <img
               src={group.venue.logo_url}
               alt=""
-              className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/20"
+              className={cn('h-9 w-9 shrink-0 rounded-lg ring-1 ring-white/20', group.venue.logo_image_fit === 'contain' ? 'object-contain' : 'object-cover')}
             />
           )}
 
@@ -374,6 +375,7 @@ export default function GroupDetail() {
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
+            {isVenueGroup && <p className="mt-1 flex items-center gap-1 text-xs text-white/75">{group.is_venue_verified && <BadgeCheck className="h-3.5 w-3.5" />}{group.is_venue_verified ? 'Verified venue community' : 'Venue community'}</p>}
             {isVenueGroup && group.venue?.tagline ? (
               <p className="mt-0.5 truncate text-xs text-white/70">{group.venue.tagline}</p>
             ) : (
