@@ -21,6 +21,8 @@ import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
+import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
+import { PrivateVenueNotice } from '@/components/venue/PrivateVenueNotice';
 import { GroupChat } from '@/components/community/GroupChat';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
@@ -241,6 +243,7 @@ export default function VenueCommunity() {
   const isCommunityAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
   const canManageSettings = canManageVenue(venueRole) || isCommunityAdmin;
   const modules = useVenueModules(group?.venue_id);
+  const privateSample = usePrivateVenueSandbox(group?.venue_id);
   const isOperator = modules.facility && (canOperateVenue(venueRole) || membership?.role === 'owner');
   const chatEnabled = groupSettings.chat_enabled;
   const canSendChat = isCommunityAdmin || (isMember && groupSettings.allow_member_chat);
@@ -324,7 +327,7 @@ export default function VenueCommunity() {
             lastReadAt={lastReadRef.current}
             isActive
             title={venue?.name ?? group.name}
-            subtitle="Venue chat"
+            subtitle={privateSample ? "Private sample · Only you" : "Venue chat"}
             avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
             onBack={closeChat}
             immersive
@@ -367,7 +370,7 @@ export default function VenueCommunity() {
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
       />
 
-      {(canManageVenue(venueRole) || membership?.role === 'owner') && !modules.loading && !modules.isError && (
+      {privateSample ? <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div> : (canManageVenue(venueRole) || membership?.role === 'owner') && !modules.loading && !modules.isError && (
         <div className="border-b bg-muted/20"><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6"><div><p className="text-sm font-semibold">{modules.booking || modules.facility ? 'Your venue plan' : 'Free venue community'}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Optional facility features are $10/month each. Your community stays free.</p></div><Button asChild variant="outline" className="min-h-11 rounded-xl"><Link to={'/player/community/group/' + groupId + '/manage?tab=modules'}>Plan &amp; upgrades</Link></Button></div></div>
       )}
 

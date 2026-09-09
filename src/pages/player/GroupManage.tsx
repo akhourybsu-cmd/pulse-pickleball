@@ -38,6 +38,8 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import type { Group } from '@/hooks/useGroups';
 import { useVenueModules } from '@/hooks/useVenueModules';
 import { VenueModulesPanel } from '@/components/venue/VenueModulesPanel';
+import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
+import { PrivateVenueNotice } from '@/components/venue/PrivateVenueNotice';
 
 export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -49,6 +51,7 @@ export default function GroupManage() {
   
   const [group, setGroup] = useState<Group | null>(null);
   const modules = useVenueModules(group?.venue_id);
+  const privateSample = usePrivateVenueSandbox(group?.venue_id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -427,9 +430,9 @@ export default function GroupManage() {
                   `/player/community/group/${groupId}${tab === 'home' ? '' : `?tab=${tab}`}`,
                 )
               }
-            /></> : <VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} />}
+            /></> : <VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} />}
           </TabsContent>
-          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} /></TabsContent>
+          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} /></TabsContent>
           <TabsContent value="profile" className="mt-0">
             <AdminVenueTab
               groupId={groupId!}
@@ -475,6 +478,7 @@ export default function GroupManage() {
           </TabsContent>
 
           <TabsContent value="privacy" className={showsVenueAdmin ? 'mt-0' : 'mt-6'}>
+            {privateSample ? <PrivateVenueNotice /> : <>
             {showsVenueAdmin && <PanelSaveBar onSave={handleSave} saving={saving} disabled={!name.trim()} />}
             <AdminPrivacyTab
               visibility={visibility}
@@ -485,6 +489,7 @@ export default function GroupManage() {
               onJoinMethodChange={(v) => setJoinMethod(v as Group['join_method'])}
               onRegenerateCode={regenerateInviteCode}
             />
+            </>}
           </TabsContent>
 
           <TabsContent value="permissions" className={showsVenueAdmin ? 'mt-0' : 'mt-6'}>
@@ -509,12 +514,12 @@ export default function GroupManage() {
           </TabsContent>
 
           <TabsContent value="danger" className={showsVenueAdmin ? 'mt-0' : 'mt-6'}>
-            <AdminDangerZoneTab
+            {privateSample ? <p className="rounded-2xl border p-5 text-sm leading-6">This owner-only sample cannot be transferred or made public. Ask PULSE to reset or remove the sample venue when you are finished testing it.</p> : <AdminDangerZoneTab
               groupName={group.name}
               isOwner={isOwner}
               onLeave={handleLeave}
               onDelete={handleDelete}
-            />
+            />}
           </TabsContent>
         </>
       )}
@@ -546,6 +551,7 @@ export default function GroupManage() {
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         showOperations={canManageFacility && modules.facility}
       >
+        {privateSample && <div className="mb-5"><PrivateVenueNotice /></div>}
         {panels}
       </VenueAdminShell>
     );

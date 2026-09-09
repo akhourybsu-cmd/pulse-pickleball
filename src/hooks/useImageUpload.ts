@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { assertPublicVenueMediaUploadAllowed } from '@/lib/venues/privateMedia';
 
 interface UseImageUploadOptions {
   bucket: string;
@@ -125,6 +126,7 @@ export function useImageUpload(options: UseImageUploadOptions) {
     setProgress(10);
 
     try {
+      await assertPublicVenueMediaUploadAllowed(bucket, `${folder}/upload`);
       // Compress image if larger than 1MB
       let uploadBlob: Blob = file;
       // Animated GIFs must remain byte-for-byte intact; drawing them to a

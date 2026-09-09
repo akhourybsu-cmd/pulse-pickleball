@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { assertPublicVenueMediaUploadAllowed } from '@/lib/venues/privateMedia';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -77,6 +78,7 @@ export function useGroupFiles(groupId: string | undefined) {
       if (!user) throw new Error('Not authenticated');
 
       // Upload to storage
+      await assertPublicVenueMediaUploadAllowed('group-files', `${groupId}/upload`);
       const fileExt = file.name.split('.').pop();
       const fileName = `${groupId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       

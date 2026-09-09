@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X, BadgeCheck, ShieldQuestion } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertPublicVenueMediaUploadAllowed } from '@/lib/venues/privateMedia';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -168,6 +169,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   const upload = async (kind: 'logo' | 'cover', file: File) => {
     setUploading(kind);
     try {
+      await assertPublicVenueMediaUploadAllowed('venue-logos', `${venueId}/upload`);
       const prepared = await prepareImageForUpload(file, {
         maxInputMB: 12,
         maxOutputMB: 8,

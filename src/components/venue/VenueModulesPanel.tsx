@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVenueModules } from "@/hooks/useVenueModules";
 import { VenueAddonCheckout } from "./VenueAddonCheckout";
 import type { VenueDemoFeature } from "@/lib/venues/venueDemo";
+import { PrivateVenueNotice } from "./PrivateVenueNotice";
 
 const VenuePremiumDemo = lazy(() => import("./VenuePremiumDemo"));
 
@@ -23,10 +24,12 @@ export function VenueModulesPanel({
   venueId,
   verified,
   canVerify = false,
+  privateSample = false,
 }: {
   venueId: string;
   verified: boolean;
   canVerify?: boolean;
+  privateSample?: boolean;
 }) {
   const [demo, setDemo] = useState<VenueDemoFeature | null>(null);
   const demoOpener = useRef<HTMLButtonElement | null>(null);
@@ -43,6 +46,7 @@ export function VenueModulesPanel({
   const count = Number(access.booking) + Number(access.facility);
   return (
     <div className="space-y-6 font-sans">
+      {privateSample && <PrivateVenueNotice />}
       <section className="rounded-2xl border bg-card p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -50,7 +54,7 @@ export function VenueModulesPanel({
               Your current plan
             </p>
             <h2 className="mt-2 font-sans text-2xl font-semibold tracking-tight">
-              {access.loading
+              {privateSample ? "Private sample venue" : access.loading
                 ? "Checking your plan…"
                 : access.isError
                 ? "Plan unavailable"
@@ -69,21 +73,20 @@ export function VenueModulesPanel({
               </span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Community essentials
+              {privateSample ? "All sample features included" : "Community essentials"}
             </p>
           </div>
         </div>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Your venue’s community stays free. Add only the facility features you
-          need—there is no required bundle and no charge to verify ownership.
+          {privateSample ? "Your own working venue, with court booking and facility operations included. Changes persist here without affecting real venues." : "Your venue’s community stays free. Add only the facility features you need—there is no required bundle and no charge to verify ownership."}
         </p>
         <ul className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {[
-            "Posts and photos",
+            privateSample ? "Text posts and announcements" : "Posts and photos",
             "Community messaging",
-            "Members and invitations",
+            privateSample ? "Owner-only membership" : "Members and invitations",
             "Community events and RSVPs",
-            "Shared files",
+            privateSample ? "Private saved content" : "Shared files",
             "Branding and moderation",
           ].map((label) => (
             <li key={label} className="flex items-start gap-2">
@@ -94,19 +97,18 @@ export function VenueModulesPanel({
         </ul>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-5">
           <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-            Court booking and facility operations are optional upgrades.
-            Canceling a feature does not remove your community.
+            {privateSample ? "No subscriptions, real charges, or outside members. Explore the venue tools at your own pace." : "Court booking and facility operations are optional upgrades. Canceling a feature does not remove your community."}
           </p>
           <Button asChild variant="outline" className="min-h-11 rounded-xl">
             <a href="#venue-upgrades">
-              Explore paid features
+              {privateSample ? "View included features" : "Explore paid features"}
               <ArrowUpRight className="ml-2 h-4 w-4" />
             </a>
           </Button>
         </div>
       </section>
 
-      <section aria-labelledby="venue-demo-title" className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
+      {!privateSample && <section aria-labelledby="venue-demo-title" className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
         <div className="min-w-0 max-w-xl">
           <p className="text-xs font-medium text-muted-foreground">Try it before you upgrade</p>
           <h2 id="venue-demo-title" className="mt-2 font-sans text-xl font-semibold tracking-tight">See paid features in action</h2>
@@ -115,9 +117,9 @@ export function VenueModulesPanel({
         <Button variant="outline" className="min-h-12 w-full shrink-0 rounded-xl border-foreground/20 bg-foreground text-background hover:bg-foreground/90 hover:text-background sm:w-auto" onClick={(event) => openDemo("court_booking", event.currentTarget)}>
           <Play className="mr-2 h-4 w-4" />Explore interactive demo
         </Button>
-      </section>
+      </section>}
 
-      {billing.data?.mode === "off" && (
+      {!privateSample && billing.data?.mode === "off" && (
         <p
           role="status"
           className="rounded-xl border bg-muted/30 p-4 text-sm leading-6"
@@ -127,7 +129,7 @@ export function VenueModulesPanel({
           the owner completes checkout once payments are available.
         </p>
       )}
-      {billing.data?.mode === "test" && (
+      {!privateSample && billing.data?.mode === "test" && (
         <p
           role="status"
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6"
@@ -135,7 +137,7 @@ export function VenueModulesPanel({
           Test checkout only. No money moves and no real features are activated.
         </p>
       )}
-      <section
+      {!privateSample && <section
         aria-labelledby="venue-upgrade-steps"
         className="rounded-2xl border bg-card p-5 sm:p-7"
       >
@@ -206,7 +208,7 @@ export function VenueModulesPanel({
             </Button>
           )}
         </div>
-      </section>
+      </section>}
 
       <section
         id="venue-upgrades"
@@ -218,11 +220,10 @@ export function VenueModulesPanel({
             id="venue-upgrades-title"
             className="font-sans text-xl font-semibold"
           >
-            Choose your paid features
+            {privateSample ? "Your included features" : "Choose your paid features"}
           </h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            $10 USD per feature, per month. Each subscription renews and can be
-            canceled separately in Profile → Payments &amp; purchases.
+            {privateSample ? "Court booking and facility operations are both included in this private sample. No purchase or ownership verification is required." : "$10 USD per feature, per month. Each subscription renews and can be canceled separately in Profile → Payments & purchases."}
           </p>
         </div>
         {access.isError ? (
@@ -245,7 +246,7 @@ export function VenueModulesPanel({
                 includes: [
                   "Court inventory and availability",
                   "Player reservations",
-                  "Optional paid rentals with your own prices",
+                  privateSample ? "Free sample reservations" : "Optional paid rentals with your own prices",
                 ],
               },
               {
@@ -295,10 +296,10 @@ export function VenueModulesPanel({
                     ))}
                   </ul>
                   <div className="mt-auto border-t pt-4">
-                    <Button variant="outline" className="mb-4 min-h-11 w-full rounded-xl" onClick={(event) => openDemo(module.key, event.currentTarget)}>
+                    {!privateSample && <Button variant="outline" className="mb-4 min-h-11 w-full rounded-xl" onClick={(event) => openDemo(module.key, event.currentTarget)}>
                       <Play className="mr-2 h-4 w-4" />
                       {module.key === "court_booking" ? "View booking demo" : "View operations demo"}
-                    </Button>
+                    </Button>}
                     {module.enabled ? (
                       <>
                         <p className="text-sm font-semibold">
@@ -324,7 +325,7 @@ export function VenueModulesPanel({
                         )}
                       </>
                     ) : (
-                      !access.loading && (
+                      !access.loading && !privateSample && (
                         <VenueAddonCheckout
                           venueId={venueId}
                           moduleKey={module.key}
@@ -342,7 +343,7 @@ export function VenueModulesPanel({
         )}
       </section>
 
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
+      {!privateSample && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
         <div className="min-w-0 max-w-xl">
           <h2 className="font-sans text-lg font-semibold">
             Collect payments from players
@@ -361,7 +362,7 @@ export function VenueModulesPanel({
             </Link>
           </Button>
         )}
-      </section>
+      </section>}
       {demo && (
         <ErrorBoundary fallback={<div role="alert" className="rounded-xl border bg-card p-4 text-sm">The demo couldn’t load. Your venue is unchanged. Refresh this page to try again.<Button variant="link" onClick={() => { setDemo(null); demoOpener.current?.focus(); }}>Dismiss</Button></div>}>
           <Suspense fallback={<p role="status" className="rounded-xl border bg-card p-4 text-sm">Loading interactive demo…</p>}>
