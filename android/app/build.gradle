@@ -18,12 +18,12 @@ android {
         applicationId "com.pulsepb.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // CI passes VERSION_CODE (the GitHub run number) so every release
-        // auto-increments without hand-editing this file; local builds default
-        // to 1. Play requires a strictly higher versionCode per upload.
+        // Local release prepared after verifying Play's latest upload is 9.
+        // A CI VERSION_CODE override must also exceed the highest Play upload;
+        // workflow run numbers are not necessarily ahead of manual releases.
         // (Single method call — avoids Groovy parsing `versionCode(x).toInteger()`.)
-        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "7")
-        versionName "1.0.6"
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "10")
+        versionName "1.0.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
