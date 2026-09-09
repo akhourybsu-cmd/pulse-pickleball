@@ -23,6 +23,7 @@ export interface BookingSource {
   end_time: string | null;
   venue_name?: string | null;
   court_name?: string | null;
+  payment_order_id?: string | null;
   /** RSVP status, when this arrived via a sign-up. */
   rsvp_status?: string | null;
 }
@@ -39,6 +40,7 @@ export interface BookingEntry {
   courtName: string | null;
   /** 'going' | 'waitlist' for sign-ups; null for reservations you hold. */
   rsvpStatus: string | null;
+  paymentOrderId?: string;
 }
 
 function toEntry(source: BookingSource, kind: BookingKind): BookingEntry | null {
@@ -58,6 +60,7 @@ function toEntry(source: BookingSource, kind: BookingKind): BookingEntry | null 
     venueName: source.venue_name ?? null,
     courtName: source.court_name ?? null,
     rsvpStatus: kind === 'signup' ? (source.rsvp_status ?? 'going') : null,
+    ...(source.payment_order_id ? { paymentOrderId: source.payment_order_id } : {}),
   };
 }
 

@@ -256,7 +256,8 @@ function BookingCard({
         )}
       </div>
 
-      {cancellable && (
+      {cancellable && entry.paymentOrderId && <div className="mt-3 flex justify-end"><Button variant="outline" size="sm" onClick={() => navigate(`/player/payments?order=${entry.paymentOrderId}`)}>Payment & cancellation options</Button></div>}
+      {cancellable && !entry.paymentOrderId && (
         <div className="mt-2.5 flex justify-end">
           <AlertDialog>
             <AlertDialogTrigger asChild>

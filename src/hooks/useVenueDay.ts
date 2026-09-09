@@ -89,11 +89,7 @@ export function useVenueDay(
         // is already taken.
         supabase
           .from('group_events')
-          .select(
-            'id, group_id, title, description, event_format, capacity, created_by, ' +
-              'waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, ' +
-              'rotation_style, skill_level_min, skill_level_max, rr_courts',
-          )
+          .select('id, group_id, title, description, event_format, capacity, created_by, waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, rotation_style, skill_level_min, skill_level_max, rr_courts')
           .eq('venue_id', venueId!)
           .gte('start_time', from)
           .lt('start_time', to)
@@ -104,6 +100,9 @@ export function useVenueDay(
       if (sessionsRes.error) throw sessionsRes.error;
 
       const sessions = (sessionsRes.data ?? []) as VenueDaySession[];
+      const holdsResult = await (supabase as any).rpc('venue_checkout_holds', { p_venue: venueId!, p_from: from, p_to: to });
+      if (holdsResult.error) throw holdsResult.error;
+      const holds = (holdsResult.data ?? []) as Reservation[];
 
       // Sign-up counts for the programming only. Reservations and closures
       // have no spots to run out of, so counting them would mean a round trip
@@ -129,6 +128,7 @@ export function useVenueDay(
       return {
         courts: (courtsRes.data ?? []) as Court[],
         sessions,
+        holds,
         going,
       };
     },
@@ -145,7 +145,7 @@ export function useVenueDay(
   const closed = gridOptions === null;
 
   const grid = useMemo(
-    () => (gridOptions ? buildDayGrid(courts, sessions, day, gridOptions) : []),
+    () => (gridOptions ? buildDayGrid(courts, [...sessions, ...(query.data?.holds ?? [])], day, gridOptions) : []),
     // `courts` is derived from query.data, so keying on it directly is stable.
     [query.data, day, gridOptions], // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -162,7 +162,7 @@ export function useVenueDay(
     [sessions],
   );
 
-  const freeNow = useMemo(() => courtsFreeAt(courts, sessions, new Date()), [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const freeNow = useMemo(() => courtsFreeAt(courts, [...sessions, ...(query.data?.holds ?? [])], new Date()), [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: venueDayKey(venueId, day) });

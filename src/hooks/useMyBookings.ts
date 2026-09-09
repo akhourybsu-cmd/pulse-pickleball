@@ -13,7 +13,7 @@ import { mergeBookings, splitBookings, type BookingSource } from '@/lib/venues/b
  */
 
 const EVENT_SELECT =
-  'id, group_id, title, event_format, start_time, end_time, ' +
+  'id, group_id, title, event_format, start_time, end_time, payment_order_id, ' +
   'venues:venue_id (name), venue_courts:venue_court_id (name, court_number)';
 
 /** Flatten the joined venue/court names onto the row. */
@@ -29,6 +29,7 @@ function shape(row: any, rsvpStatus?: string | null): BookingSource {
     venue_name: row.venues?.name ?? null,
     court_name: court ? (court.name ?? `Court ${court.court_number}`) : null,
     rsvp_status: rsvpStatus ?? null,
+    payment_order_id: row.payment_order_id,
   };
 }
 

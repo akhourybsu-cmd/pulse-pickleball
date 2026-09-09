@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -22,6 +23,8 @@ import {
 import { Loader2, Clock } from 'lucide-react';
 import { formatSlotTime, type Court } from '@/lib/venues/availability';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatMoney, openStripe, paymentApi, type CourtQuote, type PaymentConfig } from '@/lib/payments';
 
 /**
  * Hold a court.
@@ -69,11 +72,20 @@ export function BookCourtDialog({
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [minutes, setMinutes] = useState(slotMinutes);
+  const [accepted, setAccepted] = useState(false);
+  const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
+  const paymentDetails = useQuery({
+    queryKey: ['court-payment-details', court?.id, groupId],
+    queryFn: () => paymentApi<PaymentConfig & { paid: boolean; hourly_rate: number }>('booking_details', { court_id: court?.id, group_id: groupId }),
+    enabled: open && !!court, staleTime: 0,
+  });
 
   useEffect(() => {
     if (open) {
       setTitle('');
       setMinutes(presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes);
+      setAccepted(false);
+      setRequestKey(crypto.randomUUID());
     }
   }, [open, slotMinutes, presetMinutes]);
 
@@ -90,11 +102,33 @@ export function BookCourtDialog({
   const options = durations.length > 0 ? durations : [slotMinutes];
 
   const end = start ? new Date(start.getTime() + minutes * 60000) : null;
+  const quote = useQuery({
+    queryKey: ['court-quote', court?.id, groupId, start?.toISOString(), end?.toISOString()],
+    queryFn: () => paymentApi<CourtQuote>('quote', { court_id: court?.id, group_id: groupId, start_time: start?.toISOString(), end_time: end?.toISOString() }),
+    enabled: open && !!court && !!start && !!paymentDetails.data?.paid, staleTime: 0, retry: false,
+  });
+  useEffect(() => { setAccepted(false); setRequestKey(crypto.randomUUID()); }, [minutes, start?.toISOString(), court?.id, quote.data?.amount_cents, quote.data?.policy]);
 
   const submit = async () => {
     if (!court || !start || !end) return;
 
     setSaving(true);
+    if (paymentDetails.data?.paid) {
+      try {
+        if (!quote.data || !accepted) throw new Error('Review the total and cancellation policy first.');
+        const result = await paymentApi<{ url: string }>('court_checkout', { court_id: court.id, group_id: groupId,
+          start_time: start.toISOString(), end_time: end.toISOString(), amount_cents: quote.data.amount_cents,
+          policy: quote.data.policy, accept_terms: accepted, request_key: requestKey });
+        openStripe(result.url);
+      } catch (error) { toast({ title: 'Checkout not started', description: (error as Error).message, variant: 'destructive' }); }
+      finally { setSaving(false); }
+      return;
+    }
+    if (!paymentDetails.data || paymentDetails.isFetching || paymentDetails.isError) {
+      toast({ title: 'Please wait for the booking price to be checked', variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
     const { data: auth } = await supabase.auth.getUser();
     const userId = auth.user?.id;
     if (!userId) {
@@ -152,9 +186,9 @@ export function BookCourtDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl font-sans sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
+          <DialogTitle className="font-sans">Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
           <DialogDescription>
             {start && end ? (
               <span className="inline-flex items-center gap-1.5">
@@ -189,27 +223,36 @@ export function BookCourtDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="booking-title">What for? (optional)</Label>
+            <Label htmlFor="booking-title">What for? (optional, free bookings only)</Label>
             <Input
               id="booking-title"
               placeholder="Doubles with the Tuesday crew"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={80}
+              disabled={paymentDetails.data?.paid}
             />
             <p className="text-xs text-muted-foreground">
               Named bookings show on the court grid, so members know what's on.
             </p>
           </div>
+          {paymentDetails.isPending || paymentDetails.isFetching ? <p role="status" className="text-sm text-muted-foreground">Checking the booking price…</p> : paymentDetails.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>We couldn’t verify the booking price. Please retry before booking.</p><Button variant="link" onClick={() => paymentDetails.refetch()}>Retry</Button></div> : paymentDetails.data?.paid ? <div className="space-y-4">
+            {quote.isPending || quote.isFetching ? <p role="status" className="text-sm">Preparing your price…</p> : quote.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>{quote.error.message}</p><Button variant="link" onClick={() => quote.refetch()}>Check again</Button></div> : quote.data && <>
+              <div className="rounded-xl border bg-muted/20 p-4"><p className="text-xs font-medium text-muted-foreground">Paid to {quote.data.merchant_name}</p><div className="mt-2 flex items-end justify-between gap-3"><span className="text-sm">Court rental · {minutes} minutes</span><span className="text-2xl font-semibold tabular-nums">{formatMoney(quote.data.amount_cents)}</span></div><p className="mt-2 text-xs leading-5 text-muted-foreground">USD · {formatMoney(Math.round(quote.data.hourly_rate * 100))}/hour. Includes any applicable taxes. No PULSE booking surcharge.</p></div>
+              <div><p className="text-sm font-semibold">Cancellation & refund policy</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{quote.data.policy}</p><p className="mt-2 break-all text-xs text-muted-foreground">Questions: {quote.data.support_email}</p></div>
+              <label className="flex items-start gap-3 text-sm leading-6"><Checkbox checked={accepted} onCheckedChange={value => setAccepted(value === true)} className="mt-1" /><span>I agree to pay {formatMoney(quote.data.amount_cents)} to {quote.data.merchant_name} and accept this cancellation policy.</span></label>
+              <p className="text-xs leading-5 text-muted-foreground">Your court is held during secure checkout and confirmed only after successful payment. Returning without paying does not complete the booking.</p>
+            </>}
+          </div> : <p className="rounded-xl bg-muted/30 p-3 text-sm">Free reservation · No payment required</p>}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving || !court || !start}>
+          <Button className="min-h-11" onClick={submit} disabled={saving || !court || !start || paymentDetails.isPending || paymentDetails.isFetching || paymentDetails.isError || (paymentDetails.data?.paid && (!accepted || !quote.data || quote.isFetching || quote.isError))}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Book court
+            {paymentDetails.data?.paid ? `Pay ${quote.data ? formatMoney(quote.data.amount_cents) : ''} & reserve` : 'Book free court'}
           </Button>
         </DialogFooter>
       </DialogContent>

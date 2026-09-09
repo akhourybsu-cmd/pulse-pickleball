@@ -27,6 +27,7 @@ import {
   Trash2,
   Trophy,
   MapPin,
+  CreditCard,
 } from 'lucide-react';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
@@ -97,6 +98,12 @@ const SKILL_ASSESSMENT_LINK: HubLink = {
 };
 
 const ACCOUNT_LINKS: HubLink[] = [
+  {
+    to: '/player/payments',
+    icon: CreditCard,
+    label: 'Payments & purchases',
+    description: 'Saved payment methods, subscriptions and purchase history',
+  },
   {
     to: '/profile/edit',
     icon: Pencil,

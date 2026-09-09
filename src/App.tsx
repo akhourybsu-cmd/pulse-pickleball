@@ -200,6 +200,7 @@ const SelfAssessment = lazy(() => import("./pages/player/SelfAssessment"));
 const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
 const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
+const Payments = lazy(() => import("./pages/player/Payments"));
 const PlayerPulse = lazy(() => import("./pages/player/PlayerPulse"));
 const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
@@ -476,6 +477,7 @@ const AppContent = () => {
             <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
+            <Route path="payments" element={<Payments />} />
             {/* Player Pulse — interactive rating analytics. Opened by tapping
                 the PULSE rating pill on the dashboard/profile identity card. */}
             <Route path="pulse" element={<PlayerPulse />} />

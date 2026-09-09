@@ -423,7 +423,7 @@ function CourtsView({
               accent={accent}
               onBook={() => onPickSlot(col.court.id, col.slots[block.fromIndex].start)}
               onOpenSession={
-                onPickSession && block.reservation
+                onPickSession && block.reservation && !block.reservation.id.startsWith('hold:')
                   ? () => onPickSession(block.reservation!.id)
                   : undefined
               }
