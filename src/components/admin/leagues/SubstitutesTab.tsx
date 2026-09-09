@@ -22,7 +22,8 @@ import type {
   LeagueSubstitute, SubstituteStatus, LeagueMatch,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
-import { resolvePlayerName } from "@/lib/matchDisplay";
+import { leaguePlayerName as resolvePlayerName, substitutionTargets } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
@@ -53,6 +54,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSubstitute | null>(null);
   const [swapFor, setSwapFor] = useState<LeagueSubstitute | null>(null);
+  useEffect(() => { setAddOpen(false); setEditing(null); setSwapFor(null); }, [league.id, seasonId]);
 
   // Advisory PULSE Self-Assessed skill cards (organizer-authorized, read-only)
   // used to surface fill-in fit. Empty/denied ⇒ the UI simply shows no skill
@@ -101,6 +103,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
               seasonId={seasonId}
               existingUserIds={new Set(subs.map((x) => x.user_id))}
               initial={null}
+              initialName=""
               onDone={async () => { setAddOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -129,7 +132,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         <ul className="space-y-2">
           {subs.map((sub) => {
             const p = profilesById[sub.user_id];
-            const name = p ? resolvePlayerName(p) : "Player";
+            const name = resolvePlayerName(p);
             const initials = name
               .split(/\s+/).filter(Boolean).slice(0, 2)
               .map((s) => s[0]).join("").toUpperCase() || "?";
@@ -154,7 +157,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium truncate">{name}</span>
+                      <LeaguePlayerName name={name} isSub className="font-medium" />
                       {inactive && (
                         <span className="text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           Inactive
@@ -197,11 +200,13 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
       {editing && (
         <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
           <SubEditorDialog
+            key={editing.id}
             mode="edit"
             leagueId={league.id}
             seasonId={seasonId as string}
             existingUserIds={new Set(subs.map((x) => x.user_id))}
             initial={editing}
+            initialName={resolvePlayerName(profilesById[editing.user_id])}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
           />
         </Dialog>
@@ -215,7 +220,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           leagueId={league.id}
           seasonId={seasonId as string}
           sub={swapFor}
-          subName={profilesById[swapFor.user_id] ? resolvePlayerName(profilesById[swapFor.user_id]) : "This sub"}
+          subName={resolvePlayerName(profilesById[swapFor.user_id])}
           matches={matches}
           batchByGroup={batchByGroup}
           profilesById={profilesById}
@@ -283,7 +288,7 @@ function SubInlineActions({
       <Button
         size="sm"
         variant="outline"
-        className="h-8 flex-1 sm:flex-none"
+        className="h-11 flex-1 sm:flex-none"
         disabled={busy || inactive}
         onClick={onSwap}
         title={inactive ? "Activate this sub to swap them in" : "Swap into a match"}
@@ -292,23 +297,23 @@ function SubInlineActions({
         Swap in
       </Button>
       <Button
-        size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-        disabled={busy} onClick={onEdit} aria-label="Edit sub" title="Edit notes"
+        size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-foreground"
+        disabled={busy} onClick={onEdit} aria-label={`Edit ${subName}`} title={`Edit ${subName}'s notes`}
       >
         <StickyNote className="w-4 h-4" />
       </Button>
       <Button
-        size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+        size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-foreground"
         disabled={busy} onClick={toggleStatus}
-        aria-label={inactive ? "Activate sub" : "Bench sub"}
+        aria-label={`${inactive ? 'Activate' : 'Bench'} ${subName}`}
         title={inactive ? "Mark active" : "Mark inactive"}
       >
         {inactive ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
       </Button>
       <Button
-        size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+        size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-destructive"
         disabled={busy} onClick={() => setConfirmOpen(true)}
-        aria-label="Remove sub"
+        aria-label={`Remove ${subName} from bench`}
       >
         <Trash2 className="w-4 h-4" />
       </Button>
@@ -337,36 +342,46 @@ function SubInlineActions({
 /* ------------------------------------------------------------------ */
 
 function SubEditorDialog({
-  mode, leagueId, seasonId, existingUserIds, initial, onDone,
+  mode, leagueId, seasonId, existingUserIds, initial, initialName, onDone,
 }: {
   mode: "create" | "edit";
   leagueId: string;
   seasonId: string;
   existingUserIds: Set<string>;
   initial: LeagueSubstitute | null;
+  initialName: string;
   onDone: () => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlayerRow[]>([]);
   const [pickedId, setPickedId] = useState<string | null>(initial?.user_id ?? null);
-  const [pickedName, setPickedName] = useState<string>("");
+  const [pickedName, setPickedName] = useState(initialName);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubstituteStatus>(initial?.status ?? "active");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (mode === "edit") return; // player is fixed when editing
-    if (!query.trim()) { setResults([]); return; }
-    const q = query.trim();
+    const q = query.trim().replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
+    setResults([]); setSearchError(null);
+    if (!q) { setSearching(false); return; }
+    let canceled = false;
+    const controller = new AbortController();
+    setSearching(true);
     const t = setTimeout(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles_public" as never)
         .select("id, display_name, full_name, first_name, last_name, avatar_url")
         .or(`display_name.ilike.%${q}%,full_name.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
-        .limit(20);
+        .limit(20).abortSignal(controller.signal);
+      if (canceled) return;
+      setSearching(false);
+      if (error) { setSearchError('Player search failed. Please try searching again.'); return; }
       setResults((data ?? []) as unknown as PlayerRow[]);
     }, 200);
-    return () => clearTimeout(t);
+    return () => { canceled = true; controller.abort(); clearTimeout(t); };
   }, [query, mode]);
 
   const filteredResults = useMemo(
@@ -421,7 +436,7 @@ function SubEditorDialog({
       icon={<LifeBuoy className="w-5 h-5" />}
       tone="emerald"
       kicker={mode === "create" ? "New sub" : "Sub"}
-      title={mode === "create" ? "Add sub" : "Edit sub"}
+      title={mode === "create" ? "Add sub" : `Edit ${initialName}`}
       subtitle={mode === "create"
         ? "Add a fill-in player to the bench for this season."
         : "Update this sub's status or notes."}
@@ -450,7 +465,7 @@ function SubEditorDialog({
                   type="button"
                   onClick={() => { setPickedId(r.id); setPickedName(resolvePlayerName(r)); }}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
+                    "min-h-11 w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
                     pickedId === r.id && "bg-primary/10 text-primary",
                   )}
                 >
@@ -459,16 +474,18 @@ function SubEditorDialog({
               ))}
             </div>
           )}
-          {query && filteredResults.length === 0 && (
+          {searching && <p role="status" className="text-sm text-muted-foreground">Searching players…</p>}
+          {searchError && <p role="alert" className="text-sm text-destructive">{searchError}</p>}
+          {query && !searching && !searchError && filteredResults.length === 0 && (
             <p className="text-xs text-muted-foreground">
               No matches (players already on the bench are filtered out).
             </p>
           )}
           {pickedId && pickedName && (
-            <p className="text-xs text-emerald-600">Selected: {pickedName}</p>
+            <p className="text-sm">Selected: <LeaguePlayerName name={pickedName} isSub /></p>
           )}
         </FormSection>
-      ) : null}
+      ) : <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm"><LeaguePlayerName name={initialName} isSub /></div>}
 
       <FormSection label="Details">
         <FormRow label="Status" hint="Inactive subs stay on the bench but can't be swapped in.">
@@ -526,16 +543,9 @@ function SubSwapDialog({
   // With explicit ladder progression only the current week is scheduled, so
   // this is exactly the players due to play next.
   const candidates = useMemo(() => {
-    const games = new Map<string, number>();
-    matches
-      .filter((m) => m.status === "scheduled" || m.status === "in_progress")
-      .forEach((m) => {
-        [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id].forEach((id) => {
-          if (id && id !== sub.user_id) games.set(id, (games.get(id) ?? 0) + 1);
-        });
-      });
-    return Array.from(games.entries())
-      .map(([id, count]) => {
+    return substitutionTargets(matches, batchByGroup, sub.user_id)
+      .map(target => {
+        const { id } = target;
         // Advisory: how well THIS sub fills in for THAT absent player. Never
         // reorders the list (who's out is a real-world fact, not a ranking) and
         // never blocks a choice — purely a heads-up for the organizer.
@@ -561,39 +571,19 @@ function SubSwapDialog({
           );
         }
         return {
-          id, count,
-          name: profilesById[id] ? resolvePlayerName(profilesById[id]) : id.slice(0, 8),
+          ...target,
+          name: resolvePlayerName(profilesById[id]),
           fit,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [matches, profilesById, sub.user_id, sub.status, skillCards, skillOn, subCard]);
+  }, [matches, batchByGroup, profilesById, sub.user_id, sub.status, skillCards, skillOn, subCard]);
 
-  // Scope the swap to the *earliest* upcoming ladder batch that contains the
-  // out player. Without this, all in-progress + scheduled batches sharing a
-  // session get swept up in a single swap.
-  const targetBatchId = useMemo(() => {
-    if (!outPlayerId) return null;
-    let best: { batch_id: string; week_number: number; batch_number: number } | null = null;
-    matches
-      .filter((m) => m.status === "scheduled" || m.status === "in_progress")
-      .filter((m) => [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id].includes(outPlayerId))
-      .forEach((m) => {
-        const b = m.ladder_batch_group_id ? batchByGroup[m.ladder_batch_group_id] : null;
-        if (!b) return;
-        if (
-          !best ||
-          b.week_number < best.week_number ||
-          (b.week_number === best.week_number && b.batch_number < best.batch_number)
-        ) {
-          best = b;
-        }
-      });
-    return best?.batch_id ?? null;
-  }, [matches, batchByGroup, outPlayerId]);
+  const selectedTarget = candidates.find(c => c.id === outPlayerId);
+  const targetBatchId = selectedTarget?.batchId ?? null;
 
   const submit = async () => {
-    if (!outPlayerId) { toast.error("Pick the player who's out"); return; }
+    if (!selectedTarget || selectedTarget.blockedReason) { toast.error(selectedTarget?.blockedReason ?? "Pick the player who's out"); return; }
     if (saving) return;
     setSaving(true);
     const { data, error } = await (supabase.rpc as unknown as (
@@ -612,7 +602,7 @@ function SubSwapDialog({
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     const n = data?.matches_updated ?? 0;
-    toast.success(`${subName} filling in for this week (${n} game${n === 1 ? "" : "s"})`);
+    toast.success(`${subName} is covering ${selectedTarget.name} · ${selectedTarget.scopeLabel} (${n} game${n === 1 ? "" : "s"})`);
     await onDone();
   };
 
@@ -623,10 +613,10 @@ function SubSwapDialog({
         tone="emerald"
         kicker="Substitute"
         title={`Swap in ${subName}`}
-        subtitle="Pick the player who can't make it — the sub takes over all their games this week."
-        primaryLabel="Swap in for the week"
+        subtitle="Choose who needs coverage. Review the exact batch and game count before confirming."
+        primaryLabel="Confirm substitution"
         primaryLoading={saving}
-        primaryDisabled={!outPlayerId}
+        primaryDisabled={!selectedTarget || !!selectedTarget.blockedReason}
         onPrimary={submit}
         secondary={
           <Button variant="ghost" className="h-12"
@@ -654,15 +644,17 @@ function SubSwapDialog({
                 <button
                   key={c.id}
                   type="button"
+                  disabled={!!c.blockedReason}
+                  aria-pressed={outPlayerId === c.id}
                   onClick={() => setOutPlayerId(c.id)}
                   className={cn(
-                    "w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors",
+                    "min-h-11 w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors disabled:opacity-60",
                     outPlayerId === c.id
                       ? "border-primary bg-primary/10 ring-1 ring-primary/25"
                       : "border-border/70 hover:bg-muted/50",
                   )}
                 >
-                  <span className="text-sm font-semibold truncate">{c.name}</span>
+                  <span className="min-w-0 text-sm font-semibold break-words">{c.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{c.blockedReason ?? c.scopeLabel}</span></span>
                   <span className="flex items-center gap-2 shrink-0">
                     {c.fit && <FitBadge fit={c.fit} />}
                     <span className="text-xs font-medium text-muted-foreground">
@@ -675,6 +667,7 @@ function SubSwapDialog({
           )}
         </FormRow>
 
+        {selectedTarget && <div role="status" className="rounded-xl border border-border bg-muted/40 p-3 text-sm"><LeaguePlayerName name={subName} isSub replacesName={selectedTarget.name} /><p className="mt-2">{selectedTarget.scopeLabel} · {selectedTarget.count} unplayed game{selectedTarget.count === 1 ? '' : 's'}. Completed results and the regular player's ladder position stay unchanged.</p></div>}
         <FormRow label="Note (optional)" hint="Kept in the audit log.">
           <Textarea
             rows={2} value={note} onChange={(e) => setNote(e.target.value)}

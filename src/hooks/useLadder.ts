@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { resolvePlayerName } from "@/lib/matchDisplay";
+import { leagueProfiles, leagueRows } from '@/lib/leagues/data';
+import { leaguePlayerName, matchPlayerIds } from '@/lib/leagues/playerIdentity';
+import type { LeagueMatchSubstitution, LeagueSubstitute } from '@/lib/leagues/types';
 
 /**
  * Reads the ladder state for a season: settings, roster, the active
@@ -93,6 +95,7 @@ export interface LadderData {
   activeBatch: LadderBatch | null;
   groups: LadderGroup[];
   games: LadderGame[];
+  substitutions: LeagueMatchSubstitution[];
   currentOrder: string[];
   lastMovements: LadderMovementRow[];
   lastFinalBatch: LadderBatch | null;
@@ -115,8 +118,8 @@ export function useLadder(
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   const [data, setData] = useState<LadderData>({
-    loading: true, error: null, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
-    started: false, activeBatch: null, groups: [], games: [],
+    loading: true, error: null, settings: null, memberIds: [], nameOf: () => 'Name unavailable',
+    started: false, activeBatch: null, groups: [], games: [], substitutions: [],
     currentOrder: [], lastMovements: [], lastFinalBatch: null,
     lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0,
     version: 0, refresh,
@@ -158,22 +161,6 @@ export function useLadder(
       const snapshots = (snapRows ?? []) as unknown as Array<{ player_ids: string[] }>;
       const weekSessions = (sessRows ?? []) as unknown as LadderWeekSession[];
 
-      // Names for members + everyone in the latest snapshot.
-      const nameIds = new Set<string>(memberIds);
-      snapshots[0]?.player_ids?.forEach((id) => nameIds.add(id));
-      const namesById: Record<string, string> = {};
-      if (nameIds.size) {
-        const { data: profs } = await supabase
-          .from("profiles_public" as never)
-          .select("id, display_name, full_name, first_name, last_name")
-          .in("id", Array.from(nameIds)).throwOnError();
-        (profs ?? []).forEach((p) => {
-          const r = p as { id: string };
-          namesById[r.id] = resolvePlayerName(p as never);
-        });
-      }
-      const nameOf = (id: string) => namesById[id] ?? id.slice(0, 8);
-
       const currentOrder = snapshots[0]?.player_ids ?? [];
       const activeBatch =
         batches.find((b) => b.status !== "finalized" && b.status !== "invalidated") ?? null;
@@ -211,11 +198,27 @@ export function useLadder(
         lastFinalGroups = (fg ?? []) as unknown as LadderGroup[];
       }
 
+      // Resolve identities only after reading the actual game slots: temporary
+      // fill-ins deliberately do not occupy the regular player's ladder snapshot.
+      const scope = { league_id: leagueId, season_id: seasonId };
+      const [substitutions, bench] = await Promise.all([
+        leagueRows<LeagueMatchSubstitution>('league_match_substitutions', scope),
+        leagueRows<LeagueSubstitute>('league_substitutes', scope),
+      ]);
+      const profiles = await leagueProfiles([
+        ...memberIds, ...snapshots.flatMap(s => s.player_ids ?? []),
+        ...games.flatMap(matchPlayerIds), ...groups.flatMap(g => g.player_ids),
+        ...lastFinalGroups.flatMap(g => g.player_ids), ...lastMovements.map(m => m.player_id),
+        ...bench.map(s => s.user_id), ...substitutions.flatMap(s => [s.in_player_id, s.out_player_id]),
+      ]);
+      const names = Object.fromEntries(profiles.map(p => [p.id, leaguePlayerName(p)]));
+      const nameOf = (id: string) => names[id] ?? 'Name unavailable';
+
       if (!cancelled) {
         loadedScope.current = `${leagueId}:${seasonId}`;
         setData((prev) => ({
           loading: false, error: null, settings, memberIds, nameOf,
-          started: batches.length > 0, activeBatch, groups, games,
+          started: batches.length > 0, activeBatch, groups, games, substitutions,
           currentOrder, lastMovements, lastFinalBatch: lastFinal,
           lastFinalGroups, history, weekSessions,
           pendingSubRequests: pendingCount ?? 0,

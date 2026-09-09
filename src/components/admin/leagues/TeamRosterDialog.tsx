@@ -1,4 +1,6 @@
-import { leagueErrorMessage, leagueRows } from '@/lib/leagues/data';
+import { leagueErrorMessage, leagueRows, leagueProfiles } from '@/lib/leagues/data';
+import { leaguePlayerName } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
 import { useMemo, useState } from "react";
 import { useQuery } from '@tanstack/react-query';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -84,14 +86,19 @@ interface Props {
 }
 
 export function TeamRosterDialog({
-  open, onOpenChange, league, team, eligibleMembers, profilesById, onChanged,
+  open, onOpenChange, league, team, eligibleMembers, profilesById: parentProfiles, onChanged,
 }: Props) {
   const { user } = useAuthState();
   const rosterQuery = useQuery({
     queryKey: ['league-team-roster', user?.id, team.id], enabled: open && !!user,
-    queryFn: ({ signal }) => leagueRows<LeagueTeamMember>('league_team_members', { team_id: team.id }, signal),
+    queryFn: async ({ signal }) => {
+      const roster = await leagueRows<LeagueTeamMember>('league_team_members', { team_id: team.id }, signal);
+      const profiles = await leagueProfiles(roster.map(r => r.user_id), signal);
+      return { roster, profiles: Object.fromEntries(profiles.map(p => [p.id, p])) };
+    },
   });
-  const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
+  const roster = useMemo(() => rosterQuery.data?.roster ?? [], [rosterQuery.data]);
+  const profilesById = useMemo(() => ({ ...parentProfiles, ...rosterQuery.data?.profiles }), [parentProfiles, rosterQuery.data]);
   const loading = rosterQuery.isPending;
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ member: LeagueTeamMember; name: string } | null>(null);
@@ -248,7 +255,7 @@ export function TeamRosterDialog({
                 <ul className="space-y-1.5">
                   {active.map((m) => {
                     const p = profilesById[m.user_id];
-                    const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
+                    const name = leaguePlayerName(p);
                     return (
                       <li
                         key={m.id}
@@ -258,9 +265,7 @@ export function TeamRosterDialog({
                           url={p?.avatar_url}
                           name={name}
                         />
-                        <span className="text-sm font-medium truncate flex-1">
-                          {name}
-                        </span>
+                        <LeaguePlayerName name={name} isSub={m.role === 'substitute'} className="text-sm font-medium flex-1" />
                         <Select
                           value={m.role}
                           onValueChange={(v) =>
@@ -323,7 +328,7 @@ export function TeamRosterDialog({
                   <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                     {filteredAddable.map((m) => {
                       const p = profilesById[m.user_id];
-                      const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
+                      const name = leaguePlayerName(p);
                       return (
                         <li
                           key={m.id}
@@ -366,7 +371,7 @@ export function TeamRosterDialog({
                   <ul className="space-y-1.5 mt-2.5">
                     {removed.map((m) => {
                       const p = profilesById[m.user_id];
-                      const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
+                      const name = leaguePlayerName(p);
                       return (
                         <li
                           key={m.id}

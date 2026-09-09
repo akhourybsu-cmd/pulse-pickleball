@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLeagueSubRequests } from '@/hooks/useLeagueSubRequests';
 import { leagueErrorMessage } from '@/lib/leagues/data';
 import { requestableWeeks, subRequestStatus, weekDescription } from '@/lib/leagues/subRequests';
-import { resolvePlayerName } from '@/lib/matchDisplay';
+import { leaguePlayerName as resolvePlayerName } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from './LeaguePlayerName';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog } from '@/components/ui/dialog';
@@ -56,7 +57,7 @@ export function LadderSubRequestCard({ leagueId, seasonId, currentUserId, canReq
       const week = weeks.find(w => w.id === request.session_id);
       return <li key={request.id} className="space-y-2 py-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">{week ? weekDescription(week) : `Week ${request.week_number}`}</p><span className="rounded-full bg-muted px-3 py-1 font-medium">{subRequestStatus(request.status)}</span></div>
-        {request.status === 'sub' && <p>{request.assigned_sub_id && profiles[request.assigned_sub_id] ? resolvePlayerName(profiles[request.assigned_sub_id]) : 'A substitute'} was arranged for you. {generated.has(request.week_number) ? 'The draw is now set; check with the organizer for any later changes.' : 'You keep your ladder position.'}</p>}
+        {request.status === 'sub' && <p><LeaguePlayerName name={resolvePlayerName(request.assigned_sub_id ? profiles[request.assigned_sub_id] : null)} isSub /> was arranged for you. {generated.has(request.week_number) ? 'This is your original pre-draw arrangement. Check the match list or organizer for later changes.' : 'You keep your ladder position.'}</p>}
         {request.status === 'sitout' && <p>You keep your position and return next week.</p>}
         {request.status === 'declined' && <p>Coverage has not been arranged. You remain in the draw; contact your organizer if you still cannot attend.</p>}
         {request.note && <p className="whitespace-pre-wrap break-words text-muted-foreground">Your note: {request.note}</p>}

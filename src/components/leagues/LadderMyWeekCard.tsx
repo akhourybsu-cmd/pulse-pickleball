@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { resolvePlayerName } from "@/lib/matchDisplay";
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { leagueRows, leagueProfiles } from '@/lib/leagues/data';
+import { courtPlayerIds, matchPlayerIds, leaguePlayerName, substitutePlayerIds, matchSubstitutions } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from './LeaguePlayerName';
+import type { LeagueMatch, LeagueMatchSubstitution } from '@/lib/leagues/types';
 import { LgSectionHeader } from "@/components/leagues/_leagueScope";
 import { Layers, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
@@ -33,88 +36,48 @@ interface MovementRow {
  * so this pins them at the top of the player league page.
  */
 export function LadderMyWeekCard({
-  seasonId, currentUserId,
+  seasonId, currentUserId, dataVersion,
 }: {
   seasonId: string | null;
   currentUserId: string | null;
+  dataVersion?: number;
 }) {
-  const [position, setPosition] = useState<number | null>(null);
-  const [ladderSize, setLadderSize] = useState(0);
-  const [batch, setBatch] = useState<BatchRow | null>(null);
-  const [group, setGroup] = useState<GroupRow | null>(null);
-  const [names, setNames] = useState<Record<string, string>>({});
-  const [movement, setMovement] = useState<MovementRow | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!seasonId || !currentUserId) { setLoading(false); return; }
-    setLoading(true);
-
-    const [snapRes, batchRes] = await Promise.all([
-      supabase.from("ladder_snapshots" as never).select("player_ids")
-        .eq("season_id", seasonId)
-        .order("week_number", { ascending: false })
-        .order("batch_number", { ascending: false })
-        .limit(1),
-      supabase.from("ladder_batches" as never)
-        .select("id, week_number, batch_number, status")
-        .eq("season_id", seasonId)
-        .order("week_number", { ascending: false })
-        .order("batch_number", { ascending: false }),
-    ]);
-
-    const order = ((snapRes.data ?? []) as unknown as Snapshot[])[0]?.player_ids ?? [];
-    const idx = order.indexOf(currentUserId);
-    setLadderSize(order.length);
-    setPosition(idx >= 0 ? idx + 1 : null);
-
-    const batches = (batchRes.data ?? []) as unknown as BatchRow[];
-    const live = batches.find(
-      (b) => b.status !== "finalized" && b.status !== "invalidated",
-    ) ?? null;
-    setBatch(live);
-
-    let myGroup: GroupRow | null = null;
-    if (live) {
-      const { data: grpRows } = await supabase.from("ladder_batch_groups" as never)
-        .select("id, court_number, wave, player_ids")
-        .eq("batch_id", live.id);
-      myGroup = ((grpRows ?? []) as unknown as GroupRow[])
-        .find((g) => g.player_ids?.includes(currentUserId)) ?? null;
-    }
-    setGroup(myGroup);
-
-    // Last finalized batch's movement for me — the up/stay/down that put the
-    // player where they are now.
-    const lastFinal = batches.find((b) => b.status === "finalized") ?? null;
-    if (lastFinal) {
-      const { data: mv } = await supabase.from("ladder_movements" as never)
-        .select("player_id, direction, start_position, finish_position")
-        .eq("batch_id", lastFinal.id).eq("player_id", currentUserId).maybeSingle();
-      setMovement((mv ?? null) as unknown as MovementRow | null);
-    } else {
-      setMovement(null);
-    }
-
-    const ids = Array.from(new Set(myGroup?.player_ids ?? []));
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
-        .in("id", ids);
-      const map: Record<string, string> = {};
-      (profs ?? []).forEach((p) => {
-        const r = p as { id: string };
-        map[r.id] = resolvePlayerName(p as never);
-      });
-      setNames(map);
-    }
-    setLoading(false);
-  }, [seasonId, currentUserId]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  if (loading || (!position && !group)) return null;
+  const query = useQuery({
+    queryKey: ['ladder-my-week', currentUserId, seasonId],
+    enabled: !!seasonId && !!currentUserId,
+    refetchInterval: 60_000,
+    queryFn: async ({ signal }) => {
+      const [snapshots, batches, matches, substitutions] = await Promise.all([
+        leagueRows<Snapshot & { id: string; week_number: number; batch_number: number }>('ladder_snapshots', { season_id: seasonId! }, signal),
+        leagueRows<BatchRow>('ladder_batches', { season_id: seasonId! }, signal),
+        leagueRows<LeagueMatch>('league_matches', { season_id: seasonId! }, signal),
+        leagueRows<LeagueMatchSubstitution>('league_match_substitutions', { season_id: seasonId! }, signal),
+      ]);
+      const order = snapshots.sort((a,b) => b.week_number-a.week_number || b.batch_number-a.batch_number)[0]?.player_ids ?? [];
+      const position = order.includes(currentUserId!) ? order.indexOf(currentUserId!) + 1 : null;
+      const live = batches.sort((a,b) => a.week_number-b.week_number || a.batch_number-b.batch_number)
+        .find(b => b.status !== 'finalized' && b.status !== 'invalidated') ?? null;
+      const groups = live ? await leagueRows<GroupRow>('ladder_batch_groups', { batch_id: live.id }, signal) : [];
+      // A group's stored IDs are the regular ladder seats. Locate a fill-in by
+      // their actual match slots; do not hide their court because they have no seat.
+      const group = groups.find(g => matches.some(m => m.ladder_batch_group_id === g.id
+        && matchPlayerIds(m).includes(currentUserId!))) ?? groups.find(g => g.player_ids.includes(currentUserId!)) ?? null;
+      const games = matches.filter(m => m.ladder_batch_group_id === group?.id && m.status !== 'canceled');
+      const participants = group ? courtPlayerIds(group.player_ids, games) : [];
+      const profiles = await leagueProfiles(participants, signal);
+      const lastFinal = [...batches].reverse().find(b => b.status === 'finalized');
+      const movements = lastFinal ? await leagueRows<MovementRow & { id: string }>('ladder_movements', { batch_id: lastFinal.id, player_id: currentUserId! }, signal) : [];
+      return { position, ladderSize: order.length, batch: live, group, participants,
+        coveringForMe: [...new Set(games.flatMap(m => matchSubstitutions(m, substitutions)).filter(s => s.out_player_id === currentUserId).map(s => s.in_player_id))],
+        names: Object.fromEntries(profiles.map(p => [p.id, leaguePlayerName(p)])),
+        subIds: substitutePlayerIds(games, substitutions), movement: movements[0] ?? null };
+    },
+  });
+  useEffect(() => { if (dataVersion) void query.refetch(); }, [dataVersion, query.refetch]);
+  if (query.isPending || !seasonId || !currentUserId) return null;
+  if (query.error) return <div className="lg-card p-4 text-sm" role="alert">Your court could not be loaded. <button className="min-h-11 underline" onClick={() => void query.refetch()}>Retry court</button></div>;
+  const { position, ladderSize, batch, group, participants, names, subIds, movement, coveringForMe } = query.data;
+  if (!position && !group) return null;
 
   const MoveIcon = movement?.direction === "up"
     ? ArrowUp
@@ -137,7 +100,7 @@ export function LadderMyWeekCard({
             Ladder position
           </div>
           <div className="text-2xl font-black tabular-nums text-[color:var(--lg-text)] flex items-baseline gap-1.5">
-            {position ?? "—"}
+            {position ?? (currentUserId && subIds.has(currentUserId) ? 'Sub' : '—')}
             {ladderSize > 0 && position && (
               <span className="text-xs font-semibold text-[color:var(--lg-text-dim)]">
                 of {ladderSize}
@@ -171,11 +134,12 @@ export function LadderMyWeekCard({
 
       {group ? (
         <div>
+          {!!coveringForMe.length && <p className="mb-3 text-sm">Covering your games: {coveringForMe.map(id => <LeaguePlayerName key={id} name={names[id] ?? 'Name unavailable'} isSub />)}. Your ladder position is retained.</p>}
           <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)] mb-1.5">
             Your foursome — you rotate partners across three games
           </div>
           <ul className="flex flex-wrap gap-1.5">
-            {group.player_ids.map((pid) => (
+            {participants.map((pid) => (
               <li
                 key={pid}
                 className={
@@ -184,7 +148,7 @@ export function LadderMyWeekCard({
                     : "rounded-full px-2.5 py-1 text-xs font-medium bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text)] border border-[color:var(--lg-border)]"
                 }
               >
-                {pid === currentUserId ? "You" : (names[pid] ?? "Player")}
+                <LeaguePlayerName name={names[pid] ?? 'Name unavailable'} isSub={subIds.has(pid)} />{pid === currentUserId && ' · you'}
               </li>
             ))}
           </ul>

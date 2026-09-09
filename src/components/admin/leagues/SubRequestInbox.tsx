@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLeagueSubRequests } from '@/hooks/useLeagueSubRequests';
 import { leagueErrorMessage } from '@/lib/leagues/data';
 import { eligibleSubIds, requestableWeeks, subRequestStatus, weekDescription, type SubRequest } from '@/lib/leagues/subRequests';
-import { resolvePlayerName } from '@/lib/matchDisplay';
+import { leaguePlayerName as resolvePlayerName } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,7 @@ export function SubRequestInbox({ leagueId, seasonId, dataVersion = 0, onMutated
     <div><h2 className="text-lg font-semibold">Player requests</h2><p className="mt-1 text-sm text-muted-foreground">Arrange coverage before drawing the week. The bench below is your pool of fill-in players.</p></div>
     {!rows.length ? <p className="text-sm text-muted-foreground">No substitute requests for this season.</p> : <ul className="divide-y divide-border">
       {rows.map(request => <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-        <div className="min-w-0"><p className="font-semibold break-words">{query.data.profiles[request.player_id] ? resolvePlayerName(query.data.profiles[request.player_id]) : 'Player'} · Week {request.week_number}</p><p className="text-sm text-muted-foreground">{subRequestStatus(request.status)}</p></div>
+        <div className="min-w-0"><p className="font-semibold break-words">{resolvePlayerName(query.data.profiles[request.player_id])} · Week {request.week_number}</p><p className="text-sm text-muted-foreground">{subRequestStatus(request.status)}</p>{request.status === 'sub' && request.assigned_sub_id && <p className="mt-1 text-sm"><LeaguePlayerName name={resolvePlayerName(query.data.profiles[request.assigned_sub_id])} isSub replacesName={resolvePlayerName(query.data.profiles[request.player_id])} /></p>}</div>
         <Button variant="outline" className="h-11 rounded-xl" onClick={() => setReview(request)}>{request.status === 'pending' ? 'Review request' : 'View arrangement'}</Button>
       </li>)}
     </ul>}
@@ -81,8 +82,10 @@ export function ReviewSubRequestDialog({ request, playerName, onClose, onMutated
         {mode === 'reopen' ? 'This removes the current fill-in or sit-out arrangement and puts the request back in Actions. The player will be notified that coverage is not confirmed. Resolve it again before drawing the week.' : 'This closes the outstanding request without arranging coverage. The player will be notified; coordinate their availability directly.'}
         <Button variant="outline" className="mt-3 h-11" disabled={saving} onClick={() => setMode('resolve')}>Go back</Button>
       </div> : !actionable ? <div role="status" className="space-y-3 text-sm">
-        <p className="font-semibold">{latest?.status !== 'pending' ? 'This request is no longer pending.' : 'This week is no longer open for pre-draw decisions.'}</p>
-        <p className="text-muted-foreground">Close this review and refresh the Actions page. If matches are already drawn, use Substitutes → Swap in for the unplayed games.</p>
+        <p className="font-semibold">{latest ? subRequestStatus(latest.status) : 'Request unavailable'}</p>
+        {latest?.status === 'sub' && latest.assigned_sub_id && <div className="rounded-xl border border-border bg-muted/40 p-3"><LeaguePlayerName name={resolvePlayerName(data?.profiles[latest.assigned_sub_id])} isSub replacesName={playerName} /></div>}
+        {latest?.note && <p className="whitespace-pre-wrap break-words">Player’s note: {latest.note}</p>}
+        <p className="text-muted-foreground">{data?.generated.has(request.week_number) ? 'This week has been drawn. This is the original pre-draw arrangement; the match list shows who is currently playing. For later changes, use Substitutes → Swap in for unplayed games.' : latest?.status === 'pending' ? 'This week is no longer open for pre-draw decisions.' : 'The saved arrangement is shown here. The regular player keeps their ladder position.'}</p>
         {latest?.resolution_note && <p className="whitespace-pre-wrap break-words">Organizer message: {latest.resolution_note}</p>}
         {latest && validWeek && ['sub', 'sitout', 'declined'].includes(latest.status) && <Button variant="outline" className="h-11" onClick={() => setMode('reopen')}>Change arrangement</Button>}
         {latest?.status === 'pending' && !data?.generated.has(request.week_number) && <Button variant="outline" className="h-11" onClick={() => setMode('cancel')}>Close this request</Button>}
@@ -108,7 +111,7 @@ export function SubRequestDecisionFields({ playerNote, resolution, onResolution,
           <div className="space-y-2">
             <Input className="min-h-11 rounded-xl" aria-label="Search eligible substitutes" placeholder="Search by name" value={search} onChange={e => onSearch(e.target.value)} />
             <div className="max-h-48 overflow-y-auto overscroll-contain space-y-1">
-              {candidates.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map(c => <button key={c.id} type="button" aria-pressed={subId === c.id} onClick={() => onSubId(c.id)} className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border p-3 text-left text-sm ${subId === c.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><span className="break-words">{c.name}</span>{subId === c.id && <CheckCircle2 className="h-4 w-4 shrink-0" />}</button>)}
+              {candidates.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map(c => <button key={c.id} type="button" aria-pressed={subId === c.id} onClick={() => onSubId(c.id)} className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border p-3 text-left text-sm ${subId === c.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><LeaguePlayerName name={c.name} isSub />{subId === c.id && <CheckCircle2 className="h-4 w-4 shrink-0" />}</button>)}
             </div>
             {!candidates.length && <p className="text-sm text-muted-foreground">No eligible fill-ins. Add an available player to the Substitutes bench, then return here.</p>}
             {!!candidates.length && !candidates.some(c => c.name.toLowerCase().includes(search.toLowerCase())) && <p className="text-sm text-muted-foreground">No names match your search.</p>}

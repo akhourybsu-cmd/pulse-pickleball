@@ -25,6 +25,9 @@ import {
 import { Dialog } from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { LeaguePlayerName, LeagueMatchSide } from '@/components/leagues/LeaguePlayerName';
+import { courtPlayerIds, substitutePlayerIds } from '@/lib/leagues/playerIdentity';
+import type { LeagueMatchSubstitution } from '@/lib/leagues/types';
 import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import { DUR, EASE_OUT } from "@/lib/leagues/motion";
@@ -875,6 +878,7 @@ function LadderManage({
           group={g}
           games={gamesByGroup.get(g.id) ?? []}
           scoring={settings?.scoring_format ?? "to_11_win_by_2"}
+          substitutions={ladder.substitutions}
           nameOf={ladder.nameOf}
           onScored={onChanged}
         />
@@ -1587,6 +1591,7 @@ function WeekRosterPanel({
           ) : (
             order.map((pid, i) => {
               const sitting = sitouts.has(pid);
+              const coverage = requests.find(r => r.player_id === pid && r.status === 'sub' && r.assigned_sub_id);
               return (
                 <div key={pid} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="flex items-center gap-2 min-w-0">
@@ -1595,6 +1600,7 @@ function WeekRosterPanel({
                     </span>
                     <span className={cn("text-sm min-w-0 break-words", sitting && "text-muted-foreground line-through")}>
                       {nameOf(pid)}
+                      {coverage?.assigned_sub_id && <span className="mt-1 block"><LeaguePlayerName name={nameOf(coverage.assigned_sub_id)} isSub /></span>}
                     </span>
                     {sitting && (
                       <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 shrink-0">
@@ -1805,26 +1811,29 @@ function WeekSessionDialog({
 }
 
 
-function CourtGroupCard({
-  group, games, scoring, nameOf, onScored,
+export function CourtGroupCard({
+  group, games, scoring, nameOf, onScored, substitutions = [], readOnly = false,
 }: {
   group: LadderGroup;
   games: LadderGame[];
   scoring: string;
   nameOf: (id: string) => string;
   onScored: () => void;
+  substitutions?: LeagueMatchSubstitution[];
+  readOnly?: boolean;
 }) {
+  const subs = substitutePlayerIds(games, substitutions);
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
       <div className="flex items-start justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border/50">
         <span className="text-sm font-bold shrink-0">Court {group.court_number ?? group.group_index + 1}</span>
-        <span className="text-xs uppercase tracking-wider text-muted-foreground min-w-0 text-right break-words leading-snug">
-          {group.player_ids.map((p) => nameOf(p)).join(" · ")}
+        <span className="text-sm text-muted-foreground min-w-0 text-right break-words leading-snug">
+          {courtPlayerIds(group.player_ids, games).map((id, index) => <span key={id}>{index > 0 && ' · '}<LeaguePlayerName name={nameOf(id)} isSub={subs.has(id)} /></span>)}
         </span>
       </div>
       <ul className="divide-y divide-border/50">
         {games.map((game) => (
-          <GameScoreRow key={game.id} game={game} nameOf={nameOf} onScored={onScored} />
+          <GameScoreRow key={game.id} game={game} nameOf={nameOf} substitutions={substitutions} onScored={onScored} readOnly={readOnly} />
         ))}
       </ul>
       <div className="px-4 py-1.5 text-xs text-muted-foreground bg-muted/20">
@@ -1835,9 +1844,11 @@ function CourtGroupCard({
 }
 
 function GameScoreRow({
-  game, nameOf, onScored,
+  game, nameOf, onScored, substitutions, readOnly,
 }: {
   game: LadderGame;
+  substitutions: LeagueMatchSubstitution[];
+  readOnly: boolean;
   nameOf: (id: string) => string;
   onScored: () => void;
 }) {
@@ -1850,6 +1861,7 @@ function GameScoreRow({
   const scored = game.team_a_score != null && game.team_b_score != null;
 
   const save = async () => {
+    if (readOnly) return;
     const na = Number(a), nb = Number(b);
     if (!a.trim() || !b.trim() || Number.isNaN(na) || Number.isNaN(nb) || na < 0 || nb < 0) {
       toast.error("Enter two non-negative scores"); return;
@@ -1866,16 +1878,16 @@ function GameScoreRow({
 
   return (
     <li className="px-4 py-2.5">
-      <div className="flex items-center gap-2">
-        <span className="text-xs flex-1 min-w-0 text-right break-words leading-snug">{sideA || "—"}</span>
-        <Input value={a} onChange={(e) => setA(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
-        <span className="text-muted-foreground text-xs shrink-0">–</span>
-        <Input value={b} onChange={(e) => setB(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
-        <span className="text-xs flex-1 min-w-0 break-words leading-snug">{sideB || "—"}</span>
-        <ActionButton size="sm" variant={dirty ? "default" : "ghost"} className="h-10 shrink-0"
-          disabled={saving || !dirty} onClick={save}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+        <span className="col-start-1 row-start-1 text-sm sm:flex-1 min-w-0 text-right break-words leading-snug"><LeagueMatchSide match={game} ids={[game.player_a_id, game.player_b_id]} nameOf={nameOf} substitutions={substitutions} /></span>
+        <Input value={a} disabled={readOnly} onChange={(e) => setA(e.target.value)} type="number" min="0"
+          aria-label={`Score for ${sideA}`} inputMode="numeric" className="col-start-1 row-start-2 justify-self-end h-11 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="col-start-2 row-start-2 text-muted-foreground text-xs shrink-0">–</span>
+        <Input value={b} disabled={readOnly} onChange={(e) => setB(e.target.value)} type="number" min="0"
+          aria-label={`Score for ${sideB}`} inputMode="numeric" className="col-start-3 row-start-2 justify-self-start h-11 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="col-start-3 row-start-1 text-sm sm:flex-1 min-w-0 break-words leading-snug"><LeagueMatchSide match={game} ids={[game.player_c_id, game.player_d_id]} nameOf={nameOf} substitutions={substitutions} /></span>
+        <ActionButton size="sm" variant={dirty ? "default" : "ghost"} className="col-span-3 row-start-3 justify-self-end h-11 shrink-0"
+          disabled={readOnly || saving || !dirty} onClick={save}>
           {scored && !dirty ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : "Save"}
         </ActionButton>
       </div>

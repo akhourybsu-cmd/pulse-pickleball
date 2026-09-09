@@ -17,10 +17,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ActionsTab } from '@/components/admin/leagues/ActionsTab';
 import { SubRequestDecisionFields } from '@/components/admin/leagues/SubRequestInbox';
 import type { useLeagueActions } from '@/hooks/useLeagueActions';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
+import { CourtGroupCard } from '@/components/admin/leagues/LadderTab';
+import type { LadderGame } from '@/hooks/useLadder';
+import type { LeagueMatchSubstitution } from '@/lib/leagues/types';
 
 const league = { name: 'ELEVENO Autumn Ladder', description: 'Good games. Familiar faces. A little friendly competition, every Tuesday.', location: 'ELEVENO · Attleboro, MA', league_type: 'ladder', status: 'active', visibility: 'admin_only', rating_eligible: true, guests_allowed: true } as const;
 const seasons = [{ id: 'autumn', name: 'Autumn 2026 · Tuesday evenings' }, { id: 'summer', name: 'Summer 2026 · Thursday evenings' }];
 const rows: StandingRow[] = ['Alex Morgan', 'Jordan Chen', 'Samantha Williams-Robertson', 'Taylor Brooks', 'Casey Rivera'].map((name, i) => ({ teamId: String(i), teamName: name, wins: 8 - i, losses: i + 1, forfeitWins: 0, forfeitLosses: 0, gamesPlayed: 9, pointsFor: 91 - i, pointsAgainst: 72 + i, pointDiff: 19 - 2 * i, avgPointDiff: 2.1, winPct: (8-i)/9, recentForm: ['W','L','W','W','W'] }));
+const identityNames: Record<string,string> = {regular:'Alex Morgan',fill:'Samantha Williams-Robertson',b:'Jordan Chen',c:'Taylor Brooks',d:'Casey Rivera'};
+const identityGame = {id:'preview-game',ladder_batch_group_id:'preview-group',ladder_game_number:1,player_a_id:'fill',player_b_id:'b',player_c_id:'c',player_d_id:'d',team_a_score:11,team_b_score:8,status:'verified'} as LadderGame;
+const identitySub = {id:'preview-sub',league_id:'preview',season_id:'autumn',match_id:'preview-game',slot:'a',out_player_id:'regular',in_player_id:'fill'} as LeagueMatchSubstitution;
 
 export default function LeaguePreview() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -65,7 +72,7 @@ export default function LeaguePreview() {
         <main className="min-w-0 flex-1 space-y-5">
           {active !== 'actions' && <><SectionHeader title={visibleManageTabs('ladder').find(t => t.key === active)?.label ?? 'League settings'} hint="Keep your season organized and your players informed." actions={<Button className="h-11 rounded-xl" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Open league editor</Button>} />
           <SeasonSelect seasons={seasons} value={season} onChange={setSeason} className="sm:max-w-sm" /></>}
-          {active === 'actions' ? <ActionsTab query={actionFixture} onNavigate={setActive} onMutated={() => undefined} onReview={() => setReviewOpen(true)} /> : active === 'overview' ? <section className="lg-card space-y-5 p-4 sm:p-6">{form}</section> : <StandingsTable rows={rows} nameHeader="Player" />}
+          {active === 'subs' ? <section className="space-y-4"><div className="lg-card space-y-3 p-4"><h2 className="text-lg font-semibold">Substitute identity preview</h2><LeaguePlayerName name={identityNames.fill} isSub replacesName={identityNames.regular} /><p className="text-sm text-muted-foreground">Week 4 · Batch 1 · Confirmed coverage</p><Button onClick={() => setReviewOpen(true)} className="h-11">Review substitute</Button></div><CourtGroupCard group={{id:'preview-group',group_index:0,court_number:1,wave:1,player_ids:['regular','b','c','d']}} games={[identityGame]} substitutions={[identitySub]} nameOf={id=>identityNames[id]} scoring="to_11_win_by_2" onScored={() => undefined} readOnly /><StandingsTable rows={rows} nameHeader="Player" substituteIds={new Set(['2'])} /></section> : active === 'actions' ? <ActionsTab query={actionFixture} onNavigate={setActive} onMutated={() => undefined} onReview={() => setReviewOpen(true)} /> : active === 'overview' ? <section className="lg-card space-y-5 p-4 sm:p-6">{form}</section> : <StandingsTable rows={rows} nameHeader="Player" />}
         </main>
       </div> : <div className="space-y-5">
         <SeasonSelect seasons={seasons} value={season} onChange={setSeason} className="sm:max-w-sm" />

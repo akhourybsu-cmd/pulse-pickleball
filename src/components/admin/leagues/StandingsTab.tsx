@@ -12,6 +12,7 @@ import {
   computePlayerStandings, computeTeamStandings,
 } from "@/lib/leagues/standings";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { substitutePlayerIds } from '@/lib/leagues/playerIdentity';
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { EmptyState, TabSkeleton, LeagueTabProps, SeasonSelect } from "./_shared";
 
@@ -28,7 +29,7 @@ export function StandingsTab({ league, dataVersion, onNavigate }: LeagueTabProps
   const isTeamMode =
     league.league_type === "doubles" || league.league_type === "team";
   const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
-  const { matches, teams, profilesById, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'teams']);
+  const { matches, teams, profilesById, substitutions, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'teams']);
   const loading = seasonsLoading || rowsLoading;
   const error = seasonsError ?? rowsError;
 
@@ -83,6 +84,7 @@ export function StandingsTab({ league, dataVersion, onNavigate }: LeagueTabProps
 
       <StandingsTable
         rows={rows}
+        substituteIds={isTeamMode ? undefined : substitutePlayerIds(matches.filter(m => m.status === 'verified'), substitutions)}
         nameHeader={isTeamMode ? "Team" : "Player"}
         emptyMessage="No completed matches in this season yet."
       />

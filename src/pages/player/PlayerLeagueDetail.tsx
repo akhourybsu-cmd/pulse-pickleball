@@ -13,6 +13,9 @@ import type { LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { LeaguePlayerName, LeagueMatchSide } from '@/components/leagues/LeaguePlayerName';
+import { leaguePlayerName, substitutePlayerIds, matchPlayerLabel } from '@/lib/leagues/playerIdentity';
+import type { LeagueMatchSubstitution } from '@/lib/leagues/types';
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LadderSubRequestCard } from "@/components/leagues/LadderSubRequestCard";
@@ -56,7 +59,7 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season,
-    matches, allMatches, allTeams, teamsById, playersById, teammates,
+    matches, allMatches, allTeams, teamsById, playersById, teammates, matchSubs,
     myTeams, loading,
     currentUserId, refresh, error, canManage, seasons, setSeasonId, sessions, isActiveParticipant,
   } = detail;
@@ -265,6 +268,7 @@ export default function PlayerLeagueDetail() {
 
         {league.league_type === "ladder" && (
           <LadderMyWeekCard
+            dataVersion={detail.dataVersion}
             seasonId={season?.id ?? null}
             currentUserId={currentUserId}
           />
@@ -290,6 +294,7 @@ export default function PlayerLeagueDetail() {
             <LgSectionHeader icon={Trophy} className="mb-0">Standings</LgSectionHeader>
             <p className="text-xs text-[color:var(--lg-text-dim)]">Confirmed results only. Scores awaiting confirmation or under review do not count yet.</p>
             <StandingsTable
+              substituteIds={isTeamMode ? undefined : substitutePlayerIds(allMatches.filter(m => m.status === 'verified'), matchSubs)}
               rows={standings}
               nameHeader={isTeamMode ? "Team" : "Player"}
               highlightTeamIds={
@@ -326,7 +331,7 @@ export default function PlayerLeagueDetail() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold break-words text-[color:var(--lg-text)]">
-                      {tm.display_name}
+                      <LeaguePlayerName name={tm.display_name} isSub={tm.role === 'substitute'} />
                       {tm.is_me && <span className="text-[color:var(--lg-text-dim)] font-normal"> · you</span>}
                     </div>
                     <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--lg-text-dim)]">
@@ -377,6 +382,7 @@ export default function PlayerLeagueDetail() {
                     <MatchRow
                       key={m.id}
                       match={m}
+                      substitutions={matchSubs}
                       teamsById={teamsById}
                       playersById={playersById}
                       currentUserId={currentUserId}
@@ -397,6 +403,7 @@ export default function PlayerLeagueDetail() {
                     <MatchRow
                       key={m.id}
                       match={m}
+                      substitutions={matchSubs}
                       teamsById={teamsById}
                       playersById={playersById}
                       currentUserId={currentUserId}
@@ -435,9 +442,10 @@ export default function PlayerLeagueDetail() {
 }
 
 function MatchRow({
-  match, teamsById, playersById, currentUserId, isLadder, canPlay, onChanged,
+  match, teamsById, playersById, currentUserId, isLadder, canPlay, onChanged, substitutions,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
+  substitutions: LeagueMatchSubstitution[];
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
   playersById: Record<string, { display_name: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>;
   currentUserId: string | null;
@@ -448,7 +456,7 @@ function MatchRow({
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
   const teamB = match.team_b_id ? teamsById[match.team_b_id] : null;
   const nameOf = (id: string | null): string | null =>
-    id ? (playersById[id] ? resolvePlayerName(playersById[id]) : null) : null;
+    id ? matchPlayerLabel(match, id, leaguePlayerName(playersById[id]), substitutions) : null;
   const aName = sideName(teamA?.name ?? null, [nameOf(match.player_a_id), nameOf(match.player_b_id)]);
   const bName = sideName(teamB?.name ?? null, [nameOf(match.player_c_id), nameOf(match.player_d_id)]);
   const scoreShown =
@@ -481,7 +489,7 @@ function MatchRow({
           "text-sm min-w-0 break-words text-right",
           aWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
-          {aName}
+          <LeagueMatchSide match={match} ids={[match.player_a_id, match.player_b_id]} nameOf={id => leaguePlayerName(playersById[id])} substitutions={substitutions} teamName={teamA?.name} />
         </div>
         <div className="flex items-center gap-2 lg-num">
           {scoreShown ? (
@@ -506,7 +514,7 @@ function MatchRow({
           "text-sm min-w-0 break-words text-left",
           bWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
-          {bName}
+          <LeagueMatchSide match={match} ids={[match.player_c_id, match.player_d_id]} nameOf={id => leaguePlayerName(playersById[id])} substitutions={substitutions} teamName={teamB?.name} />
         </div>
       </div>
 

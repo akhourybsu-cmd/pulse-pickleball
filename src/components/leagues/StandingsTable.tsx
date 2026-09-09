@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Trophy, Flag } from "lucide-react";
 import type { StandingRow, FormResult } from "@/lib/leagues/standings";
 import { cn } from "@/lib/utils";
+import { LeaguePlayerName } from './LeaguePlayerName';
 
 /**
  * Presentation-only. Callers supply pre-computed rows so the same
@@ -14,12 +15,14 @@ export function StandingsTable({
   highlightTeamIds,
   emptyMessage = "No results yet.",
   nameHeader = "Team",
+  substituteIds,
 }: {
   rows: StandingRow[];
   highlightTeamIds?: Set<string>;
   emptyMessage?: string;
   /** Column header for the name column — "Player" for individual leagues. */
   nameHeader?: string;
+  substituteIds?: Set<string>;
 }) {
   if (rows.length === 0) {
     return (
@@ -73,9 +76,9 @@ export function StandingsTable({
                 )}
                 title={row.teamName}
               >
-                <span className={cn("min-w-0 break-words leading-tight font-medium",
+                <LeaguePlayerName name={row.teamName} isSub={substituteIds?.has(row.teamId)} className={cn("min-w-0 break-words leading-tight font-medium",
                   highlighted && "font-bold",
-                )}>{row.teamName}</span>
+                )} />
                 {(row.forfeitWins > 0 || row.forfeitLosses > 0) && (
                   <span
                     className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 shrink-0"
@@ -112,6 +115,7 @@ export function StandingsTable({
           );
         })}
       </ul>
+      {rows.some(row => substituteIds?.has(row.teamId)) && <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">Sub marks players with substitute appearances in these results. Wins and points belong to the person who played.</p>}
     </div>
   );
 }

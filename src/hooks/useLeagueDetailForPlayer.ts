@@ -6,7 +6,7 @@ import { useLeagueLiveRefresh } from './useLeagueLiveRefresh';
 import { leagueRows, leagueProfiles, type LeagueProfile } from '@/lib/leagues/data';
 import { canManageLeague, selectSeasonMembership } from '@/lib/leagues/operations';
 import { resolvePlayerName } from '@/lib/matchDisplay';
-import type { League, LeagueMember, LeagueTeam, LeagueTeamMember, LeagueMatch, LeagueSession, LeagueSubstitute } from '@/lib/leagues/types';
+import type { League, LeagueMember, LeagueTeam, LeagueTeamMember, LeagueMatch, LeagueSession, LeagueSubstitute, LeagueMatchSubstitution } from '@/lib/leagues/types';
 
 export function useLeagueDetailForPlayer(leagueId: string | undefined) {
   const { user, loading: authLoading } = useAuthState();
@@ -18,7 +18,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
     enabled: !!user && !!leagueId && !seasonContext.loading && !seasonContext.error,
     staleTime: 15_000,
     queryFn: async ({ signal }) => {
-      const [leagues, memberships, allTeams, allMatches, sessions, teamMemberships, substitutions] = await Promise.all([
+      const [leagues, memberships, allTeams, allMatches, sessions, teamMemberships, substitutions, matchSubs] = await Promise.all([
         leagueRows<League>('leagues', { id: leagueId! }, signal),
         leagueRows<LeagueMember>('league_members', { league_id: leagueId!, user_id: user!.id }, signal),
         seasonId ? leagueRows<LeagueTeam>('league_teams', { league_id: leagueId!, season_id: seasonId }, signal) : [],
@@ -26,6 +26,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
         seasonId ? leagueRows<LeagueSession>('league_sessions', { league_id: leagueId!, season_id: seasonId }, signal) : [],
         leagueRows<LeagueTeamMember>('league_team_members', { user_id: user!.id, status: 'active' }, signal),
         seasonId ? leagueRows<LeagueSubstitute>('league_substitutes', { league_id: leagueId!, season_id: seasonId, user_id: user!.id, status: 'active' }, signal) : [],
+        seasonId ? leagueRows<LeagueMatchSubstitution>('league_match_substitutions', { league_id: leagueId!, season_id: seasonId }, signal) : [],
       ]);
       const league = leagues[0] ?? null;
       const myTeamIds = new Set(allTeams.filter(t => t.captain_user_id === user!.id
@@ -34,6 +35,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
       const roster = (await Promise.all(myTeams.map(t => leagueRows<LeagueTeamMember>('league_team_members', { team_id: t.id, status: 'active' }, signal)))).flat();
       const profiles = await leagueProfiles([
         ...roster.map(r => r.user_id), ...allMatches.flatMap(m => [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id]),
+        ...matchSubs.flatMap(s => [s.in_player_id, s.out_player_id]),
       ].filter((id): id is string => !!id), signal);
       const playersById: Record<string, LeagueProfile> = Object.fromEntries(profiles.map(p => [p.id, p]));
       const teamsById = Object.fromEntries(allTeams.map(t => [t.id, t]));
@@ -45,7 +47,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
         league, membership: selectSeasonMembership(memberships, seasonId),
         isActiveParticipant: memberships.some(m => m.season_id === seasonId && m.status === 'active') || substitutions.length > 0,
         canManage: !!league && canManageLeague(league.created_by, user!.id, memberships),
-        allTeams, allMatches, sessions, matches, myTeams, myTeamIds, teamsById, playersById,
+        allTeams, allMatches, sessions, matches, myTeams, myTeamIds, teamsById, playersById, matchSubs,
         teammates: roster.map(tm => ({
           team_member_id: tm.id, team_id: tm.team_id, team_name: teamsById[tm.team_id]?.name ?? 'Team',
           user_id: tm.user_id, is_me: tm.user_id === user!.id,
@@ -73,7 +75,9 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined) {
     teammates: query.data?.teammates ?? [], matches: query.data?.matches ?? [], allMatches: query.data?.allMatches ?? [],
     allTeams: query.data?.allTeams ?? [], sessions: query.data?.sessions ?? [],
     teamsById: query.data?.teamsById ?? {}, playersById: query.data?.playersById ?? {},
+    matchSubs: query.data?.matchSubs ?? [],
     currentUserId: user?.id ?? null,
+    dataVersion: query.dataUpdatedAt,
     loading: authLoading || (!!user && !seasonContext.error && (seasonContext.loading || query.isPending)),
     error: seasonContext.error ?? query.error, refreshing: query.isFetching && !query.isPending, refresh,
   };

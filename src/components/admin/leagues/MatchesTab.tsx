@@ -33,6 +33,9 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { LeagueMatchSide } from '@/components/leagues/LeaguePlayerName';
+import { leaguePlayerName, matchPlayerLabel } from '@/lib/leagues/playerIdentity';
+import type { LeagueMatchSubstitution } from '@/lib/leagues/types';
 import { sideName } from "@/lib/leagues/matchSides";
 import { cn } from "@/lib/utils";
 import {
@@ -60,7 +63,7 @@ const STATUS_TONE: Record<LeagueMatchStatus, string> = {
 
 export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: LeagueTabProps) {
   const { seasons, seasonId, setSeasonId, loading: seasonsLoading, error: seasonsError, retry } = useLeagueSeasons(league.id, dataVersion);
-  const { matches, members: seasonMembers, teams, sessions, profilesById, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'members', 'teams', 'sessions']);
+  const { matches, members: seasonMembers, teams, sessions, profilesById, substitutions, loading: rowsLoading, error: rowsError, reload } = useLeagueWorkspace(league.id, seasonId, dataVersion, ['matches', 'members', 'teams', 'sessions']);
   const loading = seasonsLoading || rowsLoading;
   const error = seasonsError ?? rowsError;
   const members = seasonMembers.filter(m => m.status === 'active');
@@ -114,6 +117,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
               league={league} seasonId={seasonId}
               sessions={sessions} teams={teams} members={members} profilesById={profilesById}
               initial={null}
+              substitutions={substitutions}
               onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -334,8 +338,6 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                           {list.map((m) => {
                             const teamA = teams.find((t) => t.id === m.team_a_id);
                             const teamB = teams.find((t) => t.id === m.team_b_id);
-                            const aName = sideName(teamA?.name ?? null, [nameOf(m.player_a_id), nameOf(m.player_b_id)]);
-                            const bName = sideName(teamB?.name ?? null, [nameOf(m.player_c_id), nameOf(m.player_d_id)]);
                             const scoreShown = m.team_a_score !== null && m.team_b_score !== null;
                             const aWon = scoreShown && (m.team_a_score ?? 0) > (m.team_b_score ?? 0);
                             const bWon = scoreShown && (m.team_b_score ?? 0) > (m.team_a_score ?? 0);
@@ -351,16 +353,16 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                                   onClick={() => setEditing(m)}
                                   className="group w-full text-left hover:bg-muted/40 transition-colors"
                                 >
-                                  <div className="grid grid-cols-[56px_1fr_auto_1fr_auto] items-center gap-3 px-3 py-2.5">
+                                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:grid-cols-[40px_minmax(0,1fr)_auto_minmax(0,1fr)] xl:grid-cols-[56px_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5">
                                     {/* Court pill — the primary anchor */}
-                                    <div className="flex flex-col items-center">
+                                    <div className="col-span-3 sm:col-span-1 flex sm:flex-col items-center gap-1">
                                       <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Court</div>
                                       <div className="text-lg font-black tabular-nums leading-none">
                                         {m.court_number ?? "—"}
                                       </div>
                                     </div>
 
-                                    <TeamCell name={aName} won={aWon} align="right" />
+                                    <TeamCell name={<LeagueMatchSide match={m} ids={[m.player_a_id, m.player_b_id]} nameOf={id => leaguePlayerName(profilesById[id])} substitutions={substitutions} teamName={teamA?.name} />} won={aWon} align="right" />
                                     <div className="flex items-center gap-1.5 font-black tabular-nums px-1">
                                       {scoreShown ? (
                                         <>
@@ -372,9 +374,9 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
                                         <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">vs</span>
                                       )}
                                     </div>
-                                    <TeamCell name={bName} won={bWon} align="left" />
+                                    <TeamCell name={<LeagueMatchSide match={m} ids={[m.player_c_id, m.player_d_id]} nameOf={id => leaguePlayerName(profilesById[id])} substitutions={substitutions} teamName={teamB?.name} />} won={bWon} align="left" />
 
-                                    <div className="flex flex-col items-end gap-1 min-w-[92px]">
+                                    <div className="col-span-3 sm:col-span-4 xl:col-span-1 flex xl:flex-col items-end justify-end gap-1 min-w-0">
                                       <span className={cn(
                                         "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
                                         STATUS_TONE[m.status],
@@ -410,6 +412,7 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
             league={league} seasonId={seasonId as string}
             sessions={sessions} teams={teams} members={members} profilesById={profilesById}
             initial={editing}
+            substitutions={substitutions}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
             onSaved={async (saved) => { await reload(); onMutated(); setEditing(saved); }}
             onSaveAndNext={async (saved) => {
@@ -444,14 +447,14 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
 function TeamCell({
   name, won, align,
 }: {
-  name: string;
+  name: React.ReactNode;
   won: boolean;
   align: "left" | "right";
 }) {
   return (
     <div className={cn("min-w-0", align === "right" ? "text-right" : "text-left")}>
       <div className={cn(
-        "text-sm font-semibold truncate",
+        "text-sm font-semibold break-words",
         won && "text-primary font-bold",
       )}>
         {name}
@@ -464,7 +467,7 @@ function TeamCell({
 
 function MatchEditor({
   mode, league, seasonId, sessions, teams, members, profilesById, initial, onDone,
-  onSaved, onSaveAndNext,
+  onSaved, onSaveAndNext, substitutions,
 }: {
   mode: "create" | "edit";
   league: League;
@@ -474,6 +477,7 @@ function MatchEditor({
   members: LeagueMember[];
   profilesById: Record<string, PlayerRow>;
   initial: LeagueMatch | null;
+  substitutions: LeagueMatchSubstitution[];
   onDone: () => Promise<void>;
   /** Edit mode: called after save; parent keeps the dialog open. */
   onSaved?: (saved: LeagueMatch) => Promise<void> | void;
@@ -586,15 +590,14 @@ function MatchEditor({
   // Player pool = members with a profile we already know about.
   const playerPool = members.map((m) => ({
     id: m.user_id,
-    label: profilesById[m.user_id] ? resolvePlayerName(profilesById[m.user_id]) : m.user_id.slice(0, 8),
+    label: matchPlayerLabel(initial, m.user_id, leaguePlayerName(profilesById[m.user_id]), substitutions),
   }));
 
   // Live side names for the scoreboard: team name when teams are on,
   // otherwise the picked player names, otherwise a "Side A/B" placeholder.
   const nameOf = (id: string | "none"): string | null => {
     if (!id || id === "none") return null;
-    if (profilesById[id]) return resolvePlayerName(profilesById[id]);
-    return playerPool.find((p) => p.id === id)?.label ?? null;
+    return matchPlayerLabel(initial, id, leaguePlayerName(profilesById[id]), substitutions);
   };
   const teamAName = teams.find((t) => t.id === teamAId)?.name ?? null;
   const teamBName = teams.find((t) => t.id === teamBId)?.name ?? null;
@@ -699,7 +702,7 @@ function MatchEditor({
                     <SelectTrigger className="h-9"><SelectValue placeholder="Add player" /></SelectTrigger>
                     <SelectContent className="league-menu">
                       <SelectItem value="none">Empty</SelectItem>
-                      {slot.val !== 'none' && !playerPool.some(p => p.id === slot.val) && <SelectItem value={slot.val}>{nameOf(slot.val) ?? 'Assigned player'} · not active on roster</SelectItem>}
+                      {slot.val !== 'none' && !playerPool.some(p => p.id === slot.val) && <SelectItem value={slot.val}>{nameOf(slot.val)} · assigned to this match</SelectItem>}
                       {playerPool.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                       ))}

@@ -124,6 +124,16 @@ export interface LeagueSubstitute {
   updated_at: string;
 }
 
+export interface LeagueMatchSubstitution {
+  id: string;
+  league_id: string;
+  season_id: string;
+  match_id: string;
+  slot: 'a' | 'b' | 'c' | 'd';
+  out_player_id: string;
+  in_player_id: string;
+}
+
 export interface LeagueSession {
   id: string;
   league_id: string;

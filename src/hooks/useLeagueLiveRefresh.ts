@@ -14,7 +14,7 @@ export function useLeagueLiveRefresh(leagueId: string | undefined, refresh: () =
       timer = setTimeout(() => latest.current(), 350);
     };
     const channel = supabase.channel(`league-operations:${leagueId}:${crypto.randomUUID()}`);
-    for (const table of ['league_members', 'league_matches', 'league_seasons', 'league_sessions', 'league_teams', 'league_substitutes', 'ladder_sub_requests', 'ladder_week_sitouts', 'ladder_batches']) {
+    for (const table of ['league_members', 'league_matches', 'league_seasons', 'league_sessions', 'league_teams', 'league_substitutes', 'league_match_substitutions', 'ladder_sub_requests', 'ladder_week_sitouts', 'ladder_batches']) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `league_id=eq.${leagueId}` }, update);
     }
     channel.subscribe();

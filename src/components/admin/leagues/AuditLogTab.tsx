@@ -12,6 +12,12 @@ import {
 import type { League, LeagueAuditEntry } from "@/lib/leagues/types";
 import { EmptyState, TabSkeleton } from "./_shared";
 import { cn } from "@/lib/utils";
+import { leagueProfiles, leagueRows } from '@/lib/leagues/data';
+import { leaguePlayerName } from '@/lib/leagues/playerIdentity';
+import { LeaguePlayerName } from '@/components/leagues/LeaguePlayerName';
+import type { LeagueSubstitute } from '@/lib/leagues/types';
+
+const personFields = ['user_id', 'player_id', 'out_player_id', 'in_player_id', 'assigned_sub_id'];
 
 /**
  * Read-only audit tab. Takes dataVersion so it refetches after sibling
@@ -55,6 +61,16 @@ const PREFIX_META: Record<string, ActionMeta> = {
  * actions fall back to a title-cased version of the suffix.
  */
 const ACTION_LABELS: Record<string, string> = {
+  'substitute.added': 'Substitute added to bench',
+  'substitute.updated': 'Substitute details updated',
+  'substitute.removed': 'Substitute removed from bench',
+  'substitute.activated': 'Substitute activated',
+  'substitute.deactivated': 'Substitute benched',
+  'league.week_player_swapped': 'Substitute swapped into games',
+  'ladder.sub_request_resolved': 'Substitute request resolved',
+  'ladder.sub_requested': 'Substitute requested',
+  'ladder.sub_request_canceled': 'Substitute request canceled',
+  'ladder.sub_request_reopened': 'Substitute request reopened',
   "league.created":              "League created",
   "league.updated":              "League updated",
   "league.archived":             "League archived",
@@ -207,36 +223,45 @@ export function AuditLogTab({
 }) {
   const [entries, setEntries] = useState<LeagueAuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryVersion, setRetryVersion] = useState(0);
   const [actors, setActors] = useState<Record<string, ProfileRow>>({});
+  const [benchNames, setBenchNames] = useState<Record<string, string>>({});
   const [prefixFilter, setPrefixFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
 
   useEffect(() => {
+    let canceled = false;
+    setLoading(true); setLoadError(false);
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("league_audit_log" as never).select("*")
         .eq("league_id", league.id).order("created_at", { ascending: false }).limit(200);
       const list = (data ?? []) as unknown as LeagueAuditEntry[];
+      if (error) throw error;
+      if (canceled) return;
       setEntries(list);
       if (list.length) {
-        const ids = Array.from(new Set(list.map((e) => e.actor_user_id)));
-        const { data: profs } = await supabase
-          .from("profiles_public" as never)
-          .select("id, display_name, full_name, avatar_url").in("id", ids);
+        const bench = await leagueRows<LeagueSubstitute>('league_substitutes', { league_id: league.id });
+        const ids = Array.from(new Set([...list.map(e => e.actor_user_id), ...bench.map(s => s.user_id),
+          ...list.flatMap(e => [e.old_value, e.new_value].flatMap(value => personFields.map(k => value?.[k]).filter((id): id is string => typeof id === 'string')))]));
+        const profs = await leagueProfiles(ids.filter(id => /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)));
+        if (canceled) return;
         const map: Record<string, ProfileRow> = {};
         (profs ?? []).forEach((p) => {
           const r = p as ProfileRow;
           map[r.id] = r;
         });
         setActors(map);
+        setBenchNames(Object.fromEntries(bench.map(s => [s.id, s.user_id])));
       }
-      setLoading(false);
-    })();
-  }, [league.id, dataVersion]);
+    })().catch(() => { if (!canceled) setLoadError(true); }).finally(() => { if (!canceled) setLoading(false); });
+    return () => { canceled = true; };
+  }, [league.id, dataVersion, retryVersion]);
 
   const actorName = (id: string): string => {
     const p = actors[id];
-    return p?.display_name || p?.full_name || id.slice(0, 8);
+    return leaguePlayerName(p);
   };
 
   // Discover the prefixes present in this log so the filter dropdown
@@ -276,6 +301,7 @@ export function AuditLogTab({
   }, [filtered]);
 
   if (loading) return <TabSkeleton lines={4} />;
+  if (loadError) return <EmptyState title="Couldn't load activity names" desc="No league records were changed." action={{label:'Retry activity',onClick:()=>setRetryVersion(v=>v+1)}} />;
   if (entries.length === 0) {
     return (
       <EmptyState
@@ -337,7 +363,7 @@ export function AuditLogTab({
                   <span className="ml-1.5 opacity-60">· {rows.length}</span>
                 </div>
                 <ul className="space-y-2">
-                  {rows.map((e) => <AuditRow key={e.id} entry={e} actor={actors[e.actor_user_id]} actorName={actorName(e.actor_user_id)} />)}
+                  {rows.map((e) => <AuditRow key={e.id} entry={e} actor={actors[e.actor_user_id]} actorName={actorName(e.actor_user_id)} nameOf={actorName} benchUserId={e.entity_id ? benchNames[e.entity_id] : undefined} />)}
                 </ul>
               </section>
             );
@@ -349,11 +375,13 @@ export function AuditLogTab({
 }
 
 function AuditRow({
-  entry, actor, actorName,
+  entry, actor, actorName, nameOf, benchUserId,
 }: {
   entry: LeagueAuditEntry;
   actor: ProfileRow | undefined;
   actorName: string;
+  nameOf: (id: string) => string;
+  benchUserId?: string;
 }) {
   const dot = entry.action.indexOf(".");
   const prefix = dot > 0 ? entry.action.slice(0, dot) : entry.action;
@@ -361,6 +389,10 @@ function AuditRow({
   const Icon = ACTION_ICONS[entry.action] ?? meta?.icon ?? FileText;
   const title = ACTION_LABELS[entry.action] ?? entry.action;
   const chipClass = meta?.chip ?? "bg-muted text-muted-foreground";
+  const values = { ...entry.old_value, ...entry.new_value };
+  const incoming = typeof values.in_player_id === 'string' ? values.in_player_id : typeof values.assigned_sub_id === 'string' ? values.assigned_sub_id : null;
+  const outgoing = typeof values.out_player_id === 'string' ? values.out_player_id : typeof values.player_id === 'string' ? values.player_id : null;
+  const benchPlayer = typeof values.user_id === 'string' ? values.user_id : benchUserId;
 
   return (
     <li className="rounded-lg border border-border/70 bg-card p-3 hover:border-border transition-colors">
@@ -383,9 +415,10 @@ function AuditRow({
               })}
             </span>
           </div>
+          {incoming ? <p className="mt-2 text-sm"><LeaguePlayerName name={nameOf(incoming)} isSub replacesName={outgoing ? nameOf(outgoing) : undefined} /></p> : entry.entity_type === 'substitute' && benchPlayer ? <p className="mt-2 text-sm"><LeaguePlayerName name={nameOf(benchPlayer)} isSub /></p> : null}
           <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
             <span className="font-mono opacity-70">{entry.action}</span>
-            {entry.entity_id && (
+            {entry.entity_id && !entry.entity_type.includes('substitut') && entry.entity_type !== 'ladder_sub_request' && (
               <>
                 <span className="opacity-40">·</span>
                 <span
