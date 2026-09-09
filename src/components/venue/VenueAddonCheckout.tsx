@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Loader2, LockKeyhole } from "lucide-react";
@@ -13,15 +13,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { paymentApi, openStripe, type PaymentConfig } from "@/lib/payments";
+import { venueUpgradeState } from "@/lib/venues/venueUpgrade";
 
 export function VenueAddonCheckout({
   venueId,
   moduleKey,
   title,
+  verified,
+  canPurchase,
 }: {
   venueId: string;
   moduleKey: string;
   title: string;
+  verified: boolean;
+  canPurchase: boolean;
 }) {
   const config = useQuery({
     queryKey: ["payment-config"],
@@ -32,10 +37,17 @@ export function VenueAddonCheckout({
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [request, setRequest] = useState(() => crypto.randomUUID());
-  const ready =
-    (config.data?.mode === "test" || config.data?.mode === "live") &&
-    config.data.cadence === "monthly" &&
-    !config.isError;
+  const availability = venueUpgradeState({
+    isOwner: canPurchase,
+    verified,
+    config: config.data,
+    pending: config.isPending,
+    error: config.isError,
+  });
+  const ready = availability.ready;
+  useEffect(() => {
+    setAccepted(false);
+  }, [config.data?.mode, config.data?.cadence, verified, canPurchase]);
   const checkout = async () => {
     if (!ready || !accepted || busy) return;
     setBusy(true);
@@ -64,19 +76,18 @@ export function VenueAddonCheckout({
       </p>
       <Button
         className="h-11 w-full rounded-xl"
-        disabled={!ready || config.isPending || config.isError}
+        disabled={busy}
         onClick={() => {
           setOpen(true);
           setAccepted(false);
           setRequest(crypto.randomUUID());
         }}
       >
-        Review add-on
+        Review {title}
       </Button>
       {!ready && (
         <p className="text-xs leading-5 text-muted-foreground">
-          Checkout will open after PULSE completes payment setup. No payment is
-          taken now.
+          {availability.message}
         </p>
       )}
       <Dialog
@@ -85,19 +96,35 @@ export function VenueAddonCheckout({
           if (!busy) setOpen(value);
         }}
       >
-        <DialogContent className="max-w-md rounded-2xl font-sans">
+        <DialogContent className="max-h-[90dvh] max-w-md overflow-y-auto rounded-2xl font-sans">
           <DialogHeader>
             <DialogTitle className="font-sans">Add {title}</DialogTitle>
             <DialogDescription>
               Sold by PULSE Pickleball. Venue rental income is separate.
             </DialogDescription>
           </DialogHeader>
-          {config.data?.mode === "test" && (
-            <p className="rounded-xl bg-amber-500/10 p-3 text-sm">
-              Test checkout only. No money moves and no real add-on is
-              activated.
-            </p>
-          )}
+          <div
+            role="status"
+            className="rounded-xl bg-muted/50 p-3 text-sm leading-6"
+          >
+            {availability.message}
+            {canPurchase && !verified && (
+              <Button
+                asChild
+                variant="link"
+                className="mt-2 flex h-auto justify-start whitespace-normal px-0 text-left"
+              >
+                <Link to={`/player/venue-requests?new=1&venue=${venueId}`}>
+                  Start free ownership verification
+                </Link>
+              </Button>
+            )}
+            {canPurchase && verified && config.isError && (
+              <Button variant="link" onClick={() => config.refetch()}>
+                Retry payment check
+              </Button>
+            )}
+          </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="mt-2 text-3xl font-semibold">
@@ -110,17 +137,19 @@ export function VenueAddonCheckout({
               separately.
             </p>
           </div>
-          <label className="flex cursor-pointer items-start gap-3 text-sm leading-6">
-            <Checkbox
-              checked={accepted}
-              onCheckedChange={(v) => setAccepted(v === true)}
-              className="mt-1"
-            />
-            <span>
-              I agree to pay PULSE Pickleball $10 USD per month for this
-              feature, with automatic renewal until I cancel.
-            </span>
-          </label>
+          {ready && (
+            <label className="flex cursor-pointer items-start gap-3 text-sm leading-6">
+              <Checkbox
+                checked={accepted}
+                onCheckedChange={(v) => setAccepted(v === true)}
+                className="mt-1"
+              />
+              <span>
+                I agree to pay PULSE Pickleball $10 USD per month for this
+                feature, with automatic renewal until I cancel.
+              </span>
+            </label>
+          )}
           <Button
             className="h-12 rounded-xl"
             disabled={!ready || !accepted || busy}
@@ -131,7 +160,7 @@ export function VenueAddonCheckout({
             ) : (
               <LockKeyhole className="mr-2 h-4 w-4" />
             )}
-            Continue · $10/month
+            {availability.label}
           </Button>
           <Button variant="link" asChild>
             <Link to="/player/payments">Manage existing purchases</Link>

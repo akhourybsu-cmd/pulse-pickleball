@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Building2, Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -355,7 +355,7 @@ export default function VenueCommunity() {
         bloom={chrome?.bloom}
         accent={chrome?.accentHex}
         verified={group.is_venue_verified}
-        hasCourts={hasCourts}
+        hasCourts={hasCourts && modules.booking}
         freeNow={freeNow}
         courtCount={courts.length}
         memberCount={group.member_count ?? 0}
@@ -366,6 +366,10 @@ export default function VenueCommunity() {
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
       />
+
+      {(canManageVenue(venueRole) || membership?.role === 'owner') && !modules.loading && !modules.isError && (
+        <div className="border-b bg-muted/20"><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6"><div><p className="text-sm font-semibold">{modules.booking || modules.facility ? 'Your venue plan' : 'Free venue community'}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Optional facility features are $10/month each. Your community stays free.</p></div><Button asChild variant="outline" className="min-h-11 rounded-xl"><Link to={'/player/community/group/' + groupId + '/manage?tab=modules'}>Plan &amp; upgrades</Link></Button></div></div>
+      )}
 
       <Tabs
         value={activeTab}

@@ -124,6 +124,15 @@ beforeAll(async () => {
   await db.exec(
     "CREATE TRIGGER guard_venue_event_module BEFORE INSERT OR UPDATE ON group_events FOR EACH ROW EXECUTE FUNCTION guard_venue_module_write()"
   );
+  await db.exec(
+    "ALTER TABLE venues ADD COLUMN community_model text DEFAULT 'existing'"
+  );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20260919100000_eleveno_free_tier_and_upgrade_reactivation.sql",
+      "utf8"
+    )
+  );
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 2);
   d.setUTCHours(10, 0, 0, 0);
@@ -140,7 +149,7 @@ beforeEach(async () => {
     owner,
   ]);
   await db.query(
-    "INSERT INTO venues VALUES($1,'ELEVENO Test',$2,true,now(),NULL)",
+    "INSERT INTO venues(id,name,owner_id,is_active,verification_approved_at,hours_of_operation) VALUES($1,'ELEVENO Test',$2,true,now(),NULL)",
     [venue, owner]
   );
   await db.query("INSERT INTO groups VALUES($1,$2)", [group, venue]);
@@ -167,6 +176,119 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   await db?.close();
+});
+
+describe("ELEVENO free-tier reset", () => {
+  const target = "4ee96566-4074-41c0-aa2b-2d767bdb50e1";
+  const targetGroup = "e3e97754-ac66-4814-94f3-ae3391de4e33";
+  const migration = readFileSync(
+    "supabase/migrations/20260919100000_eleveno_free_tier_and_upgrade_reactivation.sql",
+    "utf8"
+  );
+  async function seed() {
+    await db.query(
+      "INSERT INTO venues(id,name,owner_id,is_active,community_model) VALUES($1,'ELEVENO',$2,true,'existing')",
+      [target, owner]
+    );
+    await db.query("INSERT INTO groups VALUES($1,$2)", [targetGroup, target]);
+    await db.query(
+      "INSERT INTO venue_module_access VALUES($1,'court_booking','existing_venue',true,NULL,now()),($1,'facility_tools','existing_venue',true,NULL,now())",
+      [target]
+    );
+    await db.query(
+      "INSERT INTO venue_courts VALUES($1,$2,'Keep this court',true,0)",
+      [id(80), target]
+    );
+    await db.query("INSERT INTO group_members VALUES($1,$2,'active')", [
+      targetGroup,
+      buyer,
+    ]);
+    await db.query(
+      "INSERT INTO group_events(group_id,venue_id,venue_court_id,created_by,title,start_time,end_time,event_format) VALUES($1,$2,$3,$4,'Keep this event',$5,$6,'reservation')",
+      [targetGroup, target, id(80), buyer, tomorrow, later]
+    );
+  }
+  it("disables only ELEVENO grants while preserving its owner, courts, events and members", async () => {
+    await seed();
+    const before = (await db.query("SELECT * FROM group_events")).rows;
+    await db.exec(migration);
+    expect(
+      (await db.query<any>("SELECT * FROM venues WHERE id=$1", [target]))
+        .rows[0]
+    ).toMatchObject({
+      owner_id: owner,
+      community_model: "free_verified",
+      verification_approved_at: null,
+    });
+    expect(
+      (
+        await db.query<any>(
+          "SELECT enabled,source FROM venue_module_access WHERE venue_id=$1",
+          [target]
+        )
+      ).rows
+    ).toEqual([
+      { enabled: false, source: "existing_venue" },
+      { enabled: false, source: "existing_venue" },
+    ]);
+    expect((await db.query("SELECT * FROM group_events")).rows).toEqual(before);
+    expect(
+      (await db.query("SELECT * FROM venue_courts WHERE venue_id=$1", [target]))
+        .rows
+    ).toHaveLength(1);
+    expect(
+      (
+        await db.query("SELECT * FROM group_members WHERE group_id=$1", [
+          targetGroup,
+        ])
+      ).rows
+    ).toHaveLength(1);
+    expect(
+      (
+        await db.query<any>(
+          "SELECT enabled FROM venue_module_access WHERE venue_id=$1",
+          [venue]
+        )
+      ).rows[0].enabled
+    ).toBe(true);
+    await db.exec(migration);
+    expect((await db.query("SELECT * FROM group_events")).rows).toEqual(before);
+  });
+  it("aborts a reset if a live order exists", async () => {
+    await seed();
+    await db.query(
+      "INSERT INTO payment_orders(buyer_id,venue_id,kind,module_key,billing_cadence,description,merchant_name,account_id,livemode,amount_cents,request_key) VALUES($1,$2,'venue_module','court_booking','monthly','Test feature','PULSE','acct_pulse',true,1000,$3)",
+      [owner, target, id(81)]
+    );
+    await expect(db.exec(migration)).rejects.toThrow(
+      "Review ELEVENO paid orders/subscriptions"
+    );
+    await db.exec("ROLLBACK");
+    expect(
+      (
+        await db.query<any>(
+          "SELECT enabled FROM venue_module_access WHERE venue_id=$1",
+          [target]
+        )
+      ).rows.every((row) => row.enabled)
+    ).toBe(true);
+  });
+  it("refuses a renamed or relinked target instead of resetting the wrong venue", async () => {
+    await seed();
+    await db.query("UPDATE venues SET name='Different business' WHERE id=$1", [
+      target,
+    ]);
+    await expect(db.exec(migration)).rejects.toThrow("reset target mismatch");
+    await db.exec("ROLLBACK");
+    expect(
+      (
+        await db.query<any>(
+          "SELECT enabled FROM venue_module_access WHERE venue_id=$1",
+          [target]
+        )
+      ).rows.every((row) => row.enabled)
+    ).toBe(true);
+  });
 });
 
 describe("payment boundary helpers", () => {
@@ -648,4 +770,41 @@ describe("verified fulfillment, refunds and subscriptions", () => {
       ).rows[0].enabled
     ).toBe(true);
   });
+  it.each([
+    ["existing_venue", false, null, "subscription"],
+    ["staff_grant", false, null, "subscription"],
+    ["existing_venue", true, "2020-01-01T00:00:00Z", "subscription"],
+    ["existing_venue", true, null, "existing_venue"],
+    ["staff_grant", true, null, "staff_grant"],
+  ])(
+    "paid upgrade respects %s enabled=%s expires=%s",
+    async (source, enabled, expires, expectedSource) => {
+      await db.query(
+        "INSERT INTO venue_module_access VALUES($1,'facility_tools',$2,$3,$4,now())",
+        [venue, source, enabled, expires]
+      );
+      const order = (
+        await db.query<any>(
+          "INSERT INTO payment_orders(buyer_id,venue_id,kind,module_key,billing_cadence,description,merchant_name,account_id,livemode,amount_cents,request_key) VALUES($1,$2,'venue_module','facility_tools','monthly','Facility tools','PULSE','acct_pulse',true,1000,$3) RETURNING *",
+          [owner, venue, id(25)]
+        )
+      ).rows[0];
+      const through = new Date(Date.now() + 30 * 86400000).toISOString();
+      await apply(order, "paid", {
+        account: "acct_pulse",
+        subscription: "sub_reactivation",
+        through,
+      });
+      const grant = (
+        await db.query<any>(
+          "SELECT * FROM venue_module_access WHERE venue_id=$1 AND module_key='facility_tools'",
+          [venue]
+        )
+      ).rows[0];
+      expect(grant).toMatchObject({ enabled: true, source: expectedSource });
+      if (expectedSource === "subscription")
+        expect(new Date(grant.expires_at).toISOString()).toBe(through);
+      else expect(grant.expires_at).toBeNull();
+    }
+  );
 });

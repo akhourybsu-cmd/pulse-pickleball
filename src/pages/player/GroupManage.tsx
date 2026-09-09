@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -42,6 +42,8 @@ import { VenueModulesPanel } from '@/components/venue/VenueModulesPanel';
 export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -50,6 +52,8 @@ export default function GroupManage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [isVenueOwner, setIsVenueOwner] = useState(false);
+  const [venueVerified, setVenueVerified] = useState(false);
   const [canManageCommunity, setCanManageCommunity] = useState(false);
   const [venueRole, setVenueRole] = useState<VenueRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export default function GroupManage() {
         supabase
           .from('groups')
           .select(
-            '*, venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
+            '*, venues:venue_id (id, owner_id, verification_approved_at, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
           )
           .eq('id', groupId)
           .single(),
@@ -115,6 +119,7 @@ export default function GroupManage() {
       }
 
       const facilityAccess =
+        groupData.venues?.owner_id === user.id ||
         resolvedVenueRole === 'owner' ||
         resolvedVenueRole === 'manager' ||
         membership?.role === 'owner';
@@ -126,6 +131,8 @@ export default function GroupManage() {
       }
 
       setIsOwner(membership?.role === 'owner');
+      setIsVenueOwner(groupData.venues?.owner_id === user.id);
+      setVenueVerified(!!groupData.venues?.verification_approved_at);
       setCanManageCommunity(communityAccess);
       setVenueRole(resolvedVenueRole);
 
@@ -140,7 +147,7 @@ export default function GroupManage() {
       setVisibility(groupData.visibility);
       setJoinMethod(groupData.join_method);
       setIconUrl(groupData.icon_url);
-      setActiveTab(groupData.venue_id && facilityAccess ? 'overview' : 'general');
+      setActiveTab(groupData.venue_id && facilityAccess ? requestedTab === 'modules' ? 'modules' : 'overview' : 'general');
     } catch (error) {
       console.error('Error fetching group:', error);
       toast({ title: 'Error', description: 'Failed to load group settings', variant: 'destructive' });
@@ -148,7 +155,7 @@ export default function GroupManage() {
     } finally {
       setLoading(false);
     }
-  }, [groupId, navigate, toast]);
+  }, [groupId, navigate, toast, requestedTab]);
 
   useEffect(() => {
     if (groupId) void fetchGroup();
@@ -369,14 +376,14 @@ export default function GroupManage() {
   // otherwise leave a valid manager with an empty generic settings page.
   const showsVenueAdmin = !!group.venue_id;
   const canManageFacility =
-    venueRole === 'owner' || venueRole === 'manager' || isOwner;
+    isVenueOwner || venueRole === 'owner' || venueRole === 'manager' || isOwner;
 
   const venueItems: VenueAdminNavItem[] = [
     ...(canManageFacility
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
-          { value: 'modules', label: 'Features & verification', shortLabel: 'Features', description: 'Free essentials and optional facility tools', icon: ShieldCheck, section: 'venue' as const },
+          { value: 'modules', label: 'Plan & upgrades', shortLabel: 'Upgrades', description: 'Free plan, ownership and $10/month features', icon: ShieldCheck, section: 'venue' as const },
           ...((modules.booking || modules.facility) ? [{ value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' as const }] : []),
           { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' as const },
         ]
@@ -405,7 +412,7 @@ export default function GroupManage() {
       {showsVenueAdmin && canManageFacility && group.venue_id && (
         <>
           <TabsContent value="overview" className="mt-0">
-            {modules.booking || modules.facility ? <VenueAdminOverview
+            {modules.loading ? <div role="status" className="rounded-2xl border p-5 text-sm text-muted-foreground">Checking your venue plan…</div> : modules.booking || modules.facility ? <><div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5"><div><p className="text-sm font-semibold">Your venue plan</p><p className="mt-1 text-sm text-muted-foreground">Free community with optional features. Review access and add upgrades here.</p></div><Button variant="outline" className="min-h-11 rounded-xl" onClick={() => setActiveTab('modules')}>Plan &amp; upgrades</Button></div><VenueAdminOverview
               venueId={group.venue_id}
               groupId={groupId!}
               venueName={group.venue?.name ?? group.name}
@@ -420,9 +427,9 @@ export default function GroupManage() {
                   `/player/community/group/${groupId}${tab === 'home' ? '' : `?tab=${tab}`}`,
                 )
               }
-            /> : <VenueModulesPanel venueId={group.venue_id} verified={!!group.is_venue_verified} canVerify={isOwner || venueRole === 'owner'} />}
+            /></> : <VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} />}
           </TabsContent>
-          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={!!group.is_venue_verified} canVerify={isOwner || venueRole === 'owner'} /></TabsContent>
+          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} /></TabsContent>
           <TabsContent value="profile" className="mt-0">
             <AdminVenueTab
               groupId={groupId!}

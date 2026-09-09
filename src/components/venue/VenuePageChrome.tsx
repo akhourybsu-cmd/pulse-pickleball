@@ -154,10 +154,10 @@ export function VenueMasthead({
                   size="sm"
                   className="h-9 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
                   onClick={onSettings}
-                  aria-label="Venue settings"
+                  aria-label="Manage venue"
                 >
                   <Settings className="h-4 w-4" />
-                  <span className="hidden text-xs font-semibold lg:inline">Settings</span>
+                  <span className="hidden text-xs font-semibold lg:inline">Manage venue</span>
                 </Button>
               )}
             </div>
@@ -301,7 +301,7 @@ export function VenueDesktopNavigation({
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
               >
                 <Settings className="h-4 w-4" />
-                Venue settings
+                Manage venue
               </button>
             )}
           </div>
