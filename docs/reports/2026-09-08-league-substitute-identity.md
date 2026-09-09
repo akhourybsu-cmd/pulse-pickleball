@@ -61,10 +61,27 @@ request reviews did not show the assigned fill-in.
 
 ## Release state
 
-Local changes only; not committed, pushed or deployed in this pass. No SQL
-migration is required: existing match-slot substitution records are reused.
+Published to main as `8039513088f7ceac5b30378726abaf488754c5de` and deployed
+successfully to Firebase Hosting in workflow run
+[34301876021](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34301876021).
+CI independently passed all 821 tests (32 skipped, 10 todo), the production
+build, and deployment on September 8, 2026 (America/New_York).
+
+Post-deployment read-only checks on pulsepb.com verified:
+
+- The substitute bench shows actual names and explicit Sub badges.
+- The edit dialog identifies Hugo Sub4 by name, with italic styling.
+- Ben L28's existing arrangement identifies Layla Sub1 as the substitute and
+  clearly distinguishes the original pre-draw arrangement from current matches.
+- Week 2 court headers and game rows show Layla Sub1 and Finn Sub2, with Sub
+  badges and computed Manrope italic styling. Regular ladder seats remain intact.
+- No horizontal document overflow or browser warnings/errors appeared during
+  these live checks.
+
+No SQL migration is required: existing match-slot substitution records are reused.
 No live league memberships, requests, matches, results or notifications were
-created or changed. A production two-user request/swap smoke test remains after
-publication; this pass does not claim that live mutation cycle was performed.
-The three preexisting Android Gradle edits remain untouched and must be excluded
-from any league-only commit.
+created or changed. A production two-user request/swap mutation smoke test was
+not performed; the live verification above was read-only. The simulation league
+was already archived when inspected, and its status was not changed.
+The three preexisting Android Gradle edits remain untouched and were excluded
+from the league release.
