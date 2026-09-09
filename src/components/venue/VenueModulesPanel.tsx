@@ -1,3 +1,4 @@
+import { lazy, Suspense, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { paymentApi, type PaymentConfig } from "@/lib/payments";
@@ -8,10 +9,15 @@ import {
   LayoutGrid,
   ShieldCheck,
   ArrowUpRight,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVenueModules } from "@/hooks/useVenueModules";
 import { VenueAddonCheckout } from "./VenueAddonCheckout";
+import type { VenueDemoFeature } from "@/lib/venues/venueDemo";
+
+const VenuePremiumDemo = lazy(() => import("./VenuePremiumDemo"));
 
 export function VenueModulesPanel({
   venueId,
@@ -22,6 +28,12 @@ export function VenueModulesPanel({
   verified: boolean;
   canVerify?: boolean;
 }) {
+  const [demo, setDemo] = useState<VenueDemoFeature | null>(null);
+  const demoOpener = useRef<HTMLButtonElement | null>(null);
+  const openDemo = (feature: VenueDemoFeature, opener: HTMLButtonElement) => {
+    demoOpener.current = opener;
+    setDemo(feature);
+  };
   const access = useVenueModules(venueId);
   const billing = useQuery({
     queryKey: ["payment-config"],
@@ -92,6 +104,17 @@ export function VenueModulesPanel({
             </a>
           </Button>
         </div>
+      </section>
+
+      <section aria-labelledby="venue-demo-title" className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
+        <div className="min-w-0 max-w-xl">
+          <p className="text-xs font-medium text-muted-foreground">Try it before you upgrade</p>
+          <h2 id="venue-demo-title" className="mt-2 font-sans text-xl font-semibold tracking-tight">See paid features in action</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Explore a sample venue as a player or manager. Try court reservations and a facility schedule with fictional data—no payment, verification or activation required.</p>
+        </div>
+        <Button variant="outline" className="min-h-12 w-full shrink-0 rounded-xl border-foreground/20 bg-foreground text-background hover:bg-foreground/90 hover:text-background sm:w-auto" onClick={(event) => openDemo("court_booking", event.currentTarget)}>
+          <Play className="mr-2 h-4 w-4" />Explore interactive demo
+        </Button>
       </section>
 
       {billing.data?.mode === "off" && (
@@ -213,7 +236,7 @@ export function VenueModulesPanel({
           <div className="grid items-stretch gap-4 sm:grid-cols-2">
             {[
               {
-                key: "court_booking",
+                key: "court_booking" as const,
                 title: "Court booking",
                 icon: LayoutGrid,
                 enabled: access.booking,
@@ -226,7 +249,7 @@ export function VenueModulesPanel({
                 ],
               },
               {
-                key: "facility_tools",
+                key: "facility_tools" as const,
                 title: "Facility operations",
                 icon: CalendarDays,
                 enabled: access.facility,
@@ -272,6 +295,10 @@ export function VenueModulesPanel({
                     ))}
                   </ul>
                   <div className="mt-auto border-t pt-4">
+                    <Button variant="outline" className="mb-4 min-h-11 w-full rounded-xl" onClick={(event) => openDemo(module.key, event.currentTarget)}>
+                      <Play className="mr-2 h-4 w-4" />
+                      {module.key === "court_booking" ? "View booking demo" : "View operations demo"}
+                    </Button>
                     {module.enabled ? (
                       <>
                         <p className="text-sm font-semibold">
@@ -335,6 +362,13 @@ export function VenueModulesPanel({
           </Button>
         )}
       </section>
+      {demo && (
+        <ErrorBoundary fallback={<div role="alert" className="rounded-xl border bg-card p-4 text-sm">The demo couldn’t load. Your venue is unchanged. Refresh this page to try again.<Button variant="link" onClick={() => { setDemo(null); demoOpener.current?.focus(); }}>Dismiss</Button></div>}>
+          <Suspense fallback={<p role="status" className="rounded-xl border bg-card p-4 text-sm">Loading interactive demo…</p>}>
+            <VenuePremiumDemo initialFeature={demo} onClose={() => setDemo(null)} onReturnFocus={() => demoOpener.current?.focus()} />
+          </Suspense>
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

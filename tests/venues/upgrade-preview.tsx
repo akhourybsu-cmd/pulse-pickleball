@@ -16,6 +16,8 @@ const query = new QueryClient({
 });
 const venue = "00000000-0000-4000-8000-000000000001";
 const params = new URLSearchParams(window.location.search);
+if (params.has("dark")) document.documentElement.classList.add("dark");
+const previewWidth = params.get("width") === "320" ? 320 : 390;
 query.setQueryData(
   ["venue-modules", venue],
   ["court_booking", "facility_tools"].map((module_key) => ({
@@ -34,12 +36,13 @@ query.setQueryData(
 createRoot(document.getElementById("root")!).render(
   params.has("mobile") ? (
     <iframe
-      title="390px mobile upgrade preview"
-      width="390"
-      height="844"
+      title={`${previewWidth}px mobile upgrade preview`}
+      width={previewWidth}
+      height={params.has("short") ? 640 : 844}
       className="mx-auto block border"
       src={
         "./upgrade-preview.html?owner=1&verified=1" +
+        (params.has("dark") ? "&dark=1" : "") +
         (params.has("features") ? "#venue-upgrades" : "")
       }
     />
