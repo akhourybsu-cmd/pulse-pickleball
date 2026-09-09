@@ -8,10 +8,9 @@
 //   2. Retrieve the Stripe session and verify payment_status === 'paid'
 //      AND session.metadata.user_id === auth.uid() (prevents someone
 //      from redeeming another user's session id).
-//   3. INSERT a row into league_slot_purchases keyed by the session
-//      id. UNIQUE constraint on stripe_session_id makes it idempotent:
-//      re-runs are a no-op.
-//   4. Bump profiles.additional_league_slots on that user.
+//   3. Verify live mode, product purpose, configured price, quantity and currency.
+//   4. Atomically record the purchase AND increment the profile via the
+//      server-only payment_fulfill_league_slot RPC. Duplicate calls grant zero.
 //
 // Env vars:
 //   STRIPE_SECRET_KEY               — same as checkout
@@ -71,6 +70,15 @@ serve(async (req) => {
     if (metaUserId !== user.id) {
       throw new Error("Session does not belong to the calling user");
     }
+    const priceId = Deno.env.get('STRIPE_LEAGUE_SLOT_PRICE_ID');
+    if (!priceId || session.metadata?.purpose !== 'league_slot' || session.mode !== 'payment' || !session.livemode) {
+      throw new Error('Only a verified live league-slot purchase can grant a league slot');
+    }
+    const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 2 });
+    if (items.has_more || items.data.length !== 1 || items.data[0].price?.id !== priceId || items.data[0].quantity !== 1
+      || session.currency !== 'usd' || !session.amount_total || items.data[0].amount_total !== session.amount_total) {
+      throw new Error('League purchase price verification failed');
+    }
     log("Session verified", { sessionId, amount: session.amount_total });
 
     // Service-role client so we can bypass RLS on the ledger + profile.
@@ -80,48 +88,15 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // Idempotent insert. If the row already exists we treat it as
-    // already-fulfilled and return {granted: 0}.
-    const { data: existing } = await admin
-      .from("league_slot_purchases")
-      .select("id, status")
-      .eq("stripe_session_id", sessionId)
-      .maybeSingle();
-
-    if (existing?.status === "paid") {
-      log("Already fulfilled", { sessionId });
-      return new Response(
-        JSON.stringify({ granted: 0, alreadyFulfilled: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const { error: insertErr } = await admin
-      .from("league_slot_purchases")
-      .upsert({
-        user_id: user.id,
-        stripe_session_id: sessionId,
-        stripe_customer_id: typeof session.customer === "string"
-          ? session.customer
-          : session.customer?.id ?? null,
-        amount_cents: session.amount_total ?? null,
-        currency: session.currency ?? "usd",
-        slots_granted: 1,
-        status: "paid",
-        fulfilled_at: new Date().toISOString(),
-      }, { onConflict: "stripe_session_id" });
-    if (insertErr) throw insertErr;
-
-    // Atomic bump via the SECURITY DEFINER RPC (service-role gated).
-    const { error: rpcErr } = await admin.rpc(
-      "increment_league_slots",
-      { p_user_id: user.id, p_delta: 1 },
-    );
+    const { data: granted, error: rpcErr } = await admin.rpc('payment_fulfill_league_slot', {
+      p_user: user.id, p_session: sessionId, p_customer: typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null,
+      p_amount: session.amount_total, p_currency: session.currency,
+    });
     if (rpcErr) throw rpcErr;
 
     log("Slot granted", { userId: user.id });
     return new Response(
-      JSON.stringify({ granted: 1, alreadyFulfilled: false }),
+      JSON.stringify({ granted, alreadyFulfilled: granted === 0 }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

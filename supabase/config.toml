@@ -75,3 +75,22 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.payments]
+# The handler verifies the current user with auth.getUser; never trusts a decoded JWT.
+verify_jwt = false
+
+[functions.payment-webhook]
+# Public transport, authenticated by the raw-body Stripe signature in the handler.
+verify_jwt = false
+
+[functions.payment-reconcile]
+# Server scheduler only, protected by a separate strong secret in the handler.
+verify_jwt = false
+
+[functions.create-league-checkout]
+# Verify the current user inside the handler; support the project's signing keys.
+verify_jwt = false
+
+[functions.verify-league-slot-purchase]
+verify_jwt = false

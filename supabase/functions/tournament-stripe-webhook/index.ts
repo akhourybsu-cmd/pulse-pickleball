@@ -53,8 +53,11 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    if (event.type === "checkout.session.completed") {
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.payment_status !== 'paid' || !session.livemode || session.mode !== 'payment') {
+        return new Response(JSON.stringify({ received: true, fulfilled: false }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       logStep("Checkout session completed", { sessionId: session.id });
 
       const tournamentId = session.metadata?.tournament_id;
