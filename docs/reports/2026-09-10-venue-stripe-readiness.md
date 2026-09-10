@@ -1,6 +1,6 @@
 # Venue Stripe readiness pass
 
-Prepared after published baseline `87146a9527b2b686d86115d3dfddd98728c662c7`. Backend commit `3655049222e3d5f2f2d18613821888e705877de2` is deployed: [Supabase run 34468994469](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34468994469) passed its migration and Edge Function steps. The web/PWA release follows that successful backend rollout. No live payment configuration or venue funds were changed. Android Studio and Google Play were not touched.
+Published after baseline `87146a9527b2b686d86115d3dfddd98728c662c7`. Backend commit `3655049222e3d5f2f2d18613821888e705877de2` is deployed: [Supabase run 34468994469](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34468994469) applied `20260921100000_venue_stripe_readiness.sql` and deployed the payment handlers. Web/PWA commit `e3b18171ec7b480b426c9674ec54800b0d5ff106` followed the successful backend rollout: [Firebase run 34469652725](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34469652725) passed tests, build and production deployment. No live payment configuration or venue funds were changed. Android Studio and Google Play were not touched.
 
 ## Changes
 
@@ -21,12 +21,15 @@ Prepared after published baseline `87146a9527b2b686d86115d3dfddd98728c662c7`. Ba
 - Deno checks for `payments`, `payment-webhook`, `payment-reconcile`: **passed**.
 - `git diff --check`: **passed**.
 - Desktop and 390px phone finance previews inspected using non-personal sample data and blocked actions. This is layout QA, not a Stripe transaction test.
+- Production CI independently reproduced 1,103 passing tests. The public homepage returned HTTP 200 with the matching build entry `index-XIymwkYl.js`. Reloading the signed-in production Payments & purchases page preserved the session and showed payment setup pending, disabled card/checkout actions and the empty purchase history without an error.
 - The new preflight was run against the local process environment and correctly reported payment configuration unavailable/off. This does not inspect or prove the deployed Supabase secrets. No Stripe credentials were loaded or verified during this pass.
 - Repository-wide TypeScript checking still reports pre-existing errors in tournament generated-schema types, chat/realtime types, round-robin `unusedCourts`, Dashboard profile typing and player preview callback types. No errors were reported in the changed venue/payment files. These unrelated errors were not changed as part of payment preparation.
 
 ## Still required before live charging
 
-The migration and functions have deployed before the frontend. Configure and verify the PULSE Stripe sandbox account, Connect client/redirect, separate platform/Connect signing secrets and recovery job. The signed-in Stripe dashboard confirms the PULSE platform account `acct_1ShZSOG2WbAqAcDM`; that alone does not verify sandbox configuration. Execute the two-venue sandbox acceptance matrix, including failure/retry/refund/renewal and Android PWA return behavior. Only then approve live credentials and activate collections per venue.
+The migration, functions and frontend are deployed. Read-only hosted checks confirm that the Supabase secret list has no PULSE payment secrets, Stripe test-mode OAuth is disabled with no redirects registered, and the test Workbench has no event destinations. The signed-in Stripe dashboard confirms the PULSE platform account `acct_1ShZSOG2WbAqAcDM` and its test environment. No secret values were revealed or copied and no Stripe settings were changed. Credential/access configuration awaits explicit approval.
+
+Configure and verify the PULSE Stripe sandbox secrets, Connect client/redirect, separate platform/Connect signing secrets and recovery job. Execute the two-venue sandbox acceptance matrix, including failure/retry/refund/renewal and Android PWA return behavior. Only then approve live credentials and activate collections per venue.
 
 For rental sandbox testing, use a verified, non-private test venue with court-booking access already provisioned. Test subscription purchases intentionally do not grant real feature access. Do not change ELEVENO's tier or use the private sample venue as a way around billing safeguards without a separate authorized setup decision.
 

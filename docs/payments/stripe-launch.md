@@ -1,6 +1,6 @@
 # Venue Stripe launch checklist
 
-Status: backend migration and Edge Functions deployed successfully in commit `3655049222e3d5f2f2d18613821888e705877de2` (Supabase run `34468994469`); the web/PWA release follows this verified backend rollout. Not live-payment approved. No Stripe accounts, keys, destinations, products, charges, refunds or payout settings were created or changed during preparation. The recovery scheduler is not installed yet. Stripe's signed-in dashboard confirms PULSE account `acct_1ShZSOG2WbAqAcDM`; sandbox integration and transaction acceptance are still pending.
+Status: backend migration and Edge Functions deployed successfully in commit `3655049222e3d5f2f2d18613821888e705877de2` (Supabase run `34468994469`), then web/PWA commit `e3b18171ec7b480b426c9674ec54800b0d5ff106` deployed successfully (Firebase run `34469652725`). Not live-payment approved. No Stripe accounts, keys, destinations, products, charges, refunds or payout settings were created or changed during preparation. The recovery scheduler is not installed yet. Hosted read-only checks confirm PULSE account `acct_1ShZSOG2WbAqAcDM` and its test environment, no PULSE payment secrets in Supabase, disabled test OAuth with no redirects, and no test webhook destinations. Sandbox credential/access configuration awaits approval; transaction acceptance is still pending.
 
 ## Money ownership
 
