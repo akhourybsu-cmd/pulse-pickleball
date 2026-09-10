@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
+import { programFilterState, programPhase } from '@/lib/venues/programExperience';
 
 /**
  * What the venue is running today.
@@ -30,14 +31,6 @@ import type { VenueDaySession } from '@/hooks/useVenueDay';
  * Urgency is only claimed when it is real. A session with no capacity set has no
  * spots to run out of, so it gets no badge rather than a fake one.
  */
-
-const FILTERS = [
-  { value: 'all', label: 'All', formats: null },
-  { value: 'open_play', label: 'Open Play', formats: ['open_play'] },
-  { value: 'clinic', label: 'Clinics', formats: ['clinic', 'practice'] },
-  { value: 'round_robin', label: 'Round Robin', formats: ['round_robin'] },
-  { value: 'social', label: 'Social', formats: ['social', 'other'] },
-] as const;
 
 const FORMAT_LABEL: Record<string, string> = {
   open_play: 'Open Play',
@@ -90,21 +83,7 @@ export function VenueProgramming({
 }: VenueProgrammingProps) {
   const [filter, setFilter] = useState<string>('all');
 
-  // Only offer a filter the day actually has something in — a row of chips
-  // where four of six return nothing is worse than no chips at all.
-  const available = useMemo(
-    () =>
-      FILTERS.filter(
-        (f) => !f.formats || sessions.some((s) => f.formats!.includes(s.event_format as never)),
-      ),
-    [sessions],
-  );
-
-  const shown = useMemo(() => {
-    const active = FILTERS.find((f) => f.value === filter);
-    if (!active?.formats) return sessions;
-    return sessions.filter((s) => active.formats!.includes(s.event_format as never));
-  }, [sessions, filter]);
+  const { available, active: activeFilter, shown } = useMemo(() => programFilterState(sessions, filter), [sessions, filter]);
 
   if (loading) {
     return (
@@ -130,17 +109,18 @@ export function VenueProgramming({
   return (
     <div className="space-y-3">
       {available.length > 1 && (
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">
-          <div className="flex min-w-max gap-1.5">
+        <div className="scrollbar-hide -mx-1 overflow-x-auto px-1 pb-1">
+          <div className="flex min-w-max gap-1.5" role="group" aria-label="Filter venue programs">
             {available.map((f) => {
-              const active = filter === f.value;
+              const active = activeFilter === f.value;
               return (
                 <button
                   key={f.value}
                   type="button"
                   onClick={() => setFilter(f.value)}
+                  aria-pressed={active}
                   className={cn(
-                    'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'min-h-11 rounded-full border px-3 py-2 text-xs font-semibold transition-colors',
                     active
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-card text-muted-foreground hover:text-foreground',
@@ -200,7 +180,8 @@ function SessionRow({
   const spotsLeft = session.capacity != null ? Math.max(0, session.capacity - going) : null;
   const full = spotsLeft === 0;
   const urgent = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= URGENT_AT;
-  const past = (end ?? start) < new Date();
+  const phase = programPhase(session);
+  const past = phase === 'ended';
 
   const formatLabel = FORMAT_LABEL[session.event_format] ?? 'Event';
   const Row = onPick ? 'button' : 'div';
@@ -220,10 +201,10 @@ function SessionRow({
       className={cn(
         'group w-full rounded-[18px] border border-border/75 bg-card px-3.5 py-3.5 text-left shadow-[0_12px_32px_-28px_hsl(var(--foreground)/0.55)] transition-[border-color,background-color,transform] sm:px-4',
         onPick && 'hover:-translate-y-px hover:border-primary/35 hover:bg-card/95',
-        past && 'opacity-60',
+        past && 'bg-muted/20',
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 sm:grid-cols-[40px_minmax(0,1fr)_auto]">
         <span
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
           style={accent ? { backgroundColor: `${accent}16`, color: accent } : undefined}
@@ -248,7 +229,7 @@ function SessionRow({
             </span>
           </div>
 
-          <p className="mt-1 truncate text-[15px] font-extrabold leading-tight tracking-tight sm:text-base">
+          <p className="mt-1 line-clamp-2 break-words text-[15px] font-semibold leading-snug tracking-tight sm:text-base">
             {session.title}
           </p>
 
@@ -290,8 +271,8 @@ function SessionRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {rsvpLabel ? (
+        <div className="col-start-2 flex flex-wrap items-center justify-between gap-2 sm:col-start-auto sm:flex-col sm:items-end">
+          {past ? <Badge variant="outline" className="text-xs">Ended</Badge> : rsvpLabel ? (
             <Badge
               variant="outline"
               className={cn(
@@ -303,15 +284,16 @@ function SessionRow({
             </Badge>
           ) : full ? (
             <Badge variant="outline" className="whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.09em]">
-              {session.waitlist_enabled ? 'Join waitlist' : 'Full'}
+              {session.waitlist_enabled ? 'Waitlist available' : 'Full'}
             </Badge>
           ) : urgent ? (
             <Badge className="whitespace-nowrap bg-primary text-[9px] font-bold uppercase tracking-[0.09em] text-primary-foreground">
-              {spotsLeft} left
+              {spotsLeft} spot{spotsLeft === 1 ? '' : 's'} left
             </Badge>
           ) : spotsLeft != null ? (
             <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{spotsLeft} spots</span>
           ) : null}
+          {!past && phase === 'live' && <span className="text-xs font-semibold text-primary">In progress</span>}
           {onPick && (
             <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           )}

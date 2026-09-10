@@ -6,6 +6,7 @@ import { dayBounds, useVenueDay } from '@/hooks/useVenueDay';
 import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
 import { fetchVenueCourts, refreshVenueSettings, removeVenueCourt, saveVenueHours, updateVenueCourt } from '@/lib/venues/settings';
 import { defaultVenueHours } from '@/lib/venues/hours';
+import { fetchUpcomingVenuePrograms, fetchVenueProgram, useVenuePrograms } from '@/hooks/useVenuePrograms';
 import type { QueryClient } from '@tanstack/react-query';
 
 type Query = { queryKey: unknown[]; enabled: boolean; queryFn: () => Promise<unknown> };
@@ -27,7 +28,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   from: (table: string) => {
     const result = () => state.responses[table] ?? { data: [], error: null };
     const chain: Record<string, unknown> = {};
-    for (const method of ['select', 'eq', 'order', 'lt', 'gt', 'gte', 'or', 'in', 'not', 'update', 'delete']) chain[method] = (...args: unknown[]) => {
+    for (const method of ['select', 'eq', 'order', 'lt', 'gt', 'gte', 'or', 'in', 'is', 'limit', 'not', 'update', 'delete']) chain[method] = (...args: unknown[]) => {
       state.calls.push({ table, method, args }); return chain;
     };
     chain.single = chain.maybeSingle = () => Promise.resolve(result());
@@ -75,6 +76,15 @@ describe('venue membership loading', () => {
 });
 
 describe('shared player and operations calendar loading', () => {
+  it('separates confirmed counts from the viewer’s waitlist or maybe response', async () => {
+    state.responses.group_events = { error: null, data: [{ id: 'program', event_format: 'open_play' }] };
+    state.responses.group_event_rsvps = { error: null, data: [
+      { event_id: 'program', user_id: 'other', status: 'going' },
+      { event_id: 'program', user_id: 'viewer-one', status: 'waitlist' },
+    ] };
+    const result = await captureDay().queryFn();
+    expect(result).toMatchObject({ going: { program: 1 }, viewerRsvpByEvent: { program: 'waitlist' } });
+  });
   it('marks checkout holds separately from confirmed reservations', async () => {
     state.responses.holds = { data: [{ id: 'hold:pending-order', venue_court_id: 'court-1', event_format: 'reservation' }], error: null };
     const result = await captureDay().queryFn() as { holds: { event_format: string }[]; sessions: unknown[] };
@@ -115,6 +125,53 @@ describe('shared player and operations calendar loading', () => {
     state.responses.group_events = { error: null, data: [{ id: 'program', title: 'Open play', event_format: 'open_play' }] };
     state.responses[table] = { data: null, error: { message: `${table} unavailable` } };
     await expect(captureDay().queryFn()).rejects.toMatchObject({ message: `${table} unavailable` });
+  });
+});
+
+describe('venue program details and upcoming sessions', () => {
+  it('scopes both caches to the authenticated viewer and selected event', () => {
+    renderToStaticMarkup(createElement(() => { useVenuePrograms('venue-one', 'program'); return null; }));
+    expect(state.queries.map(query => query.queryKey)).toEqual([
+      ['venue-upcoming-programs', 'venue-one', 'viewer-one'], ['venue-program', 'venue-one', 'program', 'viewer-one'],
+    ]);
+    state.user = null; state.queries = [];
+    renderToStaticMarkup(createElement(() => { useVenuePrograms('venue-one', 'program'); return null; }));
+    expect(state.queries.every(query => !query.enabled)).toBe(true);
+  });
+  it('fetches future top-level programs, independent of the selected calendar day', async () => {
+    await fetchUpcomingVenuePrograms('venue-one');
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'eq', args: ['venue_id', 'venue-one'] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'is', args: ['parent_event_id', null] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'limit', args: [3] });
+    expect(state.calls.some(call => call.method === 'gte' && call.args[0] === 'start_time')).toBe(true);
+    expect(state.calls.some(call => call.method === 'lt')).toBe(false);
+  });
+  it('does not mask a failed upcoming-program read as an empty schedule', async () => {
+    state.responses.group_events = { data: null, error: { message: 'Programs unavailable' } };
+    await expect(fetchUpcomingVenuePrograms('venue-one')).rejects.toMatchObject({ message: 'Programs unavailable' });
+  });
+  it('loads current RSVP counts and checks membership in the actual host community', async () => {
+    state.responses.group_events = { data: { id: 'program', group_id: 'different-host' }, error: null };
+    state.responses.group_members = { data: { status: 'active' }, error: null };
+    state.responses.group_event_rsvps = { data: [{ user_id: 'other', status: 'going' }, { user_id: 'viewer-one', status: 'waitlist' }, { user_id: 'unknown', status: 'invalid' }], error: null };
+    await expect(fetchVenueProgram('venue-one', 'program', 'viewer-one')).resolves.toMatchObject({ canRsvp: true, event: { user_rsvp: 'waitlist', rsvps: { going: 1, waitlist: 1, maybe: 0 } } });
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'eq', args: ['group_id', 'different-host'] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'eq', args: ['venue_id', 'venue-one'] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'eq', args: ['id', 'program'] });
+  });
+  it.each([null, { status: 'pending' }, { status: 'banned' }])('does not allow registration for non-active membership %s', async membership => {
+    state.responses.group_events = { data: { id: 'program', group_id: 'host' }, error: null };
+    state.responses.group_members = { data: membership, error: null };
+    await expect(fetchVenueProgram('venue-one', 'program', 'viewer-one')).resolves.toMatchObject({ canRsvp: false });
+  });
+  it.each(['group_events', 'group_members', 'group_event_rsvps'])('fails closed when %s cannot load', async table => {
+    state.responses.group_events = { data: { id: 'program', group_id: 'host' }, error: null };
+    state.responses[table] = { data: null, error: { message: 'Read failed' } };
+    await expect(fetchVenueProgram('venue-one', 'program', 'viewer-one')).rejects.toMatchObject({ message: 'Read failed' });
+  });
+  it('reports a deleted or inaccessible program', async () => {
+    state.responses.group_events = { data: null, error: null };
+    await expect(fetchVenueProgram('venue-one', 'program', 'viewer-one')).rejects.toThrow('no longer available');
   });
 });
 

@@ -1,8 +1,11 @@
-import { CalendarDays, ChevronRight, Clock3, Globe, LayoutGrid, MapPin, Phone } from 'lucide-react';
+import { CalendarDays, ChevronRight, Clock3, Globe, LayoutGrid, Mail, MapPin, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import { DAY_NAMES, describeDay, type VenueHours } from '@/lib/venues/hours';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
+import { Skeleton } from '@/components/ui/skeleton';
+import { VenueLoadState } from './VenueLoadState';
+import { programDateLabel, venueWebsiteLink } from '@/lib/venues/programExperience';
 
 /**
  * A venue's front page.
@@ -30,6 +33,7 @@ interface VenueHomeProps {
   state: string | null;
   phone: string | null;
   websiteUrl: string | null;
+  email?: string | null;
   hours: VenueHours;
   nextUp: VenueHomeSession[];
   hasCourts: boolean;
@@ -38,6 +42,10 @@ interface VenueHomeProps {
   accent?: string | null;
   onBook: () => void;
   onOpenPlay: () => void;
+  onPickProgram?: (id: string) => void;
+  loadingPrograms?: boolean;
+  programsUnavailable?: boolean;
+  onRetryPrograms?: () => void;
 }
 
 export function VenueHome({
@@ -47,6 +55,7 @@ export function VenueHome({
   state,
   phone,
   websiteUrl,
+  email,
   hours,
   nextUp,
   hasCourts,
@@ -55,16 +64,22 @@ export function VenueHome({
   accent,
   onBook,
   onOpenPlay,
+  onPickProgram,
+  loadingPrograms = false,
+  programsUnavailable = false,
+  onRetryPrograms,
 }: VenueHomeProps) {
   const today = new Date().getDay();
   const nextSession = nextUp[0];
+  const website = venueWebsiteLink(websiteUrl);
+  const phoneNumber = phone?.replace(/[^\d+]/g, '');
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8 xl:gap-10">
       <div className="min-w-0 space-y-6 lg:space-y-8">
         <VenueWelcome headline={welcomeHeadline} message={welcomeMessage} accent={accent} />
 
-        <div className={cn('grid gap-2.5 sm:gap-3', hasCourts && 'grid-cols-2')}>
+        <div className={cn('grid gap-2.5 sm:gap-3', hasCourts && 'min-[380px]:grid-cols-2')}>
           {hasCourts && (
             <HomeAction
               icon={LayoutGrid}
@@ -80,8 +95,8 @@ export function VenueHome({
             eyebrow="Programs"
             title="Find a session"
             detail={
-              nextSession
-                ? `Next at ${formatSlotTime(new Date(nextSession.start_time))}`
+              loadingPrograms ? 'Loading the next sessions…' : programsUnavailable ? 'Schedule temporarily unavailable' : nextSession
+                ? `${programDateLabel(nextSession.start_time)} · ${formatSlotTime(new Date(nextSession.start_time))}`
                 : 'Browse open play and clinics'
             }
             accent={accent}
@@ -89,29 +104,29 @@ export function VenueHome({
           />
         </div>
 
-        {nextUp.length > 0 && (
+        {programsUnavailable && onRetryPrograms ? <VenueLoadState title="Programs couldn’t load" description="We couldn’t confirm the upcoming schedule. Try again to see the latest sessions." onRetry={onRetryPrograms} /> : loadingPrograms ? <div role="status" aria-label="Loading upcoming programs" className="space-y-2"><Skeleton className="h-20 rounded-2xl" /><Skeleton className="h-20 rounded-2xl" /></div> : nextUp.length > 0 ? (
           <Section title="Coming up" actionLabel="View schedule" onAction={onOpenPlay}>
             <div className="space-y-2">
               {nextUp.map((session) => (
                 <button
                   key={session.id}
                   type="button"
-                  onClick={onOpenPlay}
+                  onClick={() => onPickProgram ? onPickProgram(session.id) : onOpenPlay()}
                   className="group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card/75 p-3 text-left shadow-[0_10px_28px_-26px_hsl(var(--foreground)/0.55)] transition-[border-color,background-color,transform] hover:-translate-y-px hover:border-primary/35 hover:bg-card sm:p-3.5"
                 >
                   <span
-                    className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-muted/60 text-center"
+                    className="flex min-h-14 w-[76px] shrink-0 flex-col items-center justify-center rounded-xl bg-muted/60 px-1 text-center"
                     style={accent ? { backgroundColor: `${accent}12` } : undefined}
                   >
                     <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                      {new Date(session.start_time).toLocaleDateString(undefined, { weekday: 'short' })}
+                      {programDateLabel(session.start_time)}
                     </span>
                     <span className="mt-0.5 text-xs font-extrabold tabular-nums" style={accent ? { color: accent } : undefined}>
                       {formatSlotTime(new Date(session.start_time))}
                     </span>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold tracking-tight">{session.title}</p>
+                    <p className="line-clamp-2 break-words text-sm font-semibold leading-5 tracking-tight">{session.title}</p>
                     {session.description && (
                       <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                         {session.description}
@@ -123,7 +138,7 @@ export function VenueHome({
               ))}
             </div>
           </Section>
-        )}
+        ) : <div className="rounded-2xl border border-dashed border-border/80 p-5"><p className="text-sm font-semibold">No upcoming programs</p><p className="mt-1 text-sm leading-6 text-muted-foreground">No upcoming programs are listed yet. Check the schedule for court times and future sessions.</p><button type="button" className="mt-2 min-h-11 text-sm font-semibold text-primary" onClick={onOpenPlay}>View schedule</button></div>}
       </div>
 
       <aside className="mt-8 space-y-5 lg:mt-0">
@@ -137,16 +152,17 @@ export function VenueHome({
             {city && (
               <ContactRow icon={MapPin}>{[city, state].filter(Boolean).join(', ')}</ContactRow>
             )}
-            {phone && <ContactRow icon={Phone}>{phone}</ContactRow>}
-            {websiteUrl && (
+            {phone && <ContactRow icon={Phone}>{phoneNumber ? <a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`tel:${phoneNumber}`}>{phone}</a> : phone}</ContactRow>}
+            {email && <ContactRow icon={Mail}><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`mailto:${encodeURIComponent(email)}`}>{email}</a></ContactRow>}
+            {website && (
               <ContactRow icon={Globe}>
                 <a
-                  href={websiteUrl}
+                  href={website}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="underline underline-offset-2"
+                  className="inline-flex min-h-11 items-center underline underline-offset-4"
                 >
-                  {websiteUrl.replace(/^https?:\/\//, '')}
+                  {new URL(website).hostname}
                 </a>
               </ContactRow>
             )}
@@ -161,7 +177,7 @@ export function VenueHome({
                 <span className="font-semibold tabular-nums">{describeDay(hours.days[today])}</span>
               </div>
               <details className="group mt-1.5 lg:hidden">
-                <summary className="cursor-pointer list-none py-1 text-center text-[11px] font-semibold text-muted-foreground marker:hidden">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center text-center text-xs font-semibold text-muted-foreground marker:hidden">
                   <span className="group-open:hidden">Show weekly hours</span>
                   <span className="hidden group-open:inline">Hide weekly hours</span>
                 </summary>
@@ -221,7 +237,7 @@ function Section({
         </h2>
         <span aria-hidden className="h-px flex-1 bg-border/60" />
         {actionLabel && onAction && (
-          <button type="button" onClick={onAction} className="text-[11px] font-bold text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onAction} className="min-h-11 text-xs font-semibold text-muted-foreground hover:text-foreground">
             {actionLabel}
           </button>
         )}
@@ -263,8 +279,8 @@ function HomeAction({
         <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
       </div>
       <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.17em] text-muted-foreground">{eyebrow}</p>
-      <p className="mt-0.5 truncate text-sm font-bold tracking-tight">{title}</p>
-      <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">{detail}</p>
+      <p className="mt-0.5 text-sm font-semibold tracking-tight">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </button>
   );
 }
@@ -288,7 +304,7 @@ function ContactRow({
   return (
     <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
       <Icon className="h-3.5 w-3.5 shrink-0 text-foreground/55" />
-      <span className="truncate">{children}</span>
+      <span className="min-w-0 break-words">{children}</span>
     </div>
   );
 }

@@ -51,6 +51,7 @@ import type { VenueDaySession } from '@/hooks/useVenueDay';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 import type { GroupPost } from '@/hooks/useGroupPosts';
 import type { GroupEvent } from '@/hooks/useGroupEvents';
+import { withConfirmedProgramRsvp } from '@/lib/venues/programExperience';
 
 /**
  * Design harness for the venue surfaces.
@@ -499,13 +500,13 @@ function VenueEventPreview() {
 
 function VenueProgramPreview() {
   const [open, setOpen] = useState(true);
-  const event: GroupEvent = {
+  const [event, setEvent] = useState<GroupEvent>(() => ({
     id: 'p1',
     group_id: 'eleveno-preview',
-    title: 'Open Play · All Levels',
+    title: 'Sunset Social Open Play · All Levels Welcome',
     description: 'A welcoming evening session with staff-managed paddle stacks. Check in ten minutes early and bring your own paddle.',
-    start_time: at(18).toISOString(),
-    end_time: at(20).toISOString(),
+    start_time: new Date(Date.now() + 86_400_000).toISOString(),
+    end_time: new Date(Date.now() + 93_600_000).toISOString(),
     location_type: 'venue',
     court_id: null,
     venue_court_id: null,
@@ -527,21 +528,25 @@ function VenueProgramPreview() {
     created_by: 'staff',
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
-    rsvps: { going: 13, maybe: 2, not_going: 0, waitlist: 0 },
+    rsvps: { going: 16, maybe: 2, not_going: 0, waitlist: 0 },
     user_rsvp: null,
-  };
+  }));
 
   return (
     <main className="min-h-screen bg-muted/30 p-4">
       {!open && <Button onClick={() => setOpen(true)}>Open program details</Button>}
       <VenueProgramDialog
         event={event}
-        venueName="ELEVENO"
+        venueName="ELEVENO Pickleball & Social Club"
         open={open}
         onOpenChange={setOpen}
         canRsvp
         accent={ACCENT}
-        onRsvp={() => {}}
+        onRsvp={(_id, requested) => {
+          const confirmed = requested === 'going' && (event.rsvps?.going ?? 0) >= (event.capacity ?? Infinity) ? 'waitlist' : requested;
+          setEvent(previous => withConfirmedProgramRsvp(previous, confirmed));
+          return confirmed;
+        }}
       />
     </main>
   );

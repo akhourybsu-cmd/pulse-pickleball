@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
+import { programDateLabel } from '@/lib/venues/programExperience';
 import { describeDay, type VenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from '@/components/venue/VenueHome';
 
@@ -216,7 +217,7 @@ export function VenueMasthead({
             {nextStart && (
               <MastheadStat
                 icon={CalendarClock}
-                label={`Next program at ${formatSlotTime(new Date(nextStart))}`}
+                label={`Next program: ${programDateLabel(nextStart)} · ${formatSlotTime(new Date(nextStart))}`}
                 mobileLabel={formatSlotTime(new Date(nextStart))}
               />
             )}
@@ -325,6 +326,7 @@ interface VenueDesktopRailProps {
   accent?: string | null;
   onOpenTab: (tab: VenuePageTab) => void;
   onBookings: () => void;
+  onPickProgram?: (id: string) => void;
 }
 
 /** Context, not filler: this rail answers what is happening while the center stays readable. */
@@ -342,6 +344,7 @@ export function VenueDesktopRail({
   accent,
   onOpenTab,
   onBookings,
+  onPickProgram,
 }: VenueDesktopRailProps) {
   const today = new Date().getDay();
   const next = nextUp[0];
@@ -400,15 +403,15 @@ export function VenueDesktopRail({
           {next && (
             <button
               type="button"
-              onClick={() => onOpenTab('play')}
+              onClick={() => onPickProgram ? onPickProgram(next.id) : onOpenTab('play')}
               className="flex w-full items-center gap-3 border-t border-border/70 bg-muted/25 px-5 py-3.5 text-left transition-colors hover:bg-muted/45"
             >
               <CalendarClock className="h-4 w-4 shrink-0 text-primary" style={accent ? { color: accent } : undefined} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Next up</span>
-                <span className="mt-0.5 block truncate text-sm font-semibold">{next.title}</span>
+                <span className="mt-0.5 block line-clamp-2 break-words text-sm font-semibold">{next.title}</span>
               </span>
-              <span className="text-xs font-semibold tabular-nums">{formatSlotTime(new Date(next.start_time))}</span>
+              <span className="shrink-0 text-right text-xs font-semibold tabular-nums"><span className="mb-1 block text-[10px] text-muted-foreground">{programDateLabel(next.start_time)}</span>{formatSlotTime(new Date(next.start_time))}</span>
             </button>
           )}
         </section>

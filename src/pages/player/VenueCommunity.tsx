@@ -29,7 +29,7 @@ import { GroupChat } from '@/components/community/GroupChat';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
-import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
+import { useVenuePrograms } from '@/hooks/useVenuePrograms';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
@@ -94,6 +94,7 @@ export default function VenueCommunity() {
   }, []);
 
   const openTab = (tab: VenuePageTab) => {
+    if (tab === 'home') { const today = new Date(); today.setHours(0, 0, 0, 0); setDay(today); }
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
     setSearchParams(venueTabParams(searchParams, tab));
   };
@@ -153,60 +154,11 @@ export default function VenueCommunity() {
   const { role: venueRole } = useMyVenueRole(group?.venue_id);
 
   const {
-    courts, programming, going, grid, closed, slotMinutes, freeNow,
+    courts, programming, going, viewerRsvpByEvent, grid, closed, slotMinutes, freeNow,
     loading: dayLoading, error: dayError, refresh, hasCourts,
   } = useVenueDay(group?.venue_id, groupId, day, hours);
-  const {
-    events: groupEvents,
-    updateRsvp,
-    refetch: refetchGroupEvents,
-  } = useGroupEvents(groupId);
-
-  const selectedProgram = useMemo<GroupEvent | null>(() => {
-    const fullEvent = groupEvents.find((event) => event.id === selectedProgramId);
-    if (fullEvent) return fullEvent;
-
-    // Venue calendars can include programming hosted by another community.
-    // Keep those sessions tappable too, using the venue-day record as the
-    // player-facing fallback while RSVP still goes through the shared RPC.
-    const session = programming.find((event) => event.id === selectedProgramId);
-    if (!session) return null;
-    return {
-      id: session.id,
-      group_id: session.group_id,
-      title: session.title,
-      description: session.description,
-      start_time: session.start_time,
-      end_time: session.end_time,
-      location_type: 'venue',
-      court_id: null,
-      venue_court_id: session.venue_court_id,
-      venue_id: group?.venue_id ?? null,
-      parent_event_id: session.parent_event_id,
-      custom_location: null,
-      capacity: session.capacity,
-      skill_level_min: session.skill_level_min ?? null,
-      skill_level_max: session.skill_level_max ?? null,
-      is_recurring: false,
-      recurring_rule: null,
-      event_format: session.event_format as GroupEvent['event_format'],
-      waitlist_enabled: session.waitlist_enabled,
-      waitlist_limit: null,
-      series_id: null,
-      rr_courts: session.rr_courts ?? null,
-      rr_games_per_player: null,
-      rotation_style: session.rotation_style ?? null,
-      created_by: session.created_by,
-      created_at: session.start_time,
-      updated_at: session.start_time,
-      rsvps: { going: going[session.id] ?? 0, maybe: 0, not_going: 0, waitlist: 0 },
-      user_rsvp: null,
-    };
-  }, [going, group?.venue_id, groupEvents, programming, selectedProgramId]);
-  const viewerRsvpByEvent = useMemo(
-    () => Object.fromEntries(groupEvents.map((event) => [event.id, event.user_rsvp])),
-    [groupEvents],
-  );
+  const programQueries = useVenuePrograms(group?.venue_id, selectedProgramId);
+  const selectedProgram = programQueries.detail.data?.event ?? null;
 
   const isMember = membership?.status === 'active';
   const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
@@ -261,9 +213,7 @@ export default function VenueCommunity() {
   const activeCourtCount = courts.filter(court => court.is_active !== false).length;
   const dayEnd = availableBookingEnd(grid, bookingCourtId, bookingStart);
 
-  const nextUp = programming
-    .filter((p) => new Date(p.start_time) >= new Date())
-    .slice(0, 3);
+  const nextUp = programQueries.upcoming.data ?? [];
 
   const showDesktopRail =
     activeTab === 'play' ||
@@ -385,8 +335,13 @@ export default function VenueCommunity() {
                     state={venue?.state ?? null}
                     phone={venue?.phone ?? null}
                     websiteUrl={venue?.website_url ?? null}
+                    email={venue?.email ?? null}
                     hours={hours}
                     nextUp={nextUp}
+                    loadingPrograms={programQueries.upcoming.isPending}
+                    programsUnavailable={programQueries.upcoming.isError}
+                    onRetryPrograms={() => void programQueries.upcoming.refetch()}
+                    onPickProgram={setSelectedProgramId}
                     hasCourts={hasCourts && modules.booking}
                     freeNow={freeNow}
                     courtCount={activeCourtCount}
@@ -559,6 +514,7 @@ export default function VenueCommunity() {
                   accent={chrome?.accentHex}
                   onOpenTab={openTab}
                   onBookings={() => navigate('/player/bookings')}
+                  onPickProgram={setSelectedProgramId}
                 />
               )}
             </div>
@@ -622,20 +578,25 @@ export default function VenueCommunity() {
             initialDate={day}
             onCreated={() => {
               refresh();
-              void refetchGroupEvents();
+              void programQueries.upcoming.refetch();
             }}
           />
           <VenueProgramDialog
             event={selectedProgram}
             venueName={venue?.name ?? group.name}
-            open={!!selectedProgram}
+            open={!!selectedProgramId}
+            key={selectedProgramId ?? 'no-program'}
+            loading={!!selectedProgramId && programQueries.detail.isPending}
+            error={programQueries.detail.error}
+            onRetry={() => void programQueries.detail.refetch()}
             onOpenChange={(open) => {
               if (!open) setSelectedProgramId(null);
             }}
-            canRsvp={isMember}
+            canRsvp={programQueries.detail.data?.canRsvp === true}
+            onOpenHost={() => navigate(`/player/community/group/${selectedProgram?.group_id}`)}
             accent={chrome?.accentHex}
             onRsvp={async (eventId, status) => {
-              const finalStatus = await updateRsvp(eventId, status);
+              const finalStatus = await programQueries.updateRsvp(eventId, status);
               refresh();
               return finalStatus;
             }}

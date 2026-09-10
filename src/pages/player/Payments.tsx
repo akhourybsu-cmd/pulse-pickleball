@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { VenuePaymentsPanel } from "@/components/venue/VenuePaymentsPanel";
+import { useAuthState } from "@/hooks/useAuthState";
 import {
   formatMoney,
   openStripe,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/payments";
 
 export default function Payments() {
+  const { user } = useAuthState();
   const [params] = useSearchParams();
   const venueId = params.get("venue");
   const [page, setPage] = useState(0);
@@ -50,7 +52,8 @@ export default function Payments() {
     staleTime: 60_000,
   });
   const history = useQuery({
-    queryKey: ["payment-history", venueId, page],
+    queryKey: ["payment-history", venueId, page, user?.id],
+    enabled: !!user,
     queryFn: () =>
       paymentApi<{
         orders: PaymentOrder[];
@@ -61,12 +64,12 @@ export default function Payments() {
     staleTime: 15_000,
   });
   const wallet = useQuery({
-    queryKey: ["payment-wallet"],
+    queryKey: ["payment-wallet", user?.id],
     queryFn: () =>
       paymentApi<{
         merchants: { account_id: string; merchant_name: string }[];
       }>("wallet"),
-    enabled: !!config.data && config.data.mode !== "off" && !venueId,
+    enabled: !!user && !!config.data && config.data.mode !== "off" && !venueId,
   });
   const reconciled = useRef("");
   useEffect(() => {

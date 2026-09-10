@@ -10,6 +10,8 @@ import {
 import { defaultVenueHours, gridOptionsFor, type VenueHours } from '@/lib/venues/hours';
 import { useAuthState } from '@/hooks/useAuthState';
 import { venueDayOverlapFilter } from '@/lib/venues/experience';
+import { isConfirmedVenueRsvp } from '@/lib/venues/experience';
+import type { GroupRsvpStatus } from './useGroupEvents';
 
 /**
  * One venue, one day: its courts, and everything scheduled on them.
@@ -125,18 +127,20 @@ export function useVenueDay(
         (s) => !isReservation(s) && !isProgramHold(s) && s.event_format !== 'maintenance',
       );
       let going: Record<string, number> = {};
+      const viewerRsvpByEvent: Record<string, GroupRsvpStatus> = {};
 
       if (joinable.length > 0) {
         const { data: rsvps, error: rsvpError } = await supabase
           .from('group_event_rsvps')
-          .select('event_id')
+          .select('event_id,user_id,status')
           .in('event_id', joinable.map((s) => s.id))
-          .eq('status', 'going');
+          .or(`status.eq.going,user_id.eq.${user!.id}`);
 
         if (rsvpError) throw rsvpError;
 
         going = (rsvps ?? []).reduce<Record<string, number>>((acc, r) => {
-          acc[r.event_id] = (acc[r.event_id] ?? 0) + 1;
+          if (r.status === 'going') acc[r.event_id] = (acc[r.event_id] ?? 0) + 1;
+          if (r.user_id === user!.id && isConfirmedVenueRsvp(r.status)) viewerRsvpByEvent[r.event_id] = r.status;
           return acc;
         }, {});
       }
@@ -146,6 +150,7 @@ export function useVenueDay(
         sessions,
         holds,
         going,
+        viewerRsvpByEvent,
       };
     },
   });
@@ -192,6 +197,8 @@ export function useVenueDay(
     void queryClient.invalidateQueries({ queryKey: ['venue-day', venueId] });
     void queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
     void queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] });
+    void queryClient.invalidateQueries({ queryKey: ['venue-upcoming-programs', venueId] });
+    void queryClient.invalidateQueries({ queryKey: ['venue-program', venueId] });
   }, [queryClient, venueId, groupId]);
 
   useEffect(() => {
@@ -208,6 +215,7 @@ export function useVenueDay(
     sessions,
     holds,
     going,
+    viewerRsvpByEvent: query.data?.viewerRsvpByEvent ?? {},
     programming,
     grid,
     closed,
