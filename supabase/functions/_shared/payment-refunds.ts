@@ -12,5 +12,24 @@ export async function settledRefundAmount(r: Runtime, account: string, charge: {
 export async function recordSettledCharge(r: Runtime, account: string, charge: any) {
   const intent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
   if (!intent) return;
-  checked(await r.store.rpc('payment_record_charge', { p_account: account, p_live: r.livemode, p_intent: intent, p_refunded: await settledRefundAmount(r, account, charge), p_disputed: charge.disputed === true }));
+  await reconcileRefundPayment(r, account, intent, charge.id);
+}
+export async function reconcileRefundPayment(r: Runtime, account: string, intent: string, chargeId?: string) {
+  const version = checked(await r.store.rpc('payment_begin_refund_sync', { p_account: account, p_live: r.livemode, p_intent: intent }));
+  if (version == null) return;
+  if (!chargeId) {
+    const payment = await r.stripe.paymentIntents.retrieve(intent, {}, options(r, account));
+    chargeId = typeof payment.latest_charge === 'string' ? payment.latest_charge : payment.latest_charge?.id;
+    if (!chargeId) throw new Error('Refund details are not available yet.');
+  }
+  // Ignore webhook/earlier request snapshots. Read again AFTER claiming a version.
+  const current = await r.stripe.charges.retrieve(chargeId, {}, options(r, account));
+  if (current.payment_intent !== intent || current.currency !== 'usd' || current.livemode !== r.livemode) throw new Error('Refund merchant/payment mismatch.');
+  const attempts = [];
+  for await (const refund of r.stripe.refunds.list({ charge: current.id, limit: 100 }, options(r, account))) {
+    if (refund.charge !== current.id || refund.currency !== current.currency) throw new Error('Refund charge mismatch.');
+    attempts.push({ id: refund.id, amount: refund.amount, status: refund.status });
+  }
+  const applied = checked(await r.store.rpc('payment_apply_refund_snapshot', { p_account: account, p_live: r.livemode, p_intent: intent, p_version: version, p_amount: current.amount, p_attempts: attempts, p_disputed: current.disputed === true }));
+  if (!applied) throw new Error('A newer refund check is in progress. Please refresh.');
 }
