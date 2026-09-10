@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Group, GroupMember } from '@/hooks/useGroups';
+import { useAuthState } from '@/hooks/useAuthState';
 
 /**
  * A group plus the viewer's membership.
@@ -21,14 +22,12 @@ export const GROUP_VENUE_SELECT =
   'email, website_url, hours_of_operation)';
 
 export function useGroupDetail(groupId: string | undefined) {
+  const { user, loading: authLoading } = useAuthState();
   const query = useQuery({
-    queryKey: GROUP_DETAIL_KEY(groupId),
-    enabled: !!groupId,
+    queryKey: [...GROUP_DETAIL_KEY(groupId), user?.id],
+    enabled: !!groupId && !!user,
     staleTime: 60 * 1000,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (!user) throw new Error('not-authenticated');
 
       // Group and membership are independent, so they go in parallel.
@@ -45,6 +44,7 @@ export function useGroupDetail(groupId: string | undefined) {
       ]);
 
       if (groupRes.error) throw groupRes.error;
+      if (memberRes.error) throw memberRes.error;
 
       const group = {
         ...(groupRes.data as any),
@@ -58,7 +58,8 @@ export function useGroupDetail(groupId: string | undefined) {
   return {
     group: query.data?.group ?? null,
     membership: query.data?.membership ?? null,
-    loading: query.isLoading,
+    loading: authLoading || query.isLoading,
     isError: query.isError,
+    refetch: query.refetch,
   };
 }

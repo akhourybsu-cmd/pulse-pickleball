@@ -16,7 +16,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVenueModules } from "@/hooks/useVenueModules";
 import { VenueAddonCheckout } from "./VenueAddonCheckout";
 import type { VenueDemoFeature } from "@/lib/venues/venueDemo";
-import { PrivateVenueNotice } from "./PrivateVenueNotice";
 
 const VenuePremiumDemo = lazy(() => import("./VenuePremiumDemo"));
 
@@ -46,7 +45,6 @@ export function VenueModulesPanel({
   const count = Number(access.booking) + Number(access.facility);
   return (
     <div className="space-y-6 font-sans">
-      {privateSample && <PrivateVenueNotice />}
       <section className="rounded-2xl border bg-card p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

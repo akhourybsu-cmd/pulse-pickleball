@@ -84,7 +84,7 @@ export function OpsDashboard({
   onFillGap,
 }: OpsDashboardProps) {
   return (
-    <div className="min-h-[100dvh] bg-background pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-[100dvh] bg-background pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
       {/* Toolbar. One slim row: where you are on the left, what you can do on
           the right. A chevron rather than a filled circle button — going back
           is not an action worth the visual weight of a control. */}
@@ -93,7 +93,8 @@ export function OpsDashboard({
           <button
             type="button"
             onClick={onBack}
-            className="group flex h-9 shrink-0 items-center gap-0.5 rounded-lg pl-1 pr-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Back to venue"
+            className="group flex h-11 min-w-11 shrink-0 items-center justify-center gap-0.5 rounded-lg pl-1 pr-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-4.5 w-4.5" />
             <span className="hidden sm:inline">Venue</span>

@@ -6,6 +6,7 @@ import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import { useVenueModules } from '@/hooks/useVenueModules';
 import { VenueStaffProvider } from '@/components/venue/VenueStaffContext';
 import { Button } from '@/components/ui/button';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const VenueCommunity = lazy(() => import('./VenueCommunity'));
@@ -24,10 +25,12 @@ const VenueCommunity = lazy(() => import('./VenueCommunity'));
  */
 export default function GroupRoute() {
   const { groupId } = useParams<{ groupId: string }>();
-  const { group, loading } = useGroupDetail(groupId);
+  const { group, loading, isError, refetch } = useGroupDetail(groupId);
   const [params] = useSearchParams();
   const isVenue = isVenueCommunitiesEnabled() && !!group?.venue_id;
   const modules = useVenueModules(isVenue ? group?.venue_id : null);
+
+  if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetch()} />;
 
   if (loading || modules.loading) {
     return (
@@ -44,7 +47,7 @@ export default function GroupRoute() {
 
   return (
     <Suspense fallback={<div className="p-4"><Skeleton className="h-64 w-full rounded-xl" /></div>}>
-      {facilityShell ? <VenueCommunity /> : <VenueStaffProvider venueId={isVenue ? group?.venue_id : null} venueName={group?.venue?.name} accent={group?.venue?.primary_color}><GroupDetail /></VenueStaffProvider>}
+      {facilityShell ? <VenueCommunity key={groupId} /> : <VenueStaffProvider venueId={isVenue ? group?.venue_id : null} venueName={group?.venue?.name} accent={group?.venue?.primary_color}><GroupDetail key={groupId} /></VenueStaffProvider>}
     </Suspense>
   );
 }

@@ -34,7 +34,7 @@ const NAV_ITEMS: Array<{
   { value: 'home', label: 'Venue home', mobileLabel: 'Home', icon: MapPin },
   { value: 'book', label: 'Book a court', mobileLabel: 'Book', icon: LayoutGrid, needsCourts: true },
   { value: 'play', label: 'Programs & play', mobileLabel: 'Play', icon: CalendarDays },
-  { value: 'feed', label: 'Venue updates', mobileLabel: 'Updates', icon: MessageSquare },
+  { value: 'feed', label: 'Venue updates', mobileLabel: 'Feed', icon: MessageSquare },
   { value: 'chat', label: 'Venue chat', mobileLabel: 'Chat', icon: MessageCircle, needsChat: true },
   { value: 'more', label: 'Venue info', mobileLabel: 'Info', icon: Building2 },
 ];
@@ -53,7 +53,7 @@ interface VenueMastheadProps {
   accent?: string | null;
   verified?: boolean;
   hasCourts: boolean;
-  freeNow: number;
+  freeNow: number | null;
   courtCount: number;
   memberCount: number;
   nextStart?: string | null;
@@ -185,7 +185,7 @@ export function VenueMasthead({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="truncate text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl lg:text-[40px]">
+                <h1 className="truncate font-sans text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl lg:text-[40px]">
                   {venueName}
                 </h1>
                 {verified && (
@@ -208,16 +208,16 @@ export function VenueMasthead({
           >
             <MastheadStat
               icon={LayoutGrid}
-              label={hasCourts ? `${freeNow} of ${courtCount} courts free` : 'No courts yet'}
-              mobileLabel={hasCourts ? `${freeNow} / ${courtCount} courts` : 'No courts'}
+              label={hasCourts ? freeNow === null ? 'View court availability' : `${freeNow} of ${courtCount} courts free` : 'Venue community'}
+              mobileLabel={hasCourts ? freeNow === null ? 'Court times' : `${freeNow} / ${courtCount} courts` : 'Community'}
               accent={accent}
             />
-            <MastheadStat icon={Users} label={`${memberCount} members`} />
+            <MastheadStat icon={Users} label={`${memberCount} ${memberCount === 1 ? 'member' : 'members'}`} mobileLabel={String(memberCount)} />
             {nextStart && (
               <MastheadStat
                 icon={CalendarClock}
                 label={`Next program at ${formatSlotTime(new Date(nextStart))}`}
-                mobileLabel={`${formatSlotTime(new Date(nextStart))} next`}
+                mobileLabel={formatSlotTime(new Date(nextStart))}
               />
             )}
           </div>
@@ -315,7 +315,7 @@ interface VenueDesktopRailProps {
   venueName: string;
   activeTab: VenuePageTab;
   hasCourts: boolean;
-  freeNow: number;
+  freeNow: number | null;
   courtCount: number;
   memberCount: number;
   onlineCount: number;
@@ -355,13 +355,13 @@ export function VenueDesktopRail({
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 Today at {venueName}
               </p>
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+              {freeNow !== null && <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Live
-              </span>
+              </span>}
             </div>
 
-            {hasCourts ? (
+            {hasCourts && freeNow !== null ? (
               <div className="mt-4">
                 <div className="flex items-end gap-2">
                   <span className="text-4xl font-semibold tracking-[-0.06em] text-foreground">{freeNow}</span>
@@ -373,14 +373,14 @@ export function VenueDesktopRail({
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{
-                      width: `${courtCount ? Math.max(5, (freeNow / courtCount) * 100) : 0}%`,
+                      width: `${courtCount ? (freeNow / courtCount) * 100 : 0}%`,
                       ...(accent ? { backgroundColor: accent } : {}),
                     }}
                   />
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm font-semibold">Court availability is not published yet.</p>
+              <p className="mt-4 text-sm font-medium">{hasCourts ? 'Open court booking to check a date and time.' : 'Your venue community, all in one place.'}</p>
             )}
 
             <div className="mt-4 space-y-2 border-t border-border/70 pt-4 text-xs">
@@ -391,7 +391,7 @@ export function VenueDesktopRail({
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Community</span>
                 <span className="font-semibold tabular-nums">
-                  {onlineCount > 0 ? `${onlineCount} online · ` : ''}{memberCount} members
+                  {onlineCount > 0 ? `${onlineCount} online · ` : ''}{memberCount} {memberCount === 1 ? 'member' : 'members'}
                 </span>
               </div>
             </div>
@@ -437,7 +437,7 @@ function MobileTab({ value, mobileLabel, icon: Icon }: (typeof NAV_ITEMS)[number
   return (
     <TabsTrigger
       value={value}
-      className="min-w-0 flex-col gap-0.5 rounded-xl border-0 bg-transparent px-1 py-2 text-[9.5px] font-bold leading-none text-muted-foreground shadow-none transition-all [&>svg]:text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_5px_16px_-12px_hsl(var(--foreground)/0.9)] data-[state=active]:[&>svg]:text-[var(--venue-accent)] sm:flex-row sm:gap-1.5 sm:px-2 sm:text-[11px]"
+      className="min-h-12 min-w-0 flex-col gap-1 rounded-xl border-0 bg-transparent px-1 py-2 text-[11px] font-semibold leading-none text-muted-foreground shadow-none transition-all [&>svg]:text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_5px_16px_-12px_hsl(var(--foreground)/0.9)] data-[state=active]:[&>svg]:text-[var(--venue-accent)] sm:flex-row sm:gap-1.5 sm:px-2"
     >
       <Icon className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
       <span className="max-w-full truncate">{mobileLabel}</span>

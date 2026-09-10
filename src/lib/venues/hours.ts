@@ -144,9 +144,8 @@ export function serializeVenueHours(hours: VenueHours): Record<string, unknown> 
 /**
  * Grid options for one calendar day, or null when the venue is closed.
  *
- * The grid works in whole hours, so a window that doesn't start and end on an
- * hour boundary is widened outward to the hours containing it — better to show
- * a 07:00 row for a venue opening at 07:30 than to lose the half hour entirely.
+ * Preserve minute precision. Rounding outward offers times outside the saved
+ * opening hours, and the grid already supports boundaries at any minute.
  */
 export function gridOptionsFor(
   hours: VenueHours,
@@ -156,8 +155,8 @@ export function gridOptionsFor(
   const dayHours = hours.days[day.getDay()];
   if (!dayHours) return null;
 
-  const openHour = Math.floor(dayHours.openMinutes / 60);
-  const closeHour = Math.ceil(dayHours.closeMinutes / 60);
+  const openHour = dayHours.openMinutes / 60;
+  const closeHour = dayHours.closeMinutes / 60;
   if (closeHour <= openHour) return null;
 
   return { openHour, closeHour, slotMinutes: hours.slotMinutes, now };

@@ -5,8 +5,11 @@ import { format } from 'date-fns';
 import { CalendarDays, Check, Clock3, LayoutGrid, MapPin, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { getErrorMessage } from '@/lib/getErrorMessage';
+import { canUseVenueCourtSelection } from '@/lib/venues/experience';
+import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
 import {
   EventWizardFormData,
   EVENT_FORMAT_LABELS,
@@ -52,6 +55,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [capacityManuallySet, setCapacityManuallySet] = useState(false);
 
   const [formData, setFormData] = useState<EventWizardFormData>(() => ({
@@ -98,19 +102,9 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
       formData.recurringCount,
     ],
     enabled: venueMode && occurrenceWindows.length > 0,
-    queryFn: async () => {
-      const first = occurrenceWindows[0];
-      const last = occurrenceWindows[occurrenceWindows.length - 1];
-      const { data, error } = await supabase
-        .from('group_events')
-        .select('venue_court_id, start_time, end_time')
-        .eq('venue_id', venue!.id)
-        .not('venue_court_id', 'is', null)
-        .lt('start_time', last.end.toISOString())
-        .gt('end_time', first.start.toISOString());
-      if (error) throw error;
-      return data ?? [];
-    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    queryFn: () => fetchProgramAvailability(venue!.id, occurrenceWindows),
   });
 
   const busyCourtIds = useMemo(() => {
@@ -128,6 +122,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
 
   const step = EVENT_WIZARD_STEPS[currentStep];
   const isLastStep = currentStep === EVENT_WIZARD_STEPS.length - 1;
+  const courtsConfirmed = canUseVenueCourtSelection(formData.selectedCourtIds, busyCourtIds, conflictQuery.isSuccess && !conflictQuery.isFetching);
 
   const isStepValid = (): boolean => {
     switch (step.id) {
@@ -142,14 +137,13 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
       case 'details':
         if (!venueMode) return true;
         return (
-          formData.selectedCourtIds.length > 0 &&
-          !formData.selectedCourtIds.some((id) => busyCourtIds.has(id)) &&
+          courtsConfirmed &&
           (formData.skillLevelMin == null ||
             formData.skillLevelMax == null ||
             formData.skillLevelMin <= formData.skillLevelMax)
         );
       case 'review':
-        return true;
+        return !venueMode || courtsConfirmed;
       default:
         return false;
     }
@@ -176,6 +170,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   };
 
   const handleContinue = async () => {
+    if (isLoading || !isStepValid()) return;
     if (isLastStep) {
       await handleCreate();
     } else {
@@ -184,7 +179,9 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   };
 
   const handleCreate = async () => {
+    if (isLoading || (venueMode && !courtsConfirmed)) return;
     setIsLoading(true);
+    setCreateError(null);
     try {
       const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
       let endDateTime: Date | undefined;
@@ -236,6 +233,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
       });
 
       onSuccess();
+    } catch (error) {
+      setCreateError(getErrorMessage(error, 'The program could not be created. Your draft is still here; please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -322,7 +321,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             courts={venue?.courts}
             selectedCourtIds={formData.selectedCourtIds}
             busyCourtIds={busyCourtIds}
-            courtConflictsPending={conflictQuery.isFetching}
+            courtConflictsPending={conflictQuery.isPending || conflictQuery.isFetching}
+            courtConflictsError={conflictQuery.isError}
             skillLevelMin={formData.skillLevelMin}
             skillLevelMax={formData.skillLevelMax}
             rotationStyle={formData.rotationStyle}
@@ -404,6 +404,9 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
           </div>
 
           {/* Don't show nav on type step since it auto-advances */}
+          {venueMode && ['details', 'review'].includes(step.id) && conflictQuery.isError && <div role="alert" className="my-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm"><p>We couldn’t confirm court availability. Your entries are unchanged; retry before continuing.</p><Button variant="outline" className="mt-2 min-h-11" onClick={() => void conflictQuery.refetch()}>Retry availability</Button></div>}
+          {venueMode && step.id === 'review' && !conflictQuery.isError && !courtsConfirmed && <p role="status" className="my-3 rounded-xl border p-3 text-sm">{conflictQuery.isFetching ? 'Checking the court schedule…' : 'Availability changed. Return to Details to select available courts before publishing.'}</p>}
+          {createError && <p role="alert" className="my-3 rounded-xl border border-destructive/25 p-3 text-sm">{createError}</p>}
           {step.id !== 'type' && (
             <EventWizardNav
               onContinue={handleContinue}

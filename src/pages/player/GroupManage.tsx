@@ -40,11 +40,12 @@ import { useVenueModules } from '@/hooks/useVenueModules';
 import { VenueModulesPanel } from '@/components/venue/VenueModulesPanel';
 import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
 import { PrivateVenueNotice } from '@/components/venue/PrivateVenueNotice';
+import { resolveVenueAdminTab } from '@/lib/venues/navigation';
 
 export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,7 +61,11 @@ export default function GroupManage() {
   const [canManageCommunity, setCanManageCommunity] = useState(false);
   const [venueRole, setVenueRole] = useState<VenueRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('general');
+  const setActiveTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next);
+  };
   
   // Form state
   const [name, setName] = useState('');
@@ -106,6 +111,7 @@ export default function GroupManage() {
       ]);
 
       if (groupResult.error) throw groupResult.error;
+      if (membershipResult.error) throw membershipResult.error;
       const groupData = groupResult.data as typeof groupResult.data & { venues?: Group['venue'] };
       const membership = membershipResult.data;
       const communityAccess = membership?.role === 'owner' || membership?.role === 'moderator';
@@ -150,7 +156,6 @@ export default function GroupManage() {
       setVisibility(groupData.visibility);
       setJoinMethod(groupData.join_method);
       setIconUrl(groupData.icon_url);
-      setActiveTab(groupData.venue_id && facilityAccess ? requestedTab === 'modules' ? 'modules' : 'overview' : 'general');
     } catch (error) {
       console.error('Error fetching group:', error);
       toast({ title: 'Error', description: 'Failed to load group settings', variant: 'destructive' });
@@ -158,7 +163,7 @@ export default function GroupManage() {
     } finally {
       setLoading(false);
     }
-  }, [groupId, navigate, toast, requestedTab]);
+  }, [groupId, navigate, toast]);
 
   useEffect(() => {
     if (groupId) void fetchGroup();
@@ -183,6 +188,7 @@ export default function GroupManage() {
       if (error) throw error;
 
       toast({ title: 'Saved', description: 'Group settings updated' });
+      void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
     } catch (error: unknown) {
       console.error('Error saving group:', error);
       toast({ title: 'Error', description: getErrorMessage(error, 'Failed to save settings'), variant: 'destructive' });
@@ -322,9 +328,13 @@ export default function GroupManage() {
         transferResult.venue_transferred === true;
 
       setIsOwner(false);
-      if (venueTransferred) setVenueRole('manager');
+      if (venueTransferred) {
+        setVenueRole('manager');
+        setIsVenueOwner(false);
+      }
       await Promise.all([
         refetchMembers(),
+        fetchGroup(),
         queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] }),
         queryClient.invalidateQueries({ queryKey: ['group-members', groupId] }),
         group?.venue_id
@@ -380,13 +390,14 @@ export default function GroupManage() {
   const showsVenueAdmin = !!group.venue_id;
   const canManageFacility =
     isVenueOwner || venueRole === 'owner' || venueRole === 'manager' || isOwner;
+  const activeTab = resolveVenueAdminTab(requestedTab, showsVenueAdmin && canManageFacility, canManageCommunity, modules.booking || modules.facility || modules.loading);
 
   const venueItems: VenueAdminNavItem[] = [
     ...(canManageFacility
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
-          { value: 'modules', label: 'Plan & upgrades', shortLabel: 'Upgrades', description: 'Free plan, ownership and $10/month features', icon: ShieldCheck, section: 'venue' as const },
+          { value: 'modules', label: privateSample ? 'Included features' : 'Plan & upgrades', shortLabel: privateSample ? 'Features' : 'Upgrades', description: privateSample ? 'Sample access · no subscription' : 'Free plan, ownership and $10/month features', icon: ShieldCheck, section: 'venue' as const },
           ...((modules.booking || modules.facility) ? [{ value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' as const }] : []),
           { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' as const },
         ]
@@ -415,7 +426,7 @@ export default function GroupManage() {
       {showsVenueAdmin && canManageFacility && group.venue_id && (
         <>
           <TabsContent value="overview" className="mt-0">
-            {modules.loading ? <div role="status" className="rounded-2xl border p-5 text-sm text-muted-foreground">Checking your venue plan…</div> : modules.booking || modules.facility ? <><div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5"><div><p className="text-sm font-semibold">Your venue plan</p><p className="mt-1 text-sm text-muted-foreground">Free community with optional features. Review access and add upgrades here.</p></div><Button variant="outline" className="min-h-11 rounded-xl" onClick={() => setActiveTab('modules')}>Plan &amp; upgrades</Button></div><VenueAdminOverview
+            {modules.loading ? <div role="status" className="rounded-2xl border p-5 text-sm text-muted-foreground">Checking your venue plan…</div> : modules.booking || modules.facility ? <>{!privateSample && <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5"><div><p className="text-sm font-semibold">Your venue plan</p><p className="mt-1 text-sm text-muted-foreground">Free community with optional features. Review access and add upgrades here.</p></div><Button variant="outline" className="min-h-11 rounded-xl" onClick={() => setActiveTab('modules')}>Plan &amp; upgrades</Button></div>}<VenueAdminOverview
               venueId={group.venue_id}
               groupId={groupId!}
               venueName={group.venue?.name ?? group.name}
@@ -423,6 +434,8 @@ export default function GroupManage() {
               accent={group.venue?.primary_color}
               canManageCommunity={canManageCommunity}
               chatEnabled={settings.chat_enabled}
+              bookingEnabled={modules.booking}
+              operationsEnabled={modules.facility}
               onOpenTab={setActiveTab}
               onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
               onOpenVenueTab={(tab) =>
@@ -478,7 +491,7 @@ export default function GroupManage() {
           </TabsContent>
 
           <TabsContent value="privacy" className={showsVenueAdmin ? 'mt-0' : 'mt-6'}>
-            {privateSample ? <PrivateVenueNotice /> : <>
+            {privateSample ? <p className="rounded-2xl border bg-card p-5 text-sm leading-6">Only your account can access this sample. Its visibility, membership and ownership are locked so your testing stays private.</p> : <>
             {showsVenueAdmin && <PanelSaveBar onSave={handleSave} saving={saving} disabled={!name.trim()} />}
             <AdminPrivacyTab
               visibility={visibility}

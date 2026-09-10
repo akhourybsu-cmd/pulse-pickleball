@@ -116,7 +116,7 @@ export function VenueBookingGrid({
         }
       />
 
-      {!canBook && (
+      {!loading && !canBook && (
         <p className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <Lock className="h-3.5 w-3.5 shrink-0" />
           Only staff can book courts at this venue. You can still see what's on.

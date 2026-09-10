@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Building2, Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -23,6 +22,9 @@ import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
 import { PrivateVenueNotice } from '@/components/venue/PrivateVenueNotice';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { useAuthState } from '@/hooks/useAuthState';
+import { availableBookingEnd } from '@/lib/venues/experience';
 import { GroupChat } from '@/components/community/GroupChat';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
@@ -31,7 +33,7 @@ import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
-import { initialVenueCommunityTab } from '@/lib/venues/navigation';
+import { initialVenueCommunityTab, venueTabParams } from '@/lib/venues/navigation';
 import { parseGroupSettings } from '@/types/groupSettings';
 import {
   VenueDesktopNavigation,
@@ -63,7 +65,8 @@ export default function VenueCommunity() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { group, membership, loading } = useGroupDetail(groupId);
+  const { group, membership, loading, isError, refetch: refetchGroup } = useGroupDetail(groupId);
+  const { profile } = useAuthState();
   const [day, setDay] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -73,7 +76,7 @@ export default function VenueCommunity() {
   // Social inbox rows deep-link with ?tab=chat. The venue shell previously
   // ignored that parameter and always opened Home, making the row feel broken.
   const initialTab = initialVenueCommunityTab(searchParams);
-  const [activeTab, setActiveTab] = useState<VenuePageTab>(initialTab);
+  const activeTab = initialTab;
   // Chat and feed are expensive and subscribe to realtime, so they mount only
   // once visited and then stay mounted — remounting a chat loses its scroll
   // position and re-runs its queries every time you glance at another tab.
@@ -91,21 +94,15 @@ export default function VenueCommunity() {
   }, []);
 
   const openTab = (tab: VenuePageTab) => {
-    setActiveTab(tab);
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
-    const next = new URLSearchParams(searchParams);
-    if (tab === 'chat') next.set('tab', 'chat');
-    else next.delete('tab');
-    setSearchParams(next, { replace: true });
+    setSearchParams(venueTabParams(searchParams, tab));
   };
 
   // Also honor a chat deep link that arrives while React Router reuses this
   // mounted route (for example, moving between group rows without a reload).
   useEffect(() => {
-    if (searchParams.get('tab') !== 'chat') return;
-    setActiveTab('chat');
-    setVisitedTabs((seen) => (seen.has('chat') ? seen : new Set([...seen, 'chat'])));
-  }, [searchParams]);
+    setVisitedTabs((seen) => (seen.has(activeTab) ? seen : new Set([...seen, activeTab])));
+  }, [activeTab]);
 
   // A fixed pane sized to window.visualViewport is what keeps the composer
   // immediately above an overlay keyboard in Capacitor/iOS/Android WebViews.
@@ -128,31 +125,6 @@ export default function VenueCommunity() {
     setQuickPostType(type);
     setQuickPostOpen(true);
   };
-
-  const [profile, setProfile] = useState<{
-    display_name: string | null;
-    full_name: string | null;
-    avatar_url: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, full_name, avatar_url')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (!cancelled && data) setProfile(data);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
@@ -182,7 +154,7 @@ export default function VenueCommunity() {
 
   const {
     courts, programming, going, grid, closed, slotMinutes, freeNow,
-    loading: dayLoading, refresh, hasCourts,
+    loading: dayLoading, error: dayError, refresh, hasCourts,
   } = useVenueDay(group?.venue_id, groupId, day, hours);
   const {
     events: groupEvents,
@@ -244,6 +216,7 @@ export default function VenueCommunity() {
   const canManageSettings = canManageVenue(venueRole) || isCommunityAdmin;
   const modules = useVenueModules(group?.venue_id);
   const privateSample = usePrivateVenueSandbox(group?.venue_id);
+  const bookingTabAvailable = modules.booking && (hasCourts || dayLoading || !!dayError);
   const isOperator = modules.facility && (canOperateVenue(venueRole) || membership?.role === 'owner');
   const chatEnabled = groupSettings.chat_enabled;
   const canSendChat = isCommunityAdmin || (isMember && groupSettings.allow_member_chat);
@@ -253,7 +226,7 @@ export default function VenueCommunity() {
   // the same setting that gates every other kind of session, so a venue has one
   // switch to think about rather than two.
   const canBook =
-    modules.booking && isMember &&
+    modules.booking && !dayError && !dayLoading && isMember &&
     (canManageSettings ||
       (group?.settings as Record<string, unknown> | null)?.allow_member_events !== false);
   const canCreateProgram = modules.facility && (
@@ -263,14 +236,16 @@ export default function VenueCommunity() {
     membership?.role === 'owner');
 
   useEffect(() => {
+    if (loading || !group) return;
     const invalidChat = activeTab === 'chat' && !chatEnabled;
-    const invalidBook = activeTab === 'book' && (!hasCourts || !modules.booking);
+    const invalidBook = activeTab === 'book' && !modules.loading && !modules.isError && !dayLoading && !dayError && (!hasCourts || !modules.booking);
     if (!invalidChat && !invalidBook) return;
-    setActiveTab('home');
     const next = new URLSearchParams(searchParams);
     next.delete('tab');
     setSearchParams(next, { replace: true });
-  }, [activeTab, chatEnabled, hasCourts, modules.booking, searchParams, setSearchParams]);
+  }, [activeTab, chatEnabled, hasCourts, modules.booking, modules.loading, modules.isError, dayLoading, dayError, searchParams, setSearchParams, loading, group]);
+
+  if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetchGroup()} />;
 
   if (loading || !group) {
     return (
@@ -283,7 +258,8 @@ export default function VenueCommunity() {
   }
 
   const bookingCourt = courts.find((c) => c.id === bookingCourtId) ?? null;
-  const dayEnd = grid[0]?.slots[grid[0].slots.length - 1]?.end ?? null;
+  const activeCourtCount = courts.filter(court => court.is_active !== false).length;
+  const dayEnd = availableBookingEnd(grid, bookingCourtId, bookingStart);
 
   const nextUp = programming
     .filter((p) => new Date(p.start_time) >= new Date())
@@ -344,7 +320,7 @@ export default function VenueCommunity() {
       venueName={venue?.name ?? null}
       accent={chrome?.accentHex}
     >
-    <div className="flex min-h-[100dvh] flex-col bg-muted/[0.16]">
+    <div className="flex min-h-[100dvh] flex-col bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
       <VenueMasthead
         venueName={venue?.name ?? group.name}
         tagline={venue?.tagline}
@@ -360,7 +336,7 @@ export default function VenueCommunity() {
         verified={group.is_venue_verified}
         hasCourts={hasCourts && modules.booking}
         freeNow={freeNow}
-        courtCount={courts.length}
+        courtCount={activeCourtCount}
         memberCount={group.member_count ?? 0}
         nextStart={nextUp[0]?.start_time}
         isOperator={isOperator}
@@ -380,7 +356,7 @@ export default function VenueCommunity() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        <VenueMobileTabs hasCourts={hasCourts && modules.booking} chatEnabled={chatEnabled} />
+        <VenueMobileTabs hasCourts={bookingTabAvailable} chatEnabled={chatEnabled} />
 
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
@@ -391,7 +367,7 @@ export default function VenueCommunity() {
               )}
             >
               <VenueDesktopNavigation
-                hasCourts={hasCourts && modules.booking}
+                hasCourts={bookingTabAvailable}
                 chatEnabled={chatEnabled}
                 isOperator={isOperator}
                 isAdmin={canManageSettings}
@@ -400,6 +376,7 @@ export default function VenueCommunity() {
               />
 
               <main className="min-w-0">
+                {dayError && ['home', 'book', 'play'].includes(activeTab) && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>}
                 <TabsContent value="home" className="mt-0">
                   <VenueHome
                     welcomeHeadline={venue?.welcome_headline ?? null}
@@ -412,21 +389,21 @@ export default function VenueCommunity() {
                     nextUp={nextUp}
                     hasCourts={hasCourts && modules.booking}
                     freeNow={freeNow}
-                    courtCount={courts.length}
+                    courtCount={activeCourtCount}
                     accent={chrome?.accentHex}
                     onBook={() => openTab('book')}
                     onOpenPlay={() => openTab('play')}
                   />
                 </TabsContent>
 
-                {hasCourts && modules.booking && (
+                {bookingTabAvailable && (
                   <TabsContent value="book" className="mt-0">
                     {closed && (
                       <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
                         Closed on this day.
                       </p>
                     )}
-                    <VenueBookingGrid
+                    {!dayError && <VenueBookingGrid
                       grid={grid}
                       day={day}
                       loading={dayLoading}
@@ -438,7 +415,7 @@ export default function VenueCommunity() {
                         setBookingStart(start);
                         setBookingMinutes(minutes || null);
                       }}
-                    />
+                    />}
                   </TabsContent>
                 )}
 
@@ -459,7 +436,9 @@ export default function VenueCommunity() {
                       {canCreateProgram && (
                         <Button
                           size="sm"
-                          className="h-10 shrink-0 gap-1.5 rounded-xl px-3 font-bold shadow-[0_10px_24px_-18px_hsl(var(--primary)/0.9)]"
+                          className="h-11 shrink-0 gap-1.5 rounded-xl px-3 font-semibold shadow-[0_10px_24px_-18px_hsl(var(--primary)/0.9)]"
+                          aria-label="Create a venue program"
+                          disabled={!!dayError || dayLoading}
                           onClick={() => setEventCreatorOpen(true)}
                         >
                           <CalendarPlus className="h-4 w-4" />
@@ -469,7 +448,7 @@ export default function VenueCommunity() {
                       )}
                     </div>
                     <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
-                    <VenueProgramming
+                    {!dayError && <VenueProgramming
                       sessions={programming}
                       going={going}
                       loading={dayLoading}
@@ -477,7 +456,7 @@ export default function VenueCommunity() {
                       accent={chrome?.accentHex}
                       viewerRsvpByEvent={viewerRsvpByEvent}
                       onPick={setSelectedProgramId}
-                    />
+                    />}
                   </div>
                 </TabsContent>
 
@@ -515,7 +494,7 @@ export default function VenueCommunity() {
                         lastReadAt={lastReadRef.current}
                         isActive={activeTab === 'chat'}
                         title={venue?.name ?? group.name}
-                        subtitle="Venue chat"
+                        subtitle={privateSample ? 'Private sample · Only you' : 'Venue chat'}
                         avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
                         canSendMessages={canSendChat}
                       />
@@ -557,7 +536,7 @@ export default function VenueCommunity() {
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                     </button>
 
-                    <Button variant="outline" className="h-11 w-full rounded-xl" onClick={() => navigate(`/player/community/group/${groupId}?view=community&tab=more`)}>Community tools · Files, invites & notifications</Button>
+                    <Button variant="outline" className="min-h-11 w-full whitespace-normal rounded-xl" onClick={() => navigate(`/player/community/group/${groupId}?view=community&tab=more`)}>{privateSample ? 'Community tools & notifications' : 'Community tools · Files, invites & notifications'}</Button>
                     <GroupMembers
                       groupId={groupId!}
                       isAdmin={isCommunityAdmin}
@@ -575,7 +554,7 @@ export default function VenueCommunity() {
                   activeTab={activeTab}
                   hasCourts={hasCourts && modules.booking}
                   freeNow={freeNow}
-                  courtCount={courts.length}
+                  courtCount={activeCourtCount}
                   memberCount={group.member_count ?? 0}
                   onlineCount={onlineCount}
                   chatEnabled={chatEnabled}

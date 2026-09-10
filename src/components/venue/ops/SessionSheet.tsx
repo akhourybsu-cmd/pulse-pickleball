@@ -61,41 +61,46 @@ export function SessionSheet({
   const end = session.end_time ? new Date(session.end_time) : null;
 
   const cancel = async () => {
+    if (working) return;
     setWorking(true);
     // A multi-court program is represented by one public parent plus a small
     // hold on every selected court. Cancelling from any court removes the
     // parent; cascading releases every court and avoids half-cancelled events.
     const targetId = programHold ? session.parent_event_id! : session.id;
-    const { error } = await supabase.from('group_events').delete().eq('id', targetId);
-    setWorking(false);
+    try {
+      const { data, error } = await supabase.from('group_events').delete().eq('id', targetId).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('This session has changed or your access has changed. Refresh the schedule before trying again.');
 
-    if (error) {
-      toast({ title: 'Could not cancel', description: error.message, variant: 'destructive' });
-      return;
+      toast({
+        title: blocked ? 'Court reopened' : 'Session cancelled',
+        description: blocked
+          ? 'The court is bookable again for that window.'
+          : 'The slot is free again.',
+      });
+      onChanged();
+      onOpenChange(false);
+    } catch (error) {
+      toast({ title: 'Could not cancel', description: error instanceof Error ? error.message : (error as { message?: string })?.message ?? 'Please check your connection and try again.', variant: 'destructive' });
+      onChanged();
+    } finally {
+      setWorking(false);
     }
-
-    toast({
-      title: blocked ? 'Court reopened' : 'Session cancelled',
-      description: blocked
-        ? 'The court is bookable again for that window.'
-        : 'The slot is free again.',
-    });
-    onChanged();
-    onOpenChange(false);
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl">
-        <SheetHeader className="text-left">
-          <div className="flex items-start justify-between gap-3">
+    <Sheet open={open} onOpenChange={value => { if (!working) onOpenChange(value); }}>
+      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] max-w-xl overflow-y-auto rounded-t-2xl font-sans">
+        <SheetHeader className="pr-5 text-left">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <SheetTitle className="truncate">
+              <SheetTitle className="break-words font-sans">
                 {session.title || (blocked ? 'Closed' : 'Booked')}
               </SheetTitle>
               <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
+                  {start.toLocaleDateString([], { month: 'short', day: 'numeric' })} ·{' '}
                   {formatSlotTime(start)}
                   {end ? `–${formatSlotTime(end)}` : ''}
                 </span>
@@ -128,7 +133,7 @@ export function SessionSheet({
         <div className="mt-5 flex justify-end pb-[env(safe-area-inset-bottom)]">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={working}>
+              <Button className="min-h-11" variant="destructive" disabled={working}>
                 {working ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

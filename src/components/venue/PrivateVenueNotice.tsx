@@ -5,9 +5,11 @@ export function PrivateVenueNotice() {
     <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
     <div className="min-w-0">
       <p className="text-sm font-semibold">Private sample venue · Only you</p>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">You own this space. Court booking and facility operations are included at no cost. Sample content is editable and your changes are saved here.</p>
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">Invitations, public listing and live payments are disabled. This is a sample venue, not a verified business or a paid subscription.</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">Image and file uploads are disabled here to keep your files out of public storage. Text posts and chat work normally.</p>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">Booking and operations are included. Your edits stay here. Billing, invitations and uploads are off.</p>
+      <details className="mt-2 text-xs leading-5 text-muted-foreground">
+        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">About this sample</summary>
+        <p>This is not a verified business or a paid subscription. Public listing and invitations are disabled. Images and files cannot be uploaded because normal venue storage uses public links. Text posts and chat work normally.</p>
+      </details>
     </div>
   </section>;
 }

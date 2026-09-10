@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import type { GroupEvent, GroupRsvpStatus } from '@/hooks/useGroupEvents';
 import { cn } from '@/lib/utils';
+import { isConfirmedVenueRsvp } from '@/lib/venues/experience';
 
 const FORMAT_LABEL: Record<string, string> = {
   open_play: 'Open Play',
@@ -65,9 +66,11 @@ export function VenueProgramDialog({
 }: VenueProgramDialogProps) {
   const [saving, setSaving] = useState<RsvpChoice | null>(null);
   const [viewerRsvp, setViewerRsvp] = useState<GroupRsvpStatus | null>(event?.user_rsvp ?? null);
+  const [rsvpError, setRsvpError] = useState<string | null>(null);
 
   useEffect(() => {
     setViewerRsvp(event?.user_rsvp ?? null);
+    setRsvpError(null);
   }, [event?.id, event?.user_rsvp]);
 
   if (!event) return null;
@@ -88,18 +91,23 @@ export function VenueProgramDialog({
           : 'All levels';
 
   const choose = async (status: RsvpChoice) => {
+    if (saving) return;
     setSaving(status);
+    setRsvpError(null);
     try {
       const finalStatus = await onRsvp(event.id, status);
-      setViewerRsvp(finalStatus ?? status);
+      if (!isConfirmedVenueRsvp(finalStatus)) throw new Error('Registration was not confirmed. Please try again.');
+      setViewerRsvp(finalStatus);
+    } catch (error) {
+      setRsvpError(error instanceof Error ? error.message : 'Registration was not confirmed. Please try again.');
     } finally {
       setSaving(null);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bottom-0 left-0 top-auto max-h-[94dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[26px] border-border/80 p-0 sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[88dvh] sm:max-w-[680px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[26px] [&>button]:right-4 [&>button]:top-4 [&>button]:z-20 [&>button]:rounded-full [&>button]:border [&>button]:border-white/15 [&>button]:bg-black/20 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md">
+    <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}>
+      <DialogContent className="font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans bottom-0 left-0 top-auto max-h-[94dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[26px] border-border/80 p-0 sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[88dvh] sm:max-w-[680px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[26px] [&>button]:right-4 [&>button]:top-4 [&>button]:z-20 [&>button]:rounded-full [&>button]:border [&>button]:border-white/15 [&>button]:bg-black/20 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md">
         <DialogHeader className="sr-only">
           <DialogTitle>{event.title}</DialogTitle>
           <DialogDescription>Program information and RSVP options.</DialogDescription>
@@ -114,7 +122,7 @@ export function VenueProgramDialog({
           }}
         >
           <div aria-hidden className="absolute inset-0 opacity-15 [background-image:linear-gradient(115deg,transparent_0%,transparent_48%,white_49%,white_50%,transparent_51%)] [background-size:26px_26px]" />
-          <div className="relative pr-10">
+          <div className="relative pr-10 font-sans [&_h2]:font-sans">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-white/20 bg-white/12 text-[9px] font-bold uppercase tracking-[0.15em] text-white hover:bg-white/12">
                 {FORMAT_LABEL[event.event_format] ?? 'Venue program'}
@@ -188,6 +196,8 @@ export function VenueProgramDialog({
 
           {canRsvp ? (
             <div className="border-t border-border/70 pt-5">
+              {rsvpError && <p role="alert" className="mb-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm leading-6">{rsvpError}</p>}
+              {saving && <p role="status" className="mb-3 text-sm text-muted-foreground">Confirming your response…</p>}
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold">Are you playing?</p>
@@ -268,6 +278,7 @@ function RsvpButton({
       variant={selected ? 'default' : 'ghost'}
       className="h-11 min-w-0 gap-1 rounded-xl px-2 text-[11px] font-bold sm:text-xs"
       disabled={disabled}
+      aria-pressed={selected}
       onClick={onClick}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />

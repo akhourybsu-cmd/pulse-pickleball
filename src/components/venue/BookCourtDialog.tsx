@@ -25,6 +25,7 @@ import { formatSlotTime, type Court } from '@/lib/venues/availability';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatMoney, openStripe, paymentApi, type CourtQuote, type PaymentConfig } from '@/lib/payments';
+import { bookingDurationOptions, isBookingRangeValid } from '@/lib/venues/experience';
 
 /**
  * Hold a court.
@@ -51,7 +52,7 @@ interface BookCourtDialogProps {
    * makes booking flows feel bureaucratic.
    */
   presetMinutes?: number | null;
-  /** Latest end the venue allows, so a booking can't run past closing. */
+  /** End of contiguous availability: closing time or the next occupied slot. */
   dayEnd: Date | null;
   onBooked: () => void;
 }
@@ -91,26 +92,22 @@ export function BookCourtDialog({
 
   const spanChosen = !!presetMinutes && presetMinutes > 0;
 
-  // Only offer durations that actually fit before closing — a picker that
-  // lets you choose 2 hours at 9pm and then fails on save is worse than one
-  // that never offers it.
+  // Never offer a duration past the next occupied slot or closing time.
   const maxMinutes =
-    start && dayEnd ? Math.max(slotMinutes, (dayEnd.getTime() - start.getTime()) / 60000) : 240;
-  const durations = [30, 60, 90, 120, 180].filter(
-    (m) => m >= Math.min(30, slotMinutes) && m <= maxMinutes,
-  );
-  const options = durations.length > 0 ? durations : [slotMinutes];
+    start && dayEnd ? Math.max(0, (dayEnd.getTime() - start.getTime()) / 60000) : 0;
+  const options = bookingDurationOptions(slotMinutes, maxMinutes);
 
   const end = start ? new Date(start.getTime() + minutes * 60000) : null;
+  const validRange = court?.is_active !== false && isBookingRangeValid(start, minutes, dayEnd);
   const quote = useQuery({
     queryKey: ['court-quote', court?.id, groupId, start?.toISOString(), end?.toISOString()],
     queryFn: () => paymentApi<CourtQuote>('quote', { court_id: court?.id, group_id: groupId, start_time: start?.toISOString(), end_time: end?.toISOString() }),
-    enabled: open && !!court && !!start && !!paymentDetails.data?.paid, staleTime: 0, retry: false,
+    enabled: open && !!court && validRange && !!paymentDetails.data?.paid, staleTime: 0, retry: false,
   });
   useEffect(() => { setAccepted(false); setRequestKey(crypto.randomUUID()); }, [minutes, start?.toISOString(), court?.id, quote.data?.amount_cents, quote.data?.policy]);
 
   const submit = async () => {
-    if (!court || !start || !end) return;
+    if (saving || !court || court.is_active === false || !start || !end || !isBookingRangeValid(start, minutes, dayEnd)) return;
 
     setSaving(true);
     if (paymentDetails.data?.paid) {
@@ -129,63 +126,70 @@ export function BookCourtDialog({
       setSaving(false);
       return;
     }
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth.user?.id;
-    if (!userId) {
-      toast({ title: 'Sign in required', variant: 'destructive' });
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from('group_events').insert({
-      group_id: groupId,
-      venue_id: venueId,
-      venue_court_id: court.id,
-      title: title.trim() || `Court ${court.court_number ?? ''}`.trim(),
-      event_format: 'reservation',
-      location_type: 'venue',
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      created_by: userId,
-    });
-
-    setSaving(false);
-
-    if (error) {
-      // 23P01 is the exclusion constraint: somebody took this court for an
-      // overlapping time between the grid rendering and this insert. That is a
-      // normal race, not a fault, so it gets a plain explanation and a refresh
-      // rather than a raw Postgres message.
-      if (error.code === '23P01') {
-        toast({
-          title: 'Just taken',
-          description: 'Someone booked this court for that time. Pick another slot.',
-          variant: 'destructive',
-        });
-        onBooked();
-        onOpenChange(false);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth.user?.id;
+      if (!userId) {
+        toast({ title: 'Sign in required', variant: 'destructive' });
+        setSaving(false);
         return;
       }
-      toast({
-        title: 'Could not book',
-        description: error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
 
-    toast({
-      title: 'Court booked',
-      description: `${court.name ?? `Court ${court.court_number}`} · ${formatSlotTime(
-        start,
-      )}–${formatSlotTime(end)}`,
-    });
-    onBooked();
-    onOpenChange(false);
+      const { error } = await supabase.from('group_events').insert({
+        group_id: groupId,
+        venue_id: venueId,
+        venue_court_id: court.id,
+        title: title.trim() || `Court ${court.court_number ?? ''}`.trim(),
+        event_format: 'reservation',
+        location_type: 'venue',
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        created_by: userId,
+      });
+
+      setSaving(false);
+
+      if (error) {
+        // 23P01 is the exclusion constraint: somebody took this court for an
+        // overlapping time between the grid rendering and this insert. That is a
+        // normal race, not a fault, so it gets a plain explanation and a refresh
+        // rather than a raw Postgres message.
+        if (error.code === '23P01') {
+          toast({
+            title: 'Just taken',
+            description: 'Someone booked this court for that time. Pick another slot.',
+            variant: 'destructive',
+          });
+          onBooked();
+          onOpenChange(false);
+          return;
+        }
+        toast({
+          title: 'Could not book',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Court booked',
+        description: `${court.name ?? `Court ${court.court_number}`} · ${formatSlotTime(
+          start,
+        )}–${formatSlotTime(end)}`,
+      });
+      onBooked();
+      onOpenChange(false);
+    } catch (error) {
+      toast({ title: 'Could not book', description: error instanceof Error ? error.message : 'Please check your connection and try again.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl font-sans sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle className="font-sans">Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
@@ -202,6 +206,7 @@ export function BookCourtDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {!validRange && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm">This time is no longer available for the selected duration. Choose a shorter duration, or return to the calendar for another time.</p>}
           <div className={cn('space-y-2', spanChosen && 'hidden')}>
             <Label htmlFor="booking-duration">Duration</Label>
             <Select value={String(minutes)} onValueChange={(v) => setMinutes(Number(v))}>
@@ -247,10 +252,10 @@ export function BookCourtDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button className="min-h-11" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="min-h-11" onClick={submit} disabled={saving || !court || !start || paymentDetails.isPending || paymentDetails.isFetching || paymentDetails.isError || (paymentDetails.data?.paid && (!accepted || !quote.data || quote.isFetching || quote.isError))}>
+          <Button className="min-h-11" onClick={submit} disabled={saving || !court || !validRange || !paymentDetails.data || paymentDetails.isPending || paymentDetails.isFetching || paymentDetails.isError || (paymentDetails.data?.paid && (!accepted || !quote.data || quote.isFetching || quote.isError))}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {paymentDetails.data?.paid ? `Pay ${quote.data ? formatMoney(quote.data.amount_cents) : ''} & reserve` : 'Book free court'}
           </Button>

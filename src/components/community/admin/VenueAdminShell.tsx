@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, BadgeCheck, ExternalLink, Gauge, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,17 @@ export function VenueAdminShell({
   children: ReactNode;
 }) {
   const activeItem = items.find((item) => item.value === activeTab) ?? items[0];
+  const mobileNav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = mobileNav.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !active) return;
+    const navRect = nav.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    if (activeRect.left < navRect.left || activeRect.right > navRect.right) {
+      nav.scrollTo({ left: nav.scrollLeft + activeRect.left - navRect.left - (nav.clientWidth - activeRect.width) / 2 });
+    }
+  }, [activeTab]);
   const sections: Array<{ value: VenueAdminNavItem['section']; label: string }> = [
     { value: 'venue', label: 'Venue' },
     { value: 'community', label: 'Community' },
@@ -49,7 +60,7 @@ export function VenueAdminShell({
 
   return (
     <div
-      className="min-h-[100dvh] bg-muted/[0.16] pb-[env(safe-area-inset-bottom)]"
+      className="min-h-[100dvh] bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
       style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))' } as CSSProperties}
     >
       <header className="border-b border-white/10 bg-[#15171b] text-white">
@@ -59,7 +70,7 @@ export function VenueAdminShell({
               variant="ghost"
               size="icon"
               onClick={onBack}
-              className="h-10 w-10 shrink-0 rounded-full border border-white/10 text-white/75 hover:bg-white/10 hover:text-white"
+              className="h-11 w-11 shrink-0 rounded-full border border-white/10 text-white/75 hover:bg-white/10 hover:text-white"
               aria-label="Back to venue"
             >
               <ArrowLeft className="h-[18px] w-[18px]" />
@@ -85,7 +96,8 @@ export function VenueAdminShell({
                 variant="ghost"
                 size="sm"
                 onClick={onViewVenue}
-                className="h-10 rounded-full border border-white/10 px-3 text-white/75 hover:bg-white/10 hover:text-white"
+                aria-label="View venue"
+                className="h-11 min-w-11 rounded-full border border-white/10 px-3 text-white/75 hover:bg-white/10 hover:text-white"
               >
                 <ExternalLink className="h-4 w-4 sm:mr-1.5" />
                 <span className="hidden sm:inline">View venue</span>
@@ -94,7 +106,8 @@ export function VenueAdminShell({
                 <Button
                   size="sm"
                   onClick={onOperations}
-                  className="h-10 rounded-full px-3 text-[#15171b] shadow-none"
+                  aria-label="Open venue operations"
+                  className="h-11 min-w-11 rounded-full px-3 text-[#15171b] shadow-none"
                   style={accent ? { backgroundColor: accent } : undefined}
                 >
                   <Gauge className="h-4 w-4 sm:mr-1.5" />
@@ -105,12 +118,12 @@ export function VenueAdminShell({
           </div>
 
           <div className="mt-5 lg:hidden">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">{activeItem?.description}</p>
+            <p className="text-xs leading-5 text-white/70">{activeItem?.description}</p>
           </div>
         </div>
 
         <div className="border-t border-white/[0.08] lg:hidden">
-          <div className="overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav ref={mobileNav} aria-label="Venue management sections" className="overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex w-max items-center">
               {items.map((item) => {
                 const Icon = item.icon;
@@ -119,11 +132,10 @@ export function VenueAdminShell({
                   <button
                     key={item.value}
                     type="button"
-                    role="tab"
-                    aria-selected={active}
+                    aria-current={active ? 'page' : undefined}
                     onClick={() => onTabChange(item.value)}
                     className={cn(
-                      'relative flex h-12 shrink-0 items-center gap-1.5 px-3 text-xs font-semibold text-white/55 transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-admin-accent)] after:transition-transform',
+                      'relative flex h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-medium text-white/70 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-admin-accent)] after:transition-transform',
                       active && 'text-white after:scale-x-100',
                     )}
                   >
@@ -133,7 +145,7 @@ export function VenueAdminShell({
                 );
               })}
             </div>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -157,8 +169,9 @@ export function VenueAdminShell({
                           key={item.value}
                           type="button"
                           onClick={() => onTabChange(item.value)}
+                          aria-current={active ? 'page' : undefined}
                           className={cn(
-                            'relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:scale-y-0 before:rounded-full before:bg-[var(--venue-admin-accent)] before:transition-transform hover:bg-card/70',
+                            'relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:scale-y-0 before:rounded-full before:bg-[var(--venue-admin-accent)] before:transition-transform hover:bg-card/70',
                             active && 'bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] before:scale-y-100',
                           )}
                         >

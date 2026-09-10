@@ -33,7 +33,7 @@ interface VenueHomeProps {
   hours: VenueHours;
   nextUp: VenueHomeSession[];
   hasCourts: boolean;
-  freeNow: number;
+  freeNow: number | null;
   courtCount: number;
   accent?: string | null;
   onBook: () => void;
@@ -70,7 +70,7 @@ export function VenueHome({
               icon={LayoutGrid}
               eyebrow="Courts"
               title="Book a court"
-              detail={freeNow > 0 ? `${freeNow} of ${courtCount} open now` : 'View today’s availability'}
+              detail={freeNow !== null && freeNow > 0 ? `${freeNow} of ${courtCount} open now` : 'Choose a day and time'}
               accent={accent}
               onClick={onBook}
             />

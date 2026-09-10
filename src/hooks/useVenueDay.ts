@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -8,6 +8,8 @@ import {
   type Reservation,
 } from '@/lib/venues/availability';
 import { defaultVenueHours, gridOptionsFor, type VenueHours } from '@/lib/venues/hours';
+import { useAuthState } from '@/hooks/useAuthState';
+import { venueDayOverlapFilter } from '@/lib/venues/experience';
 
 /**
  * One venue, one day: its courts, and everything scheduled on them.
@@ -69,11 +71,18 @@ export function useVenueDay(
   hours: VenueHours = defaultVenueHours(),
 ) {
   const queryClient = useQueryClient();
+  const { user } = useAuthState();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const query = useQuery({
-    queryKey: venueDayKey(venueId, day),
-    enabled: !!venueId,
+    queryKey: [...venueDayKey(venueId, day), user?.id],
+    enabled: !!venueId && !!user,
     staleTime: 30 * 1000,
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { from, to } = dayBounds(day);
 
@@ -91,15 +100,20 @@ export function useVenueDay(
           .from('group_events')
           .select('id, group_id, title, description, event_format, capacity, created_by, waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, rotation_style, skill_level_min, skill_level_max, rr_courts')
           .eq('venue_id', venueId!)
-          .gte('start_time', from)
           .lt('start_time', to)
+          .or(venueDayOverlapFilter(from))
           .order('start_time', { ascending: true }),
       ]);
 
       if (courtsRes.error) throw courtsRes.error;
       if (sessionsRes.error) throw sessionsRes.error;
 
-      const sessions = (sessionsRes.data ?? []) as VenueDaySession[];
+      const rawSessions = (sessionsRes.data ?? []) as VenueDaySession[];
+      const parents = new Map(rawSessions.filter(s => !isProgramHold(s)).map(s => [s.id, s]));
+      const sessions = rawSessions.map(session => {
+        const parent = session.parent_event_id ? parents.get(session.parent_event_id) : null;
+        return parent && isProgramHold(session) ? { ...session, title: parent.title, description: parent.description } : session;
+      });
       const holdsResult = await (supabase as any).rpc('venue_checkout_holds', { p_venue: venueId!, p_from: from, p_to: to });
       if (holdsResult.error) throw holdsResult.error;
       const holds = (holdsResult.data ?? []) as Reservation[];
@@ -113,11 +127,13 @@ export function useVenueDay(
       let going: Record<string, number> = {};
 
       if (joinable.length > 0) {
-        const { data: rsvps } = await supabase
+        const { data: rsvps, error: rsvpError } = await supabase
           .from('group_event_rsvps')
           .select('event_id')
           .in('event_id', joinable.map((s) => s.id))
           .eq('status', 'going');
+
+        if (rsvpError) throw rsvpError;
 
         going = (rsvps ?? []).reduce<Record<string, number>>((acc, r) => {
           acc[r.event_id] = (acc[r.event_id] ?? 0) + 1;
@@ -145,9 +161,9 @@ export function useVenueDay(
   const closed = gridOptions === null;
 
   const grid = useMemo(
-    () => (gridOptions ? buildDayGrid(courts, [...sessions, ...(query.data?.holds ?? [])], day, gridOptions) : []),
+    () => (gridOptions ? buildDayGrid(courts, [...sessions, ...(query.data?.holds ?? [])], day, { ...gridOptions, now }) : []),
     // `courts` is derived from query.data, so keying on it directly is stable.
-    [query.data, day, gridOptions], // eslint-disable-line react-hooks/exhaustive-deps
+    [query.data, day, gridOptions, now], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /**
@@ -162,11 +178,29 @@ export function useVenueDay(
     [sessions],
   );
 
-  const freeNow = useMemo(() => courtsFreeAt(courts, [...sessions, ...(query.data?.holds ?? [])], new Date()), [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A future day's schedule cannot answer how many courts are free right now.
+  const freeNow = useMemo(() => {
+    if (query.isError || query.isPending || day.toDateString() !== now.toDateString()) return null;
+    const todayHours = hours.days[now.getDay()];
+    const minute = now.getHours() * 60 + now.getMinutes();
+    if (!todayHours || minute < todayHours.openMinutes || minute >= todayHours.closeMinutes) return 0;
+    return courtsFreeAt(courts, [...sessions, ...(query.data?.holds ?? [])], now);
+  }, [query.data, query.isError, query.isPending, day, now, hours]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: venueDayKey(venueId, day) });
-  }, [queryClient, venueId, day]);
+    void queryClient.invalidateQueries({ queryKey: ['venue-day', venueId] });
+    void queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+    void queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] });
+  }, [queryClient, venueId, groupId]);
+
+  useEffect(() => {
+    if (!venueId || !user?.id) return;
+    const channel = supabase.channel(`venue-day-updates:${venueId}:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_events', filter: `venue_id=eq.${venueId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_courts', filter: `venue_id=eq.${venueId}` }, refresh)
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [venueId, user?.id, refresh]);
 
   return {
     courts,

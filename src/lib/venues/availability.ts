@@ -47,7 +47,7 @@ export interface CourtColumn {
 }
 
 export interface DayGridOptions {
-  /** Local hour the venue opens, 0-23. */
+  /** Local hour the venue opens; fractional hours preserve minute precision. */
   openHour: number;
   /** Local hour it closes, 1-24. 24 means midnight. */
   closeHour: number;
@@ -114,7 +114,7 @@ export function reservationAt(
  */
 export function slotBoundaries(day: Date, options: DayGridOptions): Date[] {
   const { openHour, closeHour, slotMinutes } = options;
-  if (slotMinutes <= 0 || closeHour <= openHour) return [];
+  if (![slotMinutes, openHour, closeHour].every(Number.isFinite) || slotMinutes <= 0 || closeHour <= openHour) return [];
 
   const boundaries: Date[] = [];
   const total = ((closeHour - openHour) * 60) / slotMinutes;
@@ -122,8 +122,8 @@ export function slotBoundaries(day: Date, options: DayGridOptions): Date[] {
   for (let i = 0; i <= total; i++) {
     const minutesFromOpen = i * slotMinutes;
     const d = new Date(day);
-    d.setHours(openHour, 0, 0, 0);
-    d.setMinutes(d.getMinutes() + minutesFromOpen);
+    d.setHours(0, 0, 0, 0);
+    d.setMinutes(Math.round(openHour * 60) + minutesFromOpen);
     // During the spring DST jump, two different wall-clock minute offsets can
     // normalize to the same instant (for example 2:00 and 3:00 both becoming
     // 3:00). A duplicate boundary creates a zero-minute bookable slot, so omit

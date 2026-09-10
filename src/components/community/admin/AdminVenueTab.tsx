@@ -21,6 +21,7 @@ import {
 } from '@/lib/images/prepareImageUpload';
 import { VenueCourtsSection } from './VenueCourtsSection';
 import { VenueHoursSection } from './VenueHoursSection';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
 
 /**
  * Venue identity for a venue community.
@@ -100,6 +101,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   const queryClient = useQueryClient();
   const [form, setForm] = useState<VenueForm>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
 
@@ -111,56 +114,60 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
 
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select(
-          'name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, ' +
-            'logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, ' +
-            'website_url, phone, email, city, state, ' +
-            'instagram_url, facebook_url',
-        )
-        .eq('id', venueId)
-        .single();
+      setLoadError(false);
+      try {
+        const { data, error } = await supabase
+          .from('venues')
+          .select('name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
+          .eq('id', venueId)
+          .single();
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (error) {
-        toast({
-          title: 'Error loading venue',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } else if (data) {
-        setForm({
-          ...EMPTY,
-          ...data,
-          primary_color: data.primary_color ?? DEFAULT_PRIMARY,
-          secondary_color: data.secondary_color ?? DEFAULT_SECONDARY,
-          logo_url: data.logo_url ?? null,
-          cover_image_url: data.cover_image_url ?? null,
-          logo_shape: data.logo_shape ?? 'square',
-          cover_focal_point: data.cover_focal_point ?? 'center',
-          logo_image_fit: data.logo_image_fit ?? 'cover',
-          cover_image_fit: data.cover_image_fit ?? 'cover',
-          tagline: data.tagline ?? '',
-          welcome_headline: data.welcome_headline ?? '',
-          welcome_message: data.welcome_message ?? '',
-          website_url: data.website_url ?? '',
-          phone: data.phone ?? '',
-          email: data.email ?? '',
-          city: data.city ?? '',
-          state: data.state ?? '',
-          instagram_url: data.instagram_url ?? '',
-          facebook_url: data.facebook_url ?? '',
-        });
+        if (error) {
+          setLoadError(true);
+          toast({
+            title: 'Error loading venue',
+            description: error.message,
+            variant: 'destructive',
+          });
+        } else if (data) {
+          setForm({
+            ...EMPTY,
+            ...data,
+            primary_color: data.primary_color ?? DEFAULT_PRIMARY,
+            secondary_color: data.secondary_color ?? DEFAULT_SECONDARY,
+            logo_url: data.logo_url ?? null,
+            cover_image_url: data.cover_image_url ?? null,
+            logo_shape: data.logo_shape === 'circle' ? 'circle' : 'square',
+            cover_focal_point: data.cover_focal_point === 'top' ? 'top' : 'center',
+            logo_image_fit: data.logo_image_fit === 'contain' ? 'contain' : 'cover',
+            cover_image_fit: data.cover_image_fit === 'contain' ? 'contain' : 'cover',
+            tagline: data.tagline ?? '',
+            welcome_headline: data.welcome_headline ?? '',
+            welcome_message: data.welcome_message ?? '',
+            website_url: data.website_url ?? '',
+            phone: data.phone ?? '',
+            email: data.email ?? '',
+            city: data.city ?? '',
+            state: data.state ?? '',
+            instagram_url: data.instagram_url ?? '',
+            facebook_url: data.facebook_url ?? '',
+          });
+        } else {
+          setLoadError(true);
+        }
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [venueId, toast]);
+  }, [venueId, toast, loadAttempt]);
 
   const set = useCallback(<K extends keyof VenueForm>(key: K, value: VenueForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -244,6 +251,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   };
 
   const save = async () => {
+    if (loading || loadError || saving) return;
     if (!form.name.trim()) {
       toast({ title: 'Name required', description: 'Give your venue a name.', variant: 'destructive' });
       return;
@@ -264,37 +272,43 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
     // checks behave.
     const blankToNull = (v: string) => (v.trim() === '' ? null : v.trim());
 
-    const { error } = await supabase
-      .from('venues')
-      .update({
-        name: form.name.trim(),
-        tagline: blankToNull(form.tagline),
-        welcome_headline: blankToNull(form.welcome_headline),
-        welcome_message: blankToNull(form.welcome_message),
-        primary_color: blankToNull(form.primary_color),
-        secondary_color: blankToNull(form.secondary_color),
-        website_url: blankToNull(form.website_url),
-        phone: blankToNull(form.phone),
-        email: blankToNull(form.email),
-        city: blankToNull(form.city),
-        state: blankToNull(form.state),
-        instagram_url: blankToNull(form.instagram_url),
-        facebook_url: blankToNull(form.facebook_url),
-        logo_shape: form.logo_shape,
-        cover_focal_point: form.cover_focal_point,
-        logo_image_fit: form.logo_image_fit,
-        cover_image_fit: form.cover_image_fit,
-      })
-      .eq('id', venueId);
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .update({
+          name: form.name.trim(),
+          tagline: blankToNull(form.tagline),
+          welcome_headline: blankToNull(form.welcome_headline),
+          welcome_message: blankToNull(form.welcome_message),
+          primary_color: blankToNull(form.primary_color),
+          secondary_color: blankToNull(form.secondary_color),
+          website_url: blankToNull(form.website_url),
+          phone: blankToNull(form.phone),
+          email: blankToNull(form.email),
+          city: blankToNull(form.city),
+          state: blankToNull(form.state),
+          instagram_url: blankToNull(form.instagram_url),
+          facebook_url: blankToNull(form.facebook_url),
+          logo_shape: form.logo_shape,
+          cover_focal_point: form.cover_focal_point,
+          logo_image_fit: form.logo_image_fit,
+          cover_image_fit: form.cover_image_fit,
+        })
+        .eq('id', venueId).select('id').single();
 
-    setSaving(false);
+      setSaving(false);
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      toast({ title: 'Venue updated' });
+    } catch (error) {
+      toast({ title: 'Could not save venue', description: getErrorMessage(error, 'Please check your connection and try again.'), variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
-    void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
-    toast({ title: 'Venue updated' });
   };
 
   if (loading) {
@@ -305,6 +319,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
       </div>
     );
   }
+
+  if (loadError) return <VenueLoadState title="Venue settings couldn’t load" description="Your saved details are unchanged. Retry before editing to avoid replacing them with an empty form." onRetry={() => setLoadAttempt(attempt => attempt + 1)} />;
 
   const showProfile = mode === 'profile' || mode === 'all';
   const showFacility = mode === 'facility' || mode === 'all';

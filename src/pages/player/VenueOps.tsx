@@ -13,6 +13,8 @@ import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
 import { SessionSheet } from '@/components/venue/ops/SessionSheet';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { availableBookingEnd } from '@/lib/venues/experience';
 
 /**
  * Venue operations.
@@ -31,7 +33,7 @@ export default function VenueOps() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
 
-  const { group, membership, loading } = useGroupDetail(groupId);
+  const { group, membership, loading, isError: groupError, refetch: refetchGroup } = useGroupDetail(groupId);
   const modules = useVenueModules(group?.venue_id);
   const [day, setDay] = useState(() => {
     const d = new Date();
@@ -62,9 +64,9 @@ export default function VenueOps() {
   const chrome = useMemo(() => venueChrome(venue), [venue]);
   const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
 
-  const { role: venueRole, loading: roleLoading } = useMyVenueRole(group?.venue_id);
+  const { role: venueRole, loading: roleLoading, error: roleError, refetch: refetchRole } = useMyVenueRole(group?.venue_id);
 
-  const { courts, sessions, grid, closed, slotMinutes, loading: dayLoading, refresh } =
+  const { courts, sessions, grid, closed, slotMinutes, loading: dayLoading, error: dayError, refresh } =
     useVenueDay(group?.venue_id, groupId, day, hours);
 
   // Access is a venue role, not community moderation: a front-desk person can
@@ -91,10 +93,14 @@ export default function VenueOps() {
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
     // Wait for the role to resolve, or a staff member is bounced on first paint.
-    if (!loading && !roleLoading && !modules.loading && group && !isStaff) {
+    if (!loading && !roleLoading && !roleError && !modules.loading && !modules.isError && group && !isStaff) {
       navigate(`/player/community/group/${groupId}`, { replace: true });
     }
-  }, [loading, roleLoading, modules.loading, group, isStaff, groupId, navigate]);
+  }, [loading, roleLoading, roleError, modules.loading, modules.isError, group, isStaff, groupId, navigate]);
+
+  if (!loading && (groupError || !group)) return <VenueLoadState fullPage onRetry={() => void refetchGroup()} />;
+  if (modules.isError) return <VenueLoadState fullPage title="Venue tools couldn’t load" onRetry={() => void modules.refetch()} />;
+  if (roleError) return <VenueLoadState fullPage title="Staff access couldn’t be checked" onRetry={() => void refetchRole()} />;
 
   if (loading || roleLoading || !group || !isStaff) {
     return (
@@ -106,12 +112,15 @@ export default function VenueOps() {
     );
   }
 
+  if (dayError) return <VenueLoadState fullPage title="Court schedule couldn’t load" description="Availability has not been confirmed. Retry before making changes to the schedule." onRetry={refresh} />;
+
   const selectedSession = sessions.find((s) => s.id === sessionId) ?? null;
   const selectedSessionCourt =
     courts.find((c) => c.id === selectedSession?.venue_court_id) ?? null;
   const bookCourt = courts.find((c) => c.id === bookCourtId) ?? null;
   const dayStart = grid[0]?.slots[0]?.start ?? null;
   const dayEnd = grid[0]?.slots[grid[0].slots.length - 1]?.end ?? null;
+  const bookingEnd = availableBookingEnd(grid, bookCourtId, bookStart);
   const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
     if (modules.booking) {
       setBookCourtId(courtId); setBookStart(start); setBookMinutes(minutes);
@@ -206,7 +215,7 @@ export default function VenueOps() {
             start={bookStart}
             slotMinutes={slotMinutes}
             presetMinutes={bookMinutes}
-            dayEnd={dayEnd}
+            dayEnd={bookingEnd}
             onBooked={refresh}
           />
           <VenueEventDialog

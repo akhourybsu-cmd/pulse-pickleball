@@ -131,13 +131,9 @@ describe('gridOptionsFor', () => {
     expect(gridOptionsFor(hours, SUNDAY)).not.toBeNull();
   });
 
-  /**
-   * The grid works in whole hours. Widening outward keeps the half hour
-   * visible; rounding inward would silently delete sellable time.
-   */
-  it('widens a part-hour window outward to whole hours', () => {
+  it('preserves a part-hour window without offering time outside opening hours', () => {
     const hours = parseVenueHours({ days: { '0': { open: '07:30', close: '21:30' } } });
-    expect(gridOptionsFor(hours, SUNDAY)).toMatchObject({ openHour: 7, closeHour: 22 });
+    expect(gridOptionsFor(hours, SUNDAY)).toMatchObject({ openHour: 7.5, closeHour: 21.5 });
   });
 
   it('passes a supplied clock through, so past slots can be excluded', () => {

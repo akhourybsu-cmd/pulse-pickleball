@@ -266,13 +266,16 @@ export default function VenuePreview() {
     );
   }
 
-  if (previewMode === 'admin-phone') {
+  if (['admin-phone', 'desktop-phone', 'event-phone', 'program-phone'].includes(previewMode ?? '')) {
+    const width = new URLSearchParams(window.location.search).get('width') === '320' ? 320 : 390;
+    const destination = previewMode!.replace('-phone', '');
     return (
       <div className="flex min-h-screen justify-center bg-[#0f1115] p-4">
         <iframe
-          title="Phone-sized venue admin preview"
-          src="/__venue-preview?preview=admin"
-          className="h-[844px] w-[390px] rounded-[28px] border-0 bg-background shadow-[0_28px_80px_-30px_rgba(0,0,0,0.75)]"
+          title={`${width}px venue ${destination} preview`}
+          src={`/__venue-preview?preview=${destination}`}
+          style={{ width }}
+          className="h-[844px] shrink-0 rounded-[28px] border-0 bg-background shadow-[0_28px_80px_-30px_rgba(0,0,0,0.75)]"
         />
       </div>
     );

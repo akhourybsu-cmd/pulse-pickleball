@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthState } from '@/hooks/useAuthState';
 
 /**
  * Who works at this venue.
@@ -162,7 +163,8 @@ export function useVenueStaffAccent(): string | null {
 // Context hooks intentionally live beside the provider whose private map they read.
 // eslint-disable-next-line react-refresh/only-export-components
 export function useVenueStaffUserIds(): ReadonlySet<string> {
-  return useContext(VenueStaffContext)?.byUser ?? EMPTY_STAFF_IDS;
+  const byUser = useContext(VenueStaffContext)?.byUser;
+  return useMemo(() => byUser ? new Set(byUser.keys()) : EMPTY_STAFF_IDS, [byUser]);
 }
 
 /**
@@ -176,15 +178,16 @@ export function useVenueStaffUserIds(): ReadonlySet<string> {
 export function useMyVenueRole(venueId: string | null | undefined): {
   role: VenueRole | null;
   loading: boolean;
+  error: Error | null;
+  refetch: () => unknown;
 } {
-  const { data, isLoading } = useQuery({
-    queryKey: ['my-venue-role', venueId],
-    enabled: !!venueId,
-    staleTime: 5 * 60 * 1000,
+  const { user, loading: authLoading } = useAuthState();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['my-venue-role', venueId, user?.id],
+    enabled: !!venueId && !!user,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (!user) return null;
 
       const { data: rows, error } = await supabase
@@ -204,7 +207,7 @@ export function useMyVenueRole(venueId: string | null | undefined): {
     },
   });
 
-  return { role: data ?? null, loading: isLoading };
+  return { role: error ? null : data ?? null, loading: authLoading || isLoading, error: error as Error | null, refetch };
 }
 
 /** Roles allowed to run the venue's day. Organizers schedule; staff work it. */

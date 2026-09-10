@@ -41,6 +41,7 @@ interface EventDetailsStepProps {
   selectedCourtIds?: string[];
   busyCourtIds?: ReadonlySet<string>;
   courtConflictsPending?: boolean;
+  courtConflictsError?: boolean;
   skillLevelMin?: number | null;
   skillLevelMax?: number | null;
   rotationStyle?: RotationStyle | null;
@@ -90,6 +91,7 @@ export function EventDetailsStep({
   selectedCourtIds = [],
   busyCourtIds = new Set<string>(),
   courtConflictsPending = false,
+  courtConflictsError = false,
   skillLevelMin = null,
   skillLevelMax = null,
   rotationStyle = null,
@@ -110,7 +112,7 @@ export function EventDetailsStep({
   );
 
   const toggleCourt = (courtId: string) => {
-    if (!onSelectedCourtsChange || busyCourtIds.has(courtId)) return;
+    if (!onSelectedCourtsChange || courtConflictsPending || courtConflictsError || busyCourtIds.has(courtId)) return;
     onSelectedCourtsChange(
       selectedCourtIds.includes(courtId)
         ? selectedCourtIds.filter((id) => id !== courtId)
@@ -132,7 +134,7 @@ export function EventDetailsStep({
           label="Courts"
           hint={
             selectedCourtIds.length > 0
-              ? `${selectedCourtIds.length} court${selectedCourtIds.length === 1 ? '' : 's'} held for every occurrence.`
+              ? `${selectedCourtIds.length} court${selectedCourtIds.length === 1 ? '' : 's'} selected for every occurrence. Courts are reserved when you publish.`
               : 'Choose at least one court. Busy courts cannot be selected.'
           }
         >
@@ -149,7 +151,7 @@ export function EventDetailsStep({
                   <button
                     key={court.id}
                     type="button"
-                    disabled={busy}
+                    disabled={busy || courtConflictsPending || courtConflictsError}
                     aria-pressed={selected}
                     onClick={() => toggleCourt(court.id)}
                     className={cn(
@@ -172,7 +174,7 @@ export function EventDetailsStep({
                       ) : null}
                     </div>
                     <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {busy ? 'Busy at this time' : court.surface_type || 'Available'}
+                      {courtConflictsError ? 'Not confirmed' : courtConflictsPending ? 'Checking…' : busy ? 'Busy at this time' : court.surface_type || 'Available'}
                     </span>
                   </button>
                 );
