@@ -26,13 +26,14 @@ const VenueCommunity = lazy(() => import('./VenueCommunity'));
 export default function GroupRoute() {
   const { groupId } = useParams<{ groupId: string }>();
   const { group, loading, isError, refetch } = useGroupDetail(groupId);
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const communityView = params.get('view') === 'community';
   const isVenue = isVenueCommunitiesEnabled() && !!group?.venue_id;
   const modules = useVenueModules(isVenue ? group?.venue_id : null);
 
   if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetch()} />;
 
-  if (loading || modules.loading) {
+  if (loading || (modules.loading && !communityView)) {
     return (
       <div className="space-y-4 p-4">
         <Skeleton className="h-44 w-full rounded-2xl" />
@@ -42,8 +43,8 @@ export default function GroupRoute() {
     );
   }
 
-  if (isVenue && modules.isError) return <div role="alert" className="m-4 rounded-2xl border p-6"><p>We couldn’t load this venue’s features.</p><Button variant="outline" className="mt-3" onClick={() => modules.refetch()}>Try again</Button></div>;
-  const facilityShell = isVenue && (modules.booking || modules.facility) && params.get('view') !== 'community';
+  if (isVenue && modules.isError && !communityView) return <div role="alert" className="m-4 space-y-3 rounded-2xl border p-5 font-sans sm:p-6"><h2 className="text-lg font-semibold">Facility features couldn’t load</h2><p className="text-sm leading-6 text-muted-foreground">Court booking and operations need a fresh access check. You can still open the venue’s community for posts, messages, and members.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="min-h-11" onClick={() => modules.refetch()}>Try again</Button><Button className="min-h-11" onClick={() => { const next = new URLSearchParams(params); next.set('view', 'community'); setParams(next); }}>Open community</Button></div></div>;
+  const facilityShell = isVenue && (modules.booking || modules.facility) && !communityView;
 
   return (
     <Suspense fallback={<div className="p-4"><Skeleton className="h-64 w-full rounded-xl" /></div>}>

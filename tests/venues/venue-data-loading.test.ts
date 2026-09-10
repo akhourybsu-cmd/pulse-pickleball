@@ -7,6 +7,8 @@ import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
 import { fetchVenueCourts, refreshVenueSettings, removeVenueCourt, saveVenueHours, updateVenueCourt } from '@/lib/venues/settings';
 import { defaultVenueHours } from '@/lib/venues/hours';
 import { fetchUpcomingVenuePrograms, fetchVenueProgram, useVenuePrograms } from '@/hooks/useVenuePrograms';
+import { fetchVenueAdminCounts } from '@/lib/venues/adminOverview';
+import { listVenueApplications } from '@/lib/venues/venueApplications';
 import type { QueryClient } from '@tanstack/react-query';
 
 type Query = { queryKey: unknown[]; enabled: boolean; queryFn: () => Promise<unknown> };
@@ -28,7 +30,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   from: (table: string) => {
     const result = () => state.responses[table] ?? { data: [], error: null };
     const chain: Record<string, unknown> = {};
-    for (const method of ['select', 'eq', 'order', 'lt', 'gt', 'gte', 'or', 'in', 'is', 'limit', 'not', 'update', 'delete']) chain[method] = (...args: unknown[]) => {
+    for (const method of ['select', 'eq', 'neq', 'order', 'range', 'lt', 'gt', 'gte', 'or', 'in', 'is', 'limit', 'not', 'update', 'delete']) chain[method] = (...args: unknown[]) => {
       state.calls.push({ table, method, args }); return chain;
     };
     chain.single = chain.maybeSingle = () => Promise.resolve(result());
@@ -52,6 +54,37 @@ beforeEach(() => {
   state.queries = [];
   state.calls = [];
   state.responses = {};
+});
+
+describe('venue overview and ownership request reads', () => {
+  const prepareCounts = () => {
+    for (const table of ['venue_courts', 'venue_staff_public', 'group_events', 'group_posts', 'group_members']) state.responses[table] = { count: 3, data: null, error: null };
+    state.responses.venues = { data: { email: 'hello@palace.example' }, error: null };
+  };
+  it('counts all top-level venue programs, excludes internal holds, and separates member statuses', async () => {
+    prepareCounts();
+    await expect(fetchVenueAdminCounts('venue-one', 'group-one', true)).resolves.toMatchObject({ courts: 3, members: 3, pendingMembers: 3, contactReady: true });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'eq', args: ['venue_id', 'venue-one'] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'is', args: ['parent_event_id', null] });
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'eq', args: ['status', 'active'] });
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'eq', args: ['status', 'pending'] });
+    expect(state.calls).not.toContainEqual({ table: 'group_events', method: 'eq', args: ['group_id', 'group-one'] });
+  });
+  it('does not read pending memberships without community-management authority', async () => {
+    prepareCounts(); await expect(fetchVenueAdminCounts('venue-one', 'group-one', false)).resolves.toHaveProperty('pendingMembers', 0);
+    expect(state.calls).not.toContainEqual({ table: 'group_members', method: 'eq', args: ['status', 'pending'] });
+  });
+  it('does not treat missing totals as zero or claim setup is complete on read errors', async () => {
+    prepareCounts(); state.responses.group_events.count = null;
+    await expect(fetchVenueAdminCounts('venue-one', 'group-one', true)).rejects.toThrow('not confirmed');
+    prepareCounts(); state.responses.venues = { data: null, error: { message: 'Access changed' } };
+    await expect(fetchVenueAdminCounts('venue-one', 'group-one', true)).rejects.toMatchObject({ message: 'Access changed' });
+  });
+  it('scopes ownership history to the current venue and applicant', async () => {
+    await listVenueApplications('viewer-one', undefined, 0, 'venue-one');
+    expect(state.calls).toContainEqual({ table: 'venue_applications', method: 'eq', args: ['applicant_id', 'viewer-one'] });
+    expect(state.calls).toContainEqual({ table: 'venue_applications', method: 'eq', args: ['venue_id', 'venue-one'] });
+  });
 });
 
 describe('venue membership loading', () => {

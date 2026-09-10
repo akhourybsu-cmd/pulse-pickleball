@@ -9,17 +9,11 @@ import {
   Palette,
   ShieldCheck,
   UsersRound,
+  ListChecks,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { INTERNAL_VENUE_EVENT_FORMATS } from '@/lib/venues/experience';
-
-export interface VenueAdminCounts {
-  courts: number;
-  staff: number;
-  upcoming: number;
-  posts: number;
-}
+import { fetchVenueAdminCounts, venueNextSteps, type VenueAdminCounts, type VenueNextStep } from '@/lib/venues/adminOverview';
+export type { VenueAdminCounts } from '@/lib/venues/adminOverview';
 
 export function VenueAdminOverview({
   venueId,
@@ -35,6 +29,16 @@ export function VenueAdminOverview({
   onOpenTab,
   onOperations,
   onOpenVenueTab,
+  onMembers,
+  onVerification,
+  verified = true,
+  isOwner = false,
+  contactReady = true,
+  privateSample = false,
+  accessLoading = false,
+  accessError = false,
+  onRetryAccess,
+  viewerId,
 }: {
   venueId: string;
   groupId: string;
@@ -49,31 +53,34 @@ export function VenueAdminOverview({
   onOpenTab: (tab: string) => void;
   onOperations: () => void;
   onOpenVenueTab: (tab: 'home' | 'book' | 'play' | 'feed' | 'chat' | 'more') => void;
+  onMembers?: () => void;
+  onVerification?: () => void;
+  verified?: boolean;
+  isOwner?: boolean;
+  contactReady?: boolean;
+  privateSample?: boolean;
+  accessLoading?: boolean;
+  accessError?: boolean;
+  onRetryAccess?: () => void;
+  viewerId?: string | null;
 }) {
   const summary = useQuery({
-    queryKey: ['venue-admin-counts', venueId, groupId],
+    queryKey: ['venue-admin-counts', venueId, groupId, viewerId, canManageCommunity],
     enabled: !countsOverride,
-    staleTime: 30_000,
+    staleTime: 0,
     refetchInterval: 60_000,
-    queryFn: async (): Promise<VenueAdminCounts> => {
-      const results = await Promise.all([
-      supabase.from('venue_courts').select('id', { count: 'exact', head: true }).eq('venue_id', venueId).neq('is_active', false),
-      supabase.from('venue_staff_public').select('user_id', { count: 'exact', head: true }).eq('venue_id', venueId),
-      supabase.from('group_events').select('id', { count: 'exact', head: true }).eq('group_id', groupId).not('event_format', 'in', `(${INTERNAL_VENUE_EVENT_FORMATS.join(',')})`).gte('start_time', new Date().toISOString()),
-      supabase.from('group_posts').select('id', { count: 'exact', head: true }).eq('group_id', groupId),
-      ]);
-      const failed = results.find(result => result.error);
-      if (failed?.error) throw failed.error;
-      const [courts, staff, upcoming, posts] = results;
-      return {
-        courts: courts.count ?? 0,
-        staff: staff.count ?? 0,
-        upcoming: upcoming.count ?? 0,
-        posts: posts.count ?? 0,
-      };
-    },
+    queryFn: () => fetchVenueAdminCounts(venueId, groupId, canManageCommunity),
   });
   const counts = countsOverride ?? (summary.isError ? undefined : summary.data);
+  const accessKnown = !accessLoading && !accessError;
+  const hasFacility = accessKnown && (bookingEnabled || operationsEnabled);
+  const steps = venueNextSteps({ counts, verified, isOwner, canManageCommunity, facilityEnabled: hasFacility, contactReady: counts?.contactReady ?? contactReady, privateSample });
+  const handleStep = (step: VenueNextStep) => {
+    if (step.action === 'members') onMembers?.();
+    else if (step.action === 'verify') onVerification?.();
+    else if (step.action === 'play') onOpenVenueTab('play');
+    else onOpenTab(step.action);
+  };
 
   return (
     <div className="space-y-6">
@@ -85,11 +92,11 @@ export function VenueAdminOverview({
         />
         <div className="relative max-w-2xl">
           <p className="text-xs font-medium text-white/70">Venue overview</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Run {venueName} from one place.</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-white/60">
-            Facility setup, staff access, community controls, and the live court operation all connect back to this console.
+          <h2 className="mt-2 break-words text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">Your venue, at a glance.</h2>
+          <p className="mt-2 max-w-xl break-words text-sm leading-6 text-white/60">
+            Manage {venueName}’s community, keep players informed, and find the next thing that needs your attention.
           </p>
-          {(operationsEnabled || bookingEnabled) && <button
+          {hasFacility && <button
             type="button"
             onClick={operationsEnabled ? onOperations : () => onOpenVenueTab('book')}
             className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#15171b] transition-transform hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
@@ -104,10 +111,28 @@ export function VenueAdminOverview({
         <Metric label="Active courts" value={counts?.courts ?? null} icon={LayoutGrid} accent={accent} />
         <Metric label="Venue staff" value={counts?.staff ?? null} icon={ShieldCheck} accent={accent} />
         <Metric label="Upcoming programs" value={counts?.upcoming ?? null} icon={CalendarDays} accent={accent} />
-        <Metric label="Members" value={memberCount} icon={UsersRound} accent={accent} />
+        <Metric label="Members" value={counts ? counts.members ?? memberCount : null} icon={UsersRound} accent={accent} />
       </section>
 
       {!countsOverride && summary.isError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm"><p>We couldn’t load the venue totals. Your management tools are still available.</p><button type="button" onClick={() => void summary.refetch()} className="min-h-11 rounded-lg px-3 font-semibold underline underline-offset-4">Retry totals</button></div>}
+
+      <section aria-labelledby="venue-next-steps" className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
+        <div className="flex items-center gap-2"><ListChecks className="h-5 w-5 shrink-0 text-primary" /><h3 id="venue-next-steps" className="text-base font-semibold">Next steps</h3></div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Requests and useful setup reminders. Optional paid features are never required to run your community.</p>
+        {!counts && <p role="status" className="mt-3 text-sm text-muted-foreground">{summary.isError ? 'Some checks are unavailable until venue totals reload.' : 'Checking your venue activity…'}</p>}
+        <div className="mt-4 divide-y divide-border/70">
+          {steps.map(step => <div key={step.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0"><p className="text-sm font-semibold">{step.title}</p><p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{step.description}</p></div>
+            <button type="button" onClick={() => handleStep(step)} disabled={(step.action === 'members' && !onMembers) || (step.action === 'verify' && !onVerification)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">{step.label}<ArrowUpRight className="h-4 w-4" /></button>
+          </div>)}
+        </div>
+        {counts && steps.length === 0 && <p className="text-sm leading-6 text-muted-foreground">No outstanding items in these checks. Your management tools are below.</p>}
+      </section>
+
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+        <div className="min-w-0 max-w-xl"><p className="text-base font-semibold">{privateSample ? 'Your sample features' : accessLoading ? 'Checking feature access…' : accessError ? 'Feature access unavailable' : hasFacility ? 'Your venue features' : 'Free community, ready to grow'}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{privateSample ? 'Sample tools are included. There are no subscriptions or real charges.' : accessError ? 'We couldn’t confirm paid-feature access. Your community controls remain available.' : 'Posts, messaging, members, and community events stay free. Explore optional tools and try the interactive demo before upgrading.'}</p></div>
+        <div className="flex flex-wrap gap-2">{accessError && <QuickLink label="Retry access" onClick={() => onRetryAccess?.()} />}<QuickLink label={privateSample ? 'Included features' : 'Plan & upgrades'} onClick={() => onOpenTab('modules')} /></div>
+      </section>
 
       <section>
         <div className="mb-3 flex items-center gap-3">
@@ -121,12 +146,12 @@ export function VenueAdminOverview({
             description="Identity, imagery, welcome copy, contact details, and venue colors."
             onClick={() => onOpenTab('profile')}
           />
-          <ActionCard
+          {hasFacility && <ActionCard
             icon={LayoutGrid}
             title="Courts & hours"
             description="Booking inventory, court availability, surfaces, and operating schedule."
             onClick={() => onOpenTab('facility')}
-          />
+          />}
           <ActionCard
             icon={ShieldCheck}
             title="Staff access"
@@ -159,7 +184,7 @@ export function VenueAdminOverview({
           {canManageCommunity && (
             <ActionCard
               icon={UsersRound}
-              title="Members"
+              title="Community roles"
               description="Review community roles and ownership for the venue space."
               onClick={() => onOpenTab('roles')}
             />
@@ -177,7 +202,7 @@ export function VenueAdminOverview({
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <QuickLink label="Home" onClick={() => onOpenVenueTab('home')} />
-            {bookingEnabled && <QuickLink label="Book" onClick={() => onOpenVenueTab('book')} />}
+            {accessKnown && bookingEnabled && <QuickLink label="Book" onClick={() => onOpenVenueTab('book')} />}
             <QuickLink label="Play" onClick={() => onOpenVenueTab('play')} />
             <QuickLink label="Feed" onClick={() => onOpenVenueTab('feed')} />
           </div>
@@ -200,9 +225,9 @@ function Metric({
 }) {
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-[0_10px_30px_-28px_hsl(var(--foreground)/0.35)]">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex min-h-8 items-start justify-between gap-2 lg:min-h-4">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 text-muted-foreground" style={accent ? { color: accent } : undefined} />
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" style={accent ? { color: accent } : undefined} />
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] tabular-nums" aria-label={value === null ? `${label} unavailable` : undefined}>{value ?? '—'}</p>
     </div>

@@ -304,6 +304,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
       }
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       toast({ title: 'Venue updated' });
+      void queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] });
     } catch (error) {
       toast({ title: 'Could not save venue', description: getErrorMessage(error, 'Please check your connection and try again.'), variant: 'destructive' });
     } finally {

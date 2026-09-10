@@ -64,6 +64,7 @@ createRoot(document.getElementById("root")!).render(
           <main className="mx-auto max-w-5xl p-4 sm:p-8">
             <VenueModulesPanel
               venueId={venue}
+              venueName="Pickleball Palace · Preview venue"
               verified={params.has("verified")}
               canVerify={params.has("owner")}
             />

@@ -35,10 +35,11 @@ export function applicationError(d: VenueApplicationDetails): string | null {
 // Isolate the new migration boundary until the next full generated-schema refresh.
 // No service credentials or privileged write client is used in the browser.
 const venueDb = supabase as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-export async function listVenueApplications(userId?: string, status?: string, page = 0): Promise<VenueApplication[]> {
+export async function listVenueApplications(userId?: string, status?: string, page = 0, venueId?: string | null): Promise<VenueApplication[]> {
   let query = venueDb.from('venue_applications').select('*').order('created_at', { ascending: status === 'pending' }).range(page * 50, page * 50 + 49);
   if (userId) query = query.eq('applicant_id', userId);
   if (status) query = query.eq('status', status);
+  if (venueId) query = query.eq('venue_id', venueId);
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];

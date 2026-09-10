@@ -104,7 +104,7 @@ export default function GroupManage() {
           .single(),
         supabase
           .from('group_members')
-          .select('role')
+          .select('role,status')
           .eq('group_id', groupId)
           .eq('user_id', user.id)
           .maybeSingle(),
@@ -113,7 +113,7 @@ export default function GroupManage() {
       if (groupResult.error) throw groupResult.error;
       if (membershipResult.error) throw membershipResult.error;
       const groupData = groupResult.data as typeof groupResult.data & { venues?: Group['venue'] };
-      const membership = membershipResult.data;
+      const membership = membershipResult.data?.status === 'active' ? membershipResult.data : null;
       const communityAccess = membership?.role === 'owner' || membership?.role === 'moderator';
 
       let resolvedVenueRole: VenueRole | null = null;
@@ -426,7 +426,7 @@ export default function GroupManage() {
       {showsVenueAdmin && canManageFacility && group.venue_id && (
         <>
           <TabsContent value="overview" className="mt-0">
-            {modules.loading ? <div role="status" className="rounded-2xl border p-5 text-sm text-muted-foreground">Checking your venue plan…</div> : modules.booking || modules.facility ? <>{!privateSample && <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5"><div><p className="text-sm font-semibold">Your venue plan</p><p className="mt-1 text-sm text-muted-foreground">Free community with optional features. Review access and add upgrades here.</p></div><Button variant="outline" className="min-h-11 rounded-xl" onClick={() => setActiveTab('modules')}>Plan &amp; upgrades</Button></div>}<VenueAdminOverview
+            <VenueAdminOverview
               venueId={group.venue_id}
               groupId={groupId!}
               venueName={group.venue?.name ?? group.name}
@@ -436,6 +436,15 @@ export default function GroupManage() {
               chatEnabled={settings.chat_enabled}
               bookingEnabled={modules.booking}
               operationsEnabled={modules.facility}
+              accessLoading={modules.loading}
+              accessError={modules.isError}
+              onRetryAccess={() => void modules.refetch()}
+              viewerId={currentUserId}
+              verified={venueVerified}
+              isOwner={isVenueOwner}
+              privateSample={privateSample}
+              onMembers={() => navigate(`/player/community/group/${groupId}?view=community&tab=members`)}
+              onVerification={() => navigate(`/player/venue-requests?venue=${group.venue_id}`)}
               onOpenTab={setActiveTab}
               onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
               onOpenVenueTab={(tab) =>
@@ -443,9 +452,9 @@ export default function GroupManage() {
                   `/player/community/group/${groupId}${tab === 'home' ? '' : `?tab=${tab}`}`,
                 )
               }
-            /></> : <VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} />}
+            />
           </TabsContent>
-          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} /></TabsContent>
+          <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} venueName={group.venue?.name ?? group.name} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} /></TabsContent>
           <TabsContent value="profile" className="mt-0">
             <AdminVenueTab
               groupId={groupId!}
@@ -466,7 +475,7 @@ export default function GroupManage() {
             <VenueStaffSection
               venueId={group.venue_id}
               members={members}
-              canAssignManagers={venueRole === 'owner' || isOwner}
+              canAssignManagers={isVenueOwner || venueRole === 'owner' || isOwner}
               currentUserId={currentUserId}
             />
           </TabsContent>
@@ -541,7 +550,7 @@ export default function GroupManage() {
 
   if (showsVenueAdmin) {
     const roleLabel =
-      venueRole === 'owner'
+      isVenueOwner || venueRole === 'owner'
         ? 'Owner'
         : venueRole === 'manager'
           ? 'Manager'

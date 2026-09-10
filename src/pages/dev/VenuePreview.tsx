@@ -269,7 +269,7 @@ export default function VenuePreview() {
     );
   }
 
-  if (['admin-phone', 'desktop-phone', 'event-phone', 'program-phone', 'hours-phone', 'closure-phone', 'ops-phone', 'ops-closed-phone'].includes(previewMode ?? '')) {
+  if (['admin-phone', 'admin-free-phone', 'desktop-phone', 'event-phone', 'program-phone', 'hours-phone', 'closure-phone', 'ops-phone', 'ops-closed-phone'].includes(previewMode ?? '')) {
     const width = new URLSearchParams(window.location.search).get('width') === '320' ? 320 : 390;
     const destination = previewMode!.replace('-phone', '');
     return (
@@ -296,8 +296,8 @@ export default function VenuePreview() {
     return <VenueDesktopPagePreview />;
   }
 
-  if (previewMode === 'admin') {
-    return <VenueAdminPagePreview />;
+  if (previewMode === 'admin' || previewMode === 'admin-free') {
+    return <VenueAdminPagePreview free={previewMode === 'admin-free'} />;
   }
 
   if (previewMode === 'hours') return <VenueHoursPreview />;
@@ -555,6 +555,7 @@ function VenueProgramPreview() {
 const ADMIN_ITEMS: VenueAdminNavItem[] = [
   { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' },
   { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' },
+  { value: 'modules', label: 'Plan & upgrades', shortLabel: 'Upgrades', description: 'Included access and optional upgrades', icon: ShieldCheck, section: 'venue' },
   { value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' },
   { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' },
   { value: 'general', label: 'Community profile', shortLabel: 'Community', description: 'Name, description, and identity', icon: Settings, section: 'community' },
@@ -564,22 +565,25 @@ const ADMIN_ITEMS: VenueAdminNavItem[] = [
   { value: 'danger', label: 'Danger zone', shortLabel: 'Danger', description: 'Leave or permanently remove the space', icon: AlertTriangle, section: 'advanced' },
 ];
 
-function VenueAdminPagePreview() {
+function VenueAdminPagePreview({ free = false }: { free?: boolean }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [notice, setNotice] = useState('');
 
   return (
     <VenueAdminShell
       venueName="ELEVENO"
-      verified
+      verified={!free}
       roleLabel="Owner"
       accent={ACCENT}
       activeTab={activeTab}
-      items={ADMIN_ITEMS}
+      items={free ? ADMIN_ITEMS.filter(item => item.value !== 'facility') : ADMIN_ITEMS}
+      showOperations={!free}
       onTabChange={setActiveTab}
       onBack={() => {}}
       onViewVenue={() => {}}
       onOperations={() => {}}
     >
+      {notice && <p role="status" className="mb-4 rounded-xl border p-4 text-sm">{notice} · Preview only, no live changes.</p>}
       {activeTab === 'overview' ? (
         <VenueAdminOverview
           venueId="eleveno-preview"
@@ -589,10 +593,16 @@ function VenueAdminPagePreview() {
           accent={ACCENT}
           canManageCommunity
           chatEnabled
-          countsOverride={ADMIN_COUNTS}
+          countsOverride={free ? { courts: 0, staff: 1, upcoming: 0, posts: 4, members: 28, pendingMembers: 3, contactReady: false } : { ...ADMIN_COUNTS, pendingMembers: 2 }}
+          verified={!free}
+          isOwner
+          bookingEnabled={!free}
+          operationsEnabled={!free}
+          onMembers={() => setNotice('Open member requests')}
+          onVerification={() => setNotice('Open ownership review')}
           onOpenTab={setActiveTab}
           onOperations={() => {}}
-          onOpenVenueTab={() => {}}
+          onOpenVenueTab={tab => setNotice(`Open venue ${tab}`)}
         />
       ) : activeTab === 'permissions' ? (
         <AdminPermissionsTab

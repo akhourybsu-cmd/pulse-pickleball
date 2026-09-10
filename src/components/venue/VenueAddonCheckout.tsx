@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Loader2, LockKeyhole } from "lucide-react";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { paymentApi, openStripe, type PaymentConfig } from "@/lib/payments";
 import { venueUpgradeState } from "@/lib/venues/venueUpgrade";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export function VenueAddonCheckout({
   venueId,
@@ -21,12 +22,14 @@ export function VenueAddonCheckout({
   title,
   verified,
   canPurchase,
+  venueName,
 }: {
   venueId: string;
   moduleKey: string;
   title: string;
   verified: boolean;
   canPurchase: boolean;
+  venueName?: string;
 }) {
   const config = useQuery({
     queryKey: ["payment-config"],
@@ -37,6 +40,11 @@ export function VenueAddonCheckout({
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [request, setRequest] = useState(() => crypto.randomUUID());
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const lock = useRef(false);
+  const scope = `${venueId}:${moduleKey}:${config.data?.mode}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
   const availability = venueUpgradeState({
     isOwner: canPurchase,
     verified,
@@ -47,10 +55,14 @@ export function VenueAddonCheckout({
   const ready = availability.ready;
   useEffect(() => {
     setAccepted(false);
-  }, [config.data?.mode, config.data?.cadence, verified, canPurchase]);
+    setCheckoutError(null);
+  }, [venueId, moduleKey, config.data?.mode, config.data?.cadence, verified, canPurchase]);
+  useEffect(() => { setOpen(false); setRequest(crypto.randomUUID()); }, [venueId, moduleKey]);
   const checkout = async () => {
-    if (!ready || !accepted || busy) return;
+    if (!ready || !accepted || lock.current) return;
+    lock.current = true;
     setBusy(true);
+    setCheckoutError(null);
     try {
       const result = await paymentApi<{ url: string }>("module_checkout", {
         venue_id: venueId,
@@ -59,10 +71,17 @@ export function VenueAddonCheckout({
         accept_terms: accepted,
         request_key: request,
       });
+      if (currentScope.current !== scope) return;
+      if (!result || typeof result.url !== 'string' || !result.url) throw new Error('Secure checkout did not return a link. Please try again; no purchase has been confirmed here.');
       openStripe(result.url);
     } catch (error) {
-      toast.error((error as Error).message);
+      if (currentScope.current === scope) {
+        const message = getErrorMessage(error, 'Secure checkout could not open. Please try again.');
+        setCheckoutError(message);
+        toast.error(message);
+      }
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   };
@@ -75,11 +94,12 @@ export function VenueAddonCheckout({
         </span>
       </p>
       <Button
-        className="h-11 w-full rounded-xl"
+        className="h-auto min-h-11 w-full whitespace-normal rounded-xl py-2"
         disabled={busy}
         onClick={() => {
           setOpen(true);
           setAccepted(false);
+          setCheckoutError(null);
           setRequest(crypto.randomUUID());
         }}
       >
@@ -96,9 +116,9 @@ export function VenueAddonCheckout({
           if (!busy) setOpen(value);
         }}
       >
-        <DialogContent className="max-h-[90dvh] max-w-md overflow-y-auto rounded-2xl font-sans">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl font-sans">
           <DialogHeader>
-            <DialogTitle className="font-sans">Add {title}</DialogTitle>
+            <DialogTitle className="break-words pr-5 font-sans">Add {title}</DialogTitle>
             <DialogDescription>
               Sold by PULSE Pickleball. Venue rental income is separate.
             </DialogDescription>
@@ -126,6 +146,7 @@ export function VenueAddonCheckout({
             )}
           </div>
           <div className="rounded-xl border p-4">
+            {venueName && <p className="mb-3 break-words text-sm font-semibold">For {venueName}</p>}
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="mt-2 text-3xl font-semibold">
               $10.00 <span className="text-sm font-normal">USD / month</span>
@@ -143,6 +164,7 @@ export function VenueAddonCheckout({
                 checked={accepted}
                 onCheckedChange={(v) => setAccepted(v === true)}
                 className="mt-1"
+                disabled={busy}
               />
               <span>
                 I agree to pay PULSE Pickleball $10 USD per month for this
@@ -150,6 +172,8 @@ export function VenueAddonCheckout({
               </span>
             </label>
           )}
+          {checkoutError && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm leading-6">{checkoutError}</p>}
+          {busy && <p role="status" className="text-sm text-muted-foreground">Opening secure checkout. Please keep this window open.</p>}
           <Button
             className="h-12 rounded-xl"
             disabled={!ready || !accepted || busy}
@@ -162,9 +186,9 @@ export function VenueAddonCheckout({
             )}
             {availability.label}
           </Button>
-          <Button variant="link" asChild>
+          {!busy && <Button variant="link" asChild>
             <Link to="/player/payments">Manage existing purchases</Link>
-          </Button>
+          </Button>}
         </DialogContent>
       </Dialog>
     </div>

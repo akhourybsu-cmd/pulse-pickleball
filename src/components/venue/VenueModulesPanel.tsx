@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVenueModules } from "@/hooks/useVenueModules";
 import { VenueAddonCheckout } from "./VenueAddonCheckout";
 import type { VenueDemoFeature } from "@/lib/venues/venueDemo";
+import { venueModulePresentation } from "@/lib/venues/moduleExperience";
 
 const VenuePremiumDemo = lazy(() => import("./VenuePremiumDemo"));
 
@@ -24,11 +25,13 @@ export function VenueModulesPanel({
   verified,
   canVerify = false,
   privateSample = false,
+  venueName,
 }: {
   venueId: string;
   verified: boolean;
   canVerify?: boolean;
   privateSample?: boolean;
+  venueName?: string;
 }) {
   const [demo, setDemo] = useState<VenueDemoFeature | null>(null);
   const demoOpener = useRef<HTMLButtonElement | null>(null);
@@ -49,7 +52,7 @@ export function VenueModulesPanel({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium text-muted-foreground">
-              Your current plan
+              {privateSample ? 'Your venue workspace' : 'Your community base plan'}
             </p>
             <h2 className="mt-2 font-sans text-2xl font-semibold tracking-tight">
               {privateSample ? "Private sample venue" : access.loading
@@ -71,7 +74,7 @@ export function VenueModulesPanel({
               </span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {privateSample ? "All sample features included" : "Community essentials"}
+              {privateSample ? "All sample features included" : "Base plan only · add-ons separate"}
             </p>
           </div>
         </div>
@@ -135,6 +138,7 @@ export function VenueModulesPanel({
           Test checkout only. No money moves and no real features are activated.
         </p>
       )}
+      {!privateSample && billing.isError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm leading-6"><p>Payment availability couldn’t be checked. You can still explore the demo; checkout stays unavailable until we reconnect.</p><Button variant="outline" className="min-h-11" onClick={() => void billing.refetch()}>Retry payment check</Button></div>}
       {!privateSample && <section
         aria-labelledby="venue-upgrade-steps"
         className="rounded-2xl border bg-card p-5 sm:p-7"
@@ -261,9 +265,7 @@ export function VenueModulesPanel({
                 ],
               },
             ].map((module) => {
-              const grant = access.data?.find(
-                (row) => row.module_key === module.key
-              );
+              const presentation = venueModulePresentation(access.data ?? [], module.key);
               return (
                 <article
                   key={module.key}
@@ -274,9 +276,7 @@ export function VenueModulesPanel({
                     <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
                       {access.loading
                         ? "Checking…"
-                        : module.enabled
-                        ? "Active"
-                        : "Optional upgrade"}
+                        : presentation.label}
                     </span>
                   </div>
                   <h3 className="mt-4 font-sans text-lg font-semibold">
@@ -301,16 +301,17 @@ export function VenueModulesPanel({
                     {module.enabled ? (
                       <>
                         <p className="text-sm font-semibold">
-                          {grant?.source === "subscription"
-                            ? "$10 USD / month · active subscription"
+                          {presentation.subscribed
+                            ? "$10 USD / month · paid feature access"
                             : "Included access · no payment required"}
                         </p>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          {grant?.source === "subscription"
+                          {presentation.subscribed
                             ? "Manage renewals and cancellation in Payments & purchases."
                             : "This venue already has access to this feature. You do not need to purchase it again."}
                         </p>
-                        {canVerify && grant?.source === "subscription" && (
+                        {presentation.accessThrough && <p className="mt-2 text-sm leading-6 text-muted-foreground">Access through {presentation.accessThrough}. {presentation.subscribed && 'Check Payments & purchases for renewal or cancellation status.'}</p>}
+                        {canVerify && presentation.subscribed && (
                           <Button
                             asChild
                             variant="outline"
@@ -325,11 +326,13 @@ export function VenueModulesPanel({
                     ) : (
                       !access.loading && !privateSample && (
                         <VenueAddonCheckout
+                          key={`${venueId}:${module.key}`}
                           venueId={venueId}
                           moduleKey={module.key}
                           title={module.title}
                           verified={verified}
                           canPurchase={canVerify}
+                          venueName={venueName}
                         />
                       )
                     )}
