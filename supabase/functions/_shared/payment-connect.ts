@@ -1,5 +1,22 @@
 import { appOrigin, checked, options, owner, type Runtime } from './payment-runtime.ts';
 
+export function newVenueAccountParameters(venue: { id: string; name: string }, user: { id: string; email?: string }) {
+  return {
+    email: user.email,
+    controller: {
+      fees: { payer: 'account' as const },
+      losses: { payments: 'stripe' as const },
+      stripe_dashboard: { type: 'full' as const },
+      requirement_collection: 'stripe' as const,
+    },
+    // Stripe requires both capabilities even when PULSE uses direct charges.
+    // This does not change the venue-owned funds or fee/liability model.
+    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    business_profile: { name: venue.name },
+    metadata: { pulse_venue_id: venue.id, pulse_owner_id: user.id },
+  };
+}
+
 export function accountSnapshot(account: any) {
   return {
     charges_enabled: account.charges_enabled === true,

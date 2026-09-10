@@ -100,7 +100,7 @@ export function VenueModulesPanel({
         </ul>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-5">
           <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-            {privateSample ? "No subscriptions, real charges, or outside members. Explore the venue tools at your own pace." : "Court booking and facility operations are optional upgrades. Canceling a feature does not remove your community."}
+            {privateSample ? "No paid subscription required, no real charges, and no outside members. Explore the venue tools at your own pace." : "Court booking and facility operations are optional upgrades. Canceling a feature does not remove your community."}
           </p>
           <Button asChild variant="outline" className="min-h-11 rounded-xl">
             <a href="#venue-upgrades">

@@ -9,7 +9,7 @@ vi.mock('../../supabase/functions/_shared/payment-runtime.ts', () => ({
   options: (r: any, account: string, key?: string) => ({ ...(account === r.platform ? {} : { stripeAccount: account }), ...(key ? { idempotencyKey: key } : {}) }),
   owner: vi.fn(async () => ({ id: 'venue-a' })),
 }));
-import { accountSnapshot, assertIndependentAccount, completeExisting, connectExisting, merchantPortal, stateHash } from '../../supabase/functions/_shared/payment-connect';
+import { accountSnapshot, assertIndependentAccount, completeExisting, connectExisting, merchantPortal, newVenueAccountParameters, stateHash } from '../../supabase/functions/_shared/payment-connect';
 import { recordSettledCharge, settledRefundAmount } from '../../supabase/functions/_shared/payment-refunds';
 
 const envValues = () => ({ PULSE_PAYMENTS_MODE: 'test', PULSE_STRIPE_SECRET_KEY: 'sk_test_sample', PULSE_STRIPE_ACCOUNT_ID: 'acct_platform', PULSE_STRIPE_WEBHOOK_SECRET: 'whsec_platform', PULSE_STRIPE_CONNECT_WEBHOOK_SECRET: 'whsec_connect', PULSE_PAYMENT_RECONCILE_SECRET: 'r'.repeat(32), PULSE_PAYMENT_TEST_USER_IDS: 'tester' });
@@ -86,6 +86,12 @@ function mockRuntime(claimed: any = { venue_id: 'venue-a' }) {
 }
 describe('Stripe connection safeguards', () => {
   beforeEach(() => vi.clearAllMocks());
+  it('requests Stripe’s paired card/transfer capabilities while keeping the account venue-controlled', () => {
+    const params = newVenueAccountParameters({ id: 'venue-a', name: 'Palace Test' }, { id: 'owner-a', email: 'owner@example.com' });
+    expect(params.capabilities).toEqual({ card_payments: { requested: true }, transfers: { requested: true } });
+    expect(params.controller).toEqual({ fees: { payer: 'account' }, losses: { payments: 'stripe' }, stripe_dashboard: { type: 'full' }, requirement_collection: 'stripe' });
+    expect(params.metadata).toEqual({ pulse_venue_id: 'venue-a', pulse_owner_id: 'owner-a' });
+  });
   it('snapshots capability status and requirement names, not bank or identity values', () => {
     const snapshot = accountSnapshot({ ...fullAccount(), bank_account: 'sensitive', requirements: { currently_due: ['business_profile.url'], pending_verification: ['individual.verification.document'], current_deadline: 1 } });
     expect(snapshot.card_payments_active).toBe(true);

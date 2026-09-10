@@ -21,7 +21,7 @@ import {
   runtime,
 } from "../_shared/payment-runtime.ts";
 import { reconcileOrder, startCheckout } from "../_shared/payment-checkout.ts";
-import { completeExisting, connectExisting, merchantPortal, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
+import { completeExisting, connectExisting, merchantPortal, newVenueAccountParameters, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
 import { recordSettledCharge } from '../_shared/payment-refunds.ts';
 
 serve(async (req) => {
@@ -378,18 +378,7 @@ serve(async (req) => {
             "This venue already references a Stripe account. PULSE must verify and link that account before creating another."
           );
         const created = await r.stripe.accounts.create(
-          {
-            email: user.email,
-            controller: {
-              fees: { payer: "account" },
-              losses: { payments: "stripe" },
-              stripe_dashboard: { type: "full" },
-              requirement_collection: "stripe",
-            },
-            capabilities: { card_payments: { requested: true } },
-            business_profile: { name: venue.name },
-            metadata: { pulse_venue_id: venue.id, pulse_owner_id: user.id },
-          },
+          newVenueAccountParameters(venue, user),
           {
             idempotencyKey: `venue-account:${r.livemode}:${venue.id}:${user.id}`,
           }

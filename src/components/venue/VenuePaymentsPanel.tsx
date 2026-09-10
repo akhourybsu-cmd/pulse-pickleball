@@ -51,12 +51,13 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   const [confirmation, setConfirmation] = useState<ResolutionConfirmation | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   useEffect(() => {
     if (!query.data) return;
     dispatch({ type: 'receive', scope, value: paymentDraftFrom(query.data) });
   }, [query.data, scope]);
   useEffect(() => {
-    setResolution({}); setConfirmation(null); setShowErrors(false); setResetOpen(false);
+    setResolution({}); setConfirmation(null); setShowErrors(false); setResetOpen(false); setActionError(null);
   }, [scope]);
   useEffect(() => {
     if (!dirty) return;
@@ -67,6 +68,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   const action = async (name: string, values: Record<string, unknown> = {}) => {
     if (lock.current) return;
     lock.current = true;
+    setActionError(null);
     setBusy(name);
     try {
       const result = await paymentApi<any>(name, {
@@ -90,7 +92,9 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         void client.invalidateQueries({ queryKey: ['payment-history', venueId] });
       }
     } catch (error) {
-      toast.error((error as Error).message);
+      const message = (error as Error).message;
+      setActionError(message);
+      toast.error(message);
       // A refund request can be recorded before Stripe reports a failure.
       // Re-read its status so the owner cannot mistake it for an untouched request.
       if (name === 'resolve_cancellation') await requests.refetch();
@@ -130,6 +134,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   return (
     <div className="space-y-6 font-sans">
       <VenueStripeReturn venueId={venueId} enabled={data.mode !== 'off' && data.ready !== false} onChecked={() => query.refetch()} />
+      {actionError && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm leading-6">{actionError}</p>}
       {testSandbox && <section aria-label="Private payment sandbox" className="rounded-2xl border border-primary/30 bg-primary/5 p-5 text-sm leading-6">
         <h2 className="font-semibold">Private Stripe sandbox · Only you</h2>
         <p className="mt-2">Test this venue’s separate Stripe account, rental checkout, refunds and PULSE subscriptions. Use Stripe test cards only. No real money, payouts or reservations are created, and your included sample features stay free.</p>
@@ -362,7 +367,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         </Button>
         </fieldset>
       </section>
-      <AlertDialog open={newAccountOpen} onOpenChange={setNewAccountOpen}><AlertDialogContent className="max-h-[90dvh] overflow-y-auto font-sans"><AlertDialogHeader><AlertDialogTitle>Create a separate Stripe account?</AlertDialogTitle><AlertDialogDescription>This will prepare a new Stripe business account for {data.venue.name}. Its funds, bank account and payout settings are separate from PULSE and your other venues. If this venue already uses Stripe, cancel and choose Connect existing Stripe account instead. No subscription or payment starts here.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => void action('onboard', { create_new_account: true })}>Create venue account</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={newAccountOpen} onOpenChange={setNewAccountOpen}><AlertDialogContent className="max-h-[90dvh] overflow-y-auto font-sans"><AlertDialogHeader><AlertDialogTitle>Create a separate Stripe {data.mode === 'test' ? 'test ' : ''}account?</AlertDialogTitle><AlertDialogDescription>{data.mode === 'test' ? `This prepares a simulated Stripe account for ${data.venue.name}. Use test information only. No real bank account, funds or payouts are involved. ` : `This will prepare a new Stripe business account for ${data.venue.name}. Its funds, bank account and payout settings are separate from PULSE and your other venues. `}If this venue already uses Stripe, cancel and choose Connect existing Stripe account instead. No subscription or payment starts here.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => void action('onboard', { create_new_account: true })}>Create venue account</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {testSandbox && <section aria-labelledby="sample-subscriptions" className="rounded-2xl border bg-card p-5 sm:p-6">
         <h2 id="sample-subscriptions" className="text-lg font-semibold">Test PULSE feature subscriptions</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">These are simulated $10/month purchases from PULSE, separate from this venue’s rental income. They never replace your included sample access. Review or cancel test subscriptions in Payments & purchases.</p>
