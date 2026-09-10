@@ -1,15 +1,17 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { checked, env, options, runtime } from "../_shared/payment-runtime.ts";
 import { objectId, reconcileOrder } from "../_shared/payment-checkout.ts";
+import { accountSnapshot } from '../_shared/payment-connect.ts';
+import { recordSettledCharge } from '../_shared/payment-refunds.ts';
 
 serve(async (req) => {
   if (req.method !== "POST")
     return new Response("POST required", { status: 405 });
   try {
-    const r = await runtime();
-    const raw = await req.text();
     const signature = req.headers.get("stripe-signature");
     if (!signature) return new Response("Missing signature", { status: 400 });
+    const r = await runtime();
+    const raw = await req.text();
     let event;
     for (const [secret, connected] of [
       [env("PULSE_STRIPE_WEBHOOK_SECRET"), false],
@@ -70,18 +72,15 @@ serve(async (req) => {
         );
         await reconcileOrder(r, order, payload.id);
       }
-    } else if (event.type === "account.updated") {
+    } else if (event.type === 'account.application.deauthorized' && event.account) {
+      // Keep historical account references, but stop all new collections.
+      checked(await r.store.from('venue_payment_accounts').update({ charges_enabled: false, payouts_enabled: false, card_payments_active: false, disconnected_at: new Date().toISOString(), disabled_reason: 'platform_connection_revoked', updated_at: new Date().toISOString() }).eq('account_id', account).eq('livemode', r.livemode));
+    } else if (event.type === "account.updated" && event.account) {
       const current = await r.stripe.accounts.retrieve(account);
       checked(
         await r.store
           .from("venue_payment_accounts")
-          .update({
-            charges_enabled: current.charges_enabled,
-            payouts_enabled: current.payouts_enabled,
-            details_submitted: current.details_submitted,
-            disabled_reason: current.requirements?.disabled_reason || null,
-            updated_at: new Date().toISOString(),
-          })
+          .update(accountSnapshot(current))
           .eq("account_id", account)
           .eq("livemode", r.livemode)
       );
@@ -167,7 +166,7 @@ serve(async (req) => {
       // extend access; cancellations retain only the already-paid-through period.
     } else if (
       event.type === "charge.refunded" ||
-      event.type.startsWith("charge.dispute.")
+      event.type.startsWith("charge.dispute.") || event.type.startsWith('refund.')
     ) {
       const chargeId =
         event.type === "charge.refunded"
@@ -194,15 +193,7 @@ serve(async (req) => {
           );
           if (order?.status === "pending") await reconcileOrder(r, order);
         }
-        checked(
-          await r.store.rpc("payment_record_charge", {
-            p_account: account,
-            p_live: r.livemode,
-            p_intent: intentId,
-            p_refunded: charge.amount_refunded,
-            p_disputed: charge.disputed,
-          })
-        );
+        await recordSettledCharge(r, account, charge);
       }
     }
     // Operations above are individually transactional/idempotent. Mark only

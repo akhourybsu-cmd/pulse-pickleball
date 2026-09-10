@@ -1,4 +1,5 @@
 import { assertCheckoutMatches } from "./payment-contracts.ts";
+import { requireRentalAccount } from './payment-connect.ts';
 import {
   appOrigin,
   checked,
@@ -71,6 +72,10 @@ export async function startCheckout(
     throw new Error(
       "This checkout is already finished. Check your purchase history."
     );
+  if (order.kind === 'court_rental') {
+    const venueAccount = await requireRentalAccount(r, order.venue_id);
+    if (venueAccount.account_id !== order.account_id) throw new Error('The venue payment account changed. This checkout needs review.');
+  }
   if (order.checkout_session_id) {
     const session = await r.stripe.checkout.sessions.retrieve(
       order.checkout_session_id,

@@ -5,6 +5,7 @@ import {
   MODULE_BILLING_TERMS,
   moduleName,
   moneyInput,
+  paymentLaunchIssues,
   uuid,
 } from "../_shared/payment-contracts.ts";
 import {
@@ -20,6 +21,8 @@ import {
   runtime,
 } from "../_shared/payment-runtime.ts";
 import { reconcileOrder, startCheckout } from "../_shared/payment-checkout.ts";
+import { completeExisting, connectExisting, merchantPortal, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
+import { recordSettledCharge } from '../_shared/payment-refunds.ts';
 
 serve(async (req) => {
   let cors: Record<string, string> = {
@@ -42,10 +45,15 @@ serve(async (req) => {
       .split(",")
       .map((id) => id.trim())
       .includes(user.id);
-    const config =
+    const visibleMode =
       configured.mode === "test" && !testAllowed
         ? { ...configured, mode: "off" }
         : configured;
+    const setupIssues = visibleMode.mode === 'off' ? ['PULSE has not enabled payment checkout yet.'] : paymentLaunchIssues(env);
+    const config = { ...visibleMode, ready: setupIssues.length === 0, setup_issues: setupIssues };
+    if (['status', 'venue'].includes(body.action) && config.ready) {
+      try { await runtime(); } catch { config.ready = false; config.setup_issues = ['PULSE could not verify its Stripe connection. Checkout remains unavailable.']; }
+    }
     const reply = (value: unknown) =>
       new Response(JSON.stringify(value), { headers: cors });
 
@@ -146,8 +154,7 @@ serve(async (req) => {
       );
       return reply({
         paid:
-          (!!settings?.accepting_payments ||
-            (config.mode === "test" && !!settings)) &&
+          !!settings &&
           Number(court.hourly_rate) > 0,
         hourly_rate: court.hourly_rate || 0,
         policy: settings?.cancellation_policy || "",
@@ -185,6 +192,8 @@ serve(async (req) => {
         account,
         courts,
         transferred: !!account && account.connected_by !== user.id,
+        booking_enabled: !!checked(await store.rpc('venue_has_module', { p_venue_id: venue.id, p_module: 'court_booking' })),
+        connect_existing_available: /^ca_[A-Za-z0-9]+$/.test(env('PULSE_STRIPE_CONNECT_CLIENT_ID') || ''),
       });
     }
     if (body.action === "save_venue") {
@@ -211,6 +220,7 @@ serve(async (req) => {
           "Confirm that your rates include any applicable taxes."
         );
       if (body.accepting_payments === true) {
+        if (!config.ready) throw new Error('PULSE payment setup must be complete before enabling collections.');
         const r = await runtime();
         if (!r.livemode)
           throw new Error(
@@ -224,7 +234,7 @@ serve(async (req) => {
             .eq("livemode", true)
             .single()
         );
-        const live = await r.stripe.accounts.retrieve(account.account_id);
+        const live = await requireRentalAccount(r, venue.id);
         if (
           account.connected_by !== user.id ||
           !venue.verification_approved_at ||
@@ -234,6 +244,7 @@ serve(async (req) => {
           throw new Error(
             "Complete ownership verification and Stripe onboarding first."
           );
+        if (!checked(await store.rpc('venue_has_module', { p_venue_id: venue.id, p_module: 'court_booking' }))) throw new Error('Enable the court booking feature before accepting rental payments.');
       }
       checked(
         await store.rpc("payment_save_venue", {
@@ -257,6 +268,7 @@ serve(async (req) => {
         "Payment testing is restricted to approved test accounts."
       );
     const r = await runtime();
+    if (['module_checkout', 'court_checkout', 'quote', 'resume', 'save_card', 'onboard', 'connect_existing', 'complete_connect'].includes(body.action) && !config.ready) throw new Error('PULSE must finish payment setup before this action. No payment has been taken.');
     if (body.action === "cancellations") {
       await owner(store, user.id, uuid(body.venue_id));
       return reply({
@@ -264,9 +276,10 @@ serve(async (req) => {
           await store
             .from("payment_cancellation_requests")
             .select(
-              "*,payment_orders(description,amount_cents,refunded_cents,status,livemode,start_time,end_time)"
+              "*,payment_orders!inner(description,amount_cents,refunded_cents,status,livemode,start_time,end_time)"
             )
             .eq("venue_id", body.venue_id)
+            .eq('payment_orders.livemode', r.livemode)
             .in("status", ["requested", "refund_pending"])
             .order("created_at")
             .limit(100)
@@ -284,6 +297,10 @@ serve(async (req) => {
           .single()
       );
       await owner(store, user.id, order.venue_id);
+      if (body.decision === 'refund_pending') {
+        const account = checked(await store.from('venue_payment_accounts').select('account_id,connected_by,disconnected_at').eq('venue_id', order.venue_id).eq('livemode', r.livemode).single());
+        if (!account || account.connected_by !== user.id || account.account_id !== order.account_id || account.disconnected_at) throw new Error('Financial ownership review is required before refunding this payment.');
+      }
       if (body.confirm !== true)
         throw new Error("Confirm the cancellation and refund decision.");
       const decision = body.decision;
@@ -323,17 +340,18 @@ serve(async (req) => {
         );
         const charge = intent.latest_charge;
         if (charge && typeof charge !== "string")
-          checked(
-            await store.rpc("payment_record_charge", {
-              p_account: order.account_id,
-              p_live: r.livemode,
-              p_intent: intent.id,
-              p_refunded: charge.amount_refunded,
-              p_disputed: charge.disputed,
-            })
-          );
+          await recordSettledCharge(r, order.account_id, charge);
       }
       return reply({ resolved: true });
+    }
+    if (body.action === 'connect_existing' || body.action === 'complete_connect') {
+      const venue = await owner(store, user.id, uuid(body.venue_id));
+      if (!venue.verification_approved_at) throw new Error('Verify venue ownership before connecting payments.');
+      const existing = checked(await store.from('venue_payment_accounts').select('*').eq('venue_id', venue.id).eq('livemode', r.livemode).maybeSingle());
+      if (existing && existing.connected_by !== user.id) throw new Error('Financial ownership review is required before connecting this venue.');
+      return reply(body.action === 'connect_existing'
+        ? await connectExisting(r, user.id, venue.id, env('PULSE_STRIPE_CONNECT_CLIENT_ID') || '')
+        : await completeExisting(r, user.id, venue.id, body.state, body.code));
     }
     if (body.action === "onboard" || body.action === "refresh_account") {
       const venue = await owner(store, user.id, uuid(body.venue_id));
@@ -354,6 +372,7 @@ serve(async (req) => {
           "The venue changed owners. PULSE must review the financial account transfer before new collections."
         );
       if (!account && body.action === "onboard") {
+        if (body.create_new_account !== true) throw new Error('Confirm a new, separate Stripe account for this venue, or connect its existing account.');
         if (r.livemode && venue.stripe_account_id)
           throw new Error(
             "This venue already references a Stripe account. PULSE must verify and link that account before creating another."
@@ -375,41 +394,15 @@ serve(async (req) => {
             idempotencyKey: `venue-account:${r.livemode}:${venue.id}:${user.id}`,
           }
         );
-        account = checked(
-          await store
-            .from("venue_payment_accounts")
-            .upsert(
-              {
-                venue_id: venue.id,
-                livemode: r.livemode,
-                account_id: created.id,
-                connected_by: user.id,
-              },
-              { onConflict: "venue_id,livemode" }
-            )
-            .select()
-            .single()
-        );
+        account = checked(await store.rpc('payment_link_venue_account', { p_venue: venue.id, p_owner: user.id, p_live: r.livemode, p_account: created.id }));
       }
-      if (!account) return reply({ account: null });
-      const current = await r.stripe.accounts.retrieve(account.account_id);
-      checked(
-        await store
-          .from("venue_payment_accounts")
-          .update({
-            charges_enabled: current.charges_enabled,
-            payouts_enabled: current.payouts_enabled,
-            details_submitted: current.details_submitted,
-            disabled_reason: current.requirements?.disabled_reason || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("venue_id", venue.id)
-          .eq("livemode", r.livemode)
-      );
+      if (!account) throw new Error('Connect this venue’s Stripe account first.');
+      await refreshVenueAccount(r, account);
       if (body.action === "refresh_account") return reply({ refreshed: true });
       const link = await r.stripe.accountLinks.create({
         account: account.account_id,
         type: "account_onboarding",
+        collection_options: { fields: 'eventually_due' },
         refresh_url: `${appOrigin()}/player/payments?venue=${
           venue.id
         }&connect=refresh`,
@@ -501,6 +494,13 @@ serve(async (req) => {
         p_end: body.end_time,
         p_live: r.livemode,
       };
+      // Fetch fresh Stripe capabilities before issuing a quote/hold. SQL remains
+      // authoritative for buyer membership, destination, prices and inventory.
+      const court = checked(await store.from('venue_courts').select('venue_id').eq('id', args.p_court).single());
+      const membership = checked(await store.from('group_members').select('user_id').eq('group_id', args.p_group).eq('user_id', user.id).eq('status', 'active').maybeSingle());
+      const group = checked(await store.from('groups').select('venue_id').eq('id', args.p_group).maybeSingle());
+      if (!court || !membership || !group || group.venue_id !== court.venue_id) throw new Error('Join this venue community before booking.');
+      await requireRentalAccount(r, court.venue_id);
       if (body.action === "quote")
         return reply({
           ...checked(await store.rpc("payment_court_quote", args)),
@@ -629,13 +629,7 @@ serve(async (req) => {
         (await customer(r, user, r.platform, "PULSE Pickleball"));
       if (body.action === "billing_portal") {
         // Hosted portal owns default-card, removal, invoice and subscription safeguards.
-        const portal = await r.stripe.billingPortal.sessions.create(
-          {
-            customer: customerId,
-            return_url: `${appOrigin()}/player/payments`,
-          },
-          options(r, account)
-        );
+        const portal = await merchantPortal(r, account, customerId);
         return reply({ url: portal.url });
       }
       if (body.accept_terms !== true)

@@ -62,6 +62,8 @@ export async function owner(
     throw new Error(
       "Only the current venue owner can manage billing or funds."
     );
+  const sample = checked(await store.from('private_venue_sandboxes').select('venue_id').eq('venue_id', venueId).maybeSingle());
+  if (sample) throw new Error('Billing and Stripe connections are disabled for private sample venues.');
   return venue;
 }
 export async function customer(

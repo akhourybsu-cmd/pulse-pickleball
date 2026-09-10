@@ -61,6 +61,20 @@ export function assertPaymentConfiguration(
     throw new Error("PULSE’s Stripe account must be verified first.");
   return config;
 }
+
+/** Safe setup diagnostics: return labels only, never credential values. */
+export function paymentLaunchIssues(env: (name: string) => string | undefined): string[] {
+  const config = billingMode(env);
+  if (config.mode === 'off') return ['PULSE has not enabled payment checkout yet.'];
+  const issues: string[] = [];
+  if (env('PULSE_PAYMENTS_PAUSED') === 'true') issues.push('PULSE has paused new payment checkouts. Existing payment records and recovery remain available.');
+  try { assertPaymentConfiguration(env); } catch { issues.push('PULSE must finish Stripe account and key verification.'); }
+  if (!(env('PULSE_STRIPE_WEBHOOK_SECRET') || '').startsWith('whsec_') || !(env('PULSE_STRIPE_CONNECT_WEBHOOK_SECRET') || '').startsWith('whsec_')) issues.push('PULSE must configure both platform and venue payment notifications.');
+  else if (env('PULSE_STRIPE_WEBHOOK_SECRET') === env('PULSE_STRIPE_CONNECT_WEBHOOK_SECRET')) issues.push('Platform and venue payment notifications need separate signing secrets.');
+  if ((env('PULSE_PAYMENT_RECONCILE_SECRET') || '').length < 32) issues.push('PULSE must configure secure payment recovery.');
+  if (config.mode === 'test' && !(env('PULSE_PAYMENT_TEST_USER_IDS') || '').trim()) issues.push('PULSE must choose approved sandbox testers.');
+  return issues;
+}
 export function assertCheckoutMatches(order: any, session: any) {
   if (
     session.metadata?.pulse_order_id !== order.id ||
