@@ -29,8 +29,9 @@ beforeAll(async()=>{
     CREATE TABLE group_posts(id uuid DEFAULT gen_random_uuid(),group_id uuid,user_id uuid,type text,title text,content text,pinned bool);
     CREATE TABLE group_messages(id uuid DEFAULT gen_random_uuid(),group_id uuid,user_id uuid,content text,is_pinned bool,pinned_at timestamptz,pinned_by uuid);
     CREATE TABLE group_invites(id uuid DEFAULT gen_random_uuid(),group_id uuid);
-    CREATE TABLE venue_payment_accounts(venue_id uuid); CREATE TABLE venue_payment_settings(venue_id uuid,accepting_payments bool);
-    CREATE TABLE payment_orders(venue_id uuid,group_id uuid); CREATE TABLE payment_subscriptions(venue_id uuid); CREATE TABLE venue_subscriptions(venue_id uuid);
+    CREATE TABLE venue_payment_accounts(venue_id uuid,livemode bool,connected_by uuid); CREATE TABLE venue_payment_settings(venue_id uuid,accepting_payments bool);
+    CREATE TABLE payment_orders(venue_id uuid,group_id uuid,livemode bool,buyer_id uuid); CREATE TABLE payment_subscriptions(venue_id uuid,livemode bool,buyer_id uuid); CREATE TABLE venue_subscriptions(venue_id uuid);
+    CREATE TABLE venue_payment_oauth_states(venue_id uuid,livemode bool,owner_id uuid);
     CREATE TABLE unified_events(venue_id uuid,host_venue_id uuid,host_group_id uuid);
     CREATE TABLE round_robin_events(id uuid,venue_id uuid,group_id uuid,status text);
     CREATE TABLE round_robin_schedule(event_id uuid,a1_player_id uuid,a2_player_id uuid,b1_player_id uuid,b2_player_id uuid,a1_guest_id uuid,a2_guest_id uuid,b1_guest_id uuid,b2_guest_id uuid);
@@ -54,6 +55,7 @@ beforeAll(async()=>{
   await db.query('INSERT INTO auth.users VALUES($1,now()),($2,now())',[owner,outsider]);
   await db.exec(readFileSync('supabase/migrations/20260920100000_private_venue_sandboxes.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20260920110000_private_venue_public_surfaces.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260921110000_private_venue_test_payments.sql','utf8'));
   const result=await db.query("SELECT provision_private_venue_sandbox($1,'Sample Palace') AS result",[owner]);
   ({venue_id:venue,group_id:group}=result.rows[0].result as {venue_id:string,group_id:string});
 },30_000);
@@ -115,7 +117,7 @@ describe('private sample venue',()=>{
     await expect(asUser(owner,"INSERT INTO group_members(group_id,user_id,role) VALUES($1,$2,'member')",[group,outsider])).rejects.toThrow(/Only the owner/);
     await expect(asUser(owner,"INSERT INTO venue_staff(venue_id,user_id,role) VALUES($1,$2,'manager')",[venue,outsider])).rejects.toThrow(/Only the owner/);
     for(const t of ['venue_payment_accounts','payment_orders','payment_subscriptions','venue_subscriptions']) await expect(db.query(`INSERT INTO ${t}(venue_id) VALUES($1)`,[venue])).rejects.toThrow(/Billing is disabled/);
-    await expect(db.query('INSERT INTO venue_payment_settings VALUES($1,true)',[venue])).rejects.toThrow(/Billing is disabled/);
+    await expect(db.query('INSERT INTO venue_payment_settings VALUES($1,true)',[venue])).rejects.toThrow(/billing is disabled/);
   });
   it('keeps owner edits usable, preserves the sample marker, and does not overwrite edits on retry',async()=>{
     await asUser(owner,"UPDATE venues SET tagline='My own playground' WHERE id=$1",[venue]);
@@ -128,6 +130,27 @@ describe('private sample venue',()=>{
   it('prevents ordinary accounts from provisioning or changing the private registry',async()=>{
     await expect(asUser(owner,"SELECT provision_private_venue_sandbox($1,'Unauthorized')",[outsider])).rejects.toThrow(/permission denied/);
     await expect(asUser(owner,'DELETE FROM private_venue_sandboxes WHERE venue_id=$1',[venue])).rejects.toThrow(/permission denied/);
+    await expect(asUser(owner,'UPDATE private_venue_sandboxes SET test_payments_enabled=true WHERE venue_id=$1',[venue])).rejects.toThrow(/permission denied/);
     await expect(asUser(owner,'DELETE FROM groups WHERE id=$1',[group])).rejects.toThrow(/foreign key/);
+  });
+  it('retains privacy and live-billing prohibitions after service-approved test opt-in',async()=>{
+    await db.query('UPDATE private_venue_sandboxes SET test_payments_enabled=true WHERE venue_id=$1',[venue]);
+    try {
+      await db.query('INSERT INTO venue_payment_accounts(venue_id,livemode,connected_by) VALUES($1,false,$2)',[venue,owner]);
+      await db.query('INSERT INTO payment_orders(venue_id,group_id,livemode,buyer_id) VALUES($1,$2,false,$3)',[venue,group,owner]);
+      for (const user of [outsider,null]) {
+        for (const table of ['venues','groups','venue_courts','venue_payment_accounts','payment_orders','venue_module_access','group_posts','group_messages']) expect((await asUser(user,`SELECT * FROM ${table}`)).rows,table).toHaveLength(0);
+      }
+      for (const live of [true,null]) await expect(db.query('INSERT INTO venue_payment_accounts(venue_id,livemode,connected_by) VALUES($1,$2,$3)',[venue,live,owner])).rejects.toThrow(/Billing is disabled/);
+      await expect(db.query('INSERT INTO payment_orders(venue_id,group_id,livemode,buyer_id) VALUES($1,$2,false,$3)',[venue,group,outsider])).rejects.toThrow(/Billing is disabled/);
+      await expect(db.query('INSERT INTO venue_subscriptions(venue_id) VALUES($1)',[venue])).rejects.toThrow(/Billing is disabled/);
+      await expect(asUser(owner,'UPDATE venues SET is_published=true WHERE id=$1',[venue])).rejects.toThrow(/Private sample/);
+      await expect(asUser(owner,'UPDATE venues SET verification_approved_at=now() WHERE id=$1',[venue])).rejects.toThrow(/Private sample/);
+      await expect(asUser(owner,"INSERT INTO group_members(group_id,user_id,role) VALUES($1,$2,'member')",[group,outsider])).rejects.toThrow(/Only the owner/);
+    } finally {
+      await db.query('DELETE FROM venue_payment_accounts WHERE venue_id=$1',[venue]);
+      await db.query('DELETE FROM payment_orders WHERE venue_id=$1',[venue]);
+      await db.query('UPDATE private_venue_sandboxes SET test_payments_enabled=false WHERE venue_id=$1',[venue]);
+    }
   });
 });

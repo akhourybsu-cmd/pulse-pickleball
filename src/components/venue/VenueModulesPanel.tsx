@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVenueModules } from "@/hooks/useVenueModules";
+import { usePrivateVenuePaymentTesting } from '@/hooks/usePrivateVenueSandbox';
 import { VenueAddonCheckout } from "./VenueAddonCheckout";
 import type { VenueDemoFeature } from "@/lib/venues/venueDemo";
 import { venueModulePresentation } from "@/lib/venues/moduleExperience";
@@ -46,6 +47,7 @@ export function VenueModulesPanel({
     staleTime: 60_000,
   });
   const count = Number(access.booking) + Number(access.facility);
+  const testPayments = usePrivateVenuePaymentTesting(privateSample && canVerify ? venueId : null);
   return (
     <div className="space-y-6 font-sans">
       <section className="rounded-2xl border bg-card p-5 sm:p-7">
@@ -344,6 +346,10 @@ export function VenueModulesPanel({
         )}
       </section>
 
+      {privateSample && testPayments && billing.data?.mode === 'test' && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+        <div className="min-w-0 max-w-xl"><h2 className="text-lg font-semibold">Your Stripe test workspace</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Test rental checkout and $10/month feature subscriptions with simulated payments. Only you can access this sample. Real charges stay blocked and your included features stay free.</p></div>
+        <Button asChild variant="outline" className="min-h-11 rounded-xl"><Link to={'/player/payments?venue=' + venueId}>Open sandbox payment setup</Link></Button>
+      </section>}
       {!privateSample && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
         <div className="min-w-0 max-w-xl">
           <h2 className="font-sans text-lg font-semibold">

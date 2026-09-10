@@ -15,6 +15,7 @@ import { emptyPaymentDraft, paymentDraftConflict, paymentDraftDirty, paymentDraf
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { venuePaymentReadiness, type VenuePaymentSetup } from '@/lib/venues/paymentReadiness';
 import { VenueStripeReturn } from './VenueStripeReturn';
+import { VenueAddonCheckout } from './VenueAddonCheckout';
 
 const decisions = [
   ["refund_pending", "Cancel & refund", "The remaining payment will be returned to the original payment method. The court stays reserved until the refund succeeds. Stripe fees may not be returned."],
@@ -124,10 +125,16 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   const confirmationCurrent = !!currentRequest && (currentRequest.status === 'requested' || (currentRequest.status === 'refund_pending' && confirmation?.decision === 'refund_pending'));
   const readiness = venuePaymentReadiness(data);
   const connected = readiness.connected;
-  const setupBlocked = !!busy || dirty || data.mode === 'off' || data.ready === false || data.transferred || !data.venue.verification_approved_at;
+  const testSandbox = data.mode === 'test' && data.venue.payment_test_sandbox === true;
+  const setupBlocked = !!busy || dirty || data.mode === 'off' || data.ready !== true || data.transferred || (!data.venue.verification_approved_at && !testSandbox);
   return (
     <div className="space-y-6 font-sans">
       <VenueStripeReturn venueId={venueId} enabled={data.mode !== 'off' && data.ready !== false} onChecked={() => query.refetch()} />
+      {testSandbox && <section aria-label="Private payment sandbox" className="rounded-2xl border border-primary/30 bg-primary/5 p-5 text-sm leading-6">
+        <h2 className="font-semibold">Private Stripe sandbox · Only you</h2>
+        <p className="mt-2">Test this venue’s separate Stripe account, rental checkout, refunds and PULSE subscriptions. Use Stripe test cards only. No real money, payouts or reservations are created, and your included sample features stay free.</p>
+        <p className="mt-2 text-muted-foreground">Save a test price on one court below, then open Booking to try checkout. Keep other courts at $0 for free sample reservations. The live-payment switch stays off.</p>
+      </section>}
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <Building2 className="h-5 w-5 text-primary" />
         <h2 className="mt-3 break-words font-sans text-xl font-semibold">
@@ -182,7 +189,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         {dirty && <p className="mt-3 text-sm text-muted-foreground">Save or discard your changes before leaving for Stripe setup. Checking the connection will keep your draft.</p>}
         {!data.account && !data.connect_existing_available && <p className="mt-3 text-sm leading-6 text-muted-foreground">Already use Stripe for this venue? PULSE must enable existing-account linking first. Do not create a second account just to work around that step.</p>}
         {data.account && <div className="mt-4 space-y-1 text-xs leading-5 text-muted-foreground"><p className="break-all">Connected account: {data.account.account_id} · {data.mode === 'test' ? 'Sandbox' : 'Live'}</p><p>{data.account.updated_at ? `Last checked ${new Date(data.account.updated_at).toLocaleString()}. Use Check connection for the latest Stripe status.` : 'Check connection to confirm the latest Stripe status.'}</p>{!!data.account.requirements_due?.length && <p>Stripe needs {data.account.requirements_due.length} more setup item(s). Complete them in Stripe, not in PULSE.</p>}{data.account.requirements_deadline && <p>Stripe requirements deadline: {new Date(data.account.requirements_deadline).toLocaleDateString()}.</p>}</div>}
-        {!data.venue.verification_approved_at && <p className="mt-3 text-sm text-muted-foreground">Complete venue ownership verification before connecting Stripe or accepting payments.</p>}
+        {!data.venue.verification_approved_at && !testSandbox && <p className="mt-3 text-sm text-muted-foreground">Complete venue ownership verification before connecting Stripe or accepting payments.</p>}
         {connected && (
           <a
             href={`https://dashboard.stripe.com/${encodeURIComponent(data.account!.account_id)}/${data.mode === 'test' ? 'test/' : ''}dashboard`}
@@ -315,8 +322,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
               Accept paid court reservations
             </Label>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Requires a verified venue and a live Stripe connection. Saving a
-              draft does not start charging players. A court with a saved price stays unavailable for free reservations while payments are off. Set its price to $0 if it should be free.
+              {testSandbox ? 'Live collections are permanently disabled for this private sample. Test checkout uses your saved prices without turning this switch on. Set a court to $0 to keep its sample reservations free.' : 'Requires a verified venue and a live Stripe connection. Saving a draft does not start charging players. A court with a saved price stays unavailable for free reservations while payments are off. Set its price to $0 if it should be free.'}
             </p>
           </div>
           <Switch
@@ -357,6 +363,11 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         </fieldset>
       </section>
       <AlertDialog open={newAccountOpen} onOpenChange={setNewAccountOpen}><AlertDialogContent className="max-h-[90dvh] overflow-y-auto font-sans"><AlertDialogHeader><AlertDialogTitle>Create a separate Stripe account?</AlertDialogTitle><AlertDialogDescription>This will prepare a new Stripe business account for {data.venue.name}. Its funds, bank account and payout settings are separate from PULSE and your other venues. If this venue already uses Stripe, cancel and choose Connect existing Stripe account instead. No subscription or payment starts here.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => void action('onboard', { create_new_account: true })}>Create venue account</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      {testSandbox && <section aria-labelledby="sample-subscriptions" className="rounded-2xl border bg-card p-5 sm:p-6">
+        <h2 id="sample-subscriptions" className="text-lg font-semibold">Test PULSE feature subscriptions</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">These are simulated $10/month purchases from PULSE, separate from this venue’s rental income. They never replace your included sample access. Review or cancel test subscriptions in Payments & purchases.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">{[{ key: 'court_booking', title: 'Court booking' }, { key: 'facility_tools', title: 'Facility operations' }].map(module => <div key={module.key} className="min-w-0 rounded-xl border p-4"><p className="font-semibold">{module.title} · Test only</p><VenueAddonCheckout venueId={venueId} moduleKey={module.key} title={module.title} venueName={data.venue.name} verified={testSandbox} canPurchase={!dirty && !busy} /></div>)}</div>
+      </section>}
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />

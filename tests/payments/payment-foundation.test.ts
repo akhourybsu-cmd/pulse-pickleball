@@ -32,7 +32,7 @@ async function asUser(user: string, query: string, args: unknown[] = []) {
   try {
     return await db.query(query, args);
   } finally {
-    await db.exec("RESET ROLE");
+    await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub','',false)");
   }
 }
 async function reserve(
@@ -133,8 +133,12 @@ beforeAll(async () => {
       "utf8"
     )
   );
-  await db.exec('ALTER TABLE venues ADD COLUMN stripe_account_id text; ALTER TABLE venues ADD COLUMN timezone text; CREATE TABLE private_venue_sandboxes(venue_id uuid PRIMARY KEY REFERENCES venues(id),owner_id uuid);');
+  await db.exec('ALTER TABLE venues ADD COLUMN stripe_account_id text; ALTER TABLE venues ADD COLUMN timezone text; CREATE TABLE private_venue_sandboxes(venue_id uuid PRIMARY KEY REFERENCES venues(id),owner_id uuid,group_id uuid);');
   await db.exec(readFileSync('supabase/migrations/20260921100000_venue_stripe_readiness.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260921110000_private_venue_test_payments.sql', 'utf8'));
+  for (const table of ['venue_payment_accounts', 'venue_payment_settings', 'payment_orders', 'payment_subscriptions']) {
+    await db.exec(`CREATE TRIGGER guard_private_sandbox BEFORE INSERT OR UPDATE ON ${table} FOR EACH ROW EXECUTE FUNCTION guard_private_venue_sandbox()`);
+  }
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 2);
   d.setUTCHours(10, 0, 0, 0);
@@ -203,7 +207,7 @@ describe('independent venue Stripe connections', () => {
   });
   it('does not let an unrelated owner connect a venue or the private sample receive billing', async () => {
     await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, other, 'acct_venue'])).rejects.toThrow('verified current venue owner');
-    await db.query('INSERT INTO private_venue_sandboxes VALUES($1,$2)', [venue, owner]);
+    await db.query('INSERT INTO private_venue_sandboxes(venue_id,owner_id,group_id) VALUES($1,$2,$3)', [venue, owner, group]);
     await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, owner, 'acct_venue'])).rejects.toThrow('private sample');
   });
   it('requires the existing legacy account to be linked rather than silently replaced', async () => {
@@ -232,6 +236,61 @@ describe('independent venue Stripe connections', () => {
     await expect(db.query('SELECT payment_save_venue($1,$2,false,$3,$4,$5,$6)', [owner, venue, policy, 'venue@example.com', 'UTC', JSON.stringify([{ id: court, cents: 50 }])])).rejects.toThrow('at least $1');
     await db.exec('UPDATE venue_payment_accounts SET card_payments_active=false');
     await expect(db.query('SELECT payment_save_venue($1,$2,true,$3,$4,$5,$6)', [owner, venue, policy, 'venue@example.com', 'UTC', JSON.stringify([{ id: court, cents: 2000 }])])).rejects.toThrow('Stripe setup');
+  });
+});
+
+describe('approved private venue payment sandbox', () => {
+  async function sample(enabled = true) {
+    await db.exec('DELETE FROM venue_payment_accounts; UPDATE venues SET verification_approved_at=NULL; UPDATE venue_payment_settings SET accepting_payments=false');
+    await db.query('INSERT INTO private_venue_sandboxes(venue_id,owner_id,group_id,test_payments_enabled) VALUES($1,$2,$3,$4)', [venue, owner, group, enabled]);
+    await db.query("INSERT INTO group_members VALUES($1,$2,'active')", [group, owner]);
+  }
+  async function connect() {
+    await db.query("SELECT payment_link_venue_account($1,$2,false,'acct_venue')", [venue, owner]);
+    await db.exec('UPDATE venue_payment_accounts SET charges_enabled=true,payouts_enabled=true,card_payments_active=true');
+  }
+  it('requires explicit service opt-in and never fakes business verification', async () => {
+    await sample(false);
+    await expect(connect()).rejects.toThrow('private sample');
+    await db.exec('UPDATE private_venue_sandboxes SET test_payments_enabled=true');
+    await connect();
+    expect((await db.query<any>('SELECT verification_approved_at FROM venues')).rows[0].verification_approved_at).toBeNull();
+    for (const live of [true, null]) await expect(db.query("SELECT payment_link_venue_account($1,$2,$3,'acct_venue')", [venue, owner, live])).rejects.toThrow('private sample');
+    await expect(db.query("SELECT payment_link_venue_account($1,$2,false,'acct_venue')", [venue, other])).rejects.toThrow('private sample');
+  });
+  it('tests rental payment and refund without creating a real reservation', async () => {
+    await sample(); await connect();
+    const order = await reserve(owner, false);
+    expect(order.account_id).toBe('acct_venue');
+    await apply(order);
+    expect((await db.query('SELECT * FROM group_events')).rows).toHaveLength(0);
+    await db.query('SELECT payment_request_cancellation($1,$2,$3)', [order.id, owner, 'Testing my sandbox refund']);
+    await db.query("SELECT payment_cancel_reservation($1,$2,'Sandbox refund approved','refund_pending')", [order.id, owner]);
+    await db.query("SELECT payment_record_charge('acct_venue',false,'pi_valid',3000,false)");
+    expect((await db.query<any>('SELECT status,refunded_cents FROM payment_orders WHERE id=$1', [order.id])).rows[0]).toMatchObject({ status: 'refunded', refunded_cents: 3000 });
+  });
+  it('blocks another buyer even if an old membership existed, and blocks live collection settings', async () => {
+    await sample(); await connect();
+    await expect(reserve(buyer, false)).rejects.toThrow('approved owner');
+    await expect(reserve(owner, true)).rejects.toThrow('approved owner');
+    await expect(db.exec('UPDATE venue_payment_settings SET accepting_payments=true')).rejects.toThrow('Live billing');
+    await expect(db.exec('UPDATE venue_payment_accounts SET livemode=true')).rejects.toThrow('private sample');
+    await expect(db.query('UPDATE venue_payment_accounts SET connected_by=$1', [other])).rejects.toThrow('private sample');
+  });
+  it('keeps account reuse and replacement prohibited in test mode', async () => {
+    await sample(); await connect();
+    await expect(db.query("SELECT payment_link_venue_account($1,$2,false,'acct_replacement')", [venue, owner])).rejects.toThrow('cannot be replaced');
+    await db.query("INSERT INTO venues(id,name,owner_id,is_active,verification_approved_at) VALUES($1,'Second test venue',$2,true,now())", [id(40), other]);
+    await expect(db.query("SELECT payment_link_venue_account($1,$2,false,'acct_venue')", [id(40), other])).rejects.toThrow('already belongs');
+  });
+  it('records a test subscription without changing the included feature access', async () => {
+    await sample();
+    const order = (await db.query<any>("INSERT INTO payment_orders(buyer_id,venue_id,kind,module_key,billing_cadence,description,merchant_name,account_id,livemode,amount_cents,request_key,policy_snapshot) VALUES($1,$2,'venue_module','court_booking','monthly','Test feature','PULSE Pickleball','acct_platform',false,1000,$3,$4) RETURNING *", [owner, venue, id(60), policy])).rows[0];
+    await apply(order, 'paid', { account: 'acct_platform', subscription: 'sub_private_test', through: later });
+    expect((await db.query<any>('SELECT livemode,status FROM payment_subscriptions')).rows[0]).toMatchObject({ livemode: false, status: 'active' });
+    expect((await db.query<any>('SELECT source,enabled FROM venue_module_access')).rows[0]).toMatchObject({ source: 'existing_venue', enabled: true });
+    await expect(db.exec('UPDATE payment_subscriptions SET livemode=true')).rejects.toThrow('private sample');
+    await expect(db.exec('UPDATE payment_orders SET livemode=true')).rejects.toThrow('private sample');
   });
 });
 

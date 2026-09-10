@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { paymentLaunchIssues } from '../../supabase/functions/_shared/payment-contracts';
+import { privatePaymentTestAllowed } from '../../supabase/functions/_shared/payment-private-sandbox';
 import { stripeReturnVenue, venuePaymentReadiness, type VenuePaymentSetup } from '../../src/lib/venues/paymentReadiness';
 
 vi.mock('../../supabase/functions/_shared/payment-runtime.ts', () => ({
@@ -36,6 +37,22 @@ describe('launch checks', () => {
 
 const setup = (): VenuePaymentSetup => ({ mode: 'live', ready: true, venue: { name: 'Venue A', verification_approved_at: '2026-09-01' }, account: { account_id: 'acct_a', charges_enabled: true, payouts_enabled: true, card_payments_active: true }, booking_enabled: true, courts: [{ id: 'court-a', name: 'Court 1', hourly_rate: 20 }], settings: { accepting_payments: false, cancellation_policy: 'Cancel 24 hours before play for a full refund.', support_email: 'venue@example.com', timezone: 'America/New_York', tax_inclusive_acknowledged: true } });
 describe('per-venue readiness', () => {
+  it('allows only an explicitly approved, allowlisted owner to test a private sample', () => {
+    const sample = { owner_id: 'owner', test_payments_enabled: true };
+    expect(privatePaymentTestAllowed(sample, 'owner', 'owner', 'test', 'other, owner')).toBe(true);
+    for (const mode of ['off', 'live', 'unknown']) expect(privatePaymentTestAllowed(sample, 'owner', 'owner', mode, 'owner')).toBe(false);
+    expect(privatePaymentTestAllowed(sample, 'owner', 'other', 'test', 'other,owner')).toBe(false);
+    expect(privatePaymentTestAllowed(sample, 'new-owner', 'new-owner', 'test', 'new-owner')).toBe(false);
+    expect(privatePaymentTestAllowed(sample, 'owner', 'owner', 'test', '')).toBe(false);
+    expect(privatePaymentTestAllowed({ ...sample, test_payments_enabled: false }, 'owner', 'owner', 'test', 'owner')).toBe(false);
+    expect(privatePaymentTestAllowed(null, 'owner', 'owner', 'test', 'owner')).toBe(false);
+  });
+  it('labels sample approval separately from verification and cannot enable live collections', () => {
+    const data = setup(); data.mode = 'test'; data.venue.verification_approved_at = null; data.venue.payment_test_sandbox = true;
+    expect(venuePaymentReadiness(data).steps.find(step => step.id === 'owner')).toMatchObject({ complete: true, title: 'Approved private test venue' });
+    expect(venuePaymentReadiness(data).canEnable).toBe(false);
+    data.mode = 'live'; expect(venuePaymentReadiness(data).canEnable).toBe(false);
+  });
   it('never treats sandbox, missing status, ownership transfers or disconnected accounts as live ready', () => {
     expect(venuePaymentReadiness(setup()).canEnable).toBe(true);
     for (const patch of [{ mode: 'test' as const }, { ready: undefined }, { transferred: true }, { account: null }, { booking_enabled: false }, { settings: null }, { courts: [] }]) {

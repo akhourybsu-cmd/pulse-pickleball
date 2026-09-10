@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('@/hooks/useAuthState', () => ({ useAuthState: () => ({ user: { id: 'viewer' } }) }));
 vi.mock('@/components/venue/VenueStripeReturn', () => ({ VenueStripeReturn: () => null }));
+vi.mock('@/components/venue/VenueAddonCheckout', () => ({ VenueAddonCheckout: () => <div>Test subscription checkout</div> }));
 vi.mock('react-router-dom', () => ({ Link: ({ to, children }: any) => <a href={to}>{children}</a> }));
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (query: { queryKey: unknown[] }) => {
@@ -49,6 +50,17 @@ beforeEach(() => {
 const request = (status = 'requested') => ({ id: 'r1', order_id: 'order', note: 'I cannot attend.', status, payment_orders: { description: 'Court rental', amount_cents: 5000, refunded_cents: 1000 } });
 
 describe('venue payment presentation', () => {
+  it('opens Stripe setup for approved private testing without claiming business verification', () => {
+    state.data.mode = 'test'; state.data.venue.verification_approved_at = null; state.data.venue.payment_test_sandbox = true;
+    const html = render();
+    expect(html).toContain('Private Stripe sandbox'); expect(html).toContain('Test PULSE feature subscriptions');
+    expect(html).toContain('Live collections are permanently disabled');
+    expect(html).not.toContain('Complete venue ownership verification before connecting');
+    expect(state.buttons.find(button => button.label === 'Review Stripe setup')?.disabled).toBe(false);
+    state.data.mode = 'live'; state.buttons = [];
+    expect(render()).not.toContain('Private Stripe sandbox');
+    expect(state.buttons.find(button => button.label === 'Review Stripe setup')?.disabled).toBe(true);
+  });
   it('scopes private settings and request caches to the viewer', () => {
     const html = render();
     expect(state.keys).toEqual([['venue-payments', 'venue', 'viewer'], ['venue-payment-requests', 'venue', 'viewer']]);
