@@ -1,256 +1,132 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from '@/hooks/useAuthState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Crown, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Crown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/getErrorMessage';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { fetchVenueCourts, refreshVenueSettings, removeVenueCourt, updateVenueCourt, type VenueCourtSettings } from '@/lib/venues/settings';
 
-/**
- * The venue's courts.
- *
- * Adding the first court is what turns booking on: the venue shell only shows
- * its Book tab once courts exist, so a venue that just wants a branded
- * community never sees a reservation system it didn't ask for.
- *
- * Deactivating rather than deleting is the normal move — a court out for
- * resurfacing disappears from the grid while its history stays intact.
- */
-
-interface VenueCourt {
-  id: string;
-  name: string | null;
-  court_number: number | null;
-  surface_type: string | null;
-  is_active: boolean | null;
-  is_premium: boolean | null;
-}
-
-const SURFACES = ['Indoor', 'Outdoor', 'Hard court', 'Cushioned', 'Gym floor'] as const;
+const SURFACES = ['Indoor', 'Outdoor', 'Hard court', 'Cushioned', 'Gym floor'];
 
 export function VenueCourtsSection({ venueId }: { venueId: string }) {
   const { toast } = useToast();
-  const [courts, setCourts] = useState<VenueCourt[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
+  const { user } = useAuthState();
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['venue-courts-settings', venueId, user?.id],
+    queryFn: () => fetchVenueCourts(venueId), enabled: !!user,
+  });
+  const courts = query.data ?? [];
+  const lock = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [surface, setSurface] = useState<string>(SURFACES[0]);
+  const [surface, setSurface] = useState(SURFACES[0]);
   const [premium, setPremium] = useState(false);
+  const [edit, setEdit] = useState<VenueCourtSettings | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<VenueCourtSettings | null>(null);
+  const nextNumber = courts.reduce((max, court) => Math.max(max, court.court_number ?? 0), 0) + 1;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('venue_courts')
-      .select('id, name, court_number, surface_type, is_active, is_premium')
-      .eq('venue_id', venueId)
-      .order('court_number', { ascending: true });
-
-    if (error) {
-      toast({ title: 'Error loading courts', description: error.message, variant: 'destructive' });
-    } else {
-      setCourts(data ?? []);
-    }
-    setLoading(false);
-  }, [venueId, toast]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const run = async (action: () => Promise<void>, title: string) => {
+    if (lock.current || query.isPending || query.isError) return false;
+    lock.current = true; setBusy(true); setError(null);
+    try {
+      await action();
+      await refreshVenueSettings(queryClient, venueId);
+      toast({ title });
+      return true;
+    } catch (cause) {
+      setError(getErrorMessage(cause, 'Your court changes could not be saved. Try again.'));
+      return false;
+    } finally { lock.current = false; setBusy(false); }
+  };
 
   const addCourt = async () => {
-    setAdding(true);
-    // Next number after the highest existing one, so re-adding after a delete
-    // never collides with a court number already on the fence.
-    const nextNumber =
-      courts.reduce((max, c) => Math.max(max, c.court_number ?? 0), 0) + 1;
-
-    const { error } = await supabase.from('venue_courts').insert({
-      venue_id: venueId,
-      court_number: nextNumber,
-      name: name.trim() || `Court ${nextNumber}`,
-      surface_type: surface,
-      is_active: true,
-      is_premium: premium,
-    });
-
-    setAdding(false);
-
-    if (error) {
-      toast({ title: 'Could not add court', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setName('');
-    setPremium(false);
-    toast({ title: 'Court added' });
-    void load();
+    const success = await run(async () => {
+      const { data, error } = await supabase.from('venue_courts').insert({
+        venue_id: venueId, court_number: nextNumber, name: name.trim() || `Court ${nextNumber}`,
+        surface_type: surface, is_active: true, is_premium: premium,
+      }).select('id').single();
+      if (error) throw error;
+      if (!data) throw new Error('The court was not added. Reload and try again.');
+    }, 'Court added');
+    if (success) { setName(''); setPremium(false); }
   };
 
-  const setActive = async (court: VenueCourt, active: boolean) => {
-    const { error } = await supabase
-      .from('venue_courts')
-      .update({ is_active: active })
-      .eq('id', court.id);
+  if (query.isPending) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (query.isError) return <VenueLoadState title="Courts couldn’t load" description="Load your court list before making changes." onRetry={() => void query.refetch()} />;
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setCourts((cs) => cs.map((c) => (c.id === court.id ? { ...c, is_active: active } : c)));
-  };
-
-  const setPremiumCourt = async (court: VenueCourt, nextPremium: boolean) => {
-    const { error } = await supabase
-      .from('venue_courts')
-      .update({ is_premium: nextPremium })
-      .eq('id', court.id);
-    if (error) {
-      toast({ title: 'Could not update court', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setCourts((rows) => rows.map((row) => row.id === court.id ? { ...row, is_premium: nextPremium } : row));
-  };
-
-  const remove = async (court: VenueCourt) => {
-    // Existing bookings reference this court; the FK is ON DELETE SET NULL, so
-    // they survive as sessions without a court rather than vanishing.
-    const { error } = await supabase.from('venue_courts').delete().eq('id', court.id);
-    if (error) {
-      toast({ title: 'Could not remove court', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Court removed' });
-    void load();
-  };
-
-  return (
+  return <>
     <Card className="border-border/60">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Courts</CardTitle>
-        <CardDescription>
-          Add your courts to turn on booking. Members can then reserve them from the venue's
-          Book tab.
-        </CardDescription>
+        <CardTitle className="font-sans text-base">Courts</CardTitle>
+        <CardDescription>Manage court names, surfaces, and availability. Player reservations require the Court Booking add-on.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full rounded-lg" />
-            <Skeleton className="h-12 w-full rounded-lg" />
-          </div>
-        ) : courts.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-            No courts yet. Add one below and the Book tab appears.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {courts.map((court) => (
-              <li
-                key={court.id}
-                className={cn(
-                  'flex flex-col gap-3 rounded-xl border border-border/70 px-3 py-3 sm:flex-row sm:items-center',
-                  court.is_active === false && 'bg-muted/40',
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      'truncate text-sm font-semibold',
-                      court.is_active === false && 'text-muted-foreground',
-                    )}
-                  >
-                    {court.name ?? `Court ${court.court_number}`}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {[court.surface_type, court.is_active === false ? 'Unavailable' : null]
-                      .filter(Boolean)
-                      .join(' · ') || ' '}
-                  </p>
-                </div>
-
-                <div className="flex w-full items-center justify-between gap-2 pl-0 sm:w-auto sm:justify-start">
-                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                    <Switch
-                      checked={court.is_premium === true}
-                      onCheckedChange={(value) => void setPremiumCourt(court, value)}
-                      aria-label={`${court.name ?? 'Court'} premium`}
-                    />
-                    <Crown className="h-3.5 w-3.5" /> Premium
-                  </label>
-                  <span className="h-5 w-px bg-border/70" />
-                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Switch
-                    checked={court.is_active !== false}
-                    onCheckedChange={(v) => setActive(court, v)}
-                    aria-label={`${court.name ?? 'Court'} available`}
-                  />
-                    Available
-                  </label>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => remove(court)}
-                    aria-label={`Remove ${court.name ?? 'court'}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="grid gap-3 rounded-xl border border-dashed border-border/80 bg-muted/15 p-3 lg:grid-cols-[minmax(0,1fr)_160px_auto_auto] lg:items-end">
-          <div className="space-y-2">
-            <Label htmlFor="court-name">Court name</Label>
-            <Input
-              id="court-name"
-              placeholder={`Court ${courts.reduce((m, c) => Math.max(m, c.court_number ?? 0), 0) + 1}`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={40}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="court-surface">Surface</Label>
-            <Select value={surface} onValueChange={setSurface}>
-              <SelectTrigger id="court-surface" className="w-full lg:w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SURFACES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <label className="flex h-10 items-center gap-2 text-sm font-medium lg:mb-0">
-            <Switch checked={premium} onCheckedChange={setPremium} />
-            <Crown className="h-4 w-4 text-amber-500" /> Premium
-          </label>
-          <Button onClick={addCourt} disabled={adding}>
-            {adding ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="mr-2 h-4 w-4" />
-            )}
-            Add court
-          </Button>
-        </div>
+        <p className="text-xs leading-5 text-muted-foreground">Turn off Available to remove a court from new bookings. Existing sessions stay on its record and should be reviewed in Operations. Premium marks a court for your venue’s premium-court settings; it does not activate a paid add-on.</p>
+        {error && !edit && !removeTarget && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {!courts.length ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No courts yet. Add your first court below.</p> :
+          <ul className="space-y-2">{courts.map(court => <li key={court.id} className={cn('rounded-xl border border-border/70 p-3', court.is_active === false && 'bg-muted/40')}>
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm font-semibold">{court.name || `Court ${court.court_number}`}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{court.surface_type || 'Surface not set'} · {court.is_active === false ? 'Unavailable' : 'Available'}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" disabled={busy} aria-label={`Edit ${court.name || 'court'}`} onClick={() => { setError(null); setEdit({ ...court }); }}><Pencil className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive" disabled={busy} aria-label={`Remove ${court.name || 'court'}`} onClick={() => { setError(null); setRemoveTarget(court); }}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-5 border-t border-border/50 pt-1">
+              <label className="flex min-h-11 items-center gap-2 text-xs font-medium"><Switch disabled={busy} checked={court.is_active !== false} onCheckedChange={value => void run(() => updateVenueCourt(venueId, court.id, { is_active: value }), 'Court availability updated')} aria-label={`${court.name || 'Court'} available`} />Available</label>
+              <label className="flex min-h-11 items-center gap-2 text-xs font-medium"><Switch disabled={busy} checked={court.is_premium === true} onCheckedChange={value => void run(() => updateVenueCourt(venueId, court.id, { is_premium: value }), 'Court updated')} aria-label={`${court.name || 'Court'} premium`} /><Crown className="h-3.5 w-3.5 text-amber-500" />Premium</label>
+            </div>
+          </li>)}</ul>}
+        <fieldset disabled={busy} className="grid min-w-0 gap-3 rounded-xl border border-dashed border-border/80 bg-muted/15 p-3 md:grid-cols-2">
+          <div className="min-w-0 space-y-2"><Label htmlFor="court-name">Court name</Label><Input id="court-name" className="h-11" placeholder={`Court ${nextNumber}`} value={name} onChange={e => setName(e.target.value)} maxLength={40} /></div>
+          <div className="min-w-0 space-y-2"><Label htmlFor="court-surface">Surface</Label><SurfaceSelect id="court-surface" value={surface} onChange={setSurface} disabled={busy} /></div>
+          <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><Switch disabled={busy} checked={premium} onCheckedChange={setPremium} aria-label="New court premium" /><Crown className="h-4 w-4 text-amber-500" />Premium court</label>
+          <Button onClick={() => void addCourt()} disabled={busy} className="min-h-11">{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}Add court</Button>
+        </fieldset>
       </CardContent>
     </Card>
-  );
+    <Dialog open={!!edit} onOpenChange={open => { if (!open && !busy) { setEdit(null); setError(null); } }}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl sm:max-w-md">
+        <DialogHeader><DialogTitle className="font-sans">Edit court</DialogTitle><DialogDescription>Keep the same court and booking history while updating its details.</DialogDescription></DialogHeader>
+        {edit && <fieldset disabled={busy} className="min-w-0 space-y-4">
+          <div className="space-y-2"><Label htmlFor="edit-court-name">Court name</Label><Input id="edit-court-name" className="h-11" maxLength={40} value={edit.name ?? ''} onChange={e => setEdit({ ...edit, name: e.target.value })} /></div>
+          <div className="space-y-2"><Label htmlFor="edit-court-surface">Surface</Label><SurfaceSelect id="edit-court-surface" value={edit.surface_type ?? SURFACES[0]} onChange={value => setEdit({ ...edit, surface_type: value })} disabled={busy} /></div>
+        </fieldset>}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <DialogFooter className="gap-2"><Button className="min-h-11" variant="outline" disabled={busy} onClick={() => { setEdit(null); setError(null); }}>Cancel</Button><Button className="min-h-11" disabled={busy || !edit?.name?.trim()} onClick={async () => {
+          if (edit && await run(() => updateVenueCourt(venueId, edit.id, { name: edit.name!.trim(), surface_type: edit.surface_type ?? SURFACES[0] }), 'Court details updated')) setEdit(null);
+        }}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <AlertDialog open={!!removeTarget} onOpenChange={open => { if (!open && !busy) { setRemoveTarget(null); setError(null); } }}>
+      <AlertDialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl">
+        <AlertDialogHeader><AlertDialogTitle className="font-sans">Remove {removeTarget?.name || 'this court'}?</AlertDialogTitle><AlertDialogDescription>Only courts without scheduled activity or booking history can be removed. For a temporary closure, cancel and turn off Available instead. Removing a court cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <AlertDialogFooter><AlertDialogCancel className="min-h-11" disabled={busy}>Keep court</AlertDialogCancel><AlertDialogAction className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={busy} onClick={async event => {
+          event.preventDefault();
+          if (removeTarget && await run(() => removeVenueCourt(venueId, removeTarget.id), 'Court removed')) setRemoveTarget(null);
+        }}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Remove court</AlertDialogAction></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>;
+}
+
+function SurfaceSelect({ id, value, onChange, disabled }: { id: string; value: string; onChange: (value: string) => void; disabled: boolean }) {
+  const options = SURFACES.includes(value) ? SURFACES : [...SURFACES, value];
+  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{options.map(surface => <SelectItem key={surface} value={surface}>{surface}</SelectItem>)}</SelectContent></Select>;
 }

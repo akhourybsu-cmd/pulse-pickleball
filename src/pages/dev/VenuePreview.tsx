@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { VenueApplicationForm } from '@/components/venue/VenueApplicationForm';
 import { EMPTY_VENUE_APPLICATION } from '@/lib/venues/venueApplications';
 import {
@@ -38,6 +38,8 @@ import {
   type VenueAdminNavItem,
 } from '@/components/community/admin/VenueAdminShell';
 import { VenueAdminOverview } from '@/components/community/admin/VenueAdminOverview';
+import { VenueHoursEditor } from '@/components/community/admin/VenueHoursSection';
+import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
 import { AdminPermissionsTab } from '@/components/community/admin/AdminPermissionsTab';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -266,7 +268,7 @@ export default function VenuePreview() {
     );
   }
 
-  if (['admin-phone', 'desktop-phone', 'event-phone', 'program-phone'].includes(previewMode ?? '')) {
+  if (['admin-phone', 'desktop-phone', 'event-phone', 'program-phone', 'hours-phone', 'closure-phone', 'ops-phone', 'ops-closed-phone'].includes(previewMode ?? '')) {
     const width = new URLSearchParams(window.location.search).get('width') === '320' ? 320 : 390;
     const destination = previewMode!.replace('-phone', '');
     return (
@@ -296,6 +298,10 @@ export default function VenuePreview() {
   if (previewMode === 'admin') {
     return <VenueAdminPagePreview />;
   }
+
+  if (previewMode === 'hours') return <VenueHoursPreview />;
+  if (previewMode === 'closure') return <VenueClosurePreview />;
+  if (previewMode === 'ops' || previewMode === 'ops-closed') return <VenueOpsReviewPreview closedInitially={previewMode === 'ops-closed'} />;
 
   if (previewMode === 'event') {
     return <VenueEventPreview />;
@@ -431,6 +437,42 @@ export default function VenuePreview() {
 
     </>
   );
+}
+
+function VenueHoursPreview() {
+  const [hours, setHours] = useState(() => parseVenueHours({ slotMinutes: 90, days: { '0': null, '1': { open: '07:30', close: '24:00' } } }));
+  const [saved, setSaved] = useState(false);
+  return <main className="mx-auto max-w-3xl space-y-4 px-3 py-6 font-sans sm:px-6">
+    <p className="text-xs text-muted-foreground">Venue settings preview · no live data is changed</p>
+    <VenueHoursEditor hours={hours} setHours={setHours} setDay={(i, day) => setHours(h => ({ ...h, days: h.days.map((d, index) => index === i ? day : d) }))} saving={false} error={null}
+      onCopy={() => { const template = hours.days.find(Boolean); if (template) setHours(h => ({ ...h, days: h.days.map(day => day ? { ...template } : null) })); }}
+      onSave={() => setSaved(true)} />
+    {saved && <p role="status">Preview saved locally only.</p>}
+  </main>;
+}
+
+function VenueClosurePreview() {
+  const [open, setOpen] = useState(true);
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRevision(r => r + 1), 3000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(7, 30, 0, 0);
+  const end = new Date(start); end.setHours(24, 0, 0, 0);
+  return <main className="p-4"><Button onClick={() => setOpen(true)}>Preview court closure</Button><Button onClick={() => setRevision(r => r + 1)}>Simulate calendar refresh {revision}</Button>
+    <CloseCourtDialog open={open} onOpenChange={setOpen} venueId="preview-only" groupId="preview-only" court={null} courts={COURTS.map(court => ({ ...court }))} dayStart={start} dayEnd={end} onClosed={() => {}} />
+  </main>;
+}
+
+function VenueOpsReviewPreview({ closedInitially }: { closedInitially: boolean }) {
+  const [day, setDay] = useState(DAY);
+  const closed = closedInitially && day.toDateString() === DAY.toDateString();
+  const pending = { id: 'hold:preview', venue_court_id: 'c4', title: 'Checkout in progress', event_format: 'checkout_hold', start_time: at(8).toISOString(), end_time: at(22).toISOString() };
+  const occupancy = [...SESSIONS, pending];
+  const grid = closed ? [] : buildDayGrid(COURTS, occupancy, day, { openHour: 8, closeHour: 22, slotMinutes: 60, now: NOW });
+  const statuses = courtStatuses(COURTS, occupancy, NOW, closed ? null : { start: at(8), end: at(22) });
+  return <OpsDashboard venueName="ELEVENO" day={day} now={NOW} isToday={day.toDateString() === DAY.toDateString()} loading={false} closed={closed} statuses={statuses} summary={daySummary(grid, statuses, NOW)} gaps={upcomingGaps(grid, NOW).slice(0, 4)} grid={grid} accent={ACCENT} canManage canCreateProgram onBack={() => {}} onSettings={() => {}} onCloseCourt={() => {}} onCreateProgram={() => {}} onPickCourt={() => {}} onDayChange={setDay} onPickSlot={() => {}} onPickSession={() => {}} onFillGap={() => {}} />;
 }
 
 function VenueEventPreview() {

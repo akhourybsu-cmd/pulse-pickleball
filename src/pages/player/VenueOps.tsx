@@ -5,7 +5,7 @@ import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueModules } from '@/hooks/useVenueModules';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
-import { parseVenueHours } from '@/lib/venues/hours';
+import { parseVenueHours, venueOperatingBounds } from '@/lib/venues/hours';
 import { useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
 import { courtStatuses, daySummary, upcomingGaps } from '@/lib/venues/ops';
 import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
@@ -66,7 +66,7 @@ export default function VenueOps() {
 
   const { role: venueRole, loading: roleLoading, error: roleError, refetch: refetchRole } = useMyVenueRole(group?.venue_id);
 
-  const { courts, sessions, grid, closed, slotMinutes, loading: dayLoading, error: dayError, refresh } =
+  const { courts, sessions, holds, grid, closed, slotMinutes, loading: dayLoading, error: dayError, refresh } =
     useVenueDay(group?.venue_id, groupId, day, hours);
 
   // Access is a venue role, not community moderation: a front-desk person can
@@ -80,15 +80,13 @@ export default function VenueOps() {
     venueRole === 'organizer' ||
     membership?.role === 'owner';
 
-  const statuses = useMemo(() => courtStatuses(courts, sessions, now), [courts, sessions, now]);
+  const operatingWindow = useMemo(() => venueOperatingBounds(hours, day), [hours, day]);
+  const occupancy = useMemo(() => [...sessions, ...holds], [sessions, holds]);
+  const statuses = useMemo(() => courtStatuses(courts, occupancy, now, operatingWindow), [courts, occupancy, now, operatingWindow]);
   const summary = useMemo(() => daySummary(grid, statuses, now), [grid, statuses, now]);
   const gaps = useMemo(() => upcomingGaps(grid, now, 60).slice(0, 4), [grid, now]);
 
-  const isToday = useMemo(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return day.getTime() === t.getTime();
-  }, [day]);
+  const isToday = day.toDateString() === now.toDateString();
 
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
@@ -114,12 +112,12 @@ export default function VenueOps() {
 
   if (dayError) return <VenueLoadState fullPage title="Court schedule couldn’t load" description="Availability has not been confirmed. Retry before making changes to the schedule." onRetry={refresh} />;
 
-  const selectedSession = sessions.find((s) => s.id === sessionId) ?? null;
+  const selectedSession = occupancy.find((s) => s.id === sessionId) ?? null;
   const selectedSessionCourt =
     courts.find((c) => c.id === selectedSession?.venue_court_id) ?? null;
   const bookCourt = courts.find((c) => c.id === bookCourtId) ?? null;
-  const dayStart = grid[0]?.slots[0]?.start ?? null;
-  const dayEnd = grid[0]?.slots[grid[0].slots.length - 1]?.end ?? null;
+  const dayStart = operatingWindow?.start ?? null;
+  const dayEnd = operatingWindow?.end ?? null;
   const bookingEnd = availableBookingEnd(grid, bookCourtId, bookStart);
   const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
     if (modules.booking) {

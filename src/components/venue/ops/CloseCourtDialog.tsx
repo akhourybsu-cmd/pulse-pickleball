@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { formatSlotTime, type Court } from '@/lib/venues/availability';
+import { closureWindow, defaultClosureTimes } from '@/lib/venues/closures';
+import { getErrorCode, getErrorMessage } from '@/lib/getErrorMessage';
 
 /**
  * Take a court out of play.
@@ -63,107 +65,90 @@ export function CloseCourtDialog({
   const [reason, setReason] = useState(REASONS[0]);
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const initialized = useRef(false);
+  const submitting = useRef(false);
+  const activeCourts = courts.filter(c => c.is_active !== false);
 
   useEffect(() => {
-    if (!open) return;
-    setCourtId(court?.id ?? courts[0]?.id ?? '');
+    if (!open) { initialized.current = false; return; }
+    if (initialized.current || !dayStart || !dayEnd || !activeCourts.length) return;
+    initialized.current = true;
+    setCourtId(court?.is_active !== false && court ? court.id : activeCourts[0].id);
     setReason(REASONS[0]);
-
-    // Default to the rest of the day from the next whole hour — the shape a
-    // closure almost always takes when something has just gone wrong.
-    const start = dayStart ? new Date(dayStart) : new Date();
-    const now = new Date();
-    const from = now > start ? now : start;
-    from.setMinutes(0, 0, 0);
-    if (from < now) from.setHours(from.getHours() + 1);
-
-    setFromTime(toLocalTimeValue(from));
-    setToTime(dayEnd ? toLocalTimeValue(dayEnd) : '22:00');
+    setError(null);
+    const defaults = defaultClosureTimes(dayStart, dayEnd, new Date());
+    setFromTime(defaults?.from ?? '');
+    setToTime(defaults?.to ?? '');
+    // Polling/realtime can replace court and Date objects. Initialize once per
+    // opening so a background refresh never destroys an in-progress draft.
   }, [open, court, courts, dayStart, dayEnd]);
 
+  const validation = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date());
+
   const submit = async () => {
-    if (!courtId || !dayStart) return;
-
-    const start = fromLocalTimeValue(dayStart, fromTime);
-    const end = fromLocalTimeValue(dayStart, toTime);
-
-    if (!start || !end || end <= start) {
-      toast({
-        title: 'Check the times',
-        description: 'The end of a closure has to be after its start.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    if (submitting.current || !activeCourts.some(c => c.id === courtId)) return;
+    const window = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date());
+    if (window.error) { setError(window.error); return; }
+    const { start, end } = window;
+    submitting.current = true;
+    setError(null);
     setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth.user?.id;
-    if (!userId) {
-      toast({ title: 'Sign in required', variant: 'destructive' });
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from('group_events').insert({
-      group_id: groupId,
-      venue_id: venueId,
-      venue_court_id: courtId,
-      title: reason,
-      event_format: 'maintenance',
-      location_type: 'venue',
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      created_by: userId,
-    });
-
-    setSaving(false);
-
-    if (error) {
-      // The court already has something on it for part of that window. Closing
-      // over a booking would strand whoever holds it, so this refuses rather
-      // than silently displacing them.
-      if (error.code === '23P01') {
-        toast({
-          title: 'Something is already on that court',
-          description:
-            'Cancel the sessions in that window first, then close the court.',
-          variant: 'destructive',
-        });
-        return;
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth.user?.id;
+      if (!userId) {
+        throw new Error('Sign in again before closing a court.');
       }
-      toast({ title: 'Could not close court', description: error.message, variant: 'destructive' });
-      return;
-    }
 
-    toast({
-      title: 'Court closed',
-      description: `${reason} · ${formatSlotTime(start)}–${formatSlotTime(end)}`,
-    });
-    onClosed();
-    onOpenChange(false);
+      const { data, error } = await supabase.from('group_events').insert({
+        group_id: groupId,
+        venue_id: venueId,
+        venue_court_id: courtId,
+        title: reason,
+        event_format: 'maintenance',
+        location_type: 'venue',
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        created_by: userId,
+      }).select('id').single();
+      if (error) throw error;
+      if (!data) throw new Error('The closure was not confirmed. Refresh the schedule before trying again.');
+
+      toast({
+        title: 'Court closed',
+        description: `${reason} · ${formatSlotTime(start)}–${formatSlotTime(end)}`,
+      });
+      onClosed();
+      onOpenChange(false);
+    } catch (cause) {
+      setError(getErrorCode(cause) === '23P01'
+        ? 'This court already has activity in that window. Review the affected sessions before closing it; no bookings were changed.'
+        : getErrorMessage(cause, 'Could not close the court. Your draft has been kept.'));
+    } finally { submitting.current = false; setSaving(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+    <Dialog open={open} onOpenChange={next => { if (!saving) onOpenChange(next); }}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Close a court</DialogTitle>
+          <DialogTitle className="font-sans">Close a court</DialogTitle>
           <DialogDescription>
-            The court stops being bookable for this window. Existing bookings are not
-            affected.
+            Block time for maintenance or other work. Closures cannot overlap existing bookings and do not cancel them.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <fieldset disabled={saving} className="min-w-0 space-y-4">
+          {dayStart && dayEnd && <p className="rounded-xl bg-muted/40 p-3 text-sm leading-6">{dayStart.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · {formatSlotTime(dayStart)}–{formatSlotTime(dayEnd)}</p>}
           <div className="space-y-2">
             <Label htmlFor="close-court">Court</Label>
-            <Select value={courtId} onValueChange={setCourtId}>
-              <SelectTrigger id="close-court">
+            <Select disabled={saving} value={courtId} onValueChange={setCourtId}>
+              <SelectTrigger id="close-court" className="h-11">
                 <SelectValue placeholder="Pick a court" />
               </SelectTrigger>
               <SelectContent>
-                {courts.map((c) => (
+                {activeCourts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name ?? `Court ${c.court_number}`}
                   </SelectItem>
@@ -174,8 +159,8 @@ export function CloseCourtDialog({
 
           <div className="space-y-2">
             <Label htmlFor="close-reason">Reason</Label>
-            <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger id="close-reason">
+            <Select disabled={saving} value={reason} onValueChange={setReason}>
+              <SelectTrigger id="close-reason" className="h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -192,32 +177,36 @@ export function CloseCourtDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="close-from">From</Label>
               <Input
                 id="close-from"
                 type="time"
+                className="h-11 min-w-0 px-2"
                 value={fromTime}
                 onChange={(e) => setFromTime(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="close-to">Until</Label>
               <Input
                 id="close-to"
                 type="time"
+                className="h-11 min-w-0 px-2"
                 value={toTime}
                 onChange={(e) => setToTime(e.target.value)}
               />
             </div>
           </div>
-        </div>
+          {toTime === '00:00' && <p className="text-xs text-muted-foreground">Until midnight · end of this day</p>}
+        </fieldset>
+        {(error || validation.error || !activeCourts.length) && <p role="alert" className="text-sm text-destructive">{error || (!activeCourts.length ? 'No active courts are available to close.' : validation.error)}</p>}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2">
+          <Button className="min-h-11" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving || !courtId}>
+          <Button className="min-h-11" onClick={submit} disabled={saving || !!validation.error || !activeCourts.some(c => c.id === courtId)}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Close court
           </Button>
@@ -225,29 +214,4 @@ export function CloseCourtDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Date → "HH:MM" for a native time input, in local time. */
-function toLocalTimeValue(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-/**
- * "HH:MM" back onto a given day, in local time.
- *
- * Built by setting local hours on the day rather than by parsing a combined
- * string, so a closure on a daylight-saving day lands on the wall-clock time
- * the operator typed.
- */
-function fromLocalTimeValue(day: Date, value: string): Date | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours > 24 || minutes > 59) return null;
-
-  const d = new Date(day);
-  d.setHours(0, 0, 0, 0);
-  d.setMinutes(hours * 60 + minutes);
-  return d;
 }

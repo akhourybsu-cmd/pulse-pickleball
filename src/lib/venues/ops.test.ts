@@ -5,6 +5,7 @@ import {
   daySummary,
   formatDuration,
   isBlock,
+  isCheckoutHold,
   isProgramming,
   isReservationSession,
   upcomingGaps,
@@ -58,11 +59,30 @@ describe('session classification', () => {
     expect(isProgramming(block)).toBe(false);
     // Nor must a private court hold.
     expect(isProgramming(res)).toBe(false);
+    expect(isProgramming({ event_format: 'program_hold' })).toBe(false);
+    expect(isProgramming({ event_format: 'checkout_hold' })).toBe(false);
+    expect(isCheckoutHold({ id: 'hold:pending-order' })).toBe(true);
   });
 });
 
 describe('courtStatuses', () => {
   const courts = [court('c2', 2), court('c1', 1)];
+
+  it('distinguishes a pending checkout from play or free inventory', () => {
+    const statuses = courtStatuses(courts, [session('hold:pending', 'c1', 9, 10, 'checkout_hold')], at(9, 30));
+    expect(statuses[0].state).toBe('held');
+    expect(daySummary([], statuses, at(9, 30))).toMatchObject({ held: 1, inPlay: 0, open: 1 });
+  });
+
+  it('does not offer free courts before opening or on a closed day', () => {
+    expect(courtStatuses(courts, [], at(7), { start: at(8), end: at(22) })[0]).toMatchObject({ state: 'closed', outsideHours: true });
+    expect(courtStatuses(courts, [], at(9), null)[0].state).toBe('closed');
+    expect(courtStatuses(courts, [], at(22), { start: at(8), end: at(22) })[0].state).toBe('closed');
+  });
+
+  it('keeps an actual live session visible after hours change', () => {
+    expect(courtStatuses(courts, [session('existing', 'c1', 9, 10)], at(9, 30), null)[0].state).toBe('in_play');
+  });
 
   it('orders courts by number regardless of input order', () => {
     expect(courtStatuses(courts, [], at(9)).map((s) => s.court.id)).toEqual(['c1', 'c2']);
@@ -164,6 +184,18 @@ describe('utilization', () => {
 });
 
 describe('upcomingGaps', () => {
+  it('starts at a bookable boundary, not part-way through an elapsed block', () => {
+    const grid = buildDayGrid([court('c1', 1)], [], DAY, { ...GRID, now: at(9, 15) });
+    const [gap] = upcomingGaps(grid, at(9, 15), 30);
+    expect(gap.start).toEqual(at(10));
+    expect(gap.minutes).toBe(120);
+    expect(grid[0].slots.some(slot => slot.bookable && slot.start.getTime() === gap.start.getTime())).toBe(true);
+  });
+
+  it('does not expose held slots as gaps', () => {
+    const grid = buildDayGrid([court('c1', 1)], [session('hold:x', 'c1', 8, 11, 'checkout_hold')], DAY, GRID);
+    expect(upcomingGaps(grid, at(8))[0].start).toEqual(at(11));
+  });
   it('finds sellable time and sorts longest first', () => {
     const grid = buildDayGrid(
       [court('c1', 1), court('c2', 2)],

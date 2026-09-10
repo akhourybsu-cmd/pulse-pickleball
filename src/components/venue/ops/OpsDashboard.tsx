@@ -89,7 +89,7 @@ export function OpsDashboard({
           the right. A chevron rather than a filled circle button — going back
           is not an action worth the visual weight of a control. */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-4">
+        <div className="mx-auto flex min-h-[calc(3.5rem+env(safe-area-inset-top))] max-w-[1400px] items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-4">
           <button
             type="button"
             onClick={onBack}
@@ -129,7 +129,9 @@ export function OpsDashboard({
 
           <Button
             size="sm"
-            className="h-9 shrink-0 rounded-lg px-3"
+            className="h-11 min-w-11 shrink-0 rounded-lg px-3"
+            aria-label={canCreateProgram ? 'New program' : 'Close court'}
+            disabled={loading || (!canCreateProgram && (closed || !grid.length))}
             onClick={canCreateProgram ? onCreateProgram : onCloseCourt}
           >
             {canCreateProgram ? (
@@ -150,25 +152,25 @@ export function OpsDashboard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
+                className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground"
                 aria-label="More actions"
               >
                 <MoreHorizontal className="h-[18px] w-[18px]" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={onCloseCourt}>
+              <DropdownMenuItem disabled={loading || closed || !grid.length} className="min-h-11" onClick={onCloseCourt}>
                 <Wrench className="mr-2 h-4 w-4" />
                 Close a court
               </DropdownMenuItem>
               {canCreateProgram && (
-                <DropdownMenuItem onClick={onCreateProgram}>
+                <DropdownMenuItem disabled={loading} className="min-h-11" onClick={onCreateProgram}>
                   <CalendarPlus className="mr-2 h-4 w-4" />
                   New program
                 </DropdownMenuItem>
               )}
               {canManage && (
-                <DropdownMenuItem onClick={onSettings}>
+                <DropdownMenuItem className="min-h-11" onClick={onSettings}>
                   <Settings className="mr-2 h-4 w-4" />
                   Venue settings
                 </DropdownMenuItem>
@@ -182,7 +184,7 @@ export function OpsDashboard({
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_336px] lg:items-start lg:gap-6">
           {/* Main column: what an operator manipulates. */}
           <div className="min-w-0 space-y-7">
-            <Section
+            {isToday && <Section
               title={isToday ? 'On the floor' : 'Courts'}
               hint={
                 isToday
@@ -199,24 +201,17 @@ export function OpsDashboard({
               ) : (
                 <CourtStatusBoard statuses={statuses} accent={accent} onPickCourt={onPickCourt} />
               )}
-            </Section>
+            </Section>}
 
             {/* The rail's content on mobile, where there is no rail. */}
             <div className="space-y-7 lg:hidden">
-              <DayPanel summary={summary} accent={accent} />
-              <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />
+              {loading ? <Skeleton className="h-40 rounded-xl" /> : <DayPanel summary={summary} accent={accent} showLive={isToday} />}
+              {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />}
             </div>
 
             <Section title="Schedule">
-              {closed ? (
-                <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
-                  <p className="text-sm font-semibold">Closed on this day</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Change opening hours in venue settings.
-                  </p>
-                </div>
-              ) : (
                 <VenueBookingGrid
+                  closed={closed}
                   grid={grid}
                   day={day}
                   loading={loading}
@@ -226,15 +221,14 @@ export function OpsDashboard({
                   onPickSlot={onPickSlot}
                   onPickSession={onPickSession}
                 />
-              )}
             </Section>
           </div>
 
           {/* Rail: what an operator glances at. Sticky, because it is reference
               material for the schedule you are scrolling beside it. */}
           <aside className="hidden lg:sticky lg:top-[4.5rem] lg:block lg:space-y-7">
-            <DayPanel summary={summary} accent={accent} />
-            <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />
+            {loading ? <Skeleton className="h-40 rounded-xl" /> : <DayPanel summary={summary} accent={accent} showLive={isToday} />}
+            {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />}
           </aside>
         </div>
       </div>
@@ -242,10 +236,10 @@ export function OpsDashboard({
   );
 }
 
-function DayPanel({ summary, accent }: { summary: DaySummary; accent?: string | null }) {
+function DayPanel({ summary, accent, showLive }: { summary: DaySummary; accent?: string | null; showLive: boolean }) {
   return (
     <Section title="The day">
-      <OpsStatRail summary={summary} accent={accent} />
+      <OpsStatRail summary={summary} accent={accent} showLive={showLive} />
     </Section>
   );
 }
@@ -264,7 +258,7 @@ function GapsPanel({
   if (gaps.length === 0) return null;
 
   return (
-    <Section title="Sellable gaps" hint={`${formatDuration(summary.openMinutes)} open`}>
+    <Section title="Available gaps" hint={`${formatDuration(summary.openMinutes)} open`}>
       {/* Hairline-divided rows in one panel, not a stack of bordered cards.
           Four cards in a column read as four separate things; this reads as
           one list, which is what it is. */}
@@ -297,7 +291,7 @@ function GapsPanel({
         ))}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Longest unbooked stretches left today.
+        Longest bookable stretches on the selected date.
       </p>
     </Section>
   );

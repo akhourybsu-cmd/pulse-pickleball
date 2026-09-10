@@ -14,7 +14,7 @@ import { intervalOf, overlaps, type Court, type CourtColumn, type Reservation } 
  * implementations that drift apart.
  */
 
-export type CourtState = 'in_play' | 'open' | 'closed';
+export type CourtState = 'in_play' | 'open' | 'closed' | 'held';
 
 export interface OpsSession extends Reservation {
   title?: string | null;
@@ -34,6 +34,7 @@ export interface CourtStatus {
   minutesLeft: number | null;
   /** Whole minutes until the next session starts. Null when nothing is next. */
   minutesUntilNext: number | null;
+  outsideHours?: boolean;
 }
 
 export function isBlock(s: { event_format?: string | null }): boolean {
@@ -44,9 +45,13 @@ export function isReservationSession(s: { event_format?: string | null }): boole
   return s.event_format === 'reservation';
 }
 
+export function isCheckoutHold(s: { id?: string; event_format?: string | null }): boolean {
+  return s.event_format === 'checkout_hold' || !!s.id?.startsWith('hold:');
+}
+
 /** Programming is anything people can actually join. */
 export function isProgramming(s: { event_format?: string | null }): boolean {
-  return !isBlock(s) && !isReservationSession(s);
+  return !isBlock(s) && !isReservationSession(s) && !isCheckoutHold(s) && s.event_format !== 'program_hold';
 }
 
 function minutesBetween(from: Date, to: Date): number {
@@ -64,6 +69,7 @@ export function courtStatuses(
   courts: Court[],
   sessions: OpsSession[],
   now: Date,
+  operatingWindow?: { start: Date; end: Date } | null,
 ): CourtStatus[] {
   const ordered = courts.slice().sort((a, b) => {
     const an = a.court_number ?? Number.MAX_SAFE_INTEGER;
@@ -83,13 +89,14 @@ export function courtStatuses(
     const next = onCourt.find((x) => x.interval.start > now);
 
     const inactive = court.is_active === false;
+    const outsideHours = operatingWindow !== undefined && (!operatingWindow || now < operatingWindow.start || now >= operatingWindow.end);
     const state: CourtState = inactive
       ? 'closed'
       : live
         ? isBlock(live.session)
           ? 'closed'
-          : 'in_play'
-        : 'open';
+          : isCheckoutHold(live.session) ? 'held' : 'in_play'
+        : outsideHours ? 'closed' : 'open';
 
     const progress = live
       ? Math.min(
@@ -110,6 +117,7 @@ export function courtStatuses(
       progress,
       minutesLeft: live ? minutesBetween(now, live.interval.end) : null,
       minutesUntilNext: next ? minutesBetween(now, next.interval.start) : null,
+      outsideHours,
     };
   });
 }
@@ -175,13 +183,14 @@ export function upcomingGaps(
     let run: { start: Date; end: Date } | null = null;
 
     for (const slot of column.slots) {
-      const free = !slot.reservation && slot.end > now;
+      // Match the booking picker: a partly elapsed block cannot be booked.
+      const free = column.court.is_active !== false && slot.bookable && !slot.reservation && slot.start >= now;
       if (free) {
         if (run && run.end.getTime() === slot.start.getTime()) {
           run.end = slot.end;
         } else {
           if (run) gaps.push(toGap(column.court, run));
-          run = { start: slot.start < now ? now : slot.start, end: slot.end };
+          run = { start: slot.start, end: slot.end };
         }
       } else if (run) {
         gaps.push(toGap(column.court, run));
@@ -209,6 +218,7 @@ export interface DaySummary {
   utilization: Utilization;
   /** Courts with something live on them right now. */
   inPlay: number;
+  held: number;
   /** Active courts with nothing on them right now. */
   open: number;
   /** Courts out of service or blocked. */
@@ -229,6 +239,7 @@ export function daySummary(
   return {
     utilization: utilization(grid),
     inPlay: statuses.filter((s) => s.state === 'in_play').length,
+    held: statuses.filter((s) => s.state === 'held').length,
     open: statuses.filter((s) => s.state === 'open').length,
     closed: statuses.filter((s) => s.state === 'closed').length,
     upcoming: statuses.filter((s) => s.next).length,

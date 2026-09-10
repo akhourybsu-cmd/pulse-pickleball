@@ -78,6 +78,28 @@ export function formatTime(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/** Native time inputs require 00:00, while storage uses 24:00 for closing. */
+export function timeInputValue(minutes: number): string {
+  return formatTime(minutes === 1440 ? 0 : minutes);
+}
+
+export function closingTimeMinutes(value: string): number | null {
+  const minutes = parseTime(value);
+  return minutes === 0 ? 1440 : minutes;
+}
+
+export function validateVenueHours(hours: VenueHours): string | null {
+  if (!SLOT_CHOICES.includes(hours.slotMinutes as never) || hours.days.length !== 7) return 'Choose a valid weekly schedule and booking block.';
+  for (const [index, day] of hours.days.entries()) {
+    if (!day) continue;
+    if (![day.openMinutes, day.closeMinutes].every(Number.isInteger) || day.openMinutes < 0 || day.closeMinutes > 1440 || day.closeMinutes <= day.openMinutes) {
+      return `${DAY_NAMES[index]}: closing time must be after opening time. Use midnight for the end of the day.`;
+    }
+    if (day.closeMinutes - day.openMinutes < hours.slotMinutes) return `${DAY_NAMES[index]}: opening hours must fit at least one booking block.`;
+  }
+  return null;
+}
+
 /**
  * Read stored hours, tolerating anything.
  *
@@ -165,6 +187,17 @@ export function gridOptionsFor(
 /** Whether the venue opens at all on this date. */
 export function isOpenOn(hours: VenueHours, day: Date): boolean {
   return hours.days[day.getDay()] !== null;
+}
+
+/** Full operating window, including any final partial booking block. */
+export function venueOperatingBounds(hours: VenueHours, day: Date): { start: Date; end: Date } | null {
+  const window = hours.days[day.getDay()];
+  if (!window) return null;
+  const start = new Date(day);
+  start.setHours(0, window.openMinutes, 0, 0);
+  const end = new Date(day);
+  end.setHours(0, window.closeMinutes, 0, 0);
+  return { start, end };
 }
 
 /** "6:00 AM – 10:00 PM" / "Closed", for the About panel. */

@@ -1,4 +1,4 @@
-import { Wrench, Play, CircleDot } from 'lucide-react';
+import { Wrench, Play, CircleDot, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import { formatDuration, type CourtStatus } from '@/lib/venues/ops';
@@ -35,7 +35,7 @@ export function CourtStatusBoard({ statuses, accent, onPickCourt }: CourtStatusB
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2 xl:grid-cols-4">
       {statuses.map((status) => (
         <CourtCard
           key={status.court.id}
@@ -60,6 +60,7 @@ function CourtCard({
   const { court, state, current, next, progress, minutesLeft, minutesUntilNext } = status;
   const live = state === 'in_play';
   const closed = state === 'closed';
+  const held = state === 'held';
 
   return (
     <button
@@ -69,7 +70,8 @@ function CourtCard({
         'group relative overflow-hidden rounded-xl border bg-card p-3 text-left transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         live && 'border-primary/40',
-        !live && !closed && 'border-border hover:border-primary/30',
+        !live && !closed && !held && 'border-border hover:border-primary/30',
+        held && 'border-amber-500/40 bg-amber-500/5',
         // Dashed, not just dimmed: a muted fill nearly vanishes against a dark
         // card, so an out-of-service court read the same as an open one.
         closed && 'border-dashed border-muted-foreground/40 bg-muted/40',
@@ -82,13 +84,14 @@ function CourtCard({
         className={cn(
           'absolute inset-y-0 left-0 w-[3px]',
           live && 'bg-primary',
-          !live && !closed && 'bg-emerald-500/70',
+          !live && !closed && !held && 'bg-emerald-500/70',
+          held && 'bg-amber-500/70',
           closed && 'bg-muted-foreground/50',
         )}
         style={live && accent ? { backgroundColor: accent } : undefined}
       />
 
-      <div className="flex items-start justify-between gap-2 pl-1.5">
+      <div className="flex flex-wrap items-start justify-between gap-2 pl-1.5">
         <span className="truncate text-sm font-bold">
           {court.name ?? `Court ${court.court_number}`}
         </span>
@@ -96,7 +99,7 @@ function CourtCard({
       </div>
 
       <div className="mt-2 min-h-[2.75rem] pl-1.5">
-        {live && current ? (
+        {held ? <><p className="text-xs font-medium">Checkout in progress</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Awaiting payment confirmation</p></> : live && current ? (
           <>
             <p className="line-clamp-1 text-xs font-medium text-foreground">
               {current.title || 'In play'}
@@ -109,9 +112,9 @@ function CourtCard({
         ) : closed ? (
           <>
             <p className="truncate text-xs font-medium text-foreground">
-              {current?.title || 'Out of service'}
+              {current?.title || (court.is_active === false ? 'Out of service' : status.outsideHours ? 'Outside opening hours' : 'Out of service')}
             </p>
-            {minutesLeft !== null && (
+            {minutesLeft !== null && court.is_active !== false && (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Back in {formatDuration(minutesLeft)}
               </p>
@@ -152,6 +155,7 @@ function StatePill({ state }: { state: CourtStatus['state'] }) {
     in_play: { label: 'In play', icon: Play, className: 'text-primary' },
     open: { label: 'Open', icon: CircleDot, className: 'text-emerald-600 dark:text-emerald-400' },
     closed: { label: 'Closed', icon: Wrench, className: 'text-muted-foreground' },
+    held: { label: 'Held', icon: Clock3, className: 'text-amber-700 dark:text-amber-400' },
   } as const;
 
   const { label, icon: Icon, className } = map[state];

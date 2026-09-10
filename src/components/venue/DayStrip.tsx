@@ -49,14 +49,20 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing }: DaySt
   // Keep the chosen day in view when it changes from outside (a gap tapped on
   // the ops board, say), without yanking the whole page.
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const strip = scroller.current;
+    const active = activeRef.current;
+    if (!strip || !active) return;
+    // scrollIntoView scrolls every ancestor, including the page. Move only
+    // this horizontal strip so initial render never jumps to the calendar.
+    const offset = active.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollTo({ left: strip.scrollLeft + offset - (strip.clientWidth - active.offsetWidth) / 2 });
   }, [value]);
 
   return (
     <div className="-mx-4 flex items-end gap-3 border-b border-border px-4">
       <div
         ref={scroller}
-        className="min-w-0 flex-1 overflow-x-auto"
+        className="scrollbar-hide min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
         role="tablist"
         aria-label="Choose a day"
       >
@@ -81,7 +87,7 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing }: DaySt
               aria-selected={active}
               onClick={() => onChange(day)}
               className={cn(
-                'relative shrink-0 px-3 py-2.5 text-sm transition-colors',
+                'relative min-h-11 shrink-0 px-3 py-2.5 text-sm transition-colors',
                 active ? 'font-bold text-foreground' : 'font-medium text-muted-foreground hover:text-foreground',
               )}
             >
@@ -92,7 +98,7 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing }: DaySt
               <span
                 aria-hidden
                 className={cn(
-                  'absolute inset-x-2 -bottom-px h-[2px] rounded-full transition-opacity',
+                  'absolute inset-x-2 bottom-0 h-[2px] rounded-full transition-opacity',
                   active ? 'bg-primary opacity-100' : 'opacity-0',
                 )}
                 style={active && accent ? { backgroundColor: accent } : undefined}

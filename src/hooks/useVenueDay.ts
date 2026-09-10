@@ -116,7 +116,7 @@ export function useVenueDay(
       });
       const holdsResult = await (supabase as any).rpc('venue_checkout_holds', { p_venue: venueId!, p_from: from, p_to: to });
       if (holdsResult.error) throw holdsResult.error;
-      const holds = (holdsResult.data ?? []) as Reservation[];
+      const holds = ((holdsResult.data ?? []) as Reservation[]).map(hold => ({ ...hold, event_format: 'checkout_hold' }));
 
       // Sign-up counts for the programming only. Reservations and closures
       // have no spots to run out of, so counting them would mean a round trip
@@ -152,6 +152,7 @@ export function useVenueDay(
 
   const courts = query.data?.courts ?? [];
   const sessions = useMemo(() => query.data?.sessions ?? [], [query.data]);
+  const holds = useMemo(() => query.data?.holds ?? [], [query.data]);
   const going = useMemo(() => query.data?.going ?? {}, [query.data]);
 
   // Null on a day the venue is shut. An empty grid and a closed day look the
@@ -205,6 +206,7 @@ export function useVenueDay(
   return {
     courts,
     sessions,
+    holds,
     going,
     programming,
     grid,

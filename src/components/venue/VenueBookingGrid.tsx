@@ -17,6 +17,7 @@ import {
   type SlotSelection,
 } from '@/lib/venues/availability';
 import { DayStrip } from './DayStrip';
+import { formatDuration } from '@/lib/venues/ops';
 
 /**
  * The court grid.
@@ -38,6 +39,7 @@ interface VenueBookingGridProps {
   grid: CourtColumn[];
   day: Date;
   loading: boolean;
+  closed?: boolean;
   canBook: boolean;
   accent?: string | null;
   onDayChange: (day: Date) => void;
@@ -56,6 +58,7 @@ export function VenueBookingGrid({
   grid,
   day,
   loading,
+  closed = false,
   canBook,
   accent,
   onDayChange,
@@ -116,10 +119,10 @@ export function VenueBookingGrid({
         }
       />
 
-      {!loading && !canBook && (
+      {!loading && !closed && !canBook && (
         <p className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <Lock className="h-3.5 w-3.5 shrink-0" />
-          Only staff can book courts at this venue. You can still see what's on.
+          Booking isn’t available to your account here. You can still view the schedule.
         </p>
       )}
 
@@ -129,11 +132,16 @@ export function VenueBookingGrid({
             <Skeleton key={i} className="h-12 w-full rounded-lg" />
           ))}
         </div>
+      ) : closed ? (
+        <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center">
+          <p className="text-sm font-semibold">Closed on this day</p>
+          <p className="mt-1 text-sm text-muted-foreground">Choose another date to see available court times.</p>
+        </div>
       ) : grid.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
-          <p className="text-sm font-semibold">No courts yet</p>
+          <p className="text-sm font-semibold">No active courts available</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add courts in venue settings and they'll appear here to book.
+            Courts will appear when the venue makes them available for booking.
           </p>
         </div>
       ) : effectiveMode === 'times' ? (
@@ -174,9 +182,7 @@ export function VenueBookingGrid({
             </p>
             <p className="truncate text-xs tabular-nums text-muted-foreground">
               {formatSlotTime(range.start)}–{formatSlotTime(range.end)} ·{' '}
-              {range.minutes >= 60
-                ? `${range.minutes / 60}h${range.minutes % 60 ? ` ${range.minutes % 60}m` : ''}`
-                : `${range.minutes}m`}
+              {formatDuration(range.minutes)}
             </p>
           </div>
           <Button

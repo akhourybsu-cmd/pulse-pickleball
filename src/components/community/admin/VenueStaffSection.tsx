@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Crown, Loader2, ShieldCheck, UserPlus, UsersRound, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { GroupMemberWithProfile } from '@/hooks/useGroupMembers';
 import type { VenueRole } from '@/components/venue/VenueStaffContext';
+import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface VenueStaffRow {
   id: string;
@@ -87,47 +89,52 @@ export function VenueStaffSection({
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<VenueRole>('staff');
   const [removeTarget, setRemoveTarget] = useState<VenueStaffRow | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const actionLock = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: rows, error } = await supabase
-      .from('venue_staff')
-      .select('id, user_id, role, accepted_at')
-      .eq('venue_id', venueId)
-      .neq('is_active', false)
-      .order('created_at', { ascending: true });
+    setLoadError(false);
+    try {
+      const { data: rows, error } = await supabase
+        .from('venue_staff')
+        .select('id, user_id, role, accepted_at')
+        .eq('venue_id', venueId)
+        .not('is_active', 'is', false)
+        .or('status.is.null,status.eq.active')
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      setLoading(false);
-      toast({ title: 'Could not load venue staff', description: error.message, variant: 'destructive' });
-      return;
-    }
+      if (error) throw error;
 
-    const userIds = (rows ?? []).map((row) => row.user_id);
-    const { data: profiles } = userIds.length
-      ? await supabase
-          .from('profiles_public')
-          .select('id, display_name, full_name, avatar_url')
-          .in('id', userIds)
-      : { data: [] };
-    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const userIds = (rows ?? []).map((row) => row.user_id);
+      const { data: profiles, error: profileError } = userIds.length
+        ? await supabase
+            .from('profiles_public')
+            .select('id, display_name, full_name, avatar_url')
+            .in('id', userIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
 
-    setStaff(
-      (rows ?? []).map((row) => {
-        const profile = profileById.get(row.user_id);
-        return {
-          ...row,
-          role: row.role as VenueRole,
-          profile: {
-            display_name: profile?.display_name ?? null,
-            full_name: profile?.full_name ?? 'Venue teammate',
-            avatar_url: profile?.avatar_url ?? null,
-          },
-        };
-      }),
-    );
-    setLoading(false);
-  }, [toast, venueId]);
+      setStaff(
+        (rows ?? []).map((row) => {
+          const profile = profileById.get(row.user_id);
+          return {
+            ...row,
+            role: row.role as VenueRole,
+            profile: {
+              display_name: profile?.display_name ?? null,
+              full_name: profile?.full_name ?? 'Venue teammate',
+              avatar_url: profile?.avatar_url ?? null,
+            },
+          };
+        }),
+      );
+    } catch {
+      setLoadError(true);
+    } finally { setLoading(false); }
+  }, [venueId]);
 
   useEffect(() => {
     void load();
@@ -135,7 +142,7 @@ export function VenueStaffSection({
 
   const staffIds = useMemo(() => new Set(staff.map((row) => row.user_id)), [staff]);
   const candidates = useMemo(
-    () => members.filter((member) => !staffIds.has(member.user_id)),
+    () => members.filter((member) => member.status === 'active' && !staffIds.has(member.user_id)),
     [members, staffIds],
   );
   const assignableRoles: VenueRole[] = canAssignManagers
@@ -143,26 +150,31 @@ export function VenueStaffSection({
     : ['organizer', 'staff'];
 
   const runAction = async (userId: string, action: 'upsert' | 'remove', role: VenueRole) => {
+    if (actionLock.current || loading || loadError) return false;
+    actionLock.current = true;
+    setActionError(null);
     setSavingUserId(userId);
-    const { error } = await supabase.rpc('manage_venue_staff' as never, {
-      p_venue_id: venueId,
-      p_user_id: userId,
-      p_action: action,
-      p_role: role,
-    } as never);
-    setSavingUserId(null);
+    try {
+      const { data, error } = await supabase.rpc('manage_venue_staff' as never, {
+        p_venue_id: venueId,
+        p_user_id: userId,
+        p_action: action,
+        p_role: role,
+      } as never);
+      if (error) throw error;
+      if (!data) throw new Error('The staff change was not confirmed. Reload the team before trying again.');
 
-    if (error) {
-      toast({ title: 'Staff access was not changed', description: error.message, variant: 'destructive' });
+      await Promise.all([
+        load(),
+        queryClient.invalidateQueries({ queryKey: ['venue-staff', venueId] }),
+        queryClient.invalidateQueries({ queryKey: ['my-venue-role', venueId] }),
+        queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] }),
+      ]);
+      return true;
+    } catch (error) {
+      setActionError(getErrorMessage(error, 'Staff access could not be changed. Try again.'));
       return false;
-    }
-
-    await Promise.all([
-      load(),
-      queryClient.invalidateQueries({ queryKey: ['venue-staff', venueId] }),
-      queryClient.invalidateQueries({ queryKey: ['my-venue-role', venueId] }),
-    ]);
-    return true;
+    } finally { actionLock.current = false; setSavingUserId(null); }
   };
 
   const addStaff = async () => {
@@ -189,7 +201,7 @@ export function VenueStaffSection({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 font-sans [&_h2]:font-sans [&_h3]:font-sans">
       <section className="rounded-[22px] border border-border/70 bg-card p-5 shadow-[0_14px_42px_-34px_hsl(var(--foreground)/0.4)] sm:p-6">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -204,12 +216,14 @@ export function VenueStaffSection({
         </div>
       </section>
 
+      {actionError && !removeTarget && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{actionError}</p>}
+
       <Card className="overflow-hidden border-border/70 shadow-[0_12px_36px_-32px_hsl(var(--foreground)/0.35)]">
         <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
           <CardTitle className="flex items-center gap-2 text-base">
             <UsersRound className="h-4 w-4 text-primary" />
             Team
-            <Badge variant="secondary" className="ml-1 tabular-nums">{staff.length}</Badge>
+            <Badge variant="secondary" className="ml-1 tabular-nums">{loading || loadError ? '—' : staff.length}</Badge>
           </CardTitle>
           <CardDescription>People currently authorized to represent and operate this venue.</CardDescription>
         </CardHeader>
@@ -218,7 +232,7 @@ export function VenueStaffSection({
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading venue staff" />
             </div>
-          ) : (
+          ) : loadError ? <VenueLoadState title="Staff couldn’t load" description="Your team’s access has not changed. Load the staff list before editing roles." onRetry={() => void load()} /> : !staff.length ? <p className="p-5 text-sm text-muted-foreground">No active teammates yet. Add a community member below.</p> : (
             <div className="divide-y divide-border/60">
               {staff.map((row) => {
                 const name = row.profile.display_name || row.profile.full_name;
@@ -241,13 +255,13 @@ export function VenueStaffSection({
                             <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">You</span>
                           )}
                         </div>
-                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
                           {ROLE_DETAILS[row.role].description}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:pl-0">
                       {isOwner ? (
                         <Badge variant="outline" className="h-9 gap-1.5 rounded-lg px-3">
                           <Crown className="h-3.5 w-3.5 text-amber-500" /> Owner
@@ -256,9 +270,9 @@ export function VenueStaffSection({
                         <Select
                           value={row.role}
                           onValueChange={(role) => void updateRole(row, role as VenueRole)}
-                          disabled={savingUserId === row.user_id}
+                          disabled={!!savingUserId}
                         >
-                          <SelectTrigger className="h-9 w-[142px] rounded-lg">
+                          <SelectTrigger aria-label={`Venue role for ${name}`} className="h-11 w-[142px] rounded-lg">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -277,8 +291,9 @@ export function VenueStaffSection({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => setRemoveTarget(row)}
+                          className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive"
+                          disabled={!!savingUserId}
+                          onClick={() => { setActionError(null); setRemoveTarget(row); }}
                           aria-label={`Remove ${name} from venue staff`}
                         >
                           {savingUserId === row.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
@@ -303,11 +318,11 @@ export function VenueStaffSection({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px_auto] lg:items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="venue-staff-person">Community member</label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger id="venue-staff-person" className="w-full">
+              <Select disabled={loading || loadError || !!savingUserId || !candidates.length} value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger id="venue-staff-person" className="h-11 w-full">
                   <SelectValue placeholder={candidates.length ? 'Choose a member' : 'Everyone is already assigned'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -321,8 +336,8 @@ export function VenueStaffSection({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="venue-staff-role">Venue role</label>
-              <Select value={selectedRole} onValueChange={(role) => setSelectedRole(role as VenueRole)}>
-                <SelectTrigger id="venue-staff-role" className="w-full"><SelectValue /></SelectTrigger>
+              <Select disabled={loading || loadError || !!savingUserId} value={selectedRole} onValueChange={(role) => setSelectedRole(role as VenueRole)}>
+                <SelectTrigger id="venue-staff-role" className="h-11 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {assignableRoles.map((role) => (
                     <SelectItem key={role} value={role}>{ROLE_DETAILS[role].label}</SelectItem>
@@ -330,31 +345,34 @@ export function VenueStaffSection({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => void addStaff()} disabled={!selectedUserId || !!savingUserId} className="w-full sm:w-auto">
+            <Button onClick={() => void addStaff()} disabled={loading || loadError || !selectedUserId || !!savingUserId} className="min-h-11 w-full sm:w-auto">
               {savingUserId === selectedUserId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
               Add staff
             </Button>
           </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">{ROLE_DETAILS[selectedRole].description}</p>
+          {!loading && !loadError && !candidates.length && <p className="mt-2 text-xs leading-5 text-muted-foreground">No unassigned active members. Invite someone to the community and approve their membership before granting staff access.</p>}
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open && !savingUserId) { setRemoveTarget(null); setActionError(null); } }}>
+        <AlertDialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove venue access?</AlertDialogTitle>
+            <AlertDialogTitle className="font-sans">Remove venue access?</AlertDialogTitle>
             <AlertDialogDescription>
               {removeTarget?.profile.display_name || removeTarget?.profile.full_name} will lose operations access and their staff badge. Their community membership is unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={!!savingUserId}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="min-h-11" disabled={!!savingUserId}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
                 void removeStaff();
               }}
               disabled={!!savingUserId}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove access
             </AlertDialogAction>

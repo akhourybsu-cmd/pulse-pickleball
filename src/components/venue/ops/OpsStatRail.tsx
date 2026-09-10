@@ -18,21 +18,22 @@ import { formatDuration, type DaySummary } from '@/lib/venues/ops';
 interface OpsStatRailProps {
   summary: DaySummary;
   accent?: string | null;
+  showLive?: boolean;
 }
 
-export function OpsStatRail({ summary, accent }: OpsStatRailProps) {
-  const { utilization: util, inPlay, open, closed, openMinutes } = summary;
-  const courts = inPlay + open + closed;
+export function OpsStatRail({ summary, accent, showLive = true }: OpsStatRailProps) {
+  const { utilization: util, inPlay, held, open, closed, openMinutes } = summary;
+  const courts = inPlay + held + open + closed;
 
   return (
     <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-card">
-      <Row label="Utilisation" value={`${util.percent}%`} caption={`${util.booked} of ${util.total} court-hours`}>
+      <Row label="Occupied capacity" value={`${util.percent}%`} caption={`${util.booked} of ${util.total} booking blocks · includes holds & closures`}>
         <Track>
           <Fill portion={util.percent / 100} className="bg-primary" accent={accent} />
         </Track>
       </Row>
 
-      <Row
+      {showLive && <Row
         label="Courts"
         value={
           <>
@@ -40,19 +41,20 @@ export function OpsStatRail({ summary, accent }: OpsStatRailProps) {
             <span className="text-base font-semibold text-muted-foreground">/{courts}</span>
           </>
         }
-        caption={`${inPlay} in play · ${open} free${closed > 0 ? ` · ${closed} closed` : ''}`}
+        caption={`${inPlay} in play · ${open} free${held > 0 ? ` · ${held} held` : ''}${closed > 0 ? ` · ${closed} closed` : ''}`}
       >
         <Track>
           <Fill portion={courts ? inPlay / courts : 0} className="bg-primary" accent={accent} />
+          <Fill portion={courts ? held / courts : 0} className="bg-amber-500/70" />
           <Fill portion={courts ? open / courts : 0} className="bg-emerald-500/70" />
           <Fill portion={courts ? closed / courts : 0} className="bg-muted-foreground/30" />
         </Track>
-      </Row>
+      </Row>}
 
       <Row
-        label="Unsold today"
+        label="Available time"
         value={formatDuration(openMinutes)}
-        caption={openMinutes === 0 ? 'Fully committed' : 'Court time still open'}
+        caption={openMinutes === 0 ? 'No bookable blocks remaining' : 'Court time still open on this date'}
       />
     </div>
   );

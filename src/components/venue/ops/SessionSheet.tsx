@@ -22,9 +22,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Clock, LayoutGrid, Loader2, Trash2, Users } from 'lucide-react';
-import { formatSlotTime, type Court } from '@/lib/venues/availability';
-import { isBlock, isReservationSession } from '@/lib/venues/ops';
-import type { VenueDaySession } from '@/hooks/useVenueDay';
+import { formatSlotTime, type Court, type Reservation } from '@/lib/venues/availability';
+import { isBlock, isCheckoutHold, isReservationSession } from '@/lib/venues/ops';
 
 /**
  * What's on a court, and what staff can do about it.
@@ -35,7 +34,7 @@ import type { VenueDaySession } from '@/hooks/useVenueDay';
  */
 
 interface SessionSheetProps {
-  session: VenueDaySession | null;
+  session: (Reservation & { description?: string | null; parent_event_id?: string | null }) | null;
   court: Court | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,13 +54,14 @@ export function SessionSheet({
   if (!session) return null;
 
   const blocked = isBlock(session);
+  const checkoutHold = isCheckoutHold(session);
   const reservation = isReservationSession(session);
   const programHold = session.event_format === 'program_hold' && !!session.parent_event_id;
   const start = new Date(session.start_time);
   const end = session.end_time ? new Date(session.end_time) : null;
 
   const cancel = async () => {
-    if (working) return;
+    if (working || checkoutHold) return;
     setWorking(true);
     // A multi-court program is represented by one public parent plus a small
     // hold on every selected court. Cancelling from any court removes the
@@ -119,7 +119,7 @@ export function SessionSheet({
               </SheetDescription>
             </div>
             <Badge variant="outline" className="shrink-0 text-[10px]">
-              {blocked ? 'Closure' : reservation ? 'Reservation' : 'Programming'}
+              {checkoutHold ? 'Checkout pending' : blocked ? 'Closure' : reservation ? 'Reservation' : 'Programming'}
             </Badge>
           </div>
         </SheetHeader>
@@ -131,7 +131,7 @@ export function SessionSheet({
         )}
 
         <div className="mt-5 flex justify-end pb-[env(safe-area-inset-bottom)]">
-          <AlertDialog>
+          {checkoutHold ? <p className="rounded-xl bg-amber-500/10 p-4 text-sm leading-6">A player is completing payment for this time. This is not a confirmed reservation yet. The schedule updates when checkout completes or the hold is released. Checkout holds cannot be cancelled here.</p> : <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button className="min-h-11" variant="destructive" disabled={working}>
                 {working ? (
@@ -167,7 +167,7 @@ export function SessionSheet({
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>
+          </AlertDialog>}
         </div>
       </SheetContent>
     </Sheet>

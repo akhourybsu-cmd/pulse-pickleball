@@ -398,12 +398,8 @@ export default function VenueCommunity() {
 
                 {bookingTabAvailable && (
                   <TabsContent value="book" className="mt-0">
-                    {closed && (
-                      <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
-                        Closed on this day.
-                      </p>
-                    )}
                     {!dayError && <VenueBookingGrid
+                      closed={closed}
                       grid={grid}
                       day={day}
                       loading={dayLoading}
