@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, ExternalLink, Loader2, ShieldCheck, CheckCircle2, Circle } from "lucide-react";
+import { Building2, ExternalLink, Loader2, ShieldCheck, CheckCircle2, Circle, RefreshCw } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
     queryKey: ["venue-payment-requests", venueId, user?.id],
     queryFn: () => paymentApi<any>("cancellations", { venue_id: venueId }),
     enabled: !!user && !!query.data && query.data.mode !== "off",
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
   const [draftState, dispatch] = useReducer(paymentDraftReducer, emptyPaymentDraft);
   const dirty = paymentDraftDirty(draftState);
@@ -75,12 +77,12 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         venue_id: venueId,
         ...values,
       });
-      if (!result || (['onboard', 'connect_existing'].includes(name) && !result.url) || (name === 'refresh_account' && result.refreshed !== true) || (name === 'save_venue' && result.saved !== true) || (name === 'resolve_cancellation' && result.resolved !== true)) throw new Error('The change was not confirmed. Refresh and check before trying again.');
+      if (!result || (['onboard', 'connect_existing'].includes(name) && !result.url) || (name === 'refresh_account' && result.refreshed !== true) || (name === 'save_venue' && result.saved !== true) || (name === 'resolve_cancellation' && result.resolved !== true) || (name === 'check_refund' && result.checked !== true)) throw new Error('The change was not confirmed. Refresh and check before trying again.');
       if (result.url) openStripe(result.url);
       else {
         if (name === 'save_venue') dispatch({ type: 'saved', scope });
         if (name === 'resolve_cancellation') setConfirmation(null);
-        toast.success(name === 'save_venue' ? 'Prices and policy saved' : name === 'resolve_cancellation' ? 'Decision recorded — refreshing payment status' : 'Stripe connection checked');
+        toast.success(name === 'save_venue' ? 'Prices and policy saved' : name === 'resolve_cancellation' ? 'Decision recorded — refreshing payment status' : name === 'check_refund' ? 'Latest refund status checked — no new refund issued' : 'Stripe connection checked');
         const refreshed = await query.refetch();
         const refreshedRequests = query.data?.mode !== 'off' ? await requests.refetch() : null;
         if (refreshed.isError || refreshedRequests?.isError) toast.warning('Your action succeeded, but the latest status could not load. Please refresh.');
@@ -126,7 +128,9 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   const data = query.data;
   const { prices, policy, email, timezone, taxes, accepting } = draftState.draft;
   const currentRequest = requests.data?.requests?.find((request: any) => request.order_id === confirmation?.orderId);
-  const confirmationCurrent = !!currentRequest && (currentRequest.status === 'requested' || (currentRequest.status === 'refund_pending' && confirmation?.decision === 'refund_pending'));
+  const requestPriority: Record<string,number> = { refund_failed: 0, requested: 1, refund_pending: 2 };
+  const openRequests = [...(requests.data?.requests || [])].sort((a: any,b: any) => (requestPriority[a.status] ?? 3) - (requestPriority[b.status] ?? 3));
+  const confirmationCurrent = !!currentRequest?.payment_orders && currentRequest.status === 'requested' && Math.max(0, currentRequest.payment_orders.amount_cents - (currentRequest.payment_orders.refunded_cents ?? 0)) === confirmation?.remaining;
   const readiness = venuePaymentReadiness(data);
   const connected = readiness.connected;
   const testSandbox = data.mode === 'test' && data.venue.payment_test_sandbox === true;
@@ -135,11 +139,109 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
     <div className="space-y-6 font-sans">
       <VenueStripeReturn venueId={venueId} enabled={data.mode !== 'off' && data.ready !== false} onChecked={() => query.refetch()} />
       {actionError && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm leading-6">{actionError}</p>}
+      {!!requests.data?.requests?.length && <a href="#payment-requests" className="flex min-h-14 flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+        <span><strong>{requests.data.requests.length} payment {requests.data.requests.length === 1 ? 'item needs' : 'items need'} attention</strong><span className="block">Review player requests and refunds in one place.</span></span><span className="font-semibold">Review requests →</span>
+      </a>}
       {testSandbox && <section aria-label="Private payment sandbox" className="rounded-2xl border border-primary/30 bg-primary/5 p-5 text-sm leading-6">
         <h2 className="font-semibold">Private Stripe sandbox · Only you</h2>
         <p className="mt-2">Test this venue’s separate Stripe account, rental checkout, refunds and PULSE subscriptions. Use Stripe test cards only. No real money, payouts or reservations are created, and your included sample features stay free.</p>
         <p className="mt-2 text-muted-foreground">Save a test price on one court below, then open Booking to try checkout. Keep other courts at $0 for free sample reservations. The live-payment switch stays off.</p>
       </section>}
+      <section id="payment-requests" className="scroll-mt-24 rounded-2xl border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-primary" />
+          <h2 className="font-sans text-lg font-semibold">
+            Requests to resolve
+          </h2>
+          <Button className="ml-auto min-h-11" variant="outline" disabled={requests.isFetching || !!busy || data.mode === 'off'} onClick={() => requests.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Refresh requests</Button>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Review each player's request, then choose whether to keep or cancel their reservation. Refunds are tracked separately; a failed refund always needs follow-up. This list updates automatically while the page is open.
+        </p>
+        {data.mode === 'off' ? <p className="mt-4 text-sm text-muted-foreground">Payment requests will appear here when payments are available.</p> : requests.isPending ? <p role="status" className="mt-4 text-sm text-muted-foreground">Loading payment requests…</p> : requests.isError ? (
+          <p role="alert" className="mt-4 text-sm">
+            Couldn’t load requests.{" "}
+            <Button variant="link" onClick={() => requests.refetch()}>
+              Retry
+            </Button>
+          </p>
+        ) : !requests.data?.requests?.length ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No open payment requests.
+          </p>
+        ) : (
+          <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
+            {openRequests.map((request: any) => !request.payment_orders ? <p key={request.id} role="alert" className="rounded-xl border p-4 text-sm">Payment details are unavailable for this request. Refresh before taking action.</p> : (
+              <div key={request.id} className={`min-w-0 rounded-xl border p-4 ${request.status === 'refund_failed' ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                <p className="break-words text-sm font-semibold">{request.player_name || 'Player'}{request.payment_orders.livemode === false ? ' · Test purchase' : ''}</p>
+                <p className="break-words font-semibold">
+                  {request.payment_orders.description}
+                </p>
+                <p className="mt-1 text-sm">
+                  Paid {formatMoney(request.payment_orders.amount_cents)} · Refunded {formatMoney(request.payment_orders.refunded_cents ?? 0)}
+                </p>
+                <p className="mt-1 text-sm font-medium">
+                  {request.status === 'refund_failed' ? 'Refund needs attention' : request.status === 'refund_pending' ? 'Refund processing' : 'Cancellation requested'}
+                </p>
+                {request.payment_orders.start_time && <p className="mt-2 text-sm text-muted-foreground">{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: data.settings?.timezone || 'UTC' }).format(new Date(request.payment_orders.start_time))} · Venue time</p>}
+                {request.status !== 'requested' && <div className="mt-3 space-y-2 text-sm leading-6">
+                  <p>{request.status === 'refund_failed' ? 'The refund did not complete. Open this payment in Stripe to review the reason, then contact the player to arrange the next step. Do not issue another refund until you have reviewed the original attempt.' : 'Stripe is processing the refund or waiting for required information. Checking its status will not issue another refund.'}</p>
+                  <p className="font-medium">{request.payment_orders.livemode === false ? 'Test only — no real court reservation exists.' : request.payment_orders.canceled_at ? 'Reservation already canceled. The court has not been rebooked.' : 'Reservation still active. The court has not been released.'}</p>
+                </div>}
+                {!request.refund_review_only && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
+                  {request.note}
+                </p>}
+                {request.resolution_note && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">Your last response: {request.resolution_note}</p>}
+                {request.status === 'requested' && <><Label htmlFor={`resolve-${request.id}`} className="mt-4 block">
+                  Your response to the player
+                </Label>
+                <Textarea
+                  id={`resolve-${request.id}`}
+                  className="mt-2"
+                  value={resolution[request.id] || ""}
+                  onChange={(e) =>
+                    setResolution({
+                      ...resolution,
+                      [request.id]: e.target.value,
+                    })
+                  }
+                  maxLength={1000}
+                  disabled={!!busy}
+                  aria-describedby={`resolve-hint-${request.id}`}
+                />
+                <p id={`resolve-hint-${request.id}`} className="mt-2 text-xs leading-5 text-muted-foreground">Write at least 5 characters explaining your decision. The player will see this response.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {decisions.filter(([decision]) => decision !== 'refund_pending' || request.payment_orders.amount_cents > (request.payment_orders.refunded_cents ?? 0)).map(([decision, originalLabel, originalImpact]) => {
+                    const fullyRefunded = request.payment_orders.refunded_cents >= request.payment_orders.amount_cents;
+                    const label = fullyRefunded && decision === 'cancel_without_refund' ? 'Cancel reservation' : originalLabel;
+                    const impact = fullyRefunded && decision === 'cancel_without_refund' ? 'The payment has already been fully refunded. This releases the court without issuing another refund.' : originalImpact;
+                    return (
+                    <Button
+                      key={decision}
+                      variant={
+                        decision === "refund_pending" ? "default" : "outline"
+                      }
+                      disabled={
+                        !!busy ||
+                        requests.isFetching ||
+                        (resolution[request.id] || "").trim().length < 5
+                      }
+                      className="h-auto min-h-11 whitespace-normal text-left"
+                      onClick={() => setConfirmation({ orderId: request.order_id, decision, label, impact, note: resolution[request.id].trim(), description: request.payment_orders.description, remaining: Math.max(0, request.payment_orders.amount_cents - (request.payment_orders.refunded_cents ?? 0)) })}
+                    >
+                      {label}
+                    </Button>
+                  ); })}
+                </div></>}
+                {request.status !== 'requested' && <div className="mt-4 flex flex-wrap gap-2">
+                  <Button className="h-auto min-h-11 whitespace-normal" variant="outline" disabled={!!busy || requests.isFetching || data.transferred} onClick={() => action('check_refund', { order_id: request.order_id })}>Check refund status</Button>
+                  {data.account?.account_id && request.payment_orders.account_id === data.account.account_id && !data.transferred && <Button asChild variant="outline" className="h-auto min-h-11 whitespace-normal"><a href={`https://dashboard.stripe.com/${encodeURIComponent(data.account.account_id)}/${data.mode === 'test' ? 'test/' : ''}payments/${encodeURIComponent(request.payment_orders.payment_intent_id || '')}`} target="_blank" rel="noopener noreferrer">Review this payment in Stripe<ExternalLink className="ml-2 h-4 w-4" /></a></Button>}
+                </div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <Building2 className="h-5 w-5 text-primary" />
         <h2 className="mt-3 break-words font-sans text-xl font-semibold">
@@ -373,86 +475,6 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
         <p className="mt-2 text-sm leading-6 text-muted-foreground">These are simulated $10/month purchases from PULSE, separate from this venue’s rental income. They never replace your included sample access. Review or cancel test subscriptions in Payments & purchases.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">{[{ key: 'court_booking', title: 'Court booking' }, { key: 'facility_tools', title: 'Facility operations' }].map(module => <div key={module.key} className="min-w-0 rounded-xl border p-4"><p className="font-semibold">{module.title} · Test only</p><VenueAddonCheckout venueId={venueId} moduleKey={module.key} title={module.title} venueName={data.venue.name} verified={testSandbox} canPurchase disabled={dirty || !!busy} /></div>)}</div>
       </section>}
-      <section className="rounded-2xl border bg-card p-5 sm:p-6">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <h2 className="font-sans text-lg font-semibold">
-            Requests to resolve
-          </h2>
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Canceling a reservation and refunding money are separate decisions. A
-          refund request keeps the court reserved until the refund succeeds.
-        </p>
-        {data.mode === 'off' ? <p className="mt-4 text-sm text-muted-foreground">Payment requests will appear here when payments are available.</p> : requests.isPending ? <p role="status" className="mt-4 text-sm text-muted-foreground">Loading payment requests…</p> : requests.isError ? (
-          <p role="alert" className="mt-4 text-sm">
-            Couldn’t load requests.{" "}
-            <Button variant="link" onClick={() => requests.refetch()}>
-              Retry
-            </Button>
-          </p>
-        ) : !requests.data?.requests?.length ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            No open payment requests.
-          </p>
-        ) : (
-          <div className="mt-5 space-y-4">
-            {requests.data.requests.map((request: any) => !request.payment_orders ? <p key={request.id} role="alert" className="rounded-xl border p-4 text-sm">Payment details are unavailable for this request. Refresh before taking action.</p> : (
-              <div key={request.id} className="rounded-xl border p-4">
-                <p className="break-words font-semibold">
-                  {request.payment_orders.description}
-                </p>
-                <p className="mt-1 text-sm">
-                  {formatMoney(Math.max(0, request.payment_orders.amount_cents - (request.payment_orders.refunded_cents ?? 0)))} remaining ·{" "}
-                  {request.status === "refund_pending"
-                    ? "Refund pending — reservation retained"
-                    : "Cancellation requested"}
-                </p>
-                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
-                  {request.note}
-                </p>
-                <Label htmlFor={`resolve-${request.id}`} className="mt-4 block">
-                  Your response to the player
-                </Label>
-                <Textarea
-                  id={`resolve-${request.id}`}
-                  className="mt-2"
-                  value={resolution[request.id] || ""}
-                  onChange={(e) =>
-                    setResolution({
-                      ...resolution,
-                      [request.id]: e.target.value,
-                    })
-                  }
-                  maxLength={1000}
-                  disabled={!!busy}
-                  aria-describedby={`resolve-hint-${request.id}`}
-                />
-                <p id={`resolve-hint-${request.id}`} className="mt-2 text-xs leading-5 text-muted-foreground">Write at least 5 characters explaining your decision. The player will see this response.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {decisions.filter(([decision]) => request.status !== 'refund_pending' || decision === 'refund_pending').map(([decision, label, impact]) => (
-                    <Button
-                      key={decision}
-                      variant={
-                        decision === "refund_pending" ? "default" : "outline"
-                      }
-                      disabled={
-                        !!busy ||
-                        requests.isFetching ||
-                        (resolution[request.id] || "").trim().length < 5
-                      }
-                      className="h-auto min-h-11 whitespace-normal text-left"
-                      onClick={() => setConfirmation({ orderId: request.order_id, decision, label, impact, note: resolution[request.id].trim(), description: request.payment_orders.description, remaining: Math.max(0, request.payment_orders.amount_cents - (request.payment_orders.refunded_cents ?? 0)) })}
-                    >
-                      {request.status === 'refund_pending' ? 'Retry pending refund' : label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
       <AlertDialog open={!!confirmation} onOpenChange={open => { if (!open && !busy) setConfirmation(null); }}>
         <AlertDialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl font-sans">
           <AlertDialogHeader>

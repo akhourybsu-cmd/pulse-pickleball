@@ -17,6 +17,7 @@ export interface PaymentOrder {
   status: "pending" | "paid" | "expired" | "partially_refunded" | "refunded";
   livemode: boolean;
   refunded_cents: number;
+  refund_state?: 'none' | 'pending' | 'failed';
   disputed: boolean;
   billing_cadence: string;
   created_at: string;
@@ -29,6 +30,7 @@ export interface PaymentOrder {
   payment_cancellation_requests?: {
     status: string;
     resolution_note: string | null;
+    refund_review_only?: boolean;
   } | null;
 }
 export interface CourtQuote extends PaymentConfig {
@@ -68,6 +70,8 @@ export function formatMoney(cents: number, currency = "usd") {
   );
 }
 export function paymentStatus(order: PaymentOrder): string {
+  if (order.refund_state === 'failed') return order.canceled_at ? 'Canceled · refund needs attention' : 'Refund needs attention';
+  if (order.refund_state === 'pending') return order.canceled_at ? 'Canceled · refund processing' : 'Refund processing';
   if (order.canceled_at)
     return order.refunded_cents >= order.amount_cents
       ? "Canceled · refunded"
@@ -80,6 +84,19 @@ export function paymentStatus(order: PaymentOrder): string {
     partially_refunded: "Partially refunded",
     refunded: "Refunded",
   }[order.status];
+}
+export function refundNotice(order: Pick<PaymentOrder, 'refund_state' | 'canceled_at' | 'livemode'>): string | null {
+  const booking = !order.livemode ? 'This is a test purchase; no real reservation exists.' : order.canceled_at ? 'Your reservation remains canceled; it has not been rebooked.' : 'Your reservation has not been canceled.';
+  if (order.refund_state === 'failed') return `The refund did not complete. The venue needs to review it and arrange the next step with you. Only completed refunds count toward the refunded amount shown. ${booking}`;
+  if (order.refund_state === 'pending') return `Stripe is processing the refund or awaiting required information. It is not yet counted as money returned. ${booking}`;
+  return null;
+}
+export function cancellationLabel(status: string): string {
+  return ({ requested: 'Sent to venue · awaiting review', refund_pending: 'Refund in progress', refund_failed: 'Refund needs owner attention', approved: 'Cancellation approved', declined: 'Request declined' } as Record<string,string>)[status] || 'Request under review';
+}
+export function canRequestCancellation(order: PaymentOrder): boolean {
+  const request = order.payment_cancellation_requests;
+  return order.kind === 'court_rental' && ['paid','partially_refunded','refunded'].includes(order.status) && !order.canceled_at && (!request || (request.refund_review_only === true && request.status === 'approved'));
 }
 export function openStripe(url: string) {
   const parsed = new URL(url);

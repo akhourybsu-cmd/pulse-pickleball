@@ -123,10 +123,17 @@ query.setQueryData(
     requests: [
       {
         id: "sample-request",
+        player_name: 'Jordan Rivera',
         order_id: "sample-rental",
         note: "One of our players cannot make it. Could we cancel this booking?",
         status: "requested",
         payment_orders: orders[0],
+      },
+      {
+        id: 'failed-refund', order_id: 'failed-rental', player_name: 'Alexandra Chen — weekend doubles group',
+        note: 'Stripe reported an unsuccessful refund. Review the payment and contact the player.', status: 'refund_failed', refund_review_only: true,
+        resolution_note: 'Cancellation approved under our weather policy.',
+        payment_orders: { ...orders[0], account_id: 'acct_example', payment_intent_id: 'pi_fixture', canceled_at: '2026-09-10T12:00:00Z', refund_state: 'failed' },
       },
     ],
   },

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshPaymentWorkspace } from '@/lib/venues/paymentRefresh';
 import {
   ArrowLeft,
   CreditCard,
@@ -34,12 +35,17 @@ import {
   openStripe,
   paymentApi,
   paymentStatus,
+  refundNotice,
+  cancellationLabel,
+  canRequestCancellation,
   type PaymentConfig,
   type PaymentOrder,
 } from "@/lib/payments";
 
 export default function Payments() {
   const { user } = useAuthState();
+  const client = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
   const [params, setParams] = useSearchParams();
   const venueId = params.get("venue") || stripeReturnVenue(params.get('state'));
   const [invalidReturn, setInvalidReturn] = useState(false);
@@ -76,6 +82,8 @@ export default function Payments() {
         legacy_tournaments: any[];
       }>("history", { venue_id: venueId, page }),
     staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
   const wallet = useQuery({
     queryKey: ["payment-wallet", user?.id],
@@ -149,8 +157,13 @@ export default function Payments() {
           <Button
             variant="outline"
             className="h-11 rounded-xl"
-            onClick={() => history.refetch()}
-            disabled={history.isFetching}
+            onClick={async () => {
+              setRefreshing(true);
+              try { await refreshPaymentWorkspace(client, venueId, user?.id); }
+              catch { toast.error('Some payment details could not refresh. Try again before taking action.'); }
+              finally { setRefreshing(false); }
+            }}
+            disabled={history.isFetching || refreshing}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
@@ -342,6 +355,7 @@ export default function Payments() {
                       </span>
                     )}
                   </div>
+                  {refundNotice(order) && <p role="status" className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm leading-6">{refundNotice(order)}</p>}
                   {order.start_time && (
                     <p className="mt-3 text-sm leading-6">
                       Court time: {new Date(order.start_time).toLocaleString()}{" "}
@@ -369,11 +383,7 @@ export default function Payments() {
                   {order.payment_cancellation_requests && (
                     <div className="mt-4 rounded-xl bg-muted/30 p-3 text-sm leading-6">
                       <p className="font-medium">
-                        Cancellation:{" "}
-                        {order.payment_cancellation_requests.status.replace(
-                          "_",
-                          " "
-                        )}
+                        {order.payment_cancellation_requests.refund_review_only && order.payment_cancellation_requests.status === 'approved' ? 'Refund review complete · reservation unchanged' : cancellationLabel(order.payment_cancellation_requests.status)}
                       </p>
                       {order.payment_cancellation_requests.resolution_note && (
                         <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
@@ -384,6 +394,7 @@ export default function Payments() {
                   )}
                   {!venueId && (
                     <div className="mt-4 flex flex-wrap gap-2">
+                      {order.refund_state && order.refund_state !== 'none' && <Button size="sm" variant="outline" disabled={!!busy} onClick={() => action('reconcile', { order_id: order.id })}>Check refund status</Button>}
                       {order.status === "pending" ? (
                         <>
                           <Button
@@ -430,9 +441,7 @@ export default function Payments() {
                           </Button>
                         )
                       )}
-                      {order.kind === "court_rental" &&
-                        ["paid", "partially_refunded"].includes(order.status) &&
-                        !order.canceled_at && (
+                      {canRequestCancellation(order) && (
                           <Button
                             size="sm"
                             variant="ghost"

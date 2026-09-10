@@ -77,14 +77,31 @@ describe('venue payment presentation', () => {
   });
   it('shows remaining refundable money and protects requests missing order details', () => {
     state.requests.data.requests = [request(), { id: 'missing', payment_orders: null }];
-    const html = render(); expect(html).toContain('$40.00 remaining'); expect(html).toContain('Payment details are unavailable');
+    const html = render(); expect(html).toContain('Paid $50.00'); expect(html).toContain('Refunded $10.00'); expect(html).toContain('Payment details are unavailable');
     expect(html).toContain('at least 5 characters');
   });
-  it('only offers retrying the refund after a refund has already started', () => {
+  it('offers a status check, never a new refund, while a refund is processing', () => {
     state.requests.data.requests = [request('refund_pending')];
     const html = render();
-    expect(html).toContain('Retry pending refund');
+    expect(html).toContain('Check refund status');
+    expect(html).not.toContain('Retry pending refund');
     expect(html).not.toContain('Cancel without refund'); expect(html).not.toContain('Decline request');
+  });
+  it('makes failed refunds actionable with the player name, correct payment link and honest reservation state', () => {
+    state.requests.data.requests = [{ ...request('refund_failed'), player_name: 'Alex Test', payment_orders: { ...request().payment_orders, account_id: 'acct_venue', payment_intent_id: 'pi_failed', canceled_at: '2026-09-10', livemode: true } }];
+    const html = render();
+    expect(html).toContain('Alex Test'); expect(html).toContain('1 payment item needs attention');
+    expect(html).toContain('Reservation already canceled'); expect(html).toContain('payments/pi_failed');
+    expect(html).toContain('Check refund status'); expect(html).not.toContain('Cancel &amp; refund');
+    expect(html).not.toContain('Your response to the player');
+  });
+  it('refreshes the action queue directly without submitting a decision', () => {
+    render(); state.buttons.find(b => b.label === 'Refresh requests')!.click!();
+    expect(state.refetch).toHaveBeenCalledTimes(1); expect(state.api).not.toHaveBeenCalled();
+  });
+  it('does not offer another refund when the full payment was already returned', () => {
+    state.requests.data.requests = [{ ...request(), payment_orders: { ...request().payment_orders, refunded_cents: 5000 } }];
+    const html = render(); expect(html).toContain('Cancel reservation'); expect(html).not.toContain('Cancel &amp; refund');
   });
   it('keeps the draft visible and blocks leaving for Stripe or overwriting a detected conflict', () => {
     state.draft = paymentDraftReducer(state.draft, { type: 'edit', patch: { policy: 'This is my unsaved cancellation policy.' } });

@@ -11,7 +11,7 @@ vi.mock('../../supabase/functions/_shared/payment-runtime.ts', () => ({
   owner: vi.fn(async () => ({ id: 'venue-a' })),
 }));
 import { accountSnapshot, assertIndependentAccount, completeExisting, connectExisting, createOrRecoverVenueAccount, merchantPortal, newVenueAccountParameters, stateHash } from '../../supabase/functions/_shared/payment-connect';
-import { recordSettledCharge, settledRefundAmount } from '../../supabase/functions/_shared/payment-refunds';
+import { recordSettledCharge, settledRefundAmount, reconcileRefundPayment } from '../../supabase/functions/_shared/payment-refunds';
 
 const envValues = () => ({ PULSE_PAYMENTS_MODE: 'test', PULSE_STRIPE_SECRET_KEY: 'sk_test_sample', PULSE_STRIPE_ACCOUNT_ID: 'acct_platform', PULSE_STRIPE_WEBHOOK_SECRET: 'whsec_platform', PULSE_STRIPE_CONNECT_WEBHOOK_SECRET: 'whsec_connect', PULSE_PAYMENT_RECONCILE_SECRET: 'r'.repeat(32), PULSE_PAYMENT_TEST_USER_IDS: 'tester' });
 describe('launch checks', () => {
@@ -169,15 +169,31 @@ describe('merchant-scoped billing portals', () => {
 });
 
 describe('settled refunds', () => {
+  it('records a recovery attempt before a failed Stripe lookup so unreachable accounts cannot starve the queue', async () => {
+    const retrieve = vi.fn(async () => { throw new Error('Stripe unavailable'); });
+    const rpc = vi.fn(async () => ({ data: 1 }));
+    const r: any = { platform: 'acct_platform', livemode: false, stripe: { paymentIntents: { retrieve } }, store: { rpc } };
+    await expect(reconcileRefundPayment(r, 'acct_venue', 'pi_original')).rejects.toThrow('Stripe unavailable');
+    expect(rpc.mock.invocationCallOrder[0]).toBeLessThan(retrieve.mock.invocationCallOrder[0]);
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
   it('counts only succeeded refunds and retrieves every page in the original venue account', async () => {
-    const list = vi.fn(() => ({ async *[Symbol.asyncIterator]() { for (const [status, amount] of [['succeeded', 200], ['pending', 600], ['failed', 500], ['canceled', 100], ['succeeded', 300]]) yield { status, amount }; } }));
-    const r: any = { platform: 'acct_platform', livemode: true, stripe: { refunds: { list } }, store: { rpc: vi.fn(async () => ({ data: null })) } };
+    const list = vi.fn(() => ({ async *[Symbol.asyncIterator]() { let i=0; for (const [status, amount] of [['succeeded', 200], ['pending', 600], ['failed', 500], ['canceled', 100], ['succeeded', 300]]) yield { id: `re_${++i}`, charge: 'ch_a', currency: 'usd', status, amount }; } }));
+    const retrieve = vi.fn(async () => ({ id: 'ch_a', amount: 1000, currency: 'usd', payment_intent: 'pi_a', livemode: true, disputed: false }));
+    const r: any = { platform: 'acct_platform', livemode: true, stripe: { charges: { retrieve }, refunds: { list } }, store: { rpc: vi.fn(async (name: string) => ({ data: name === 'payment_begin_refund_sync' ? 7 : true })) } };
     await recordSettledCharge(r, 'acct_a', { id: 'ch_a', amount: 1000, payment_intent: 'pi_a', disputed: false, amount_refunded: 1000 });
     expect(list).toHaveBeenCalledWith({ charge: 'ch_a', limit: 100 }, { stripeAccount: 'acct_a' });
-    expect(r.store.rpc).toHaveBeenCalledWith('payment_record_charge', { p_account: 'acct_a', p_live: true, p_intent: 'pi_a', p_refunded: 500, p_disputed: false });
+    expect(r.store.rpc).toHaveBeenCalledWith('payment_apply_refund_snapshot', { p_account: 'acct_a', p_live: true, p_intent: 'pi_a', p_version: 7, p_amount: 1000, p_attempts: expect.arrayContaining([expect.objectContaining({ status: 'failed', amount: 500 }),expect.objectContaining({ status: 'pending', amount: 600 })]), p_disputed: false });
+    expect(r.store.rpc.mock.invocationCallOrder[0]).toBeLessThan(retrieve.mock.invocationCallOrder[0]);
+    expect(retrieve).toHaveBeenCalledWith('ch_a', {}, { stripeAccount: 'acct_a' });
+    expect(await settledRefundAmount(r, 'acct_a', { id: 'ch_a', amount: 1000 })).toBe(500);
   });
   it('rejects impossible totals instead of marking a booking refunded', async () => {
     const r: any = { platform: 'acct_platform', stripe: { refunds: { list: () => ({ async *[Symbol.asyncIterator]() { yield { status: 'succeeded', amount: 1500 }; } }) } } };
     await expect(settledRefundAmount(r, 'acct_a', { id: 'ch_a', amount: 1000 })).rejects.toThrow('review');
+  });
+  it('does not acknowledge a superseded refund read, so signed delivery can retry', async () => {
+    const r: any = { platform: 'acct_platform', livemode: false, stripe: { charges: { retrieve: async () => ({ id:'ch_a', payment_intent:'pi_a', amount:1000, currency:'usd', livemode:false }) }, refunds: { list: () => ({ async *[Symbol.asyncIterator]() {} }) } }, store: { rpc: vi.fn(async (name: string) => ({ data: name === 'payment_begin_refund_sync' ? 1 : false })) } };
+    await expect(recordSettledCharge(r, 'acct_a', { id:'ch_a', payment_intent:'pi_a' })).rejects.toThrow('newer refund check');
   });
 });

@@ -136,6 +136,7 @@ beforeAll(async () => {
   await db.exec('ALTER TABLE venues ADD COLUMN stripe_account_id text; ALTER TABLE venues ADD COLUMN timezone text; CREATE TABLE private_venue_sandboxes(venue_id uuid PRIMARY KEY REFERENCES venues(id),owner_id uuid,group_id uuid);');
   await db.exec(readFileSync('supabase/migrations/20260921100000_venue_stripe_readiness.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260921110000_private_venue_test_payments.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260921120000_refund_failure_recovery.sql', 'utf8'));
   for (const table of ['venue_payment_accounts', 'venue_payment_settings', 'payment_orders', 'payment_subscriptions']) {
     await db.exec(`CREATE TRIGGER guard_private_sandbox BEFORE INSERT OR UPDATE ON ${table} FOR EACH ROW EXECUTE FUNCTION guard_private_venue_sandbox()`);
   }
@@ -182,6 +183,74 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   await db?.close();
+});
+
+describe('versioned refund failure recovery', () => {
+  const attempt = (status: string, amount = 3000, refundId = 're_original') => ({ id: refundId, amount, status });
+  const begin = async (account = 'acct_venue', live = true) => (await db.query<any>('SELECT payment_begin_refund_sync($1,$2,$3) AS version', [account, live, 'pi_valid'])).rows[0].version;
+  const snapshot = async (attempts: unknown[], version?: number) => (await db.query<any>('SELECT payment_apply_refund_snapshot($1,true,$2,$3,3000,$4,false) AS applied', ['acct_venue','pi_valid',version ?? await begin(),JSON.stringify(attempts)])).rows[0].applied;
+  const saved = async () => (await db.query<any>('SELECT o.*,r.status AS request_status,r.refund_review_only FROM payment_orders o LEFT JOIN payment_cancellation_requests r ON r.order_id=o.id')).rows[0];
+  async function cancellation() {
+    const order = await reserve(); await apply(order);
+    await db.query('SELECT payment_request_cancellation($1,$2,$3)', [order.id,buyer,'Unable to attend.']);
+    await db.query('SELECT payment_cancel_reservation($1,$2,$3,$4)', [order.id,owner,'Approved under the venue policy.','refund_pending']);
+    return order;
+  }
+  it('corrects succeeded-then-failed refunds and reopens review without rebooking a released court', async () => {
+    await cancellation(); await snapshot([attempt('succeeded')]);
+    expect(await saved()).toMatchObject({ status: 'refunded', refunded_cents: 3000, request_status: 'approved' });
+    const canceled = (await saved()).canceled_at;
+    await snapshot([attempt('failed')]);
+    expect(await saved()).toMatchObject({ status: 'paid', refunded_cents: 0, refund_state: 'failed', request_status: 'refund_failed', canceled_at: canceled });
+    expect((await db.query('SELECT * FROM group_events')).rows).toHaveLength(0);
+    await snapshot([attempt('failed'),attempt('succeeded',3000,'re_replacement')]);
+    expect(await saved()).toMatchObject({ status: 'refunded', refunded_cents: 3000, refund_state: 'none', request_status: 'approved' });
+  });
+  it('does not count pending refunds as returned money or release an active reservation', async () => {
+    await cancellation(); await snapshot([attempt('pending')]);
+    expect(await saved()).toMatchObject({ status: 'paid', refunded_cents: 0, refund_state: 'pending', request_status: 'refund_pending', canceled_at: null });
+    expect((await db.query('SELECT * FROM group_events')).rows).toHaveLength(1);
+  });
+  it('rejects an older in-flight success snapshot after a newer failure check starts', async () => {
+    await cancellation(); const old = await begin(); const newer = await begin();
+    expect(await snapshot([attempt('succeeded')],old)).toBe(false);
+    expect(await snapshot([attempt('failed')],newer)).toBe(true);
+    expect(await snapshot([attempt('succeeded')],old)).toBe(false);
+    expect(await saved()).toMatchObject({ refunded_cents: 0, refund_state: 'failed' });
+  });
+  it('repairs historical approved refunds using fresh processor state, including missed failure delivery', async () => {
+    await cancellation();
+    await db.query("SELECT payment_record_charge('acct_venue',true,'pi_valid',3000,false)");
+    expect(await saved()).toMatchObject({ status: 'refunded', request_status: 'approved', refund_state: 'none', refund_sync_started_at: null });
+    await snapshot([attempt('failed')]);
+    expect(await saved()).toMatchObject({ status: 'paid', refund_state: 'failed', request_status: 'refund_failed' });
+  });
+  it('keeps externally initiated refund reviews separate from cancellation permission', async () => {
+    const order = await reserve(); await apply(order); await snapshot([attempt('failed')]);
+    expect(await saved()).toMatchObject({ refund_review_only: true, request_status: 'refund_failed', canceled_at: null });
+    await snapshot([attempt('failed'),attempt('succeeded',3000,'re_replacement')]);
+    expect(await saved()).toMatchObject({ status: 'refunded', request_status: 'approved', canceled_at: null });
+    expect((await db.query('SELECT * FROM group_events')).rows).toHaveLength(1);
+    await db.query('SELECT payment_request_cancellation($1,$2,$3)', [order.id,buyer,'Please also cancel this reservation.']);
+    expect(await saved()).toMatchObject({ request_status: 'requested', refund_review_only: false });
+    await db.query('SELECT payment_cancel_reservation($1,$2,$3,$4)', [order.id,owner,'Already refunded; court released.','cancel_without_refund']);
+    expect((await db.query('SELECT * FROM group_events')).rows).toHaveLength(0);
+  });
+  it('preserves a partial settled amount when another attempt fails', async () => {
+    await cancellation(); await snapshot([attempt('succeeded',1000,'re_partial'),attempt('failed',2000)]);
+    expect(await saved()).toMatchObject({ status: 'partially_refunded', refunded_cents: 1000, refund_state: 'failed', canceled_at: null });
+  });
+  it('rejects malformed/duplicated attempts and mismatched merchant or environment', async () => {
+    await cancellation();
+    expect(await begin('acct_other')).toBeNull(); expect(await begin('acct_venue',false)).toBeNull();
+    await expect(snapshot([attempt('unknown')])).rejects.toThrow('Invalid refund attempts');
+    await expect(snapshot([attempt('succeeded'),attempt('failed')])).rejects.toThrow('Invalid refund attempts');
+    await expect(snapshot([attempt('succeeded',3001)])).rejects.toThrow();
+    await expect(asUser(buyer,"SELECT payment_begin_refund_sync('acct_venue',true,'pi_valid')")).rejects.toThrow('permission');
+    await db.exec('SET ROLE service_role');
+    try { await expect(db.query("SELECT payment_record_charge('acct_venue',true,'pi_valid',3000,false)")).rejects.toThrow('permission'); }
+    finally { await db.exec('RESET ROLE'); }
+  });
 });
 
 describe('independent venue Stripe connections', () => {
