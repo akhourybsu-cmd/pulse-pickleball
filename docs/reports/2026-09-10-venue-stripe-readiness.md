@@ -27,13 +27,13 @@ Published after baseline `87146a9527b2b686d86115d3dfddd98728c662c7`. Backend com
 
 ## Still required before live charging
 
-The migration, functions and frontend are deployed. Read-only hosted checks confirm that the Supabase secret list has no PULSE payment secrets, Stripe test-mode OAuth is disabled with no redirects registered, and the test Workbench has no event destinations. The signed-in Stripe dashboard confirms the PULSE platform account `acct_1ShZSOG2WbAqAcDM` and its test environment. No secret values were revealed or copied and no Stripe settings were changed. Credential/access configuration awaits explicit approval.
+The migration, functions and frontend are deployed. The initial read-only hosted checks found no payment secrets, disabled test OAuth and no destinations. Following explicit user approval, these setup gaps and the recovery installation were addressed; see the [subsequent sandbox setup and verification record](2026-09-10-stripe-sandbox-setup.md). The preparation validation above describes the earlier code-release phase.
 
-Configure and verify the PULSE Stripe sandbox secrets, Connect client/redirect, separate platform/Connect signing secrets and recovery job. Execute the two-venue sandbox acceptance matrix, including failure/retry/refund/renewal and Android PWA return behavior. Only then approve live credentials and activate collections per venue.
+Execute the two-venue sandbox acceptance matrix, including actual linked-venue webhook delivery, failure/retry/refund/renewal and Android PWA return behavior. Only then approve live credentials and activate collections per venue.
 
-For rental sandbox testing, use a verified, non-private test venue with court-booking access already provisioned. Test subscription purchases intentionally do not grant real feature access. Do not change ELEVENO's tier or use the private sample venue as a way around billing safeguards without a separate authorized setup decision.
+For rental sandbox testing, use a verified test venue or an explicitly approved private test sample with court-booking access already provisioned. The user's subsequent approval of private Palace is documented in the [Palace sandbox follow-up](2026-09-10-palace-payment-sandbox.md). Test subscription purchases intentionally do not grant real feature access. ELEVENO's tier and Palace's privacy/live-payment prohibitions remain unchanged.
 
-Scheduled recovery does not automatically backfill every missed subscription renewal; failed invoice deliveries require Stripe event replay and monitoring as documented. The operational scheduler SQL is supplied but has not been executed against hosted pg_cron/pg_net/Vault.
+Scheduled recovery does not automatically backfill every missed subscription renewal; failed invoice deliveries require Stripe event replay and monitoring as documented. The operational scheduler SQL is now installed with a matching Vault secret and verified HTTP recovery responses, as recorded in the follow-up report.
 
 ## Complete files for copy/paste and setup
 

@@ -1,6 +1,6 @@
 # Venue Stripe launch checklist
 
-Status: backend migration and Edge Functions deployed successfully in commit `3655049222e3d5f2f2d18613821888e705877de2` (Supabase run `34468994469`), then web/PWA commit `e3b18171ec7b480b426c9674ec54800b0d5ff106` deployed successfully (Firebase run `34469652725`). Not live-payment approved. No Stripe accounts, keys, destinations, products, charges, refunds or payout settings were created or changed during preparation. The recovery scheduler is not installed yet. Hosted read-only checks confirm PULSE account `acct_1ShZSOG2WbAqAcDM` and its test environment, no PULSE payment secrets in Supabase, disabled test OAuth with no redirects, and no test webhook destinations. Sandbox credential/access configuration awaits approval; transaction acceptance is still pending.
+Status: backend migration and Edge Functions deployed successfully in commit `3655049222e3d5f2f2d18613821888e705877de2` (Supabase run `34468994469`), then web/PWA commit `e3b18171ec7b480b426c9674ec54800b0d5ff106` deployed successfully (Firebase run `34469652725`). With subsequent explicit approval, test-mode secrets, test OAuth/redirect, both event destinations and the five-minute recovery scheduler are configured. Platform signed-event delivery, duplicate replay and recovery HTTP checks passed; see the [sandbox setup evidence](../reports/2026-09-10-stripe-sandbox-setup.md). The approved [Palace follow-up](../reports/2026-09-10-palace-payment-sandbox.md) additionally verifies a $10/month test checkout, reconciliation to Paid, billing portal and cancellation sync, a separate mapped test account, and signed Connect account updates. No live-payment approval or real-money transactions. Stripe onboarding and the remaining rental/full acceptance matrix are still pending.
 
 ## Money ownership
 
@@ -17,7 +17,7 @@ Each venue gets its own connected account per environment. An account cannot be 
 ## Owner workflow
 
 1. Open the venue admin payment settings (Venue finances).
-2. Complete venue ownership verification. Private sample venues cannot connect or bill.
+2. Complete venue ownership verification. Private sample venues cannot accept live payments. A separately approved, service-managed private test exception permits only the allowlisted owner to exercise Stripe test payments; it never verifies a real business or grants public access. See the [Palace sandbox record](../reports/2026-09-10-palace-payment-sandbox.md).
 3. If the venue already uses Stripe, choose **Connect existing Stripe account**. Otherwise explicitly confirm **Create venue account**. Do not create a duplicate to work around a missing OAuth configuration.
 4. Enter business, identity, bank and payout information only on Stripe-hosted pages. On return, PULSE retrieves the account; returning is not proof that onboarding completed. Outstanding requirements and pending review remain visible.
 5. Enable the court booking add-on separately. It costs $10/month paid to PULSE, not to the venue.
@@ -33,7 +33,7 @@ Each venue gets its own connected account per environment. An account cannot be 
 4. Deploy the frontend only after the backend migration/functions succeed. Frontend and backend main-branch CI workflows currently run independently, so coordinate this first rollout; do not assume a frontend green check proves backend readiness.
 5. Configure sandbox secrets and destinations below. Run the read-only `npm run payments:check` with secrets already in a secure process environment. Never put Stripe secret keys or signing/recovery secrets in VITE variables, Git, chat, screenshots or committed .env files. This script does not load secret files or create anything.
 
-## PULSE Stripe account configuration (not completed in this pass)
+## PULSE Stripe account configuration (sandbox configured; live still pending)
 
 Use the verified PULSE business account, not a venue account. Existing project records identify PULSE as `acct_1ShZSOG2WbAqAcDM`; verify that in Stripe before using it. The preflight compares the key's authenticated account against `PULSE_STRIPE_ACCOUNT_ID`.
 
@@ -71,7 +71,7 @@ Check `cron.job_run_details` and the corresponding `net._http_response` records.
 
 To pause safely after launch, set `PULSE_PAYMENTS_PAUSED=true`; retain the active environment, credentials, webhooks and recovery job. This stops new PULSE checkout/resume/setup actions, but already-issued Stripe checkout links may still settle and must still be reconciled. Each venue can independently turn off accepting payments. A saved positive court price must never silently become free. Do not delete accounts, payment orders, subscriptions, holds or event evidence as a troubleshooting shortcut.
 
-## Required sandbox acceptance (still pending)
+## Required sandbox acceptance (partially completed; see evidence above)
 
 - Two actual, distinct connected sandbox venue accounts. Verify a venue cannot link the other account, access its finances, use its customer/card, open its receipt or refund its order. Verify PULSE's own account cannot be linked as a venue.
 - New-account onboarding, existing-account OAuth, canceled/expired return, one-time state reuse rejection, wrong-owner/wrong-environment rejection, incomplete Stripe requirements, disconnect and reconnect of the same account.
@@ -80,7 +80,7 @@ To pause safely after launch, set `PULSE_PAYMENTS_PAUSED=true`; retain the activ
 - A player in another device time zone sees the venue's actual court hours and occupied slots. Test midnight and spring/fall daylight-saving transitions. Staff closure times, grid and confirmed checkout must agree.
 - Duplicate/out-of-order webhook delivery, delayed or failed fulfillment, scheduled recovery and refund notification arriving before checkout completion. Never manually mark an unpaid order paid to make a test pass.
 - Partial/full/pending/failed refunds, insufficient venue balance, cancel without refund, decline request, purchase history and connected-account billing portals.
-- Actual verified owner vs venue staff/community moderator; ownership transfer blocks access to the former owner's financial account. Private sample venues remain billing-disabled.
+- Actual verified owner vs venue staff/community moderator; ownership transfer blocks access to the former owner's financial account. Private sample venues remain live-billing-disabled; only a separately authorized owner-only test exception is permitted.
 - Web desktop, mobile browser and installed Android PWA navigation/return. No Android Studio or Google Play changes are part of this task.
 
 After the above is recorded with evidence, request explicit live approval, verify live-mode destinations/keys/Connect client separately, and activate one verified venue first. Readiness checkmarks are setup assistance, not proof of a successful end-to-end payment or regulatory compliance.
