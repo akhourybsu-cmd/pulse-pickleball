@@ -33,6 +33,7 @@ import { VenueBookingGrid } from '../VenueBookingGrid';
  */
 
 export interface OpsDashboardProps {
+  timeZone?: string | null;
   venueName: string;
   day: Date;
   now: Date;
@@ -59,6 +60,7 @@ export interface OpsDashboardProps {
 }
 
 export function OpsDashboard({
+  timeZone,
   venueName,
   day,
   now,
@@ -123,7 +125,7 @@ export function OpsDashboard({
                   style={accent ? { backgroundColor: accent } : undefined}
                 />
               </span>
-              {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              {formatSlotTime(now, timeZone)}
             </span>
           )}
 
@@ -199,18 +201,19 @@ export function OpsDashboard({
                   ))}
                 </div>
               ) : (
-                <CourtStatusBoard statuses={statuses} accent={accent} onPickCourt={onPickCourt} />
+                <CourtStatusBoard statuses={statuses} accent={accent} onPickCourt={onPickCourt} timeZone={timeZone} />
               )}
             </Section>}
 
             {/* The rail's content on mobile, where there is no rail. */}
             <div className="space-y-7 lg:hidden">
               {loading ? <Skeleton className="h-40 rounded-xl" /> : <DayPanel summary={summary} accent={accent} showLive={isToday} />}
-              {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />}
+              {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} timeZone={timeZone} />}
             </div>
 
             <Section title="Schedule">
                 <VenueBookingGrid
+                  timeZone={timeZone}
                   closed={closed}
                   grid={grid}
                   day={day}
@@ -228,7 +231,7 @@ export function OpsDashboard({
               material for the schedule you are scrolling beside it. */}
           <aside className="hidden lg:sticky lg:top-[4.5rem] lg:block lg:space-y-7">
             {loading ? <Skeleton className="h-40 rounded-xl" /> : <DayPanel summary={summary} accent={accent} showLive={isToday} />}
-            {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} />}
+            {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} timeZone={timeZone} />}
           </aside>
         </div>
       </div>
@@ -245,12 +248,14 @@ function DayPanel({ summary, accent, showLive }: { summary: DaySummary; accent?:
 }
 
 function GapsPanel({
+  timeZone,
   gaps,
   summary,
   accent,
   onFillGap,
 }: {
   gaps: Gap[];
+  timeZone?: string | null;
   summary: DaySummary;
   accent?: string | null;
   onFillGap: (gap: Gap) => void;
@@ -275,7 +280,7 @@ function GapsPanel({
                 {gap.court.name ?? `Court ${gap.court.court_number}`}
               </p>
               <p className="text-xs tabular-nums text-muted-foreground">
-                {formatSlotTime(gap.start)} – {formatSlotTime(gap.end)}
+                {formatSlotTime(gap.start, timeZone)} – {formatSlotTime(gap.end, timeZone)}
               </p>
             </div>
             <span

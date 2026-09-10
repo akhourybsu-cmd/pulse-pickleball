@@ -42,6 +42,7 @@ export function venueUpgradeState({
         "We could not check payment availability. Retry before continuing; no payment has been taken.",
     };
   if (
+    config?.ready !== false &&
     config?.cadence === "monthly" &&
     (config.mode === "live" || config.mode === "test")
   )

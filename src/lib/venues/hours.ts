@@ -1,4 +1,5 @@
 import type { DayGridOptions } from './availability';
+import { venueWallTime } from './timezone';
 
 /**
  * Opening hours.
@@ -190,13 +191,11 @@ export function isOpenOn(hours: VenueHours, day: Date): boolean {
 }
 
 /** Full operating window, including any final partial booking block. */
-export function venueOperatingBounds(hours: VenueHours, day: Date): { start: Date; end: Date } | null {
+export function venueOperatingBounds(hours: VenueHours, day: Date, timeZone?: string | null): { start: Date; end: Date } | null {
   const window = hours.days[day.getDay()];
   if (!window) return null;
-  const start = new Date(day);
-  start.setHours(0, window.openMinutes, 0, 0);
-  const end = new Date(day);
-  end.setHours(0, window.closeMinutes, 0, 0);
+  const start = venueWallTime(day, window.openMinutes, timeZone);
+  const end = venueWallTime(day, window.closeMinutes, timeZone);
   return { start, end };
 }
 

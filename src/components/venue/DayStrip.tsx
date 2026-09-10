@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { venueCalendarNow } from '@/lib/venues/timezone';
 
 /**
  * Horizontal day picker.
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 interface DayStripProps {
   value: Date;
+  timeZone?: string | null;
   onChange: (day: Date) => void;
   /** How many days forward to offer. */
   days?: number;
@@ -33,18 +35,18 @@ function startOfDay(d: Date): Date {
   return out;
 }
 
-export function DayStrip({ value, onChange, days = 14, accent, trailing }: DayStripProps) {
+export function DayStrip({ value, onChange, days = 14, accent, trailing, timeZone }: DayStripProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
 
   const options = useMemo(() => {
-    const today = startOfDay(new Date());
+    const today = startOfDay(venueCalendarNow(timeZone));
     return Array.from({ length: days }, (_, i) => {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
       return d;
     });
-  }, [days]);
+  }, [days, timeZone]);
 
   // Keep the chosen day in view when it changes from outside (a gap tapped on
   // the ops board, say), without yanking the whole page.

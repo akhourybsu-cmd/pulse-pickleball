@@ -46,6 +46,7 @@ export interface Group {
     email?: string | null;
     website_url?: string | null;
     hours_of_operation?: unknown;
+    timezone?: string | null;
   } | null;
 }
 

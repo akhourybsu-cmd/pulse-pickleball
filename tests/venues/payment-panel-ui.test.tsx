@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   api: vi.fn(), success: vi.fn(), error: vi.fn(), refetch: vi.fn(),
 }));
 vi.mock('@/hooks/useAuthState', () => ({ useAuthState: () => ({ user: { id: 'viewer' } }) }));
+vi.mock('@/components/venue/VenueStripeReturn', () => ({ VenueStripeReturn: () => null }));
+vi.mock('react-router-dom', () => ({ Link: ({ to, children }: any) => <a href={to}>{children}</a> }));
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (query: { queryKey: unknown[] }) => {
     state.keys.push(query.queryKey);
@@ -40,6 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks(); state.buttons = []; state.keys = [];
   state.data = { mode: 'live', venue: { name: 'Pickleball Palace', verification_approved_at: '2026-09-09' }, courts: [{ id: 'c1', name: 'Championship court with a long name', hourly_rate: 25, is_active: false }], account: { charges_enabled: true, payouts_enabled: true }, settings: { cancellation_policy: 'Cancel at least 24 hours before your reservation for a full refund.', support_email: 'support@palace.example', timezone: 'America/New_York', tax_inclusive_acknowledged: true, accepting_payments: false } };
   state.requests = { data: { requests: [] }, isPending: false, isError: false, isFetching: false };
+  state.data.ready = true; state.data.booking_enabled = true; state.data.account.card_payments_active = true; state.data.account.account_id = 'acct_venue';
   state.draft = paymentDraftReducer(emptyPaymentDraft, { type: 'receive', scope: 'venue:viewer', value: paymentDraftFrom(state.data) });
   state.refetch.mockResolvedValue({ isError: false });
 });

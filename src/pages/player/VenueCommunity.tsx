@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueModules } from '@/hooks/useVenueModules';
 import { useVenueDay } from '@/hooks/useVenueDay';
+import { venueCalendarNow } from '@/lib/venues/timezone';
 import { venueChrome } from '@/lib/venues/branding';
 import { parseVenueHours } from '@/lib/venues/hours';
 import { VenueStaffProvider, useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
@@ -94,7 +95,7 @@ export default function VenueCommunity() {
   }, []);
 
   const openTab = (tab: VenuePageTab) => {
-    if (tab === 'home') { const today = new Date(); today.setHours(0, 0, 0, 0); setDay(today); }
+    if (tab === 'home') { const today = venueCalendarNow(group?.venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
     setSearchParams(venueTabParams(searchParams, tab));
   };
@@ -148,6 +149,7 @@ export default function VenueCommunity() {
   }, [groupId, membership?.last_chat_read_at, membership?.last_read_at]);
 
   const venue = group?.venue ?? null;
+  useEffect(() => { const today = venueCalendarNow(venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }, [group?.venue_id, venue?.timezone]);
   const chrome = useMemo(() => venueChrome(venue), [venue]);
   const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
 
@@ -156,7 +158,7 @@ export default function VenueCommunity() {
   const {
     courts, programming, going, viewerRsvpByEvent, grid, closed, slotMinutes, freeNow,
     loading: dayLoading, error: dayError, refresh, hasCourts,
-  } = useVenueDay(group?.venue_id, groupId, day, hours);
+  } = useVenueDay(group?.venue_id, groupId, day, hours, venue?.timezone);
   const programQueries = useVenuePrograms(group?.venue_id, selectedProgramId);
   const selectedProgram = programQueries.detail.data?.event ?? null;
 
@@ -354,6 +356,7 @@ export default function VenueCommunity() {
                 {bookingTabAvailable && (
                   <TabsContent value="book" className="mt-0">
                     {!dayError && <VenueBookingGrid
+                      timeZone={venue?.timezone}
                       closed={closed}
                       grid={grid}
                       day={day}
@@ -398,7 +401,7 @@ export default function VenueCommunity() {
                         </Button>
                       )}
                     </div>
-                    <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
+                    <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} timeZone={venue?.timezone} />
                     {!dayError && <VenueProgramming
                       sessions={programming}
                       going={going}
@@ -551,6 +554,7 @@ export default function VenueCommunity() {
       {group.venue_id && (
         <>
           <BookCourtDialog
+            timeZone={venue?.timezone}
             open={!!bookingCourtId && !!bookingStart}
             onOpenChange={(o) => {
               if (!o) {

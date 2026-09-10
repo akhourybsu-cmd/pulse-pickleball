@@ -54,6 +54,7 @@ export function validatePaymentDraft(draft: VenuePaymentDraft): Record<string, s
   const errors: Record<string, string> = {};
   for (const [id, price] of Object.entries(draft.prices)) {
     if (!/^(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/.test(price) || Math.round(Number(price) * 100) > 99999999) errors[`rate-${id}`] = 'Enter a valid USD rate with up to two decimal places. Use 0 for a free court.';
+    else if (Number(price) > 0 && Number(price) < 1) errors[`rate-${id}`] = 'Paid courts need at least $1/hour so a 30-minute booking meets the minimum charge. Use 0 for free.';
   }
   if (draft.policy.trim().length < 20 || draft.policy.trim().length > 2000) errors.policy = 'Describe your cancellation and refund policy in 20–2,000 characters.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim()) || draft.email.trim().length > 254) errors.email = 'Enter a valid support email for your venue.';

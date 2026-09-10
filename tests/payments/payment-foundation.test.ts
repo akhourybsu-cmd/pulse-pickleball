@@ -133,6 +133,8 @@ beforeAll(async () => {
       "utf8"
     )
   );
+  await db.exec('ALTER TABLE venues ADD COLUMN stripe_account_id text; ALTER TABLE venues ADD COLUMN timezone text; CREATE TABLE private_venue_sandboxes(venue_id uuid PRIMARY KEY REFERENCES venues(id),owner_id uuid);');
+  await db.exec(readFileSync('supabase/migrations/20260921100000_venue_stripe_readiness.sql', 'utf8'));
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 2);
   d.setUTCHours(10, 0, 0, 0);
@@ -170,12 +172,67 @@ beforeEach(async () => {
     [venue, policy]
   );
   await db.query(
-    "INSERT INTO venue_payment_accounts VALUES($1,true,'acct_venue',$2,true,true,true,NULL,now()),($1,false,'acct_venue',$2,true,true,true,NULL,now())",
+    "INSERT INTO venue_payment_accounts(venue_id,livemode,account_id,connected_by,charges_enabled,payouts_enabled,details_submitted,card_payments_active) VALUES($1,true,'acct_venue',$2,true,true,true,true),($1,false,'acct_venue',$2,true,true,true,true)",
     [venue, owner]
   );
 });
 afterAll(async () => {
   await db?.close();
+});
+
+describe('independent venue Stripe connections', () => {
+  it('saves the same time zone for the calendar and payment quote', async () => {
+    await db.query("SELECT payment_save_venue($1,$2,false,$3,'venue@example.com','America/New_York','[]'::jsonb)", [owner, venue, policy]);
+    expect((await db.query<any>('SELECT timezone FROM venues WHERE id=$1', [venue])).rows[0].timezone).toBe('America/New_York');
+    expect((await db.query<any>('SELECT timezone FROM venue_payment_settings WHERE venue_id=$1', [venue])).rows[0].timezone).toBe('America/New_York');
+  });
+  const anotherVenue = id(40);
+  async function secondVenue() {
+    await db.query("INSERT INTO venues(id,name,owner_id,is_active,verification_approved_at) VALUES($1,'Another venue',$2,true,now())", [anotherVenue, other]);
+  }
+  it('allows a separate account for another verified venue but never reuses a venue account', async () => {
+    await secondVenue();
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [anotherVenue, other, 'acct_venue'])).rejects.toThrow('already belongs');
+    await db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [anotherVenue, other, 'acct_independent']);
+    expect((await db.query<any>('SELECT account_id FROM venue_payment_accounts WHERE venue_id=$1', [anotherVenue])).rows[0].account_id).toBe('acct_independent');
+  });
+  it('cannot replace an existing financial account or inherit it through ownership transfer', async () => {
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, owner, 'acct_replacement'])).rejects.toThrow('cannot be replaced');
+    await db.query('UPDATE venues SET owner_id=$1 WHERE id=$2', [other, venue]);
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, other, 'acct_venue'])).rejects.toThrow('cannot be replaced');
+  });
+  it('does not let an unrelated owner connect a venue or the private sample receive billing', async () => {
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, other, 'acct_venue'])).rejects.toThrow('verified current venue owner');
+    await db.query('INSERT INTO private_venue_sandboxes VALUES($1,$2)', [venue, owner]);
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [venue, owner, 'acct_venue'])).rejects.toThrow('private sample');
+  });
+  it('requires the existing legacy account to be linked rather than silently replaced', async () => {
+    await secondVenue(); await db.query("UPDATE venues SET stripe_account_id='acct_legacy' WHERE id=$1", [anotherVenue]);
+    await expect(db.query('SELECT payment_link_venue_account($1,$2,true,$3)', [anotherVenue, other, 'acct_new'])).rejects.toThrow('existing Stripe account');
+  });
+  it('blocks unpaid capability verification and revoked accounts even with old charges-enabled flags', async () => {
+    await db.exec('UPDATE venue_payment_accounts SET card_payments_active=false');
+    await expect(reserve()).rejects.toThrow('Stripe payment requirements');
+    await db.exec('UPDATE venue_payment_accounts SET card_payments_active=true,disconnected_at=now()');
+    await expect(reserve()).rejects.toThrow('Stripe payment requirements');
+  });
+  it('does not authorize the new owner to refund the previous financial owner’s money', async () => {
+    const order = await reserve(); await apply(order);
+    await db.query('SELECT payment_request_cancellation($1,$2,$3)', [order.id, buyer, 'Please cancel my court booking.']);
+    await db.query('UPDATE venues SET owner_id=$1 WHERE id=$2', [other, venue]);
+    await expect(db.query('SELECT payment_cancel_reservation($1,$2,$3,$4)', [order.id, other, 'Approved by new owner', 'refund_pending'])).rejects.toThrow('Financial ownership review');
+    expect((await db.query<any>('SELECT status FROM payment_cancellation_requests WHERE order_id=$1', [order.id])).rows[0].status).toBe('requested');
+  });
+  it('keeps OAuth state private and server-written', async () => {
+    await db.query('INSERT INTO venue_payment_oauth_states(state_hash,venue_id,owner_id,livemode) VALUES($1,$2,$3,true)', ['a'.repeat(64), venue, owner]);
+    await expect(asUser(owner, 'SELECT * FROM venue_payment_oauth_states')).rejects.toThrow('permission denied');
+    await expect(asUser(other, 'SELECT payment_link_venue_account($1,$2,true,$3)', [venue, other, 'acct_attacker'])).rejects.toThrow('permission denied');
+  });
+  it('rejects prices below the minimum and activation without verified Stripe capability', async () => {
+    await expect(db.query('SELECT payment_save_venue($1,$2,false,$3,$4,$5,$6)', [owner, venue, policy, 'venue@example.com', 'UTC', JSON.stringify([{ id: court, cents: 50 }])])).rejects.toThrow('at least $1');
+    await db.exec('UPDATE venue_payment_accounts SET card_payments_active=false');
+    await expect(db.query('SELECT payment_save_venue($1,$2,true,$3,$4,$5,$6)', [owner, venue, policy, 'venue@example.com', 'UTC', JSON.stringify([{ id: court, cents: 2000 }])])).rejects.toThrow('Stripe setup');
+  });
 });
 
 describe("ELEVENO free-tier reset", () => {
@@ -465,6 +522,13 @@ describe("court checkout and isolation", () => {
         [group, venue, court, other, tomorrow, later]
       )
     ).rejects.toThrow("held during checkout");
+  });
+  it('keeps configured courts paid when collections are paused, while preserving genuinely free courts', async () => {
+    await db.exec('UPDATE venue_payment_settings SET accepting_payments=false');
+    const insert = "INSERT INTO group_events(group_id,venue_id,venue_court_id,created_by,title,start_time,end_time,event_format) VALUES($1,$2,$3,$4,'Reservation',$5,$6,'reservation')";
+    await expect(asUser(buyer, insert, [group, venue, court, buyer, tomorrow, later])).rejects.toThrow('Paused payments');
+    await db.query('UPDATE venue_courts SET hourly_rate=0 WHERE id=$1', [court]);
+    await expect(asUser(buyer, insert, [group, venue, court, buyer, tomorrow, later])).resolves.toBeTruthy();
   });
   it("requires verified ownership and the currently connected owner", async () => {
     await db.query("UPDATE venues SET owner_id=$1", [other]);

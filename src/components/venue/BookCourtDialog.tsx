@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatMoney, openStripe, paymentApi, type CourtQuote, type PaymentConfig } from '@/lib/payments';
 import { bookingDurationOptions, isBookingRangeValid } from '@/lib/venues/experience';
+import { useAuthState } from '@/hooks/useAuthState';
 
 /**
  * Hold a court.
@@ -37,6 +38,7 @@ import { bookingDurationOptions, isBookingRangeValid } from '@/lib/venues/experi
  */
 
 interface BookCourtDialogProps {
+  timeZone?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
@@ -58,6 +60,7 @@ interface BookCourtDialogProps {
 }
 
 export function BookCourtDialog({
+  timeZone,
   open,
   onOpenChange,
   groupId,
@@ -70,15 +73,21 @@ export function BookCourtDialog({
   onBooked,
 }: BookCourtDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuthState();
   const [saving, setSaving] = useState(false);
+  const lock = useRef(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const scope = `${venueId}:${court?.id}:${start?.toISOString()}:${user?.id}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
   const [title, setTitle] = useState('');
   const [minutes, setMinutes] = useState(slotMinutes);
   const [accepted, setAccepted] = useState(false);
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
   const paymentDetails = useQuery({
-    queryKey: ['court-payment-details', court?.id, groupId],
+    queryKey: ['court-payment-details', court?.id, groupId, user?.id],
     queryFn: () => paymentApi<PaymentConfig & { paid: boolean; hourly_rate: number }>('booking_details', { court_id: court?.id, group_id: groupId }),
-    enabled: open && !!court, staleTime: 0,
+    enabled: open && !!court && !!user, staleTime: 0,
   });
 
   useEffect(() => {
@@ -88,42 +97,43 @@ export function BookCourtDialog({
       setAccepted(false);
       setRequestKey(crypto.randomUUID());
     }
-  }, [open, slotMinutes, presetMinutes]);
+    setCheckoutError(null);
+  }, [open, slotMinutes, presetMinutes, scope]);
 
   const spanChosen = !!presetMinutes && presetMinutes > 0;
 
   // Never offer a duration past the next occupied slot or closing time.
   const maxMinutes =
     start && dayEnd ? Math.max(0, (dayEnd.getTime() - start.getTime()) / 60000) : 0;
-  const options = bookingDurationOptions(slotMinutes, maxMinutes);
+  const options = bookingDurationOptions(slotMinutes, maxMinutes).filter(duration => !paymentDetails.data?.paid || (duration <= 240 && duration % 30 === 0));
 
   const end = start ? new Date(start.getTime() + minutes * 60000) : null;
   const validRange = court?.is_active !== false && isBookingRangeValid(start, minutes, dayEnd);
   const quote = useQuery({
-    queryKey: ['court-quote', court?.id, groupId, start?.toISOString(), end?.toISOString()],
+    queryKey: ['court-quote', court?.id, groupId, start?.toISOString(), end?.toISOString(), user?.id],
     queryFn: () => paymentApi<CourtQuote>('quote', { court_id: court?.id, group_id: groupId, start_time: start?.toISOString(), end_time: end?.toISOString() }),
     enabled: open && !!court && validRange && !!paymentDetails.data?.paid, staleTime: 0, retry: false,
   });
   useEffect(() => { setAccepted(false); setRequestKey(crypto.randomUUID()); }, [minutes, start?.toISOString(), court?.id, quote.data?.amount_cents, quote.data?.policy]);
 
   const submit = async () => {
-    if (saving || !court || court.is_active === false || !start || !end || !isBookingRangeValid(start, minutes, dayEnd)) return;
+    if (lock.current || saving || !court || court.is_active === false || !start || !end || !isBookingRangeValid(start, minutes, dayEnd)) return;
+    if (!paymentDetails.data || paymentDetails.isFetching || paymentDetails.isError) return;
 
+    lock.current = true;
     setSaving(true);
+    setCheckoutError(null);
     if (paymentDetails.data?.paid) {
       try {
-        if (!quote.data || !accepted) throw new Error('Review the total and cancellation policy first.');
+        if (!quote.data || !accepted || quote.isError || quote.isFetching) throw new Error('Review the confirmed total and cancellation policy first.');
         const result = await paymentApi<{ url: string }>('court_checkout', { court_id: court.id, group_id: groupId,
           start_time: start.toISOString(), end_time: end.toISOString(), amount_cents: quote.data.amount_cents,
           policy: quote.data.policy, accept_terms: accepted, request_key: requestKey });
+        if (currentScope.current !== scope) return;
+        if (!result?.url) throw new Error('Checkout was not confirmed. Retry or check Payments & purchases before starting another booking.');
         openStripe(result.url);
-      } catch (error) { toast({ title: 'Checkout not started', description: (error as Error).message, variant: 'destructive' }); }
-      finally { setSaving(false); }
-      return;
-    }
-    if (!paymentDetails.data || paymentDetails.isFetching || paymentDetails.isError) {
-      toast({ title: 'Please wait for the booking price to be checked', variant: 'destructive' });
-      setSaving(false);
+      } catch (error) { if (currentScope.current === scope) { setCheckoutError((error as Error).message); toast({ title: 'Checkout not started', description: (error as Error).message, variant: 'destructive' }); } }
+      finally { lock.current = false; setSaving(false); }
       return;
     }
     try {
@@ -176,14 +186,15 @@ export function BookCourtDialog({
       toast({
         title: 'Court booked',
         description: `${court.name ?? `Court ${court.court_number}`} · ${formatSlotTime(
-          start,
-        )}–${formatSlotTime(end)}`,
+          start, timeZone,
+        )}–${formatSlotTime(end, timeZone)}`,
       });
       onBooked();
       onOpenChange(false);
     } catch (error) {
       toast({ title: 'Could not book', description: error instanceof Error ? error.message : 'Please check your connection and try again.', variant: 'destructive' });
     } finally {
+      lock.current = false;
       setSaving(false);
     }
   };
@@ -195,11 +206,11 @@ export function BookCourtDialog({
           <DialogTitle className="font-sans">Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
           <DialogDescription>
             {start && end ? (
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex flex-wrap items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
-                {start.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                {start.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', timeZone: timeZone || undefined })}
                 {' · '}
-                {formatSlotTime(start)}–{formatSlotTime(end)}
+                {formatSlotTime(start, timeZone)}–{formatSlotTime(end, timeZone)}{timeZone ? ' · Venue time' : ''}
               </span>
             ) : null}
           </DialogDescription>
@@ -210,7 +221,7 @@ export function BookCourtDialog({
           <div className={cn('space-y-2', spanChosen && 'hidden')}>
             <Label htmlFor="booking-duration">Duration</Label>
             <Select value={String(minutes)} onValueChange={(v) => setMinutes(Number(v))}>
-              <SelectTrigger id="booking-duration">
+              <SelectTrigger id="booking-duration" disabled={saving}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -235,7 +246,7 @@ export function BookCourtDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={80}
-              disabled={paymentDetails.data?.paid}
+              disabled={saving || paymentDetails.data?.paid}
             />
             <p className="text-xs text-muted-foreground">
               Named bookings show on the court grid, so members know what's on.
@@ -245,12 +256,15 @@ export function BookCourtDialog({
             {quote.isPending || quote.isFetching ? <p role="status" className="text-sm">Preparing your price…</p> : quote.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>{quote.error.message}</p><Button variant="link" onClick={() => quote.refetch()}>Check again</Button></div> : quote.data && <>
               <div className="rounded-xl border bg-muted/20 p-4"><p className="text-xs font-medium text-muted-foreground">Paid to {quote.data.merchant_name}</p><div className="mt-2 flex items-end justify-between gap-3"><span className="text-sm">Court rental · {minutes} minutes</span><span className="text-2xl font-semibold tabular-nums">{formatMoney(quote.data.amount_cents)}</span></div><p className="mt-2 text-xs leading-5 text-muted-foreground">USD · {formatMoney(Math.round(quote.data.hourly_rate * 100))}/hour. Includes any applicable taxes. No PULSE booking surcharge.</p></div>
               <div><p className="text-sm font-semibold">Cancellation & refund policy</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{quote.data.policy}</p><p className="mt-2 break-all text-xs text-muted-foreground">Questions: {quote.data.support_email}</p></div>
-              <label className="flex items-start gap-3 text-sm leading-6"><Checkbox checked={accepted} onCheckedChange={value => setAccepted(value === true)} className="mt-1" /><span>I agree to pay {formatMoney(quote.data.amount_cents)} to {quote.data.merchant_name} and accept this cancellation policy.</span></label>
+              <p className="rounded-xl bg-muted/30 p-3 text-sm leading-6">Venue time: {start?.toLocaleString([], { timeZone: quote.data.timezone, dateStyle: 'medium', timeStyle: 'short' })} – {end?.toLocaleTimeString([], { timeZone: quote.data.timezone, hour: 'numeric', minute: '2-digit' })} ({quote.data.timezone}). Confirm this local venue time before paying.</p>
+              <label className="flex items-start gap-3 text-sm leading-6"><Checkbox disabled={saving} checked={accepted} onCheckedChange={value => setAccepted(value === true)} className="mt-1" /><span>I agree to pay {formatMoney(quote.data.amount_cents)} to {quote.data.merchant_name} and accept this cancellation policy.</span></label>
               <p className="text-xs leading-5 text-muted-foreground">Your court is held during secure checkout and confirmed only after successful payment. Returning without paying does not complete the booking.</p>
             </>}
           </div> : <p className="rounded-xl bg-muted/30 p-3 text-sm">Free reservation · No payment required</p>}
         </div>
 
+        {paymentDetails.data?.paid && <p className="text-xs leading-5 text-muted-foreground">Paid reservations use 30-minute increments, up to four hours, with at least 35 minutes’ notice. A failed or paused checkout does not create a free booking.</p>}
+        {checkoutError && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm">{checkoutError}</p>}
         <DialogFooter>
           <Button className="min-h-11" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel

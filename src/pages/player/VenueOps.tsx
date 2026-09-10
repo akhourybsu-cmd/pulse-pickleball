@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueModules } from '@/hooks/useVenueModules';
 import { useVenueDay } from '@/hooks/useVenueDay';
+import { venueCalendarNow } from '@/lib/venues/timezone';
 import { venueChrome } from '@/lib/venues/branding';
 import { parseVenueHours, venueOperatingBounds } from '@/lib/venues/hours';
 import { useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
@@ -61,13 +62,14 @@ export default function VenueOps() {
   const [eventCourtIds, setEventCourtIds] = useState<string[]>([]);
 
   const venue = group?.venue ?? null;
+  useEffect(() => { const today = venueCalendarNow(venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }, [group?.venue_id, venue?.timezone]);
   const chrome = useMemo(() => venueChrome(venue), [venue]);
   const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
 
   const { role: venueRole, loading: roleLoading, error: roleError, refetch: refetchRole } = useMyVenueRole(group?.venue_id);
 
   const { courts, sessions, holds, grid, closed, slotMinutes, loading: dayLoading, error: dayError, refresh } =
-    useVenueDay(group?.venue_id, groupId, day, hours);
+    useVenueDay(group?.venue_id, groupId, day, hours, venue?.timezone);
 
   // Access is a venue role, not community moderation: a front-desk person can
   // run the day without being handed moderator powers over the conversation.
@@ -80,13 +82,13 @@ export default function VenueOps() {
     venueRole === 'organizer' ||
     membership?.role === 'owner';
 
-  const operatingWindow = useMemo(() => venueOperatingBounds(hours, day), [hours, day]);
+  const operatingWindow = useMemo(() => venueOperatingBounds(hours, day, venue?.timezone), [hours, day, venue?.timezone]);
   const occupancy = useMemo(() => [...sessions, ...holds], [sessions, holds]);
   const statuses = useMemo(() => courtStatuses(courts, occupancy, now, operatingWindow), [courts, occupancy, now, operatingWindow]);
   const summary = useMemo(() => daySummary(grid, statuses, now), [grid, statuses, now]);
   const gaps = useMemo(() => upcomingGaps(grid, now, 60).slice(0, 4), [grid, now]);
 
-  const isToday = day.toDateString() === now.toDateString();
+  const isToday = day.toDateString() === venueCalendarNow(venue?.timezone, now).toDateString();
 
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
@@ -130,6 +132,7 @@ export default function VenueOps() {
   return (
     <>
       <OpsDashboard
+        timeZone={venue?.timezone}
         venueName={venue?.name ?? group.name}
         day={day}
         now={now}
@@ -187,6 +190,7 @@ export default function VenueOps() {
       {group.venue_id && (
         <>
           <CloseCourtDialog
+            timeZone={venue?.timezone}
             open={closeOpen}
             onOpenChange={setCloseOpen}
             groupId={groupId!}
@@ -199,6 +203,7 @@ export default function VenueOps() {
           />
 
           <BookCourtDialog
+            timeZone={venue?.timezone}
             open={!!bookCourtId && !!bookStart}
             onOpenChange={(o) => {
               if (!o) {

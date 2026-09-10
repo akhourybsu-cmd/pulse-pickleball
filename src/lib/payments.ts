@@ -4,6 +4,8 @@ export interface PaymentConfig {
   mode: "off" | "test" | "live";
   livemode: boolean;
   cadence: "monthly";
+  ready?: boolean;
+  setup_issues?: string[];
 }
 export interface PaymentOrder {
   id: string;

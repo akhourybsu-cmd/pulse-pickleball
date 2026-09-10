@@ -17,12 +17,13 @@ import { formatDuration, type CourtStatus } from '@/lib/venues/ops';
  */
 
 interface CourtStatusBoardProps {
+  timeZone?: string | null;
   statuses: CourtStatus[];
   accent?: string | null;
   onPickCourt: (courtId: string) => void;
 }
 
-export function CourtStatusBoard({ statuses, accent, onPickCourt }: CourtStatusBoardProps) {
+export function CourtStatusBoard({ statuses, accent, onPickCourt, timeZone }: CourtStatusBoardProps) {
   if (statuses.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
@@ -38,6 +39,7 @@ export function CourtStatusBoard({ statuses, accent, onPickCourt }: CourtStatusB
     <div className="grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2 xl:grid-cols-4">
       {statuses.map((status) => (
         <CourtCard
+          timeZone={timeZone}
           key={status.court.id}
           status={status}
           accent={accent}
@@ -49,11 +51,13 @@ export function CourtStatusBoard({ statuses, accent, onPickCourt }: CourtStatusB
 }
 
 function CourtCard({
+  timeZone,
   status,
   accent,
   onClick,
 }: {
   status: CourtStatus;
+  timeZone?: string | null;
   accent?: string | null;
   onClick: () => void;
 }) {
@@ -125,7 +129,7 @@ function CourtCard({
             <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Free</p>
             <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
               {next && minutesUntilNext !== null
-                ? `${formatSlotTime(new Date(next.start_time))} · ${next.title || 'Booked'}`
+                ? `${formatSlotTime(new Date(next.start_time), timeZone)} · ${next.title || 'Booked'}`
                 : 'Free rest of day'}
             </p>
           </>

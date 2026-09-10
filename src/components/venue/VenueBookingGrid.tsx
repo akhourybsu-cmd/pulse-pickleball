@@ -36,6 +36,7 @@ import { formatDuration } from '@/lib/venues/ops';
  */
 
 interface VenueBookingGridProps {
+  timeZone?: string | null;
   grid: CourtColumn[];
   day: Date;
   loading: boolean;
@@ -55,6 +56,7 @@ interface VenueBookingGridProps {
 }
 
 export function VenueBookingGrid({
+  timeZone,
   grid,
   day,
   loading,
@@ -93,9 +95,11 @@ export function VenueBookingGrid({
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">{timeZone ? `All court times are in ${timeZone.replace(/_/g, ' ')} (venue time).` : 'Court times use your device’s time zone.'}</p>
       {/* The view toggle rides on the day strip: it belongs to the same day of
           data, and a row of its own was pure overhead. */}
       <DayStrip
+        timeZone={timeZone}
         value={day}
         onChange={onDayChange}
         accent={accent}
@@ -146,6 +150,7 @@ export function VenueBookingGrid({
         </div>
       ) : effectiveMode === 'times' ? (
         <TimesView
+          timeZone={timeZone}
           grid={grid}
           canBook={canBook}
           accent={accent}
@@ -156,6 +161,7 @@ export function VenueBookingGrid({
         />
       ) : (
         <CourtsView
+          timeZone={timeZone}
           grid={grid}
           canBook={canBook}
           accent={accent}
@@ -181,7 +187,7 @@ export function VenueBookingGrid({
               {selectedCourt.name ?? `Court ${selectedCourt.court_number}`}
             </p>
             <p className="truncate text-xs tabular-nums text-muted-foreground">
-              {formatSlotTime(range.start)}–{formatSlotTime(range.end)} ·{' '}
+              {formatSlotTime(range.start, timeZone)}–{formatSlotTime(range.end, timeZone)} ·{' '}
               {formatDuration(range.minutes)}
             </p>
           </div>
@@ -240,6 +246,7 @@ function ViewButton({
  * fits without scrolling sideways.
  */
 function TimesView({
+  timeZone,
   grid,
   canBook,
   accent,
@@ -250,6 +257,7 @@ function TimesView({
   canBook: boolean;
   accent?: string | null;
   selection: SlotSelection | null;
+  timeZone?: string | null;
   onToggle: (courtId: string, index: number) => void;
 }) {
   const entries = timeList(grid);
@@ -274,13 +282,13 @@ function TimesView({
             className="flex items-center gap-3 px-3 py-1.5"
           >
             <span className="w-16 shrink-0 text-xs tabular-nums text-muted-foreground/70">
-              {formatSlotTime(entry.start)}
+              {formatSlotTime(entry.start, timeZone)}
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
               {!entry.booked && <MoonStar className="h-3 w-3" />}
               {entry.booked ? 'Fully booked' : 'Closed'}
               <span className="text-muted-foreground/50">
-                · until {formatSlotTime(entry.end)}
+                · until {formatSlotTime(entry.end, timeZone)}
               </span>
             </span>
             <span aria-hidden className="h-px flex-1 bg-border/60" />
@@ -291,7 +299,7 @@ function TimesView({
             className="flex items-start gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
           >
             <span className="w-16 shrink-0 pt-1 text-sm font-semibold tabular-nums">
-              {formatSlotTime(entry.start)}
+              {formatSlotTime(entry.start, timeZone)}
             </span>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -349,6 +357,7 @@ function TimesView({
  * appears on hover instead.
  */
 function CourtsView({
+  timeZone,
   grid,
   canBook,
   accent,
@@ -359,6 +368,7 @@ function CourtsView({
   canBook: boolean;
   accent?: string | null;
   onPickSlot: (courtId: string, start: Date) => void;
+  timeZone?: string | null;
   onPickSession?: (sessionId: string) => void;
 }) {
   const slotCount = grid[0]?.slots.length ?? 0;
@@ -403,7 +413,7 @@ function CourtsView({
             style={{ gridColumn: 1, gridRow: i + 2 }}
           >
             <span className="whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground">
-              {compactTime(slot.start)}
+              {formatSlotTime(slot.start, timeZone)}
             </span>
           </div>
         ))}
@@ -450,17 +460,6 @@ function shortCourtName(court: CourtColumn['court']): string {
   const name = court.name ?? (court.court_number != null ? `Court ${court.court_number}` : '');
   const match = /^court\s+(\S.*)$/i.exec(name.trim());
   return match ? match[1] : name;
-}
-
-/** "8 AM" / "12:30 PM" — one line, so rows keep a constant height. */
-function compactTime(d: Date): string {
-  const minutes = d.getMinutes();
-  return d
-    .toLocaleTimeString([], {
-      hour: 'numeric',
-      ...(minutes === 0 ? {} : { minute: '2-digit' }),
-    })
-    .replace(/\s?([AP])M/i, ' $1M');
 }
 
 function GridBlock({

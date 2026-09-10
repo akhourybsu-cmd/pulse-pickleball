@@ -1,3 +1,5 @@
+import { venueWallTime } from './timezone';
+
 /**
  * Court availability.
  *
@@ -47,6 +49,7 @@ export interface CourtColumn {
 }
 
 export interface DayGridOptions {
+  timeZone?: string | null;
   /** Local hour the venue opens; fractional hours preserve minute precision. */
   openHour: number;
   /** Local hour it closes, 1-24. 24 means midnight. */
@@ -105,7 +108,7 @@ export function reservationAt(
 }
 
 /**
- * The slot boundaries for one day, in the viewer's local time.
+ * Slot boundaries in the configured venue time zone (device time for legacy venues).
  *
  * Built by stepping from the opening time rather than by adding a fixed number
  * of milliseconds to midnight: on a daylight-saving day the local hour is what
@@ -121,9 +124,7 @@ export function slotBoundaries(day: Date, options: DayGridOptions): Date[] {
 
   for (let i = 0; i <= total; i++) {
     const minutesFromOpen = i * slotMinutes;
-    const d = new Date(day);
-    d.setHours(0, 0, 0, 0);
-    d.setMinutes(Math.round(openHour * 60) + minutesFromOpen);
+    const d = venueWallTime(day, Math.round(openHour * 60) + minutesFromOpen, options.timeZone);
     // During the spring DST jump, two different wall-clock minute offsets can
     // normalize to the same instant (for example 2:00 and 3:00 both becoming
     // 3:00). A duplicate boundary creates a zero-minute bookable slot, so omit
@@ -218,8 +219,8 @@ export function courtsFreeAt(
 }
 
 /** hh:mm in the viewer's locale, for slot labels. */
-export function formatSlotTime(d: Date): string {
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+export function formatSlotTime(d: Date, timeZone?: string | null): string {
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: timeZone || undefined });
 }
 
 /* ------------------------------------------------------------------ *

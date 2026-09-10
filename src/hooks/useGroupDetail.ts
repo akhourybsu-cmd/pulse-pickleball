@@ -19,7 +19,7 @@ export const GROUP_VENUE_SELECT =
   '*, venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, ' +
   'cover_image_fit, logo_shape, cover_focal_point, primary_color, ' +
   'secondary_color, tagline, welcome_headline, welcome_message, city, state, phone, ' +
-  'email, website_url, hours_of_operation)';
+  'email, website_url, hours_of_operation, timezone)';
 
 export function useGroupDetail(groupId: string | undefined) {
   const { user, loading: authLoading } = useAuthState();

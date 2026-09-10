@@ -34,6 +34,7 @@ import { getErrorCode, getErrorMessage } from '@/lib/getErrorMessage';
  */
 
 interface CloseCourtDialogProps {
+  timeZone?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
@@ -49,6 +50,7 @@ interface CloseCourtDialogProps {
 const REASONS = ['Maintenance', 'Resurfacing', 'Private event', 'Weather', 'Staff shortage'];
 
 export function CloseCourtDialog({
+  timeZone,
   open,
   onOpenChange,
   groupId,
@@ -77,18 +79,18 @@ export function CloseCourtDialog({
     setCourtId(court?.is_active !== false && court ? court.id : activeCourts[0].id);
     setReason(REASONS[0]);
     setError(null);
-    const defaults = defaultClosureTimes(dayStart, dayEnd, new Date());
+    const defaults = defaultClosureTimes(dayStart, dayEnd, new Date(), timeZone);
     setFromTime(defaults?.from ?? '');
     setToTime(defaults?.to ?? '');
     // Polling/realtime can replace court and Date objects. Initialize once per
     // opening so a background refresh never destroys an in-progress draft.
-  }, [open, court, courts, dayStart, dayEnd]);
+  }, [open, court, courts, dayStart, dayEnd, timeZone]);
 
-  const validation = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date());
+  const validation = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date(), timeZone);
 
   const submit = async () => {
     if (submitting.current || !activeCourts.some(c => c.id === courtId)) return;
-    const window = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date());
+    const window = closureWindow(dayStart, dayEnd, fromTime, toTime, new Date(), timeZone);
     if (window.error) { setError(window.error); return; }
     const { start, end } = window;
     submitting.current = true;
@@ -140,7 +142,7 @@ export function CloseCourtDialog({
         </DialogHeader>
 
         <fieldset disabled={saving} className="min-w-0 space-y-4">
-          {dayStart && dayEnd && <p className="rounded-xl bg-muted/40 p-3 text-sm leading-6">{dayStart.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · {formatSlotTime(dayStart)}–{formatSlotTime(dayEnd)}</p>}
+          {dayStart && dayEnd && <p className="rounded-xl bg-muted/40 p-3 text-sm leading-6">{dayStart.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', timeZone: timeZone || undefined })} · {formatSlotTime(dayStart, timeZone)}–{formatSlotTime(dayEnd, timeZone)}{timeZone ? ` · ${timeZone} (venue time)` : ''}</p>}
           <div className="space-y-2">
             <Label htmlFor="close-court">Court</Label>
             <Select disabled={saving} value={courtId} onValueChange={setCourtId}>

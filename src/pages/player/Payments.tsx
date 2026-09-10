@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { VenuePaymentsPanel } from "@/components/venue/VenuePaymentsPanel";
 import { useAuthState } from "@/hooks/useAuthState";
+import { stripeReturnVenue } from '@/lib/venues/paymentReadiness';
 import {
   formatMoney,
   openStripe,
@@ -39,16 +40,29 @@ import {
 
 export default function Payments() {
   const { user } = useAuthState();
-  const [params] = useSearchParams();
-  const venueId = params.get("venue");
+  const [params, setParams] = useSearchParams();
+  const venueId = params.get("venue") || stripeReturnVenue(params.get('state'));
+  const [invalidReturn, setInvalidReturn] = useState(false);
   const [page, setPage] = useState(0);
   const [merchant, setMerchant] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelOrder, setCancelOrder] = useState<PaymentOrder | null>(null);
   const [reason, setReason] = useState("");
+  const actionLock = useRef(false);
+  const scope = `${venueId}:${user?.id}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+  useEffect(() => { setPage(0); setMerchant(''); setCancelOrder(null); setReason(''); }, [scope]);
+  useEffect(() => {
+    if (!venueId && (params.has('code') || params.has('state') || params.has('error'))) {
+      setInvalidReturn(true);
+      setParams({}, { replace: true });
+    }
+  }, [params, setParams, venueId]);
   const config = useQuery({
-    queryKey: ["payment-config"],
+    queryKey: ["payment-config", user?.id],
     queryFn: () => paymentApi<PaymentConfig>("status"),
+    enabled: !!user,
     staleTime: 60_000,
   });
   const history = useQuery({
@@ -87,10 +101,14 @@ export default function Payments() {
       .catch((error) => toast.error(error.message));
   }, [params, config.data]); // Confirmation is server-verified; a return URL is not proof of payment.
   const action = async (name: string, values: Record<string, unknown> = {}) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(name);
     try {
       const result = await paymentApi<any>(name, values);
-      if (result.url) openStripe(result.url);
+      if (currentScope.current !== scope) return;
+      if (['save_card', 'billing_portal', 'receipt', 'resume'].includes(name) && !result?.url) throw new Error('Stripe did not confirm a secure link. Check your purchase status before trying again.');
+      if (result?.url) openStripe(result.url);
       else {
         await history.refetch();
         toast.success(
@@ -101,8 +119,9 @@ export default function Payments() {
         setCancelOrder(null);
       }
     } catch (error) {
-      toast.error((error as Error).message);
+      if (currentScope.current === scope) toast.error((error as Error).message);
     } finally {
+      actionLock.current = false;
       setBusy(null);
     }
   };
@@ -138,6 +157,8 @@ export default function Payments() {
           </Button>
         </div>
       </header>
+      {invalidReturn && <p role="alert" className="rounded-xl border p-4 text-sm">This Stripe return could not be matched to a venue. Open that venue’s payment settings and start the connection again. No account has been changed here.</p>}
+      {config.data?.ready === false && config.data.mode !== 'off' && <p role="status" className="rounded-xl border p-4 text-sm">{config.data.setup_issues?.join(' ') || 'New payment setup is temporarily unavailable.'} Existing purchase records remain available.</p>}
       {config.data?.mode === "test" && (
         <div
           role="status"
@@ -161,7 +182,7 @@ export default function Payments() {
           </Button>
         </p>
       )}
-      {venueId && <VenuePaymentsPanel venueId={venueId} />}
+      {venueId && <VenuePaymentsPanel key={`${venueId}:${user?.id}`} venueId={venueId} />}
       <div
         className={
           venueId
@@ -209,7 +230,7 @@ export default function Payments() {
                 </Select>
                 <Button
                   className="h-11 w-full rounded-xl"
-                  disabled={!!busy || !wallet.data}
+                  disabled={!!busy || !wallet.data?.merchants.length || config.data?.ready === false}
                   onClick={() => {
                     if (
                       window.confirm(
@@ -229,7 +250,7 @@ export default function Payments() {
                 <Button
                   variant="outline"
                   className="h-11 w-full rounded-xl"
-                  disabled={!!busy || !wallet.data}
+                  disabled={!!busy || !wallet.data?.merchants.length}
                   onClick={() =>
                     action("billing_portal", {
                       account_id:

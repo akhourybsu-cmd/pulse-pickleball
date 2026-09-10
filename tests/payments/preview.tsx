@@ -9,6 +9,7 @@ import {
   onlineManager,
 } from "@tanstack/react-query";
 import Payments from "../../src/pages/player/Payments";
+import { AuthStateProvider } from '../../src/hooks/useAuthState';
 import "../../src/index.css";
 
 onlineManager.setOnline(false);
@@ -16,7 +17,7 @@ const query = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 });
 const venue = "10000000-0000-4000-8000-000000000004";
-const config = { mode: "test", livemode: false, cadence: "monthly" };
+const config = { mode: "test", livemode: false, cadence: "monthly", ready: true };
 const policy =
   "Cancel at least 24 hours before your court time for a full refund. For weather closures, contact the venue and we will arrange a refund or a new time.";
 const orders = [
@@ -57,14 +58,14 @@ const orders = [
   },
 ];
 const future = { updatedAt: Date.now() + 86_400_000 };
-query.setQueryData(["payment-config"], config, future);
+query.setQueryData(["payment-config", undefined], config, future);
 query.setQueryData(
-  ["payment-history", null, 0],
+  ["payment-history", null, 0, undefined],
   { orders, has_more: false, legacy_leagues: [], legacy_tournaments: [] },
   future
 );
 query.setQueryData(
-  ["payment-history", venue, 0],
+  ["payment-history", venue, 0, undefined],
   {
     orders: [orders[0]],
     has_more: false,
@@ -74,7 +75,7 @@ query.setQueryData(
   future
 );
 query.setQueryData(
-  ["payment-wallet"],
+  ["payment-wallet", undefined],
   {
     merchants: [
       { account_id: "acct_example", merchant_name: "PULSE Pickleball" },
@@ -84,7 +85,7 @@ query.setQueryData(
   future
 );
 query.setQueryData(
-  ["venue-payments", venue],
+  ["venue-payments", venue, undefined],
   {
     ...config,
     venue: {
@@ -103,8 +104,12 @@ query.setQueryData(
       account_id: "acct_example",
       charges_enabled: true,
       payouts_enabled: true,
+      card_payments_active: true,
+      updated_at: '2026-09-10T12:00:00Z',
     },
     transferred: false,
+    booking_enabled: true,
+    connect_existing_available: true,
     courts: [
       { id: "one", name: "Court 1 · Indoor", hourly_rate: 20 },
       { id: "two", name: "Court 2 · Indoor", hourly_rate: 20 },
@@ -113,7 +118,7 @@ query.setQueryData(
   future
 );
 query.setQueryData(
-  ["venue-payment-requests", venue],
+  ["venue-payment-requests", venue, undefined],
   {
     requests: [
       {
@@ -128,8 +133,11 @@ query.setQueryData(
   future
 );
 const isVenue = new URLSearchParams(window.location.search).has("venue");
+const mobile = new URLSearchParams(window.location.search).has('mobile');
 createRoot(document.getElementById("root")!).render(
+  mobile ? <iframe title="390px venue payment preview" className="mx-auto block border" width="390" height="844" src="./preview.html?venue" /> :
   <QueryClientProvider client={query}>
+    <AuthStateProvider>
     <MemoryRouter
       initialEntries={[
         isVenue ? `/player/payments?venue=${venue}` : "/player/payments",
@@ -149,5 +157,6 @@ createRoot(document.getElementById("root")!).render(
         <Payments />
       </div>
     </MemoryRouter>
+    </AuthStateProvider>
   </QueryClientProvider>
 );

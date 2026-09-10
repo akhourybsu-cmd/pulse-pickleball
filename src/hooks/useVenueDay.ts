@@ -12,6 +12,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import { venueDayOverlapFilter } from '@/lib/venues/experience';
 import { isConfirmedVenueRsvp } from '@/lib/venues/experience';
 import type { GroupRsvpStatus } from './useGroupEvents';
+import { venueCalendarBounds, venueCalendarNow } from '@/lib/venues/timezone';
 
 /**
  * One venue, one day: its courts, and everything scheduled on them.
@@ -51,12 +52,8 @@ export function isProgramHold(s: { event_format?: string | null }): boolean {
 }
 
 /** Local midnight-to-midnight bounds for a day, as ISO strings. */
-export function dayBounds(day: Date): { from: string; to: string } {
-  const from = new Date(day);
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setDate(to.getDate() + 1);
-  return { from: from.toISOString(), to: to.toISOString() };
+export function dayBounds(day: Date, timeZone?: string | null): { from: string; to: string } {
+  return venueCalendarBounds(day, timeZone);
 }
 
 export function venueDayKey(venueId: string | null | undefined, day: Date) {
@@ -71,6 +68,7 @@ export function useVenueDay(
   day: Date,
   /** The venue's own opening hours. Defaults only when none are stored. */
   hours: VenueHours = defaultVenueHours(),
+  timeZone?: string | null,
 ) {
   const queryClient = useQueryClient();
   const { user } = useAuthState();
@@ -81,12 +79,12 @@ export function useVenueDay(
   }, []);
 
   const query = useQuery({
-    queryKey: [...venueDayKey(venueId, day), user?.id],
+    queryKey: [...venueDayKey(venueId, day), timeZone, user?.id],
     enabled: !!venueId && !!user,
     staleTime: 30 * 1000,
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { from, to } = dayBounds(day);
+      const { from, to } = dayBounds(day, timeZone);
 
       const [courtsRes, sessionsRes] = await Promise.all([
         supabase
@@ -167,9 +165,9 @@ export function useVenueDay(
   const closed = gridOptions === null;
 
   const grid = useMemo(
-    () => (gridOptions ? buildDayGrid(courts, [...sessions, ...(query.data?.holds ?? [])], day, { ...gridOptions, now }) : []),
+    () => (gridOptions ? buildDayGrid(courts, [...sessions, ...(query.data?.holds ?? [])], day, { ...gridOptions, now, timeZone }) : []),
     // `courts` is derived from query.data, so keying on it directly is stable.
-    [query.data, day, gridOptions, now], // eslint-disable-line react-hooks/exhaustive-deps
+    [query.data, day, gridOptions, now, timeZone], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /**
@@ -186,12 +184,13 @@ export function useVenueDay(
 
   // A future day's schedule cannot answer how many courts are free right now.
   const freeNow = useMemo(() => {
-    if (query.isError || query.isPending || day.toDateString() !== now.toDateString()) return null;
-    const todayHours = hours.days[now.getDay()];
-    const minute = now.getHours() * 60 + now.getMinutes();
+    const localNow = venueCalendarNow(timeZone, now);
+    if (query.isError || query.isPending || day.toDateString() !== localNow.toDateString()) return null;
+    const todayHours = hours.days[localNow.getDay()];
+    const minute = localNow.getHours() * 60 + localNow.getMinutes();
     if (!todayHours || minute < todayHours.openMinutes || minute >= todayHours.closeMinutes) return 0;
     return courtsFreeAt(courts, [...sessions, ...(query.data?.holds ?? [])], now);
-  }, [query.data, query.isError, query.isPending, day, now, hours]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query.data, query.isError, query.isPending, day, now, hours, timeZone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['venue-day', venueId] });
