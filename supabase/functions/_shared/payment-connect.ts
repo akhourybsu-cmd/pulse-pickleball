@@ -29,7 +29,7 @@ export async function refreshVenueAccount(r: Runtime, mapping: any) {
 export async function requireRentalAccount(r: Runtime, venueId: string) {
   const venue = checked(await r.store.from('venues').select('id,owner_id,verification_approved_at').eq('id', venueId).single());
   const mapping = checked(await r.store.from('venue_payment_accounts').select('*').eq('venue_id', venueId).eq('livemode', r.livemode).maybeSingle());
-  if (!mapping || !venue || !venue.verification_approved_at || mapping.connected_by !== venue.owner_id) throw new Error('The venue must complete financial ownership verification before taking payments.');
+  if (!mapping || !venue || mapping.connected_by !== venue.owner_id || checked(await r.store.rpc('payment_venue_owner_eligible', { p_venue: venueId, p_owner: venue.owner_id, p_live: r.livemode })) !== true) throw new Error('The venue must complete financial ownership verification before taking payments.');
   const fresh = await refreshVenueAccount(r, mapping);
   if (!fresh.charges_enabled || !fresh.payouts_enabled || !fresh.card_payments_active || fresh.disabled_reason) throw new Error('The venue must finish its Stripe payment and payout requirements. No payment has been taken.');
   return fresh;

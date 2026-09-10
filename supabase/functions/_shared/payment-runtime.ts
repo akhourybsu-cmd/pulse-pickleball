@@ -1,5 +1,6 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { privatePaymentTestAllowed } from './payment-private-sandbox.ts';
 import {
   assertPaymentConfiguration,
   billingMode,
@@ -62,9 +63,10 @@ export async function owner(
     throw new Error(
       "Only the current venue owner can manage billing or funds."
     );
-  const sample = checked(await store.from('private_venue_sandboxes').select('venue_id').eq('venue_id', venueId).maybeSingle());
-  if (sample) throw new Error('Billing and Stripe connections are disabled for private sample venues.');
-  return venue;
+  const sample = checked(await store.from('private_venue_sandboxes').select('owner_id,test_payments_enabled').eq('venue_id', venueId).maybeSingle());
+  const paymentTestSandbox = privatePaymentTestAllowed(sample, venue.owner_id, userId, billingMode(env).mode, env('PULSE_PAYMENT_TEST_USER_IDS') || '');
+  if (sample && !paymentTestSandbox) throw new Error('Billing is disabled for private sample venues except approved owner-only test payments.');
+  return { ...venue, payment_test_sandbox: paymentTestSandbox };
 }
 export async function customer(
   r: Runtime,

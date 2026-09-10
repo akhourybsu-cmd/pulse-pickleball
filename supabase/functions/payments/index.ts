@@ -346,7 +346,7 @@ serve(async (req) => {
     }
     if (body.action === 'connect_existing' || body.action === 'complete_connect') {
       const venue = await owner(store, user.id, uuid(body.venue_id));
-      if (!venue.verification_approved_at) throw new Error('Verify venue ownership before connecting payments.');
+      if (!venue.verification_approved_at && !venue.payment_test_sandbox) throw new Error('Verify venue ownership before connecting payments.');
       const existing = checked(await store.from('venue_payment_accounts').select('*').eq('venue_id', venue.id).eq('livemode', r.livemode).maybeSingle());
       if (existing && existing.connected_by !== user.id) throw new Error('Financial ownership review is required before connecting this venue.');
       return reply(body.action === 'connect_existing'
@@ -355,7 +355,7 @@ serve(async (req) => {
     }
     if (body.action === "onboard" || body.action === "refresh_account") {
       const venue = await owner(store, user.id, uuid(body.venue_id));
-      if (!venue.verification_approved_at)
+      if (!venue.verification_approved_at && !venue.payment_test_sandbox)
         throw new Error(
           "Verify your venue ownership before connecting payments."
         );
@@ -414,7 +414,7 @@ serve(async (req) => {
     }
     if (body.action === "module_checkout") {
       const venue = await owner(store, user.id, uuid(body.venue_id));
-      if (!venue.verification_approved_at)
+      if (!venue.verification_approved_at && !venue.payment_test_sandbox)
         throw new Error("Verify venue ownership before buying add-ons.");
       const name = moduleName(body.module_key);
       if (body.accept_terms !== true || body.cadence !== r.cadence)
@@ -425,7 +425,9 @@ serve(async (req) => {
           p_module: body.module_key,
         })
       );
-      if (access)
+      // Included sample access is never removed or converted into a paid grant.
+      // The approved private sandbox can exercise test subscriptions separately.
+      if (access && !venue.payment_test_sandbox)
         throw new Error(
           "This venue already has this add-on. No payment is needed."
         );
