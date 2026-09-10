@@ -21,7 +21,7 @@ import {
   runtime,
 } from "../_shared/payment-runtime.ts";
 import { reconcileOrder, startCheckout } from "../_shared/payment-checkout.ts";
-import { completeExisting, connectExisting, merchantPortal, newVenueAccountParameters, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
+import { completeExisting, connectExisting, createOrRecoverVenueAccount, merchantPortal, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
 import { recordSettledCharge } from '../_shared/payment-refunds.ts';
 
 serve(async (req) => {
@@ -377,12 +377,7 @@ serve(async (req) => {
           throw new Error(
             "This venue already references a Stripe account. PULSE must verify and link that account before creating another."
           );
-        const created = await r.stripe.accounts.create(
-          newVenueAccountParameters(venue, user),
-          {
-            idempotencyKey: `venue-account:${r.livemode}:${venue.id}:${user.id}`,
-          }
-        );
+        const created = await createOrRecoverVenueAccount(r, venue, user);
         account = checked(await store.rpc('payment_link_venue_account', { p_venue: venue.id, p_owner: user.id, p_live: r.livemode, p_account: created.id }));
       }
       if (!account) throw new Error('Connect this venue’s Stripe account first.');

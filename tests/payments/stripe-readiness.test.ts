@@ -10,7 +10,7 @@ vi.mock('../../supabase/functions/_shared/payment-runtime.ts', () => ({
   options: (r: any, account: string, key?: string) => ({ ...(account === r.platform ? {} : { stripeAccount: account }), ...(key ? { idempotencyKey: key } : {}) }),
   owner: vi.fn(async () => ({ id: 'venue-a' })),
 }));
-import { accountSnapshot, assertIndependentAccount, completeExisting, connectExisting, merchantPortal, newVenueAccountParameters, stateHash } from '../../supabase/functions/_shared/payment-connect';
+import { accountSnapshot, assertIndependentAccount, completeExisting, connectExisting, createOrRecoverVenueAccount, merchantPortal, newVenueAccountParameters, stateHash } from '../../supabase/functions/_shared/payment-connect';
 import { recordSettledCharge, settledRefundAmount } from '../../supabase/functions/_shared/payment-refunds';
 
 const envValues = () => ({ PULSE_PAYMENTS_MODE: 'test', PULSE_STRIPE_SECRET_KEY: 'sk_test_sample', PULSE_STRIPE_ACCOUNT_ID: 'acct_platform', PULSE_STRIPE_WEBHOOK_SECRET: 'whsec_platform', PULSE_STRIPE_CONNECT_WEBHOOK_SECRET: 'whsec_connect', PULSE_PAYMENT_RECONCILE_SECRET: 'r'.repeat(32), PULSE_PAYMENT_TEST_USER_IDS: 'tester' });
@@ -92,6 +92,21 @@ function mockRuntime(claimed: any = { venue_id: 'venue-a' }) {
 }
 describe('Stripe connection safeguards', () => {
   beforeEach(() => vi.clearAllMocks());
+  it('recovers a matching account before retrying creation and refuses ambiguous financial ownership', async () => {
+    const matching = { ...fullAccount(), metadata: { pulse_venue_id: 'venue-a', pulse_owner_id: 'owner-a' } };
+    for (const accounts of [[matching], [matching, matching], [{ ...matching, metadata: { ...matching.metadata, pulse_owner_id: 'previous-owner' } }]]) {
+      const r: any = { platform: 'acct_platform', livemode: false, stripe: { accounts: { list: () => ({ async *[Symbol.asyncIterator]() { yield* accounts; } }), create: vi.fn() } } };
+      const result = createOrRecoverVenueAccount(r, { id: 'venue-a', name: 'Palace Test' }, { id: 'owner-a' });
+      if (accounts.length === 1 && accounts[0] === matching) expect(await result).toBe(matching);
+      else await expect(result).rejects.toThrow('financial review');
+      expect(r.stripe.accounts.create).not.toHaveBeenCalled();
+    }
+  });
+  it('uses the corrected versioned creation key only after finding no existing venue account', async () => {
+    const r: any = { platform: 'acct_platform', livemode: false, stripe: { accounts: { list: () => ({ async *[Symbol.asyncIterator]() { yield { ...fullAccount(), metadata: { pulse_venue_id: 'another-venue' } }; } }), create: vi.fn(async () => ({ id: 'acct_new' })) } } };
+    await createOrRecoverVenueAccount(r, { id: 'venue-a', name: 'Palace Test' }, { id: 'owner-a' });
+    expect(r.stripe.accounts.create).toHaveBeenCalledWith(expect.objectContaining({ capabilities: { card_payments: { requested: true }, transfers: { requested: true } } }), { idempotencyKey: 'venue-account:v2:false:venue-a:owner-a' });
+  });
   it('requests Stripe’s paired card/transfer capabilities while keeping the account venue-controlled', () => {
     const params = newVenueAccountParameters({ id: 'venue-a', name: 'Palace Test' }, { id: 'owner-a', email: 'owner@example.com' });
     expect(params.capabilities).toEqual({ card_payments: { requested: true }, transfers: { requested: true } });

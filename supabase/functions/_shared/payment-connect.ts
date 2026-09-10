@@ -17,6 +17,22 @@ export function newVenueAccountParameters(venue: { id: string; name: string }, u
   };
 }
 
+/** Recover a successful Stripe creation whose database binding was interrupted
+ * before using the corrected capability request's versioned idempotency key. */
+export async function createOrRecoverVenueAccount(r: Runtime, venue: { id: string; name: string }, user: { id: string; email?: string }) {
+  let recovered = null;
+  for await (const account of r.stripe.accounts.list({ limit: 100 })) {
+    if (account.metadata?.pulse_venue_id !== venue.id) continue;
+    if (account.metadata?.pulse_owner_id !== user.id || recovered) throw new Error('Existing venue Stripe accounts need a financial review. No new account was created.');
+    assertIndependentAccount(account, r.platform);
+    recovered = account;
+  }
+  if (recovered) return recovered;
+  return r.stripe.accounts.create(newVenueAccountParameters(venue, user), {
+    idempotencyKey: `venue-account:v2:${r.livemode}:${venue.id}:${user.id}`,
+  });
+}
+
 export function accountSnapshot(account: any) {
   return {
     charges_enabled: account.charges_enabled === true,
