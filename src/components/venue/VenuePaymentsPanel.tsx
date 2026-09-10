@@ -371,7 +371,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
       {testSandbox && <section aria-labelledby="sample-subscriptions" className="rounded-2xl border bg-card p-5 sm:p-6">
         <h2 id="sample-subscriptions" className="text-lg font-semibold">Test PULSE feature subscriptions</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">These are simulated $10/month purchases from PULSE, separate from this venue’s rental income. They never replace your included sample access. Review or cancel test subscriptions in Payments & purchases.</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">{[{ key: 'court_booking', title: 'Court booking' }, { key: 'facility_tools', title: 'Facility operations' }].map(module => <div key={module.key} className="min-w-0 rounded-xl border p-4"><p className="font-semibold">{module.title} · Test only</p><VenueAddonCheckout venueId={venueId} moduleKey={module.key} title={module.title} venueName={data.venue.name} verified={testSandbox} canPurchase={!dirty && !busy} /></div>)}</div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">{[{ key: 'court_booking', title: 'Court booking' }, { key: 'facility_tools', title: 'Facility operations' }].map(module => <div key={module.key} className="min-w-0 rounded-xl border p-4"><p className="font-semibold">{module.title} · Test only</p><VenueAddonCheckout venueId={venueId} moduleKey={module.key} title={module.title} venueName={data.venue.name} verified={testSandbox} canPurchase disabled={dirty || !!busy} /></div>)}</div>
       </section>}
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex items-center gap-2">

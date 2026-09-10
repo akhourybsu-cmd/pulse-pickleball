@@ -23,6 +23,7 @@ export function VenueAddonCheckout({
   verified,
   canPurchase,
   venueName,
+  disabled = false,
 }: {
   venueId: string;
   moduleKey: string;
@@ -30,6 +31,7 @@ export function VenueAddonCheckout({
   verified: boolean;
   canPurchase: boolean;
   venueName?: string;
+  disabled?: boolean;
 }) {
   const config = useQuery({
     queryKey: ["payment-config"],
@@ -52,7 +54,7 @@ export function VenueAddonCheckout({
     pending: config.isPending,
     error: config.isError,
   });
-  const ready = availability.ready;
+  const ready = availability.ready && !disabled;
   useEffect(() => {
     setAccepted(false);
     setCheckoutError(null);
@@ -95,7 +97,7 @@ export function VenueAddonCheckout({
       </p>
       <Button
         className="h-auto min-h-11 w-full whitespace-normal rounded-xl py-2"
-        disabled={busy}
+        disabled={busy || disabled}
         onClick={() => {
           setOpen(true);
           setAccepted(false);
@@ -107,7 +109,7 @@ export function VenueAddonCheckout({
       </Button>
       {!ready && (
         <p className="text-xs leading-5 text-muted-foreground">
-          {availability.message}
+          {disabled ? 'Save or discard your payment settings before starting a test purchase.' : availability.message}
         </p>
       )}
       <Dialog

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { paymentLaunchIssues } from '../../supabase/functions/_shared/payment-contracts';
 import { privatePaymentTestAllowed } from '../../supabase/functions/_shared/payment-private-sandbox';
+import { stripeRequestOptions } from '../../supabase/functions/_shared/payment-stripe-options';
 import { stripeReturnVenue, venuePaymentReadiness, type VenuePaymentSetup } from '../../src/lib/venues/paymentReadiness';
 
 vi.mock('../../supabase/functions/_shared/payment-runtime.ts', () => ({
@@ -14,6 +15,11 @@ import { recordSettledCharge, settledRefundAmount } from '../../supabase/functio
 
 const envValues = () => ({ PULSE_PAYMENTS_MODE: 'test', PULSE_STRIPE_SECRET_KEY: 'sk_test_sample', PULSE_STRIPE_ACCOUNT_ID: 'acct_platform', PULSE_STRIPE_WEBHOOK_SECRET: 'whsec_platform', PULSE_STRIPE_CONNECT_WEBHOOK_SECRET: 'whsec_connect', PULSE_PAYMENT_RECONCILE_SECRET: 'r'.repeat(32), PULSE_PAYMENT_TEST_USER_IDS: 'tester' });
 describe('launch checks', () => {
+  it('never passes unrecognized empty Stripe options and preserves merchant scope', () => {
+    expect(stripeRequestOptions('acct_platform', 'acct_platform')).toEqual({ apiVersion: '2025-08-27.basil' });
+    expect(stripeRequestOptions('acct_platform', 'acct_venue', 'retry-id')).toEqual({ apiVersion: '2025-08-27.basil', stripeAccount: 'acct_venue', idempotencyKey: 'retry-id' });
+    expect(() => stripeRequestOptions('acct_platform', 'invalid')).toThrow('Invalid payment account');
+  });
   it('requires independent notification secrets, recovery and approved testers without revealing credentials', () => {
     const values: Record<string, string> = envValues();
     expect(paymentLaunchIssues(key => values[key])).toEqual([]);

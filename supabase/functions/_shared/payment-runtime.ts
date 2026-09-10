@@ -1,6 +1,7 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { privatePaymentTestAllowed } from './payment-private-sandbox.ts';
+import { stripeRequestOptions } from './payment-stripe-options.ts';
 import {
   assertPaymentConfiguration,
   billingMode,
@@ -32,12 +33,7 @@ export async function runtime() {
 }
 export type Runtime = Awaited<ReturnType<typeof runtime>>;
 export function options(r: Runtime, account: string, key?: string) {
-  if (!/^acct_[A-Za-z0-9]+$/.test(account))
-    throw new Error("Invalid payment account.");
-  return {
-    ...(account === r.platform ? {} : { stripeAccount: account }),
-    ...(key ? { idempotencyKey: key } : {}),
-  };
+  return stripeRequestOptions(r.platform, account, key);
 }
 export async function authenticate(req: Request, store = db()) {
   const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
