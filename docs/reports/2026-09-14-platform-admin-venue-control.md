@@ -1,6 +1,6 @@
 # PULSE platform administration and venue control — September 14, 2026
 
-Status: backend deployed and transactionally verified in production; frontend publication in progress. Android Studio and Google Play are unchanged.
+Status: backend and web/PWA frontend published successfully; production migration assertions and public release checks passed. Authenticated hosted approval/grant acceptance remains untested. Android Studio and Google Play are unchanged.
 
 ## Implemented scope
 
@@ -46,7 +46,11 @@ Biometrics diagnostics, test accounts, password support, badges and marketing ar
 
 - Backend commit: `af0a0f4b68f392b440c7c4788a5d49ea54f68988`.
 - [Supabase deployment 34904567315](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34904567315): successful against `rqfqwavhtfwwtmfjnxkx` on September 14, 2026. The audit reported **436 local, 435 recorded, 1 pending** and applied only `20260922100000_platform_admin_venue_control.sql`. Edge Function deployment was correctly skipped.
-- Frontend deployment and public asset verification: pending.
+- Frontend commit: `a5eb02e629cf6e6ac0650341ffe51ec97322e11e`.
+- [Firebase deployment 34904702662](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34904702662): successful. CI passed **1,195 tests**, with 32 skipped and 10 todo, then built 4,710 modules and deployed Hosting version `e25796d19ae01133`.
+- Public `/admin`, `/admin/venues`, `/admin/venue-requests`, `/admin/activity` and `/admin/legacy-tools` returned HTTP 200 with the CI entry `/assets/index-B1CZPUMA.js`. The entry contains the new guarded route paths. This confirms SPA delivery, not signed-in approval/grant behavior.
+- AdminDashboard `UkzCcwft`, AdminVenues `Ch1twkEM`, AdminLayout `C9xf0PD9` and AdminPlatformActivity `BCv37Ld_` JavaScript assets returned HTTP 200, contained the expected new UI text and used immutable asset caching.
+- `/sw.js` returned JavaScript with no-store/revalidation caching; the actual linked `/manifest.json` returned valid JSON with standalone display. The initially probed `/manifest.webmanifest` is not the linked manifest and fell back to the SPA. No PWA configuration change was required.
 
 ## Complete copy/paste SQL and release order
 
@@ -56,7 +60,7 @@ The file contains the **entire** transactional migration, including BEGIN and CO
 
 1. Completed: production target and migration history checked by the existing workflow. Unique confirmed account resolution and role reconciliation were verified transactionally. No backup/restore exercise was performed.
 2. Completed: the backend-only commit deployed successfully before frontend publication, including the live access and unchanged-record assertions above.
-3. Pending: publish the web/PWA through the Firebase main-branch workflow, then verify the public admin route and release assets.
+3. Completed: the web/PWA was published through the Firebase main-branch workflow, and public admin routes, release assets and PWA update files were verified.
 4. Remaining acceptance: while signed into the hosted portal, verify pending/waiting filters, directory search, audit privacy and the owner notification. Use a verified disposable non-commercial test venue for grant/revoke acceptance. Do not remove Pickleball Palace sample access or change ELEVENO's tier without a specific request.
 5. Completed: no subscription, checkout payment, payout destination or venue operational data was changed by the migration. No native Android release is needed.
 
