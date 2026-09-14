@@ -1,6 +1,16 @@
 # Paid venue visual pass — September 14, 2026
 
-Status: implemented and verified locally; not committed or published. No database migration, entitlement change, Stripe change, native Android Studio or Google Play work.
+Status: published to production on September 14, 2026. No database migration, entitlement change, Stripe change, native Android Studio or Google Play work.
+
+## Production release
+
+- Application commit: `73c382410c298afe26c028de5f5a366739a936f6`, pushed to `main` with explicit publication approval.
+- [Firebase deployment run 34910022570](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34910022570): successful; job `104195223749`. CI confirmed 1,206 passing tests, 32 skipped, 10 todo, and a successful 4,712-module production build.
+- Firebase Hosting version: `877ade2ab3b71a8e`.
+- Live ELEVENO route returned HTTP 200 with `/assets/index-DCvX0cEX.js` and `/assets/index-DmW5NXqv.css`, matching the CI output.
+- Downloaded entry JavaScript, stylesheet, `VenueCommunity-l5gYwn1R.js`, `GroupManage-B6tg2u5d.js` and `VenueEventDialog-B2M9B_nW.js` all returned HTTP 200 and matched the corresponding locally verified build content exactly. Confirmed service-card/reduced-motion styles, responsive navigation, feature-management heading and booking heading in their deployed chunks.
+- `/manifest.json` returned HTTP 200 with standalone display. `/sw.js` returned JavaScript with no-cache/no-store/revalidation headers; hashed assets retained immutable caching.
+- These production checks confirm release delivery, not authenticated hosted end-to-end or physical-device acceptance. Existing PWA installations may need a reload/reopen to activate the update.
 
 ## Experience changes
 
@@ -23,7 +33,7 @@ Status: implemented and verified locally; not committed or published. No databas
 - Visually inspected normal mobile home/booking/selection, dark desktop programs with enlarged text, dark mobile feature cards and light desktop complimentary feature cards.
 - Checked program filtering, desktop ArrowDown navigation, mobile court selection/review presentation, guide expansion and the feature-list anchor. Booking/chat-disabled fixture correctly omitted those tabs. Paid and included labels remain distinct.
 - Contrast tests enforce at least 4.5:1 for all 12 light/dark service tones against their icon washes and selection text colors. The actual light booking selection computed to white on `rgb(21, 101, 85)` in the browser.
-- Physical-device, installed-PWA and authenticated hosted end-to-end acceptance have not been performed for this unpublished visual pass.
+- Physical-device, installed-PWA and authenticated hosted end-to-end acceptance have not been performed for this visual pass.
 
 ## Local preview
 
@@ -33,4 +43,4 @@ Run `npm exec vite -- --config tests/venues/browser/vite.config.ts --host 127.0.
 - Owner features: `/tests/venues/browser/index.html?modules`
 - Stress variants: add `&long&large-text&dark`; add `&subscribed` for paid labels on the owner fixture or `&no-booking&no-chat` on the player fixture.
 
-Temporary preview server/tab were closed and the browser viewport override was reset after QA. Publication should use the existing Firebase web/PWA workflow when requested; no SQL or native Android release is required.
+Temporary preview server/tab were closed and the browser viewport override was reset after QA. Publication used the existing Firebase web/PWA workflow; no SQL or native Android release was required.
