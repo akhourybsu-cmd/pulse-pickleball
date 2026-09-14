@@ -1,83 +1,13 @@
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
-import { Archive, Trophy, ExternalLink, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
-
-/**
- * AdminArchive — single index page for all surfaces that have been
- * compartmentalized away from the player-facing app. Lives behind
- * AdminGuard. The underlying routes (/tournaments/*, etc.) are
- * themselves admin-gated, so this page is just discoverable
- * navigation for the people who still need to reach them.
- */
+import { Link } from 'react-router-dom';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { isTournamentsEnabled } from '@/lib/tournaments/featureFlag';
+const groups = [
+  { title: 'Legacy session operations', detail: 'The original single-session tools remain available for maintenance. Current events and facility operations belong in their owner workspaces.', links: [['/admin/legacy-tools','Session console, QR tools & rating maintenance'],['/admin/session','Session directory']] },
+  { title: 'Specialist & diagnostic tools', detail: 'Infrequent tools, removed from primary navigation—not deleted.', links: [['/admin/biometrics','Biometrics diagnostics'],['/admin/test-accounts','Test accounts'],['/admin/password-reset','Password support'],['/admin/badges','Badge management'],['/admin/marketing','Marketing materials']] },
+];
 export default function AdminArchive() {
-  const navigate = useNavigate();
-
-  const ArchiveLink = ({ to, label }: { to: string; label: string }) => (
-    <Link
-      to={to}
-      className="flex items-center justify-between rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent transition"
-    >
-      <span>{label}</span>
-      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-    </Link>
-  );
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-secondary/30">
-        <div className="container max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Archive className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-lg font-semibold">Archived Surfaces</h1>
-            <p className="text-xs text-muted-foreground">
-              Internal-only. Hidden from all non-admin users.
-            </p>
-          </div>
-          <Badge variant="outline" className="ml-auto">Admin</Badge>
-        </div>
-      </div>
-
-      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Tournaments are being rebuilt behind VITE_TOURNAMENTS. While the
-            flag is off the routes aren't registered, so these links would
-            dead-end — hide the whole card rather than offer broken entries. */}
-        {isTournamentsEnabled() ? (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                <CardTitle>Tournaments</CardTitle>
-              </div>
-              <CardDescription>
-                Tournament discovery, registration, live view, and admin tools.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <ArchiveLink to="/tournaments" label="Tournaments landing" />
-              <ArchiveLink to="/tournaments/manage" label="Manage tournaments" />
-              <ArchiveLink to="/tournament-admin" label="Tournament admin console" />
-              <ArchiveLink to="/tournaments/new" label="Create a tournament" />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Nothing archived right now</CardTitle>
-              <CardDescription>
-                Retired surfaces show up here when they're taken out of the main
-                navigation.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
+  return <AdminLayout title="Archived tools" subtitle="Retained for occasional use. No records, features or owner workspaces were deleted."><div className="space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+    {groups.map(group => <section key={group.title} className="rounded-2xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{group.title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{group.detail}</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{group.links.map(([href,label]) => <Link key={href} to={href} className="flex min-h-12 items-center rounded-xl border px-4 py-3 text-sm transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">{label}</Link>)}</div></section>)}
+    {isTournamentsEnabled() && <section className="rounded-2xl border bg-card p-5"><h2 className="text-lg font-semibold">Legacy tournament console</h2><Link className="mt-3 inline-flex min-h-11 items-center text-sm underline" to="/tournament-admin">Open tournament administration</Link></section>}
+  </div></AdminLayout>;
 }

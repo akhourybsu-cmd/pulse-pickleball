@@ -1,201 +1,39 @@
-import { ReactNode, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  ArrowLeft, Menu, LayoutDashboard, Calendar, Users, Trophy, FileText,
-  Shuffle, QrCode, Fingerprint, Shield, Activity, Megaphone, UserPlus,
-  Archive, Swords, Zap, ListChecks, KeyRound,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Footer } from "@/components/Footer";
-import { Logo } from "@/components/Logo";
-import { cn } from "@/lib/utils";
-import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
+import { ReactNode, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, Menu, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Logo } from '@/components/Logo';
+import { cn } from '@/lib/utils';
+import { ADMIN_NAVIGATION } from './adminNavigation';
 
-/**
- * Every admin surface renders inside this shell. Gives us one place to
- * fix header chrome, back nav, and the mobile drawer so subpages don't
- * each reinvent it.
- */
-
-interface AdminNavItem {
-  href: string;
-  label: string;
-  icon: typeof Users;
-  group: "live" | "manage" | "diagnostics" | "advanced";
-}
-
-const NAV: AdminNavItem[] = [
-  { href: "/admin/session",             label: "Sessions",         icon: Calendar,      group: "live" },
-  { href: "/admin/manage",              label: "Live Session",     icon: Zap,           group: "live" },
-  { href: "/admin/pairing",             label: "Auto Pair",        icon: Shuffle,       group: "live" },
-  { href: "/qr-checkin",                label: "QR Check-In",      icon: QrCode,        group: "live" },
-  { href: "/kiosk",                     label: "Kiosk Display",    icon: LayoutDashboard, group: "live" },
-
-  { href: "/admin/players",             label: "Players",          icon: Users,         group: "manage" },
-  { href: "/admin/venue-requests",      label: "Venue requests",   icon: Shield,        group: "manage" },
-  { href: "/admin/matches",             label: "Matches",          icon: FileText,      group: "manage" },
-  { href: "/player/leagues",            label: "Leagues",          icon: ListChecks,    group: "manage" },
-  { href: "/admin/badges",              label: "Badges",           icon: Trophy,        group: "manage" },
-  { href: "/pending-matches",           label: "Pending Matches",  icon: Trophy,        group: "manage" },
-
-  { href: "/admin/system-health",       label: "System Health",    icon: Activity,      group: "diagnostics" },
-  { href: "/admin/audit-log",           label: "Audit Log",        icon: Shield,        group: "diagnostics" },
-  { href: "/admin/biometrics",          label: "Biometrics",       icon: Fingerprint,   group: "diagnostics" },
-
-  { href: "/admin/test-accounts",       label: "Test Accounts",    icon: UserPlus,      group: "advanced" },
-  { href: "/admin/password-reset",      label: "Password Reset",   icon: KeyRound,      group: "advanced" },
-  { href: "/admin/marketing",           label: "Marketing",        icon: Megaphone,     group: "advanced" },
-  { href: "/tournament-admin",          label: "Tournaments",      icon: Swords,        group: "advanced" },
-  { href: "/archive",                   label: "Archive",          icon: Archive,       group: "advanced" },
-];
-
-const GROUP_LABEL: Record<AdminNavItem["group"], string> = {
-  live: "Live ops",
-  manage: "Players & matches",
-  diagnostics: "Diagnostics",
-  advanced: "Advanced",
-};
-
-interface AdminLayoutProps {
-  title?: string;
-  subtitle?: string;
-  children: ReactNode;
-}
-
-export const AdminLayout = ({ title, subtitle, children }: AdminLayoutProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const isDashboard = location.pathname === "/admin";
-
-  const groups = (["live", "manage", "diagnostics", "advanced"] as const).map((g) => ({
-    key: g,
-    label: GROUP_LABEL[g],
-    // Tournaments stay hidden from the admin nav while the feature is being
-    // rebuilt behind its flag — the route isn't registered either, so leaving
-    // the link would just dead-end in a 404.
-    items: NAV.filter(
-      (n) => n.group === g && (isTournamentsEnabled() || !n.href.startsWith("/tournament")),
-    ),
-  }));
-
-  const goto = (href: string) => {
-    setDrawerOpen(false);
-    navigate(href);
-  };
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header — single row, mobile-first */}
-      <header className="sticky top-0 z-40 bg-[#0B171F] border-b border-slate-800">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 h-16 flex items-center gap-2">
-          {/* Left: back to /admin (subpages) or logo (dashboard) */}
-          {isDashboard ? (
-            <Link to="/dashboard" className="flex items-center shrink-0 text-white hover:opacity-80 transition-opacity">
-              <Logo className="h-8 w-auto" />
-            </Link>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/admin")}
-              className="text-slate-200 hover:bg-slate-800 hover:text-white -ml-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Admin</span>
-            </Button>
-          )}
-
-          {/* Title (subpages only, truncates on narrow) */}
-          {!isDashboard && title && (
-            <div className="min-w-0 flex-1">
-              <h1 className="text-sm sm:text-base font-semibold text-white truncate">
-                {title}
-              </h1>
-            </div>
-          )}
-
-          {/* Right: drawer + theme */}
-          <div className={cn("flex items-center gap-1.5", isDashboard && "ml-auto")}>
-            <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-slate-200 hover:bg-slate-800 hover:text-white"
-                  aria-label="Admin menu"
-                >
-                  <Menu className="w-4 h-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[340px] p-0">
-                <SheetHeader className="px-5 pt-5 pb-3 border-b">
-                  <SheetTitle className="text-left">Admin menu</SheetTitle>
-                </SheetHeader>
-                <nav className="overflow-y-auto max-h-[calc(100dvh-4rem)] py-2">
-                  {groups.map((group) => (
-                    <div key={group.key} className="py-2">
-                      <div className="px-5 pb-1.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                        {group.label}
-                      </div>
-                      {group.items.map((item) => {
-                        const Icon = item.icon;
-                        const active = location.pathname === item.href;
-                        return (
-                          <button
-                            key={item.href}
-                            type="button"
-                            onClick={() => goto(item.href)}
-                            className={cn(
-                              "w-full text-left px-5 py-2.5 flex items-center gap-3 text-sm transition-colors",
-                              active
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "hover:bg-muted",
-                            )}
-                          >
-                            <Icon className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{item.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
-                  <div className="border-t mt-2 pt-2 px-5 pb-4">
-                    <button
-                      type="button"
-                      onClick={() => goto("/player/dashboard")}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      ← Exit admin
-                    </button>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
-            <ThemeToggle />
-          </div>
+export const AdminLayout = ({ title = 'Platform overview', subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) => {
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  const navigation = (mobile = false) => <nav aria-label={mobile ? 'Mobile platform administration' : 'Platform administration'} className="space-y-6">
+    {['Platform', 'Support', 'Maintenance'].map(group => <div key={group}>
+      <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{group}</p>
+      <div className="space-y-1">{ADMIN_NAVIGATION.filter(item => item.group === group).map(item => <Link key={item.href} to={item.href} onClick={() => setOpen(false)} aria-current={pathname === item.href ? 'page' : undefined} className={cn('flex min-h-11 min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary', pathname === item.href ? 'bg-primary/10 font-semibold text-foreground ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+        <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
+      </Link>)}</div>
+    </div>)}
+    <Link to="/player/dashboard" className="flex min-h-11 items-center gap-2 border-t px-3 pt-4 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back to PULSE</Link>
+  </nav>;
+  return <div className="min-h-dvh min-w-0 bg-background font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#101c24] text-white">
+      <div className="mx-auto flex min-h-16 w-full max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <Link to="/admin" aria-label="PULSE platform overview" className="flex min-w-0 items-center gap-4"><Logo className="h-7 w-auto max-w-[110px]" /><span className="hidden border-l border-white/20 pl-4 text-xs font-medium tracking-wide text-white/65 sm:block">PLATFORM ADMIN</span></Link>
+        <div className="flex shrink-0 items-center gap-2"><span className="hidden items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1.5 text-xs text-primary md:flex"><ShieldCheck className="h-3.5 w-3.5" />Superadmin</span><div className="text-foreground"><ThemeToggle /></div>
+          <Sheet open={open} onOpenChange={setOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="h-11 w-11 text-white hover:bg-white/10 hover:text-white lg:hidden" aria-label="Open admin navigation"><Menu className="h-5 w-5" /></Button></SheetTrigger>
+            <SheetContent className="flex w-[min(340px,100vw)] max-w-full flex-col gap-0 p-0 font-sans"><SheetHeader className="border-b px-5 pb-4 pt-6 text-left"><SheetTitle className="font-sans">Platform administration</SheetTitle><SheetDescription>Approvals, feature access and support.</SheetDescription></SheetHeader><div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{navigation(true)}</div></SheetContent>
+          </Sheet>
         </div>
-
-        {/* Dashboard-only hero strip. Subpages get a tighter title-only header. */}
-        {isDashboard && (
-          <div className="px-4 lg:px-6 pb-5">
-            <div className="max-w-[1280px] mx-auto">
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Admin Control Center
-              </h1>
-              {subtitle && (
-                <p className="text-slate-400 text-sm mt-1">{subtitle}</p>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main className="flex-1">{children}</main>
-
-      <Footer />
+      </div>
+    </header>
+    <div className="mx-auto grid w-full min-w-0 max-w-[1600px] lg:grid-cols-[240px_minmax(0,1fr)]">
+      <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto border-r p-5 lg:block">{navigation()}</aside>
+      <main className="min-w-0 pb-10"><div className="px-4 pb-1 pt-6 sm:px-6 lg:px-8 lg:pt-8"><p className="text-xs font-medium text-muted-foreground">PULSE control center</p><h1 className="mt-2 text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-3xl">{title}</h1>{subtitle && <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{subtitle}</p>}</div>{children}</main>
     </div>
-  );
+  </div>;
 };

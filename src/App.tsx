@@ -153,6 +153,9 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminVenueRequests = lazy(() => import("./pages/AdminVenueRequests"));
 const VenueRequests = lazy(() => import("./pages/player/VenueRequests"));
 const AdminArchive = lazy(() => import("./pages/admin/AdminArchive"));
+const AdminVenues = lazy(() => import("./pages/AdminVenues"));
+const AdminPlatformActivity = lazy(() => import("./pages/AdminPlatformActivity"));
+const AdminLegacyTools = lazy(() => import("./pages/AdminLegacyTools"));
 const AdminPlayers = lazy(() => import("./pages/AdminPlayers"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
 const AdminMatches = lazy(() => import("./pages/AdminMatches"));
@@ -574,6 +577,9 @@ const AppContent = () => {
           <Route path="/session/queue" element={<SessionQueue />} />
           <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
           <Route path="/admin/venue-requests" element={<AdminGuard><AdminVenueRequests /></AdminGuard>} />
+          <Route path="/admin/venues" element={<AdminGuard><AdminVenues /></AdminGuard>} />
+          <Route path="/admin/activity" element={<AdminGuard><AdminPlatformActivity /></AdminGuard>} />
+          <Route path="/admin/legacy-tools" element={<AdminGuard><AdminLegacyTools /></AdminGuard>} />
           <Route path="/archive" element={<AdminGuard><AdminArchive /></AdminGuard>} />
           <Route path="/admin/session" element={<AdminGuard><AdminSession /></AdminGuard>} />
           <Route path="/admin/pairing" element={<AdminGuard><AdminPairing /></AdminGuard>} />

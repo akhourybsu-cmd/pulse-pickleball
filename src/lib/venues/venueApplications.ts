@@ -53,6 +53,11 @@ export async function reviewVenueApplication(id: string, decision: string, note:
   const { error } = await venueDb.rpc('review_venue_application', { p_application_id: id, p_decision: decision, p_note: note, p_ownership_checked: checked });
   if (error) throw error;
 }
+export async function getVenueApplicationHistory(id: string): Promise<{ id: string; action: string; note: string | null; created_at: string }[]> {
+  const { data, error } = await venueDb.from('venue_application_history').select('id,action,note,created_at').eq('application_id', id).order('created_at', { ascending: false }).limit(30);
+  if (error) throw error;
+  return data ?? [];
+}
 export async function withdrawVenueApplication(id: string) {
   const { error } = await venueDb.rpc('withdraw_venue_application', { p_application_id: id });
   if (error) throw error;

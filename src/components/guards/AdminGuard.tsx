@@ -1,84 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthState } from '@/hooks/useAuthState';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
-interface AdminGuardProps {
-  children: React.ReactNode;
-  fallbackPath?: string;
-}
-
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen bg-background">
-    <div className="space-y-4 w-full max-w-md p-8">
-      <Skeleton className="h-8 w-3/4 mx-auto" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-5/6" />
-      <Skeleton className="h-32 w-full" />
-    </div>
-  </div>
-);
-
-/**
- * AdminGuard protects platform-admin routes at the router level.
- * Checks user_roles.role = 'admin' before rendering children — prevents
- * the FOUC (flash of unauthorized content) that page-level checks cause.
- */
-export function AdminGuard({
-  children,
-  fallbackPath = '/player/dashboard',
-}: AdminGuardProps) {
+/** UI gate only. The database pins the admin role and independently authorizes every control-plane RPC. */
+export function AdminGuard({ children, fallbackPath = '/player/dashboard' }: { children: ReactNode; fallbackPath?: string }) {
   const { loading: authLoading, isAuthenticated, user } = useAuthState();
   const location = useLocation();
-  const [checking, setChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const check = async () => {
-      if (!user?.id) {
-        if (!cancelled) {
-          setIsAdmin(false);
-          setChecking(false);
-        }
-        return;
-      }
-
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (!cancelled) {
-        setIsAdmin(!!data);
-        setChecking(false);
-      }
-    };
-
-    if (!authLoading) {
-      check();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, authLoading]);
-
-  if (authLoading || checking) {
-    return <PageLoader />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to={fallbackPath} replace />;
-  }
-
+  const access = useQuery({
+    queryKey: ['platform-admin-access', user?.id],
+    enabled: !authLoading && isAuthenticated && !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', user!.id).eq('role', 'admin').maybeSingle();
+      if (error) throw error; return !!data;
+    },
+    staleTime: 0, gcTime: 0, retry: 1,
+  });
+  if (!authLoading && !isAuthenticated) return <Navigate to="/auth" state={{ from: location }} replace />;
+  if (authLoading || access.isPending) return <div className="flex min-h-dvh items-center justify-center p-6"><p role="status" className="text-sm text-muted-foreground">Checking platform access…</p></div>;
+  if (access.isError) return <div className="mx-auto max-w-md space-y-4 p-6" role="alert"><p>Platform access couldn’t be verified. No admin content has been loaded.</p><Button onClick={() => void access.refetch()}>Retry access check</Button></div>;
+  if (!access.data) return <Navigate to={fallbackPath} replace />;
   return <>{children}</>;
 }
