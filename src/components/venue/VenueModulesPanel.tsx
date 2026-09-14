@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Play,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -102,22 +103,22 @@ export function VenueModulesPanel({
           <p className="max-w-xl text-sm leading-6 text-muted-foreground">
             {privateSample ? "No paid subscription required, no real charges, and no outside members. Explore the venue tools at your own pace." : "Court booking and facility operations are optional upgrades. Canceling a feature does not remove your community."}
           </p>
-          <Button asChild variant="outline" className="min-h-11 rounded-xl">
+          <Button asChild variant="outline" className="h-auto min-h-11 w-full whitespace-normal rounded-xl py-3 sm:w-auto">
             <a href="#venue-upgrades">
-              {privateSample ? "View included features" : "Explore paid features"}
+              {privateSample ? "View included features" : count > 0 ? "View your features" : "Explore paid features"}
               <ArrowUpRight className="ml-2 h-4 w-4" />
             </a>
           </Button>
         </div>
       </section>
 
-      {!privateSample && <section aria-labelledby="venue-demo-title" className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
+      {!privateSample && count === 0 && <section aria-labelledby="venue-demo-title" className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
         <div className="min-w-0 max-w-xl">
           <p className="text-xs font-medium text-muted-foreground">Try it before you upgrade</p>
           <h2 id="venue-demo-title" className="mt-2 font-sans text-xl font-semibold tracking-tight">See paid features in action</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Explore a sample venue as a player or manager. Try court reservations and a facility schedule with fictional data—no payment, verification or activation required.</p>
         </div>
-        <Button variant="outline" className="min-h-12 w-full shrink-0 rounded-xl border-foreground/20 bg-foreground text-background hover:bg-foreground/90 hover:text-background sm:w-auto" onClick={(event) => openDemo("court_booking", event.currentTarget)}>
+        <Button variant="outline" className="h-auto min-h-12 w-full whitespace-normal rounded-xl border-foreground/20 bg-foreground py-3 text-background hover:bg-foreground/90 hover:text-background sm:w-auto" onClick={(event) => openDemo("court_booking", event.currentTarget)}>
           <Play className="mr-2 h-4 w-4" />Explore interactive demo
         </Button>
       </section>}
@@ -141,9 +142,11 @@ export function VenueModulesPanel({
         </p>
       )}
       {!privateSample && billing.isError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm leading-6"><p>Payment availability couldn’t be checked. You can still explore the demo; checkout stays unavailable until we reconnect.</p><Button variant="outline" className="min-h-11" onClick={() => void billing.refetch()}>Retry payment check</Button></div>}
-      {!privateSample && <section
+      {!privateSample && <details open={count === 0} className="group rounded-2xl border bg-card">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary marker:hidden sm:px-6">Upgrade guide &amp; ownership<ChevronDown aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" /></summary>
+        <section
         aria-labelledby="venue-upgrade-steps"
-        className="rounded-2xl border bg-card p-5 sm:p-7"
+        className="border-t p-4 sm:p-6"
       >
         <h2
           id="venue-upgrade-steps"
@@ -205,14 +208,14 @@ export function VenueModulesPanel({
             </div>
           </div>
           {!verified && canVerify && (
-            <Button variant="outline" asChild className="min-h-11 rounded-xl">
+            <Button variant="outline" asChild className="h-auto min-h-11 max-w-full whitespace-normal rounded-xl py-3">
               <Link to={"/player/venue-requests?new=1&venue=" + venueId}>
                 Verify ownership
               </Link>
             </Button>
           )}
         </div>
-      </section>}
+      </section></details>}
 
       <section
         id="venue-upgrades"
@@ -224,10 +227,10 @@ export function VenueModulesPanel({
             id="venue-upgrades-title"
             className="font-sans text-xl font-semibold"
           >
-            {privateSample ? "Your included features" : "Choose your paid features"}
+            {privateSample ? "Your included features" : count > 0 ? "Manage your venue features" : "Choose your paid features"}
           </h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            {privateSample ? "Court booking and facility operations are both included in this private sample. No purchase or ownership verification is required." : "$10 USD per feature, per month. Each subscription renews and can be canceled separately in Profile → Payments & purchases."}
+            {privateSample ? "Court booking and facility operations are both included in this private sample. No purchase or ownership verification is required." : count > 0 ? "Paid access and Included access are labeled separately. New paid add-ons are $10 USD per feature, per month. Included access does not create a subscription." : "$10 USD per feature, per month. Each subscription renews and can be canceled separately in Profile → Payments & purchases."}
           </p>
         </div>
         {access.isError ? (
@@ -271,11 +274,12 @@ export function VenueModulesPanel({
               return (
                 <article
                   key={module.key}
-                  className="flex min-w-0 flex-col rounded-2xl border bg-card p-5 sm:p-6"
+                  data-venue-service={module.key === 'court_booking' ? 'booking' : 'operations'}
+                  className="venue-service-card flex min-w-0 flex-col rounded-2xl border p-4 sm:p-6"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <module.icon className="h-5 w-5 text-primary" />
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                    <span className="venue-service-icon flex h-11 w-11 items-center justify-center rounded-2xl"><module.icon aria-hidden className="h-5 w-5" /></span>
+                    <span className="rounded-full border border-border/70 bg-card px-2.5 py-1.5 text-xs font-medium">
                       {access.loading
                         ? "Checking…"
                         : presentation.label}
@@ -290,13 +294,13 @@ export function VenueModulesPanel({
                   <ul className="my-5 space-y-2 text-sm">
                     {module.includes.map((item) => (
                       <li key={item} className="flex gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <Check aria-hidden className="venue-service-label mt-0.5 h-4 w-4 shrink-0" />
                         {item}
                       </li>
                     ))}
                   </ul>
                   <div className="mt-auto border-t pt-4">
-                    {!privateSample && <Button variant="outline" className="mb-4 min-h-11 w-full rounded-xl" onClick={(event) => openDemo(module.key, event.currentTarget)}>
+                    {!privateSample && <Button variant="outline" className="venue-service-outline venue-interactive mb-4 h-auto min-h-11 w-full whitespace-normal rounded-xl py-3" onClick={(event) => openDemo(module.key, event.currentTarget)}>
                       <Play className="mr-2 h-4 w-4" />
                       {module.key === "court_booking" ? "View booking demo" : "View operations demo"}
                     </Button>}
@@ -317,7 +321,7 @@ export function VenueModulesPanel({
                           <Button
                             asChild
                             variant="outline"
-                            className="mt-4 min-h-11 w-full rounded-xl"
+                            className="mt-4 h-auto min-h-11 w-full whitespace-normal rounded-xl py-3"
                           >
                             <Link to="/player/payments">
                               Manage subscription
@@ -348,7 +352,7 @@ export function VenueModulesPanel({
 
       {privateSample && testPayments && billing.data?.mode === 'test' && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <div className="min-w-0 max-w-xl"><h2 className="text-lg font-semibold">Your Stripe test workspace</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Test rental checkout and $10/month feature subscriptions with simulated payments. Only you can access this sample. Real charges stay blocked and your included features stay free.</p></div>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl"><Link to={'/player/payments?venue=' + venueId}>Open sandbox payment setup</Link></Button>
+        <Button asChild variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal rounded-xl py-3"><Link to={'/player/payments?venue=' + venueId}>Open sandbox payment setup</Link></Button>
       </section>}
       {!privateSample && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
         <div className="min-w-0 max-w-xl">
@@ -363,7 +367,7 @@ export function VenueModulesPanel({
           </p>
         </div>
         {canVerify && (
-          <Button asChild variant="outline" className="min-h-11 rounded-xl">
+          <Button asChild variant="outline" className="h-auto min-h-11 w-full whitespace-normal rounded-xl py-3 sm:w-auto">
             <Link to={"/player/payments?venue=" + venueId}>
               Set up venue payments
             </Link>

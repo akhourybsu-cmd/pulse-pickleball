@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import { programFilterState, programPhase } from '@/lib/venues/programExperience';
+import { programService } from '@/lib/venues/servicePresentation';
 
 /**
  * What the venue is running today.
@@ -109,8 +110,8 @@ export function VenueProgramming({
   return (
     <div className="space-y-3">
       {available.length > 1 && (
-        <div className="scrollbar-hide -mx-1 overflow-x-auto px-1 pb-1">
-          <div className="flex min-w-max gap-1.5" role="group" aria-label="Filter venue programs">
+        <div className="scrollbar-hide -mx-1 overflow-x-auto px-1 pb-1 lg:overflow-visible">
+          <div className="flex min-w-max gap-1.5 lg:min-w-0 lg:flex-wrap" role="group" aria-label="Filter venue programs">
             {available.map((f) => {
               const active = activeFilter === f.value;
               return (
@@ -119,21 +120,13 @@ export function VenueProgramming({
                   type="button"
                   onClick={() => setFilter(f.value)}
                   aria-pressed={active}
+                  data-venue-service={programService(f.value)}
                   className={cn(
-                    'min-h-11 rounded-full border px-3 py-2 text-xs font-semibold transition-colors',
+                    'venue-interactive min-h-11 rounded-full border px-3 py-2 text-xs font-semibold',
                     active
-                      ? 'border-primary bg-primary text-primary-foreground'
+                      ? 'venue-service-solid border-transparent'
                       : 'border-border bg-card text-muted-foreground hover:text-foreground',
                   )}
-                  style={
-                    active && accent
-                      ? {
-                          backgroundColor: `${accent}18`,
-                          borderColor: `${accent}88`,
-                          color: 'hsl(var(--foreground))',
-                        }
-                      : undefined
-                  }
                 >
                   {f.label}
                 </button>
@@ -197,33 +190,28 @@ function SessionRow({
 
   return (
     <Row
+      data-venue-service={programService(session.event_format)}
       {...(onPick ? { type: 'button' as const, onClick: () => onPick(session.id) } : {})}
       className={cn(
-        'group w-full rounded-[18px] border border-border/75 bg-card px-3.5 py-3.5 text-left shadow-[0_12px_32px_-28px_hsl(var(--foreground)/0.55)] transition-[border-color,background-color,transform] sm:px-4',
-        onPick && 'hover:-translate-y-px hover:border-primary/35 hover:bg-card/95',
+        'group w-full rounded-2xl border border-border/75 bg-card p-3.5 text-left sm:p-4',
+        onPick && 'venue-interactive',
         past && 'bg-muted/20',
       )}
     >
       <div className="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 sm:grid-cols-[40px_minmax(0,1fr)_auto]">
         <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
-          style={accent ? { backgroundColor: `${accent}16`, color: accent } : undefined}
+          className="venue-service-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
         >
           <FormatIcon className="h-[18px] w-[18px]" />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+            <span className="venue-service-label text-[10px] font-semibold uppercase tracking-[0.1em]">
               {formatLabel}
             </span>
             <span className="h-1 w-1 rounded-full bg-border" />
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-foreground/75">
-              <span
-                aria-hidden
-                className="h-1.5 w-1.5 rounded-full bg-primary"
-                style={accent ? { backgroundColor: accent } : undefined}
-              />
               {formatSlotTime(start)}
               {end ? ` – ${formatSlotTime(end)}` : ''}
             </span>
@@ -287,13 +275,13 @@ function SessionRow({
               {session.waitlist_enabled ? 'Waitlist available' : 'Full'}
             </Badge>
           ) : urgent ? (
-            <Badge className="whitespace-nowrap bg-primary text-[9px] font-bold uppercase tracking-[0.09em] text-primary-foreground">
+            <Badge variant="outline" className="whitespace-nowrap border-amber-600/30 bg-amber-500/10 text-[11px] font-semibold text-amber-900 dark:text-amber-200">
               {spotsLeft} spot{spotsLeft === 1 ? '' : 's'} left
             </Badge>
           ) : spotsLeft != null ? (
             <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{spotsLeft} spots</span>
           ) : null}
-          {!past && phase === 'live' && <span className="text-xs font-semibold text-primary">In progress</span>}
+          {!past && phase === 'live' && <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">In progress</span>}
           {onPick && (
             <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           )}

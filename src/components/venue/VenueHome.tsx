@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, Clock3, Globe, LayoutGrid, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, ChevronRight, Clock3, Globe, LayoutGrid, Mail, MapPin, Phone, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import { DAY_NAMES, describeDay, type VenueHours } from '@/lib/venues/hours';
@@ -6,6 +6,7 @@ import { VenueWelcome } from '@/components/community/VenueWelcome';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VenueLoadState } from './VenueLoadState';
 import { programDateLabel, venueWebsiteLink } from '@/lib/venues/programExperience';
+import type { VenueService } from '@/lib/venues/servicePresentation';
 
 /**
  * A venue's front page.
@@ -42,6 +43,7 @@ interface VenueHomeProps {
   accent?: string | null;
   onBook: () => void;
   onOpenPlay: () => void;
+  onBookings?: () => void;
   onPickProgram?: (id: string) => void;
   loadingPrograms?: boolean;
   programsUnavailable?: boolean;
@@ -64,6 +66,7 @@ export function VenueHome({
   accent,
   onBook,
   onOpenPlay,
+  onBookings,
   onPickProgram,
   loadingPrograms = false,
   programsUnavailable = false,
@@ -75,18 +78,20 @@ export function VenueHome({
   const phoneNumber = phone?.replace(/[^\d+]/g, '');
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8 xl:gap-10">
-      <div className="min-w-0 space-y-6 lg:space-y-8">
+    <div className="min-[1280px]:grid min-[1280px]:grid-cols-[minmax(0,1fr)_280px] min-[1280px]:items-start min-[1280px]:gap-6">
+      <div className="min-w-0 space-y-5 sm:space-y-6">
         <VenueWelcome headline={welcomeHeadline} message={welcomeMessage} accent={accent} />
 
-        <div className={cn('grid gap-2.5 sm:gap-3', hasCourts && 'min-[380px]:grid-cols-2')}>
+        <section aria-label="Plan your visit" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">Plan your visit</h2><span className="text-xs text-muted-foreground">Your next game starts here</span></div>
+        <div className={cn('grid gap-3', hasCourts && 'min-[600px]:grid-cols-2')}>
           {hasCourts && (
             <HomeAction
               icon={LayoutGrid}
               eyebrow="Courts"
               title="Book a court"
               detail={freeNow !== null && freeNow > 0 ? `${freeNow} of ${courtCount} open now` : 'Choose a day and time'}
-              accent={accent}
+              service="booking"
               onClick={onBook}
             />
           )}
@@ -99,10 +104,14 @@ export function VenueHome({
                 ? `${programDateLabel(nextSession.start_time)} · ${formatSlotTime(new Date(nextSession.start_time))}`
                 : 'Browse open play and clinics'
             }
-            accent={accent}
+            service="programs"
             onClick={onOpenPlay}
           />
         </div>
+        {onBookings && <button type="button" onClick={onBookings} data-venue-service="booking" className="venue-interactive flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 text-left">
+          <Ticket aria-hidden className="venue-service-label h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 text-sm font-medium">My bookings<span className="ml-2 hidden text-xs font-normal text-muted-foreground sm:inline">Reservations &amp; joined sessions</span></span><ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>}
+        </section>
 
         {programsUnavailable && onRetryPrograms ? <VenueLoadState title="Programs couldn’t load" description="We couldn’t confirm the upcoming schedule. Try again to see the latest sessions." onRetry={onRetryPrograms} /> : loadingPrograms ? <div role="status" aria-label="Loading upcoming programs" className="space-y-2"><Skeleton className="h-20 rounded-2xl" /><Skeleton className="h-20 rounded-2xl" /></div> : nextUp.length > 0 ? (
           <Section title="Coming up" actionLabel="View schedule" onAction={onOpenPlay}>
@@ -111,17 +120,17 @@ export function VenueHome({
                 <button
                   key={session.id}
                   type="button"
+                  data-venue-service="programs"
                   onClick={() => onPickProgram ? onPickProgram(session.id) : onOpenPlay()}
-                  className="group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card/75 p-3 text-left shadow-[0_10px_28px_-26px_hsl(var(--foreground)/0.55)] transition-[border-color,background-color,transform] hover:-translate-y-px hover:border-primary/35 hover:bg-card sm:p-3.5"
+                  className="venue-interactive group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 text-left sm:p-4"
                 >
                   <span
-                    className="flex min-h-14 w-[76px] shrink-0 flex-col items-center justify-center rounded-xl bg-muted/60 px-1 text-center"
-                    style={accent ? { backgroundColor: `${accent}12` } : undefined}
+                    className="venue-service-icon flex min-h-14 w-[76px] shrink-0 flex-col items-center justify-center rounded-xl px-1 text-center"
                   >
                     <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       {programDateLabel(session.start_time)}
                     </span>
-                    <span className="mt-0.5 text-xs font-extrabold tabular-nums" style={accent ? { color: accent } : undefined}>
+                    <span className="mt-0.5 text-xs font-semibold tabular-nums">
                       {formatSlotTime(new Date(session.start_time))}
                     </span>
                   </span>
@@ -133,7 +142,7 @@ export function VenueHome({
                       </p>
                     )}
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
               ))}
             </div>
@@ -141,14 +150,14 @@ export function VenueHome({
         ) : <div className="rounded-2xl border border-dashed border-border/80 p-5"><p className="text-sm font-semibold">No upcoming programs</p><p className="mt-1 text-sm leading-6 text-muted-foreground">No upcoming programs are listed yet. Check the schedule for court times and future sessions.</p><button type="button" className="mt-2 min-h-11 text-sm font-semibold text-primary" onClick={onOpenPlay}>View schedule</button></div>}
       </div>
 
-      <aside className="mt-8 space-y-5 lg:mt-0">
+      <aside className="mt-6 min-w-0 space-y-5 min-[1280px]:mt-0">
         <section className="overflow-hidden rounded-[20px] border border-border/70 bg-card/65 shadow-[0_14px_42px_-34px_hsl(var(--foreground)/0.5)]">
           <div className="border-b border-border/60 bg-muted/25 px-4 py-3.5">
             <h2 className="text-sm font-bold tracking-tight">Venue details</h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Location, contact, and opening hours</p>
           </div>
-          <div className="space-y-3 p-4">
-          <div className="space-y-3">
+          <div className="grid min-w-0 gap-4 p-4 sm:grid-cols-2 min-[1280px]:grid-cols-1">
+          <div className="min-w-0 space-y-3">
             {city && (
               <ContactRow icon={MapPin}>{[city, state].filter(Boolean).join(', ')}</ContactRow>
             )}
@@ -167,7 +176,8 @@ export function VenueHome({
               </ContactRow>
             )}
 
-            <div className="border-t border-border/70 pt-3">
+          </div>
+            <div className="min-w-0 border-t border-border/70 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 min-[1280px]:border-l-0 min-[1280px]:border-t min-[1280px]:pl-0 min-[1280px]:pt-3">
               <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-foreground/80">
                 <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
                 Hours
@@ -211,7 +221,6 @@ export function VenueHome({
               </div>
             </div>
           </div>
-          </div>
         </section>
       </aside>
     </div>
@@ -232,7 +241,7 @@ function Section({
   return (
     <section>
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="shrink-0 text-sm font-semibold tracking-tight text-foreground">
+        <h2 className="min-w-0 text-sm font-semibold tracking-tight text-foreground">
           {title}
         </h2>
         <span aria-hidden className="h-px flex-1 bg-border/60" />
@@ -252,35 +261,35 @@ function HomeAction({
   eyebrow,
   title,
   detail,
-  accent,
+  service,
   onClick,
 }: {
   icon: typeof LayoutGrid;
   eyebrow: string;
   title: string;
   detail: string;
-  accent?: string | null;
+  service: VenueService;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group min-w-0 rounded-[18px] border border-border/75 bg-card p-3 text-left shadow-[0_12px_34px_-28px_hsl(var(--foreground)/0.6)] transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/40 sm:p-4"
-      style={accent ? { borderColor: `${accent}42`, background: `linear-gradient(145deg, ${accent}10, hsl(var(--card)) 62%)` } : undefined}
+      data-venue-service={service}
+      className="venue-service-card venue-interactive group relative flex min-w-0 items-center gap-3 rounded-2xl border p-4 text-left min-[600px]:block min-[600px]:p-5"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex shrink-0 items-start justify-between gap-2">
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
-          style={accent ? { backgroundColor: `${accent}18`, color: accent } : undefined}
+          className="venue-service-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
         >
-          <Icon className="h-4 w-4" />
+          <Icon aria-hidden className="h-5 w-5" />
         </span>
-        <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        <ArrowUpRight aria-hidden className="hidden h-4 w-4 text-muted-foreground min-[600px]:block" />
       </div>
-      <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.17em] text-muted-foreground">{eyebrow}</p>
-      <p className="mt-0.5 text-sm font-semibold tracking-tight">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+      <div className="min-w-0 flex-1 min-[600px]:mt-4"><p className="venue-service-label text-[10px] font-semibold uppercase tracking-[0.12em]">{eyebrow}</p>
+      <p className="mt-0.5 text-base font-semibold tracking-tight [overflow-wrap:anywhere]">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div>
+      <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground min-[600px]:hidden" />
     </button>
   );
 }
@@ -304,7 +313,7 @@ function ContactRow({
   return (
     <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
       <Icon className="h-3.5 w-3.5 shrink-0 text-foreground/55" />
-      <span className="min-w-0 break-words">{children}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }

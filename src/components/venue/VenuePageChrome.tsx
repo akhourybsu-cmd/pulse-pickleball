@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+import { venueTabService } from '@/lib/venues/servicePresentation';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -95,7 +97,7 @@ export function VenueMasthead({
     <header className="relative shrink-0 lg:bg-muted/[0.16] lg:px-6 lg:pt-6">
       <div className="lg:mx-auto lg:max-w-[1480px] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-card lg:shadow-[0_18px_55px_-38px_hsl(var(--foreground)/0.45)]">
         <div
-          className="relative h-44 sm:h-56 lg:h-[260px]"
+          className="relative h-40 sm:h-48 lg:h-[240px]"
           style={{
             backgroundImage: coverImageUrl
               ? `url(${coverImageUrl})`
@@ -129,7 +131,7 @@ export function VenueMasthead({
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+              className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
               onClick={onBack}
               aria-label="Back to Community"
             >
@@ -142,7 +144,7 @@ export function VenueMasthead({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+                  className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
                   onClick={onOperations}
                   aria-label="Venue operations"
                 >
@@ -154,7 +156,7 @@ export function VenueMasthead({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+                  className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
                   onClick={onSettings}
                   aria-label="Manage venue"
                 >
@@ -188,7 +190,7 @@ export function VenueMasthead({
 
         <div className="border-b border-border/70 bg-card lg:border-b-0">
           <div
-            className="grid w-full px-3 py-2.5 sm:px-6 lg:flex lg:items-center lg:px-8 lg:py-3.5"
+            className="grid w-full px-3 py-2.5 sm:px-6 lg:flex lg:flex-wrap lg:items-center lg:gap-y-2 lg:px-8 lg:py-3.5"
             style={{ gridTemplateColumns: `repeat(${nextStart ? 3 : 2}, minmax(0, 1fr))` }}
           >
             <MastheadStat
@@ -219,9 +221,10 @@ export function VenueMobileTabs({ hasCourts, chatEnabled = true }: { hasCourts: 
   );
 
   return (
-    <div className="z-30 border-b border-border/70 bg-card/95 px-1.5 py-1.5 shadow-[0_8px_26px_-24px_hsl(var(--foreground)/0.7)] backdrop-blur-xl lg:hidden">
+    <div className="sticky top-0 z-30 border-b border-border/70 bg-card/95 px-1.5 py-1.5 shadow-[0_8px_26px_-24px_hsl(var(--foreground)/0.7)] backdrop-blur-xl lg:hidden" data-testid="venue-mobile-nav">
       <div className="mx-auto max-w-[1480px]">
         <TabsList
+          aria-label="Venue sections"
           className="grid h-auto w-full gap-1 rounded-2xl border border-border/60 bg-muted/35 p-1"
           style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
         >
@@ -251,41 +254,41 @@ export function VenueDesktopNavigation({
   onSettings: () => void;
 }) {
   return (
-    <aside className="hidden lg:block">
-      <div className="sticky top-6 space-y-4">
+    <aside className="hidden self-stretch lg:block" data-testid="venue-desktop-nav">
+      <div className="sticky top-6 max-h-[calc(100dvh-3rem)] space-y-4 overflow-y-auto p-1">
         <div className="rounded-[20px] border border-border/65 bg-card/60 p-2 shadow-[0_14px_40px_-34px_hsl(var(--foreground)/0.55)] backdrop-blur-sm">
           <p className="mb-1 px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            Player space
+            Plan your visit
           </p>
-          <TabsList className="flex h-auto w-full flex-col items-stretch gap-1 rounded-none bg-transparent p-0">
+          <TabsList aria-label="Venue sections" className="flex h-auto w-full flex-col items-stretch gap-1 rounded-none bg-transparent p-0">
             {NAV_ITEMS.filter(
               (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
             ).map((item) => (
-              <DesktopTab key={item.value} {...item} />
+              <Fragment key={item.value}>{item.value === 'feed' && <span className="mb-1 mt-3 border-t border-border/60 px-2.5 pt-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Community</span>}<DesktopTab {...item} /></Fragment>
             ))}
           </TabsList>
         </div>
 
-        {isOperator && (
-          <div className="rounded-[20px] border border-border/65 bg-card/45 p-2">
+        {(isOperator || isAdmin) && (
+          <div data-venue-service="operations" className="venue-service-card rounded-[20px] border p-2">
             <p className="mb-1 px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               Staff
             </p>
-            <button
+            {isOperator && <button
               type="button"
               onClick={onOperations}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
+              className="venue-interactive flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-background/80"
             >
-              <Gauge className="h-4 w-4" />
+              <Gauge className="venue-service-label h-4 w-4 shrink-0" />
               Operations
-            </button>
+            </button>}
             {isAdmin && (
               <button
                 type="button"
                 onClick={onSettings}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
+                className="venue-interactive flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-background/80"
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="venue-service-label h-4 w-4 shrink-0" />
                 Manage venue
               </button>
             )}
@@ -334,7 +337,7 @@ export function VenueDesktopRail({
   const next = nextUp[0];
 
   return (
-    <aside className="hidden min-[1180px]:block">
+    <aside className="hidden self-stretch min-[1280px]:block">
       <div className="sticky top-6 space-y-4">
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)]">
           <div className="p-5">
@@ -424,7 +427,8 @@ function MobileTab({ value, mobileLabel, icon: Icon }: (typeof NAV_ITEMS)[number
   return (
     <TabsTrigger
       value={value}
-      className="min-h-12 min-w-0 flex-col gap-1 rounded-xl border-0 bg-transparent px-1 py-2 text-[11px] font-semibold leading-none text-muted-foreground shadow-none transition-all [&>svg]:text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_5px_16px_-12px_hsl(var(--foreground)/0.9)] data-[state=active]:[&>svg]:text-[var(--venue-accent)] sm:flex-row sm:gap-1.5 sm:px-2"
+      data-venue-service={venueTabService(value)}
+      className="venue-nav-tab min-h-12 min-w-0 flex-col gap-1 rounded-xl border-0 bg-transparent px-1 py-2 text-[11px] font-semibold leading-none text-muted-foreground shadow-none transition-colors data-[state=active]:shadow-none sm:flex-row sm:gap-1.5 sm:px-2"
     >
       <Icon className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
       <span className="max-w-full truncate">{mobileLabel}</span>
@@ -436,13 +440,14 @@ function DesktopTab({ value, label, icon: Icon }: (typeof NAV_ITEMS)[number]) {
   return (
     <TabsTrigger
       value={value}
+      data-venue-service={venueTabService(value)}
       className={cn(
-        'relative w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground shadow-none',
+        'venue-nav-tab relative min-h-11 w-full justify-start gap-2.5 whitespace-normal rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground shadow-none',
         'before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:scale-y-0 before:rounded-full before:bg-[var(--venue-accent)] before:transition-transform',
-        'hover:bg-background/75 hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-[0_8px_22px_-18px_hsl(var(--foreground)/0.55)] data-[state=active]:before:scale-y-100 data-[state=active]:[&>svg]:text-[var(--venue-accent)]',
+        'hover:bg-background/75 hover:text-foreground data-[state=active]:shadow-none data-[state=active]:before:scale-y-100',
       )}
     >
-      <Icon className="h-4 w-4" />
+      <Icon aria-hidden className="h-4 w-4 shrink-0" />
       {label}
     </TabsTrigger>
   );
@@ -465,7 +470,7 @@ function MastheadStat({
       <span className="min-w-0 truncate text-[10px] font-semibold text-foreground/80 sm:text-xs lg:hidden" title={label}>
         {mobileLabel ?? label}
       </span>
-      <span className="hidden whitespace-nowrap text-xs font-semibold text-foreground/80 lg:inline">{label}</span>
+      <span className="hidden text-xs font-semibold text-foreground/80 lg:inline">{label}</span>
     </div>
   );
 }

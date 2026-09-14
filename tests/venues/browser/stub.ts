@@ -6,6 +6,7 @@ export const formatMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 export const openStripe = () => { throw new Error('External checkout is blocked in this local preview.'); };
 export const supabase = {
   from: (table: string) => {
+    if (table === 'venue_module_access') return { select: () => ({ eq: async () => ({ data: ['court_booking','facility_tools'].map(module_key => ({venue_id:'local-sample',module_key,source:params.has('subscribed')?'subscription':'staff_grant',enabled:true,expires_at:null})), error:null }) }) };
     if (table !== 'venues') throw new Error('Backend access is blocked in this local preview.');
     return { select: () => ({ eq: () => ({ single: async () => ({ data: { name: 'Pickleball Palace', primary_color: '#c9962f', secondary_color: '#183936', logo_url: palaceLogo, logo_shape: 'circle', logo_image_fit: 'contain' }, error: null }) }) }) };
   },

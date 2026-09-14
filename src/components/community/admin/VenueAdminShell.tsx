@@ -60,6 +60,7 @@ export function VenueAdminShell({
 
   return (
     <div
+      data-venue-service="operations"
       className="min-h-[100dvh] bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
       style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))' } as CSSProperties}
     >
@@ -107,8 +108,7 @@ export function VenueAdminShell({
                   size="sm"
                   onClick={onOperations}
                   aria-label="Open venue operations"
-                  className="h-11 min-w-11 rounded-full px-3 text-[#15171b] shadow-none"
-                  style={accent ? { backgroundColor: accent } : undefined}
+                  className="venue-service-solid venue-interactive h-11 min-w-11 rounded-full px-3 shadow-none"
                 >
                   <Gauge className="h-4 w-4 sm:mr-1.5" />
                   <span className="hidden sm:inline">Operations</span>
@@ -149,9 +149,9 @@ export function VenueAdminShell({
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start lg:gap-10 lg:py-10">
-        <aside className="hidden lg:block">
-          <div className="sticky top-6 space-y-5">
+      <div className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:py-8 xl:gap-8">
+        <aside className="hidden self-stretch lg:block">
+          <div className="sticky top-6 max-h-[calc(100dvh-3rem)] space-y-5 overflow-y-auto p-1">
             {sections.map((section) => {
               const sectionItems = items.filter((item) => (item.section ?? 'venue') === section.value);
               if (!sectionItems.length) return null;
@@ -170,12 +170,13 @@ export function VenueAdminShell({
                           type="button"
                           onClick={() => onTabChange(item.value)}
                           aria-current={active ? 'page' : undefined}
+                          data-venue-service={(item.section ?? 'venue') === 'venue' ? 'operations' : 'community'}
                           className={cn(
                             'relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:scale-y-0 before:rounded-full before:bg-[var(--venue-admin-accent)] before:transition-transform hover:bg-card/70',
                             active && 'bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] before:scale-y-100',
                           )}
                         >
-                          <Icon className={cn('mt-0.5 h-4 w-4 shrink-0 text-muted-foreground', active && 'text-foreground')} />
+                          <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'venue-service-icon' : 'text-muted-foreground')}><Icon aria-hidden className="h-4 w-4" /></span>
                           <span className="min-w-0">
                             <span className={cn('block text-sm font-semibold text-foreground/75', active && 'text-foreground')}>
                               {item.label}

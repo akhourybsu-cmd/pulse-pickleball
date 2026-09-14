@@ -1,0 +1,43 @@
+/* Functional color, separate from a venue's editable brand color. Text remains
+   readable even when a venue chooses a very pale or very dark brand accent. */
+[data-venue-service] { --venue-service: 215 22% 35%; --venue-service-contrast: 0 0% 100%; }
+[data-venue-service="booking"] { --venue-service: 168 65% 24%; }
+[data-venue-service="programs"] { --venue-service: 218 65% 37%; }
+[data-venue-service="coaching"] { --venue-service: 267 48% 39%; }
+[data-venue-service="competition"] { --venue-service: 30 78% 30%; }
+[data-venue-service="operations"] { --venue-service: 204 55% 31%; }
+.dark [data-venue-service] { --venue-service: 215 28% 76%; --venue-service-contrast: 220 25% 10%; }
+.dark [data-venue-service="booking"] { --venue-service: 166 55% 67%; }
+.dark [data-venue-service="programs"] { --venue-service: 214 86% 77%; }
+.dark [data-venue-service="coaching"] { --venue-service: 268 75% 80%; }
+.dark [data-venue-service="competition"] { --venue-service: 38 85% 72%; }
+.dark [data-venue-service="operations"] { --venue-service: 201 70% 73%; }
+
+.venue-service-icon { color: hsl(var(--venue-service)); background: hsl(var(--venue-service) / 0.1); }
+.venue-service-label { color: hsl(var(--venue-service)); }
+.venue-service-card[data-venue-service] {
+  border-color: hsl(var(--venue-service) / 0.24);
+  background: linear-gradient(125deg, hsl(var(--venue-service) / 0.065), transparent 75%), hsl(var(--card));
+}
+.venue-service-solid:is(button, a), .venue-service-solid:is(button, a):hover { background: hsl(var(--venue-service)); color: hsl(var(--venue-service-contrast)); }
+.venue-service-outline { border-color: hsl(var(--venue-service) / 0.35); color: hsl(var(--venue-service)); background: hsl(var(--card)); }
+.venue-nav-tab[data-venue-service][data-state="active"] { color: hsl(var(--foreground)); background: hsl(var(--venue-service) / 0.1); }
+.venue-nav-tab[data-state="active"] > svg { color: hsl(var(--venue-service)); }
+.venue-nav-tab[data-state="active"]::before { background: hsl(var(--venue-service)); }
+
+.venue-interactive { transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+:is(.venue-interactive, .venue-nav-tab):focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: 3px; }
+.venue-interactive:active:not(:disabled) { transform: scale(0.99); }
+@media (hover: hover) and (pointer: fine) {
+  .venue-interactive:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px -18px hsl(var(--foreground) / 0.4); }
+  .venue-service-outline:hover:not(:disabled) { background: hsl(var(--venue-service) / 0.08); }
+}
+@keyframes venue-panel-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.venue-panel-enter[data-state="active"] { animation: venue-panel-in 170ms ease-out backwards; }
+.venue-selection-enter { animation: venue-panel-in 150ms ease-out backwards; }
+@media (prefers-reduced-motion: reduce) {
+  [data-venue-service] .venue-interactive, .venue-interactive[data-venue-service],
+  .venue-nav-tab[data-venue-service], .venue-nav-tab[data-venue-service]::before { transition: none; }
+  .venue-interactive:hover:not(:disabled), .venue-interactive:active:not(:disabled) { transform: none; }
+  .venue-panel-enter[data-state="active"], .venue-selection-enter { animation: none; }
+}

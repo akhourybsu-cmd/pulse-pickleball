@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Building2, Ticket, ChevronRight, CalendarPlus } from 'lucide-react';
+import { Building2, Ticket, ChevronRight, CalendarPlus, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -19,6 +19,7 @@ import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
+import { VenueServiceHeading } from '@/components/venue/VenueServiceHeading';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
@@ -299,37 +300,38 @@ export default function VenueCommunity() {
       />
 
       {privateSample ? <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div> : (canManageVenue(venueRole) || membership?.role === 'owner') && !modules.loading && !modules.isError && (
-        <div className="border-b bg-muted/20"><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6"><div><p className="text-sm font-semibold">{modules.booking || modules.facility ? 'Your venue plan' : 'Free venue community'}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Optional facility features are $10/month each. Your community stays free.</p></div><Button asChild variant="outline" className="min-h-11 rounded-xl"><Link to={'/player/community/group/' + groupId + '/manage?tab=modules'}>Plan &amp; upgrades</Link></Button></div></div>
+        <div className="mx-auto w-full max-w-[1480px] px-4 pt-3 sm:px-6"><div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/70 px-3 py-2"><div className="min-w-0"><p className="text-xs font-semibold">{modules.booking || modules.facility ? 'Venue features enabled' : 'Free venue community'}</p><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{[modules.booking && 'Court booking', modules.facility && 'Facility tools'].filter(Boolean).join(' · ') || 'Community included · add features when you need them'}</p></div><Button asChild variant="ghost" className="min-h-11 rounded-lg text-xs"><Link to={'/player/community/group/' + groupId + '/manage?tab=modules'}>Plan &amp; upgrades<ChevronRight aria-hidden className="ml-1 h-3.5 w-3.5" /></Link></Button></div></div>
       )}
 
       <Tabs
+        orientation={isDesktopLayout ? 'vertical' : 'horizontal'}
         value={activeTab}
         onValueChange={(value) => openTab(value as VenuePageTab)}
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        <VenueMobileTabs hasCourts={bookingTabAvailable} chatEnabled={chatEnabled} />
+        {!isDesktopLayout && <VenueMobileTabs hasCourts={bookingTabAvailable} chatEnabled={chatEnabled} />}
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+        <div className="min-w-0 flex-1">
+          <div className="mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
             <div
               className={cn(
-                'lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:gap-10',
-                showDesktopRail && 'min-[1180px]:grid-cols-[210px_minmax(0,1fr)_292px]',
+                'lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-6 min-[1440px]:gap-8',
+                showDesktopRail && 'min-[1280px]:grid-cols-[200px_minmax(0,1fr)_260px]',
               )}
             >
-              <VenueDesktopNavigation
+              {isDesktopLayout && <VenueDesktopNavigation
                 hasCourts={bookingTabAvailable}
                 chatEnabled={chatEnabled}
                 isOperator={isOperator}
                 isAdmin={canManageSettings}
                 onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
                 onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
-              />
+              />}
 
               <main className="min-w-0">
                 {dayError && ['home', 'book', 'play'].includes(activeTab) && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>}
-                <TabsContent value="home" className="mt-0">
+                <TabsContent value="home" className="venue-panel-enter mt-0">
                   <VenueHome
                     welcomeHeadline={venue?.welcome_headline ?? null}
                     welcomeMessage={venue?.welcome_message ?? null}
@@ -350,11 +352,12 @@ export default function VenueCommunity() {
                     accent={chrome?.accentHex}
                     onBook={() => openTab('book')}
                     onOpenPlay={() => openTab('play')}
+                    onBookings={() => navigate('/player/bookings')}
                   />
                 </TabsContent>
 
                 {bookingTabAvailable && (
-                  <TabsContent value="book" className="mt-0">
+                  <TabsContent value="book" className="venue-panel-enter mt-0">
                     {!dayError && <VenueBookingGrid
                       timeZone={venue?.timezone}
                       closed={closed}
@@ -373,34 +376,22 @@ export default function VenueCommunity() {
                   </TabsContent>
                 )}
 
-                <TabsContent value="play" className="mt-0">
+                <TabsContent value="play" className="venue-panel-enter mt-0">
                   <div className="max-w-3xl space-y-4">
-                    <div className="flex items-center justify-between gap-3 rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)]">
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                          Programs at {venue?.name ?? group.name}
-                        </p>
-                        <h2 className="mt-1 text-xl font-extrabold tracking-[-0.02em]">Find your next session</h2>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {programming.length > 0
-                            ? `${programming.length} option${programming.length === 1 ? '' : 's'} on this day · tap for details and registration`
-                            : 'Choose another day to browse open play, clinics, and venue events'}
-                        </p>
-                      </div>
+                    <VenueServiceHeading service="programs" icon={CalendarDays} title="Programs & play" description="Find open play, clinics and events. Choose a day, then a session for details and registration.">
                       {canCreateProgram && (
                         <Button
                           size="sm"
-                          className="h-11 shrink-0 gap-1.5 rounded-xl px-3 font-semibold shadow-[0_10px_24px_-18px_hsl(var(--primary)/0.9)]"
+                          className="venue-service-solid venue-interactive h-11 shrink-0 gap-1.5 rounded-xl px-3 font-semibold"
                           aria-label="Create a venue program"
                           disabled={!!dayError || dayLoading}
                           onClick={() => setEventCreatorOpen(true)}
                         >
                           <CalendarPlus className="h-4 w-4" />
-                          <span className="hidden sm:inline">New program</span>
-                          <span className="sm:hidden">New</span>
+                          New program
                         </Button>
                       )}
-                    </div>
+                    </VenueServiceHeading>
                     <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} timeZone={venue?.timezone} />
                     {!dayError && <VenueProgramming
                       sessions={programming}
@@ -456,7 +447,7 @@ export default function VenueCommunity() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="more" className="mt-0">
+                <TabsContent value="more" className="venue-panel-enter mt-0">
                   <div className="max-w-[820px] space-y-4">
                     <div className="rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)]">
                       <div className="flex items-center gap-3">

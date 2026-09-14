@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Grid3x3, Rows3, Lock, X, MoonStar } from 'lucide-react';
+import { Check, Grid3x3, Rows3, Lock, X, MoonStar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,8 @@ import {
 } from '@/lib/venues/availability';
 import { DayStrip } from './DayStrip';
 import { formatDuration } from '@/lib/venues/ops';
+import { programService } from '@/lib/venues/servicePresentation';
+import { VenueServiceHeading } from './VenueServiceHeading';
 
 /**
  * The court grid.
@@ -94,7 +96,8 @@ export function VenueBookingGrid({
   const selectedCourt = grid.find((c) => c.court.id === selection?.courtId)?.court ?? null;
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-3" data-venue-service="booking">
+      <VenueServiceHeading service="booking" icon={Grid3x3} title="Court reservations" description="Choose a time, review the details, then confirm. Selecting a court doesn’t hold it." />
       <p className="text-xs text-muted-foreground">{timeZone ? `All court times are in ${timeZone.replace(/_/g, ' ')} (venue time).` : 'Court times use your device’s time zone.'}</p>
       {/* The view toggle rides on the day strip: it belongs to the same day of
           data, and a row of its own was pure overhead. */}
@@ -122,6 +125,12 @@ export function VenueBookingGrid({
           </div>
         }
       />
+
+      {!loading && !closed && grid.length > 0 && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-1 text-xs text-muted-foreground" aria-label="Court availability legend">
+        <span className="flex items-center gap-1.5"><span aria-hidden className="venue-service-outline h-2.5 w-2.5 rounded-sm border" />Available</span>
+        {effectiveMode === 'times' && <span className="flex items-center gap-1.5"><Check aria-hidden className="venue-service-label h-3.5 w-3.5" />Selected</span>}
+        <span className="flex items-center gap-1.5"><Lock aria-hidden className="h-3 w-3" />Booked or closed</span>
+      </div>}
 
       {!loading && !closed && !canBook && (
         <p className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -173,7 +182,7 @@ export function VenueBookingGrid({
       {/* Selection bar — appears only when a range is live, and states the exact
           court and span being booked so nothing is guessed in the dialog. */}
       {range && selectedCourt && canBook && (
-        <div className="sticky bottom-3 z-10 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-xl border border-primary/40 bg-card p-2.5 shadow-lg sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+        <div className="venue-selection-enter sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-lg sm:grid-cols-[auto_minmax(0,1fr)_auto]" aria-label="Booking selection">
           <button
             type="button"
             onClick={() => setSelection(null)}
@@ -193,7 +202,7 @@ export function VenueBookingGrid({
           </div>
           <Button
             size="sm"
-            className="col-span-2 min-h-11 w-full sm:col-span-1 sm:w-auto"
+            className="venue-service-solid venue-interactive col-span-2 min-h-11 w-full rounded-xl sm:col-span-1 sm:w-auto"
             onClick={() => {
               onPickSlot(selectedCourt.id, range.start, range.minutes);
               setSelection(null);
@@ -296,7 +305,7 @@ function TimesView({
         ) : (
           <div
             key={entry.index}
-            className="flex items-start gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+            className="flex items-start gap-3 rounded-xl border border-border/75 bg-card px-3 py-3 sm:px-4"
           >
             <span className="w-16 shrink-0 pt-1 text-sm font-semibold tabular-nums">
               {formatSlotTime(entry.start, timeZone)}
@@ -317,20 +326,13 @@ function TimesView({
                     aria-label={`Select ${slotLabel(col, entry.index, entry.index, timeZone)}`}
                     onClick={() => onToggle(col.court.id, entry.index)}
                     className={cn(
-                      'min-h-11 min-w-11 max-w-full rounded-2xl border px-2.5 py-2 text-xs font-semibold transition-colors [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                      'venue-interactive inline-flex min-h-11 min-w-11 max-w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold [overflow-wrap:anywhere]',
                       !canBook && 'border-border/60 bg-background text-muted-foreground',
-                      canBook && !picked && 'border-border bg-background hover:border-primary/50 hover:bg-primary/5',
-                      canBook && picked && 'border-primary bg-primary text-primary-foreground',
+                      canBook && !picked && 'venue-service-outline',
+                      canBook && picked && 'venue-service-solid border-transparent',
                     )}
-                    style={
-                      canBook && accent
-                        ? picked
-                          ? { backgroundColor: accent, borderColor: accent, color: '#fff' }
-                          : { borderColor: `${accent}55`, color: accent }
-                        : undefined
-                    }
                   >
-                    {shortCourtName(col.court)}
+                    {picked && <Check aria-hidden className="h-3.5 w-3.5 shrink-0" />}<span className="min-w-0">{shortCourtName(col.court)}</span>
                   </button>
                 );
               })}
@@ -497,6 +499,7 @@ function GridBlock({
     const Tag = onOpenSession ? 'button' : 'div';
     return (
       <Tag
+        data-venue-service={closed ? 'community' : block.reservation.event_format === 'reservation' ? 'booking' : programService(block.reservation.event_format)}
         {...(onOpenSession ? { type: 'button' as const, onClick: onOpenSession } : {})}
         style={position}
         className="min-w-0 p-[3px] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
@@ -509,14 +512,9 @@ function GridBlock({
             'border-l-2 text-[11px] font-medium leading-tight',
             closed
               ? 'border-l-muted-foreground/40 bg-muted text-muted-foreground'
-              : 'border-l-primary bg-primary/10 text-foreground',
+              : 'venue-service-icon border-l-current',
             onOpenSession && 'transition-opacity hover:opacity-80',
           )}
-          style={
-            !closed && accent
-              ? { backgroundColor: `${accent}1a`, borderLeftColor: accent }
-              : undefined
-          }
         >
           <span className="truncate font-semibold">
             {block.reservation.title || (closed ? 'Closed' : 'Booked')}
@@ -546,12 +544,12 @@ function GridBlock({
       style={position}
       className={cn(
         'group m-[3px] rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
-        canBook ? 'hover:bg-primary/10' : 'cursor-default',
+        canBook ? 'border border-dashed border-emerald-800/20 bg-emerald-800/[0.025] hover:bg-emerald-800/10 dark:border-emerald-300/20 dark:bg-emerald-300/[0.025] dark:hover:bg-emerald-300/10' : 'cursor-default',
       )}
       aria-label={`${canBook ? 'Review booking' : 'Available'} · ${label}`}
     >
       {canBook && (
-        <span className="flex h-full items-center justify-center text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span aria-hidden className="venue-service-label flex h-full items-center justify-center text-sm font-semibold opacity-40 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           +
         </span>
       )}

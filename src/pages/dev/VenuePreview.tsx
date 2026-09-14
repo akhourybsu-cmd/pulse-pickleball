@@ -4,6 +4,7 @@ import { EMPTY_VENUE_APPLICATION } from '@/lib/venues/venueApplications';
 import {
   AlertTriangle,
   Camera,
+  CalendarDays,
   Clock3,
   LayoutDashboard,
   LayoutGrid,
@@ -21,6 +22,7 @@ import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
+import { VenueServiceHeading } from '@/components/venue/VenueServiceHeading';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import {
@@ -762,8 +764,15 @@ function AdminPreviewPlaceholder({ item }: { item?: VenueAdminNavItem }) {
   return <div className="rounded-[22px] border border-border/70 bg-card p-6 sm:p-8"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span><h3 className="mt-5 text-xl font-semibold">{item?.label}</h3><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{item?.description}. This preview keeps the production panel shell visible while authenticated data remains private.</p></div>;
 }
 
-function VenueDesktopPagePreview() {
+export function VenueDesktopPagePreview() {
   const [activeTab, setActiveTab] = useState<VenuePageTab>('home');
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  const [notice, setNotice] = useState('');
+  useEffect(() => { const media=window.matchMedia('(min-width: 1024px)'); const sync=()=>setDesktop(media.matches); media.addEventListener('change',sync); return ()=>media.removeEventListener('change',sync); },[]);
+  const previewParams = new URLSearchParams(window.location.search);
+  const hasCourts = !previewParams.has('no-booking');
+  const chatEnabled = !previewParams.has('no-chat');
+  const previewName = previewParams.has('long') ? 'TheVeryLongVenueNameForResponsiveTestingPickleballPalace' : 'ELEVENO';
   const [day, setDay] = useState(DAY);
   const programming = SESSIONS.filter(
     (session) => session.event_format !== 'reservation' && session.event_format !== 'maintenance',
@@ -787,9 +796,9 @@ function VenueDesktopPagePreview() {
     activeTab === 'more';
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/[0.16]">
+    <div className="flex min-h-screen flex-col bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
       <VenueMasthead
-        venueName="ELEVENO"
+        venueName={previewName}
         tagline="Premium pickleball, thoughtfully played"
         logoUrl="/pulse-icon-512.png"
         coverImageUrl="/pulse-og.png"
@@ -801,45 +810,48 @@ function VenueDesktopPagePreview() {
         bloom="rgba(197, 173, 17, 0.28)"
         accent={ACCENT}
         verified
-        hasCourts
+        hasCourts={hasCourts}
         freeNow={2}
         courtCount={6}
         memberCount={284}
         nextStart={nextUp[0]?.start_time}
         isOperator
         isAdmin
-        onBack={() => {}}
-        onOperations={() => {}}
-        onSettings={() => {}}
+        onBack={() => setNotice('Back to Community')}
+        onOperations={() => setNotice('Open venue operations')}
+        onSettings={() => setNotice('Open venue settings')}
       />
 
       <Tabs
+        orientation={desktop ? 'vertical' : 'horizontal'}
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as VenuePageTab)}
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': ACCENT } as React.CSSProperties}
       >
-        <VenueMobileTabs hasCourts />
+        {!desktop && <VenueMobileTabs hasCourts={hasCourts} chatEnabled={chatEnabled} />}
+        {notice && <p role="status" className="mx-auto w-full max-w-[1480px] px-4 pt-3 text-sm">{notice} · Local preview only</p>}
         <div className="flex-1">
-          <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+          <div className="mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
             <div
               className={cn(
-                'lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:gap-10',
-                showDesktopRail && 'min-[1180px]:grid-cols-[210px_minmax(0,1fr)_292px]',
+                'lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-6 min-[1440px]:gap-8',
+                showDesktopRail && 'min-[1280px]:grid-cols-[200px_minmax(0,1fr)_260px]',
               )}
             >
-              <VenueDesktopNavigation
-                hasCourts
+              {desktop && <VenueDesktopNavigation
+                hasCourts={hasCourts}
+                chatEnabled={chatEnabled}
                 isOperator
                 isAdmin
-                onOperations={() => {}}
-                onSettings={() => {}}
-              />
+                onOperations={() => setNotice('Open venue operations')}
+                onSettings={() => setNotice('Open venue settings')}
+              />}
 
               <main className="min-w-0">
-                <TabsContent value="home" className="mt-0">
+                <TabsContent value="home" className="venue-panel-enter mt-0">
                   <VenueHome
-                    welcomeHeadline="Welcome to ELEVENO"
+                    welcomeHeadline={'Welcome to ' + previewName}
                     welcomeMessage="Book court time, find today’s sessions, and stay connected with the players and staff at ELEVENO."
                     city="Foxboro"
                     state="MA"
@@ -847,16 +859,18 @@ function VenueDesktopPagePreview() {
                     websiteUrl="https://eleveno.example"
                     hours={VENUE_HOURS}
                     nextUp={nextUp}
-                    hasCourts
+                    hasCourts={hasCourts}
+                    email={previewParams.has('long') ? 'LongUnbrokenVenueContactForMobileBoundaries@example.com' : null}
                     freeNow={2}
                     courtCount={6}
                     accent={ACCENT}
                     onBook={() => setActiveTab('book')}
                     onOpenPlay={() => setActiveTab('play')}
+                    onBookings={() => setNotice('Open my bookings')}
                   />
                 </TabsContent>
 
-                <TabsContent value="book" className="mt-0">
+                <TabsContent value="book" className="venue-panel-enter mt-0">
                   <VenueBookingGrid
                     grid={grid}
                     day={day}
@@ -864,18 +878,19 @@ function VenueDesktopPagePreview() {
                     canBook
                     accent={ACCENT}
                     onDayChange={setDay}
-                    onPickSlot={() => {}}
+                    onPickSlot={() => setNotice('Review selected court and time')}
                   />
                 </TabsContent>
 
-                <TabsContent value="play" className="mt-0 max-w-3xl">
+                <TabsContent value="play" className="venue-panel-enter mt-0 max-w-3xl">
+                  <VenueServiceHeading service="programs" icon={CalendarDays} title="Programs & play" description="Find open play, clinics and events. Choose a session for details and registration." />
                   <VenueProgramming
                     sessions={programming}
                     going={GOING}
                     loading={false}
                     venueName="ELEVENO"
                     accent={ACCENT}
-                    onPick={() => {}}
+                    onPick={() => setNotice('Open program registration')}
                   />
                 </TabsContent>
 
@@ -901,7 +916,8 @@ function VenueDesktopPagePreview() {
                 <VenueDesktopRail
                   venueName="ELEVENO"
                   activeTab={activeTab}
-                  hasCourts
+                  hasCourts={hasCourts}
+                  chatEnabled={chatEnabled}
                   freeNow={2}
                   courtCount={6}
                   memberCount={284}
@@ -910,7 +926,7 @@ function VenueDesktopPagePreview() {
                   hours={VENUE_HOURS}
                   accent={ACCENT}
                   onOpenTab={setActiveTab}
-                  onBookings={() => {}}
+                  onBookings={() => setNotice('Open my bookings')}
                 />
               )}
             </div>

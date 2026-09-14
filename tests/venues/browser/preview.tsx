@@ -8,8 +8,13 @@ import { VenuePaymentsPanel } from '../../../src/components/venue/VenuePaymentsP
 import { buildDayGrid } from '../../../src/lib/venues/availability';
 import '../../../src/index.css';
 import { EntrancePreview } from './entrance-preview';
+import { VenueDesktopPagePreview } from '../../../src/pages/dev/VenuePreview';
+import { VenueModulesPanel } from '../../../src/components/venue/VenueModulesPanel';
+import { VenueAdminShell } from '../../../src/components/community/admin/VenueAdminShell';
+import { LayoutGrid, Settings } from 'lucide-react';
 
 const params = new URLSearchParams(window.location.search);
+if (params.has('dark')) document.documentElement.classList.add('dark');
 if (params.has('large-text')) document.documentElement.style.fontSize = '20px';
 const start = new Date('2099-09-15T14:00:00Z');
 const courts = [
@@ -28,4 +33,9 @@ function Preview() {
     <BookCourtDialog open={!!booking} onOpenChange={open => { if (!open) setBooking(null); }} groupId="local-group" venueId="local-sample" court={booking?.court ?? null} start={booking?.start ?? null} slotMinutes={60} presetMinutes={booking?.minutes} dayEnd={booking ? new Date(booking.start.getTime() + 6 * 3600_000) : null} timeZone="America/New_York" onBooked={() => {}} />
   </main>;
 }
-createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);
+function ModulesPreview() {
+  return <VenueAdminShell venueName={params.has('long') ? 'TheVeryLongVenueNameForResponsiveTestingPickleballPalace' : 'Pickleball Palace'} verified roleLabel="Owner" accent="#C5AD11" activeTab="modules" items={[{value:'overview',label:'Overview',description:'Venue activity and next steps.',icon:LayoutGrid},{value:'modules',label:'Plan & upgrades',description:'Your included and purchased venue features.',icon:Settings}]} onTabChange={()=>{}} onBack={()=>{}} onViewVenue={()=>{}} onOperations={()=>{}}>
+    <VenueModulesPanel venueId="local-sample" venueName="Pickleball Palace" verified canVerify />
+  </VenueAdminShell>;
+}
+createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);
