@@ -94,7 +94,7 @@ export function VenueBookingGrid({
   const selectedCourt = grid.find((c) => c.court.id === selection?.courtId)?.court ?? null;
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <p className="text-xs text-muted-foreground">{timeZone ? `All court times are in ${timeZone.replace(/_/g, ' ')} (venue time).` : 'Court times use your device’s time zone.'}</p>
       {/* The view toggle rides on the day strip: it belongs to the same day of
           data, and a row of its own was pure overhead. */}
@@ -173,33 +173,33 @@ export function VenueBookingGrid({
       {/* Selection bar — appears only when a range is live, and states the exact
           court and span being booked so nothing is guessed in the dialog. */}
       {range && selectedCourt && canBook && (
-        <div className="sticky bottom-3 z-10 flex items-center gap-2 rounded-xl border border-primary/40 bg-card p-2.5 shadow-lg">
+        <div className="sticky bottom-3 z-10 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-xl border border-primary/40 bg-card p-2.5 shadow-lg sm:grid-cols-[auto_minmax(0,1fr)_auto]">
           <button
             type="button"
             onClick={() => setSelection(null)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             aria-label="Clear selection"
           >
             <X className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">
+            <p className="text-sm font-semibold [overflow-wrap:anywhere]">
               {selectedCourt.name ?? `Court ${selectedCourt.court_number}`}
             </p>
-            <p className="truncate text-xs tabular-nums text-muted-foreground">
+            <p className="text-xs tabular-nums text-muted-foreground">
               {formatSlotTime(range.start, timeZone)}–{formatSlotTime(range.end, timeZone)} ·{' '}
               {formatDuration(range.minutes)}
             </p>
           </div>
           <Button
             size="sm"
-            className="shrink-0"
+            className="col-span-2 min-h-11 w-full sm:col-span-1 sm:w-auto"
             onClick={() => {
               onPickSlot(selectedCourt.id, range.start, range.minutes);
               setSelection(null);
             }}
           >
-            Book
+            Review booking
           </Button>
         </div>
       )}
@@ -228,7 +228,7 @@ function ViewButton({
       // the more important control of the two.
       aria-label={children}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-semibold transition-colors sm:px-2.5',
+        'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:px-2.5',
         active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
       )}
     >
@@ -284,7 +284,7 @@ function TimesView({
             <span className="w-16 shrink-0 text-xs tabular-nums text-muted-foreground/70">
               {formatSlotTime(entry.start, timeZone)}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
+            <span className="inline-flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground/70">
               {!entry.booked && <MoonStar className="h-3 w-3" />}
               {entry.booked ? 'Fully booked' : 'Closed'}
               <span className="text-muted-foreground/50">
@@ -314,9 +314,10 @@ function TimesView({
                     type="button"
                     disabled={!canBook}
                     aria-pressed={picked}
+                    aria-label={`Select ${slotLabel(col, entry.index, entry.index, timeZone)}`}
                     onClick={() => onToggle(col.court.id, entry.index)}
                     className={cn(
-                      'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                      'min-h-11 min-w-11 max-w-full rounded-2xl border px-2.5 py-2 text-xs font-semibold transition-colors [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                       !canBook && 'border-border/60 bg-background text-muted-foreground',
                       canBook && !picked && 'border-border bg-background hover:border-primary/50 hover:bg-primary/5',
                       canBook && picked && 'border-primary bg-primary text-primary-foreground',
@@ -340,7 +341,7 @@ function TimesView({
 
       {canBook && anyOpen && !selection && (
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Tap a court to hold it. Tap the next hour on the same court to extend.
+          Select a court, then the next time on that court to extend. Review your booking before confirming. Selecting a time does not hold the court.
         </p>
       )}
     </div>
@@ -377,7 +378,7 @@ function CourtsView({
   const ROW = 44;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card">
+    <div role="region" aria-label="Court schedule, scroll horizontally for more courts" tabIndex={0} className="max-w-full overflow-x-auto rounded-xl border border-border bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <div
         className="grid min-w-max"
         style={{
@@ -392,9 +393,9 @@ function CourtsView({
         {grid.map((col) => (
           <div
             key={col.court.id}
-            className="flex flex-col items-center justify-center gap-0.5 border-b border-border bg-muted/50 px-2 py-2"
+            className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-b border-border bg-muted/50 px-2 py-2"
           >
-            <span className="truncate text-xs font-semibold">
+            <span className="max-w-[12rem] whitespace-normal text-center text-xs font-semibold [overflow-wrap:anywhere]">
               {col.court.name ?? `Court ${col.court.court_number}`}
             </span>
             {col.court.is_premium && (
@@ -435,6 +436,7 @@ function CourtsView({
               key={`${col.court.id}-${block.fromIndex}`}
               block={block}
               column={colIndex + 2}
+              label={slotLabel(col, block.fromIndex, block.toIndex, timeZone)}
               canBook={canBook}
               accent={accent}
               onBook={() => onPickSlot(col.court.id, col.slots[block.fromIndex].start)}
@@ -462,9 +464,18 @@ function shortCourtName(court: CourtColumn['court']): string {
   return match ? match[1] : name;
 }
 
+/** Include venue-local date and range: a bare court number is ambiguous to assistive technology. */
+function slotLabel(column: CourtColumn, from: number, to: number, timeZone?: string | null): string {
+  const start = column.slots[from].start;
+  const end = column.slots[to].end;
+  const date = start.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', timeZone: timeZone || undefined });
+  return `${column.court.name || `Court ${column.court.court_number ?? ''}`} · ${date}, ${formatSlotTime(start, timeZone)}–${formatSlotTime(end, timeZone)}${timeZone ? ' · venue time' : ''}`;
+}
+
 function GridBlock({
   block,
   column,
+  label,
   canBook,
   accent,
   onBook,
@@ -472,6 +483,7 @@ function GridBlock({
 }: {
   block: CourtBlock;
   column: number;
+  label: string;
   canBook: boolean;
   accent?: string | null;
   onBook: () => void;
@@ -487,7 +499,8 @@ function GridBlock({
       <Tag
         {...(onOpenSession ? { type: 'button' as const, onClick: onOpenSession } : {})}
         style={position}
-        className="p-[3px] text-left"
+        className="min-w-0 p-[3px] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        aria-label={`${block.reservation.title || (closed ? 'Closed' : 'Booked')} · ${label}`}
         title={block.reservation.title ?? undefined}
       >
         <div
@@ -532,13 +545,13 @@ function GridBlock({
       onClick={onBook}
       style={position}
       className={cn(
-        'group m-[3px] rounded-md transition-colors',
+        'group m-[3px] rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
         canBook ? 'hover:bg-primary/10' : 'cursor-default',
       )}
-      aria-label={canBook ? 'Book this slot' : undefined}
+      aria-label={`${canBook ? 'Review booking' : 'Available'} · ${label}`}
     >
       {canBook && (
-        <span className="flex h-full items-center justify-center text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="flex h-full items-center justify-center text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           +
         </span>
       )}

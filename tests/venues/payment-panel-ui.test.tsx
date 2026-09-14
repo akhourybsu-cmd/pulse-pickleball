@@ -50,6 +50,15 @@ beforeEach(() => {
 const request = (status = 'requested') => ({ id: 'r1', order_id: 'order', note: 'I cannot attend.', status, payment_orders: { description: 'Court rental', amount_cents: 5000, refunded_cents: 1000 } });
 
 describe('venue payment presentation', () => {
+  it('separates items to complete from items Stripe is already reviewing', () => {
+    state.data.account.requirements_due = ['business_profile.url', 'external_account'];
+    state.data.account.requirements_pending = ['individual.verification.document'];
+    const html = render();
+    for (const copy of ['Stripe needs more information', 'To complete in Stripe', 'Business website', 'Payout bank account', 'Under review by Stripe', 'Identity or business documents']) expect(html).toContain(copy);
+    expect(html).not.toContain('business_profile.url');
+    state.data.account.requirements_due = [];
+    expect(render()).toContain('Stripe is reviewing your information');
+  });
   it('opens Stripe setup for approved private testing without claiming business verification', () => {
     state.data.mode = 'test'; state.data.venue.verification_approved_at = null; state.data.venue.payment_test_sandbox = true;
     const html = render();

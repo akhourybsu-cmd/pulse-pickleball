@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { venuePaymentReadiness, type VenuePaymentSetup } from '@/lib/venues/paymentReadiness';
 import { VenueStripeReturn } from './VenueStripeReturn';
 import { VenueAddonCheckout } from './VenueAddonCheckout';
+import { stripeRequirementLabels, stripeSetupGuidance } from '@/lib/venues/stripeSetupGuidance';
 
 const decisions = [
   ["refund_pending", "Cancel & refund", "The remaining payment will be returned to the original payment method. The court stays reserved until the refund succeeds. Stripe fees may not be returned."],
@@ -133,6 +134,9 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
   const confirmationCurrent = !!currentRequest?.payment_orders && currentRequest.status === 'requested' && Math.max(0, currentRequest.payment_orders.amount_cents - (currentRequest.payment_orders.refunded_cents ?? 0)) === confirmation?.remaining;
   const readiness = venuePaymentReadiness(data);
   const connected = readiness.connected;
+  const stripeGuidance = stripeSetupGuidance(data, connected);
+  const requirementsDue = stripeRequirementLabels(data.account?.requirements_due);
+  const requirementsPending = stripeRequirementLabels(data.account?.requirements_pending);
   const testSandbox = data.mode === 'test' && data.venue.payment_test_sandbox === true;
   const setupBlocked = !!busy || dirty || data.mode === 'off' || data.ready !== true || data.transferred || (!data.venue.verification_approved_at && !testSandbox);
   return (
@@ -257,11 +261,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
             <p className="text-sm font-semibold">
               {data.mode === "off"
                 ? "Payment setup pending"
-                : data.transferred
-                ? "Financial ownership review required"
-                : connected
-                ? "Stripe connected"
-                : "Finish Stripe onboarding"}
+                : stripeGuidance.title}
             </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               {data.mode === "test"
@@ -272,7 +272,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="min-h-11 whitespace-normal"
+              className="h-auto min-h-11 whitespace-normal"
               disabled={setupBlocked || !!data.account?.disconnected_at}
               onClick={() => data.account ? void action('onboard') : setNewAccountOpen(true)}
             >
@@ -281,7 +281,7 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
               )}
               {connected ? "Review Stripe setup" : data.account ? 'Continue Stripe setup' : 'Create a venue Stripe account'}
             </Button>
-            {(!data.account || data.account.disconnected_at) && <Button variant="outline" className="min-h-11 whitespace-normal" disabled={setupBlocked || !data.connect_existing_available} onClick={() => void action('connect_existing')}>{data.account ? 'Reconnect existing Stripe account' : 'Connect existing Stripe account'}</Button>}
+            {(!data.account || data.account.disconnected_at) && <Button variant="outline" className="h-auto min-h-11 whitespace-normal" disabled={setupBlocked || !data.connect_existing_available} onClick={() => void action('connect_existing')}>{data.account ? 'Reconnect existing Stripe account' : 'Connect existing Stripe account'}</Button>}
             {data.account && (
               <Button
                 variant="ghost"
@@ -293,9 +293,14 @@ export function VenuePaymentsPanel({ venueId }: { venueId: string }) {
             )}
           </div>
         </div>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{stripeGuidance.detail}</p>
+        {stripeGuidance.showRequirements && (requirementsDue.length > 0 || requirementsPending.length > 0) && <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+          {requirementsDue.length > 0 && <div className="min-w-0 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"><h3 className="text-sm font-semibold">To complete in Stripe</h3><ul className="mt-2 list-disc space-y-1 pl-4 text-sm leading-6">{requirementsDue.map(label => <li key={label}>{label}</li>)}</ul></div>}
+          {requirementsPending.length > 0 && <div className="min-w-0 rounded-xl border bg-muted/20 p-4"><h3 className="text-sm font-semibold">Under review by Stripe</h3><ul className="mt-2 list-disc space-y-1 pl-4 text-sm leading-6">{requirementsPending.map(label => <li key={label}>{label}</li>)}</ul></div>}
+        </div>}
         {dirty && <p className="mt-3 text-sm text-muted-foreground">Save or discard your changes before leaving for Stripe setup. Checking the connection will keep your draft.</p>}
         {!data.account && !data.connect_existing_available && <p className="mt-3 text-sm leading-6 text-muted-foreground">Already use Stripe for this venue? PULSE must enable existing-account linking first. Do not create a second account just to work around that step.</p>}
-        {data.account && <div className="mt-4 space-y-1 text-xs leading-5 text-muted-foreground"><p className="break-all">Connected account: {data.account.account_id} · {data.mode === 'test' ? 'Sandbox' : 'Live'}</p><p>{data.account.updated_at ? `Last checked ${new Date(data.account.updated_at).toLocaleString()}. Use Check connection for the latest Stripe status.` : 'Check connection to confirm the latest Stripe status.'}</p>{!!data.account.requirements_due?.length && <p>Stripe needs {data.account.requirements_due.length} more setup item(s). Complete them in Stripe, not in PULSE.</p>}{data.account.requirements_deadline && <p>Stripe requirements deadline: {new Date(data.account.requirements_deadline).toLocaleDateString()}.</p>}</div>}
+        {data.account && <div className="mt-4 space-y-1 text-xs leading-5 text-muted-foreground"><p className="break-all">Connected account: {data.account.account_id} · {data.mode === 'test' ? 'Sandbox' : 'Live'}</p><p>{data.account.updated_at ? `Last checked ${new Date(data.account.updated_at).toLocaleString()}. Use Check connection for the latest Stripe status.` : 'Check connection to confirm the latest Stripe status.'}</p>{stripeGuidance.showRequirements && data.account.requirements_deadline && <p>Stripe requirements deadline: {new Date(data.account.requirements_deadline).toLocaleDateString()}.</p>}</div>}
         {!data.venue.verification_approved_at && !testSandbox && <p className="mt-3 text-sm text-muted-foreground">Complete venue ownership verification before connecting Stripe or accepting payments.</p>}
         {connected && (
           <a

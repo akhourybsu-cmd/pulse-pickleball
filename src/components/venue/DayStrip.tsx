@@ -61,7 +61,7 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing, timeZon
   }, [value]);
 
   return (
-    <div className="-mx-4 flex items-end gap-3 border-b border-border px-4">
+    <div className="flex min-w-0 max-w-full items-end gap-3 border-b border-border">
       <div
         ref={scroller}
         className="scrollbar-hide min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
@@ -89,7 +89,7 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing, timeZon
               aria-selected={active}
               onClick={() => onChange(day)}
               className={cn(
-                'relative min-h-11 shrink-0 px-3 py-2.5 text-sm transition-colors',
+                'relative min-h-11 shrink-0 px-3 py-2.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2',
                 active ? 'font-bold text-foreground' : 'font-medium text-muted-foreground hover:text-foreground',
               )}
             >

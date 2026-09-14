@@ -17,7 +17,9 @@ it('centers the chosen date using only horizontal strip scrolling', () => {
     { offsetWidth: 80, scrollIntoView, getBoundingClientRect: () => ({ left: 300 }) },
   ];
   state.effects = [];
-  renderToStaticMarkup(<DayStrip value={new Date()} onChange={() => {}} />);
+  const html = renderToStaticMarkup(<DayStrip value={new Date()} onChange={() => {}} />);
+  expect(html).toContain('min-w-0 max-w-full');
+  expect(html).not.toContain('-mx-4');
   for (const effect of state.effects) effect();
   expect(scrollTo).toHaveBeenCalledWith({ left: 130 });
   expect(scrollIntoView).not.toHaveBeenCalled();

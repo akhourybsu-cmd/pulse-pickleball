@@ -20,8 +20,9 @@ export function availableBookingEnd(grid: CourtColumn[], courtId: string | null,
   return end;
 }
 
-export function bookingDurationOptions(slotMinutes: number, maxMinutes: number): number[] {
-  return [...new Set([30, 60, 90, 120, 180, slotMinutes])]
+export function bookingDurationOptions(slotMinutes: number, maxMinutes: number, paid = false, presetMinutes?: number | null): number[] {
+  const candidates = paid ? [30, 60, 90, 120, 150, 180, 210, 240] : [30, 60, 90, 120, 180, slotMinutes, presetMinutes ?? 0];
+  return [...new Set(candidates)]
     .filter(minutes => Number.isFinite(minutes) && minutes > 0 && minutes <= maxMinutes)
     .sort((a, b) => a - b);
 }

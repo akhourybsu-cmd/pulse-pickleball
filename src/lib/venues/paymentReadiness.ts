@@ -1,4 +1,5 @@
 import { paymentDraftFrom, validatePaymentDraft } from './paymentDraft';
+import { stripeSetupGuidance } from './stripeSetupGuidance';
 
 export interface VenuePaymentSetup {
   mode: 'off' | 'test' | 'live'; ready?: boolean; setup_issues?: string[];
@@ -16,7 +17,7 @@ export function venuePaymentReadiness(data: VenuePaymentSetup) {
   const steps = [
     { id: 'platform', title: 'PULSE payment service', complete: data.ready === true && data.mode !== 'off', detail: data.mode === 'test' ? 'Sandbox only. No real collections, payouts or bookings.' : data.setup_issues?.join(' ') || (data.ready ? 'The PULSE payment connection is available.' : 'PULSE must finish its Stripe configuration before checkout opens.') },
     { id: 'owner', title: testSandbox ? 'Approved private test venue' : 'Verified venue owner', complete: testSandbox || !!data.venue.verification_approved_at, detail: testSandbox ? 'Only your account can test this private sample. This is not real-business verification and never permits live charges.' : 'Only the verified venue owner can connect the business’s Stripe account.' },
-    { id: 'stripe', title: 'Your venue’s Stripe account', complete: connected, detail: data.transferred ? 'Ownership changed. Financial access needs a PULSE review; the previous owner’s account will not be reassigned.' : data.account?.disconnected_at ? 'This account was disconnected from PULSE. Reconnect the same account to continue.' : data.account?.requirements_pending?.length ? 'Stripe is reviewing submitted information. Check again after its review.' : 'Complete business verification and payout details in Stripe. PULSE never collects bank credentials.' },
+    { id: 'stripe', title: 'Your venue’s Stripe account', complete: connected, detail: stripeSetupGuidance(data, connected).detail },
     { id: 'feature', title: 'Court booking enabled', complete: data.booking_enabled === true, detail: 'Rental checkout requires the court booking feature. Your free community does not require payments.' },
     { id: 'policy', title: 'Saved prices & policy', complete: policy && pricedCourt, detail: 'Save a support email, venue time zone, refund policy, tax acknowledgment and at least one active paid court ($1/hour minimum).' },
   ];

@@ -19,6 +19,7 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import { programDateLabel } from '@/lib/venues/programExperience';
+import { VenueBrandMark } from './VenueBrandMark';
 import { describeDay, type VenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from '@/components/venue/VenueHome';
 
@@ -165,24 +166,7 @@ export function VenueMasthead({
           </div>
 
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-4 pb-4 sm:px-6 lg:gap-5 lg:px-8 lg:pb-7">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={`${venueName} logo`}
-                className={cn(
-                  'h-14 w-14 shrink-0 bg-white/10 shadow-xl ring-1 ring-white/30 sm:h-16 sm:w-16 lg:h-20 lg:w-20',
-                  logoShape === 'circle' ? 'rounded-full' : 'rounded-xl lg:rounded-2xl',
-                )}
-                style={{ objectFit: logoImageFit ?? 'cover' }}
-              />
-            ) : (
-              <div
-                aria-hidden
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-xl font-bold text-white shadow-xl backdrop-blur-md sm:h-16 sm:w-16 sm:text-2xl lg:h-20 lg:w-20 lg:rounded-2xl lg:text-3xl"
-              >
-                {venueName.trim().slice(0, 1).toUpperCase()}
-              </div>
-            )}
+            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className="h-14 w-14 text-[56px] shadow-xl ring-1 ring-white/30 sm:h-16 sm:w-16 sm:text-[64px] lg:h-20 lg:w-20 lg:text-[80px]" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

@@ -905,6 +905,31 @@ All colors MUST be HSL.
   }
 }
 
+/* Venue identity uses only compositor-friendly CSS, not an animation bundle. */
+@keyframes venue-entrance-ring {
+  to { transform: rotate(360deg); }
+}
+@keyframes venue-entrance-mark {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.venue-entrance-ring::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 2px solid transparent;
+  border-top-color: var(--venue-entrance-accent);
+  border-radius: 50%;
+  animation: venue-entrance-ring 1.2s linear infinite;
+}
+.venue-entrance-mark { animation: venue-entrance-mark 220ms ease-out both; }
+.venue-content-reveal { animation: pulse-route-enter-fade 160ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .venue-entrance-ring::after,
+  .venue-entrance-mark,
+  .venue-content-reveal { animation: none; }
+}
+
 @keyframes pulse-route-enter-fade {
   from { opacity: 0; }
   to { opacity: 1; }

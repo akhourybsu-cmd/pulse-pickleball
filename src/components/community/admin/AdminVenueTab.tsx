@@ -22,6 +22,7 @@ import {
 import { VenueCourtsSection } from './VenueCourtsSection';
 import { VenueHoursSection } from './VenueHoursSection';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { VenueLoadingScreen } from '@/components/venue/VenueEntrance';
 
 /**
  * Venue identity for a venue community.
@@ -105,6 +106,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
+  const [entrancePreview, setEntrancePreview] = useState(false);
 
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
@@ -482,6 +484,14 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
                   <X className="mr-1.5 h-3.5 w-3.5" /> Remove cover
                 </Button>
               )}
+            </div>
+
+            <div className="mt-5 space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
+                <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Your venue’s entrance</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Members see a brief welcome animation using your logo, shape and brand colors. Without a logo, we show your venue’s initials. No paid feature is required.</p></div>
+                <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" aria-expanded={entrancePreview} aria-controls="venue-entrance-preview" onClick={() => setEntrancePreview(value => !value)}>{entrancePreview ? 'Hide preview' : 'Preview entrance'}</Button>
+              </div>
+              {entrancePreview && <div id="venue-entrance-preview" className="min-w-0"><VenueLoadingScreen preview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, primaryColor: form.primary_color, secondaryColor: form.secondary_color }} /><p className="mt-2 text-xs leading-5 text-muted-foreground">Preview of your current form. Save changes to apply updated colors and display settings.</p></div>}
             </div>
 
             <input

@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Clock } from 'lucide-react';
 import { formatSlotTime, type Court } from '@/lib/venues/availability';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatMoney, openStripe, paymentApi, type CourtQuote, type PaymentConfig } from '@/lib/payments';
 import { bookingDurationOptions, isBookingRangeValid } from '@/lib/venues/experience';
@@ -48,10 +47,9 @@ interface BookCourtDialogProps {
   /** Slot length, used to seed the duration picker. */
   slotMinutes: number;
   /**
-   * Length the viewer already chose by selecting a range on the grid. When set,
-   * the dialog confirms that span instead of asking again — re-asking after
-   * someone has just dragged out 4:00-6:00 is the kind of double work that
-   * makes booking flows feel bureaucratic.
+   * Seed the duration with the range already selected on the grid. Keep it
+   * adjustable during review, including when a changed rate or availability
+   * makes the original selection invalid; never silently change their time.
    */
   presetMinutes?: number | null;
   /** End of contiguous availability: closing time or the next occupied slot. */
@@ -81,7 +79,7 @@ export function BookCourtDialog({
   const currentScope = useRef(scope);
   currentScope.current = scope;
   const [title, setTitle] = useState('');
-  const [minutes, setMinutes] = useState(slotMinutes);
+  const [minutes, setMinutes] = useState(presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes);
   const [accepted, setAccepted] = useState(false);
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
   const paymentDetails = useQuery({
@@ -100,25 +98,28 @@ export function BookCourtDialog({
     setCheckoutError(null);
   }, [open, slotMinutes, presetMinutes, scope]);
 
-  const spanChosen = !!presetMinutes && presetMinutes > 0;
-
   // Never offer a duration past the next occupied slot or closing time.
   const maxMinutes =
     start && dayEnd ? Math.max(0, (dayEnd.getTime() - start.getTime()) / 60000) : 0;
-  const options = bookingDurationOptions(slotMinutes, maxMinutes).filter(duration => !paymentDetails.data?.paid || (duration <= 240 && duration % 30 === 0));
+  const paid = paymentDetails.data?.paid === true;
+  const testCheckout = paid && paymentDetails.data?.mode === 'test';
+  const checkingPrice = paymentDetails.isPending || paymentDetails.isFetching;
+  const priceUnavailable = paymentDetails.isError || (!checkingPrice && typeof paymentDetails.data?.paid !== 'boolean');
+  const detailsReady = !checkingPrice && !priceUnavailable;
+  const options = bookingDurationOptions(slotMinutes, maxMinutes, paid, presetMinutes);
 
   const end = start ? new Date(start.getTime() + minutes * 60000) : null;
-  const validRange = court?.is_active !== false && isBookingRangeValid(start, minutes, dayEnd);
+  const validRange = court?.is_active !== false && isBookingRangeValid(start, minutes, dayEnd) && (!paid || (minutes <= 240 && minutes % 30 === 0));
   const quote = useQuery({
     queryKey: ['court-quote', court?.id, groupId, start?.toISOString(), end?.toISOString(), user?.id],
     queryFn: () => paymentApi<CourtQuote>('quote', { court_id: court?.id, group_id: groupId, start_time: start?.toISOString(), end_time: end?.toISOString() }),
-    enabled: open && !!court && validRange && !!paymentDetails.data?.paid, staleTime: 0, retry: false,
+    enabled: open && !!court && !!user && detailsReady && validRange && paid, staleTime: 0, retry: false,
   });
   useEffect(() => { setAccepted(false); setRequestKey(crypto.randomUUID()); }, [minutes, start?.toISOString(), court?.id, quote.data?.amount_cents, quote.data?.policy]);
 
   const submit = async () => {
-    if (lock.current || saving || !court || court.is_active === false || !start || !end || !isBookingRangeValid(start, minutes, dayEnd)) return;
-    if (!paymentDetails.data || paymentDetails.isFetching || paymentDetails.isError) return;
+    if (lock.current || saving || !court || !start || !end || !validRange || !isBookingRangeValid(start, minutes, dayEnd)) return;
+    if (!detailsReady) return;
 
     lock.current = true;
     setSaving(true);
@@ -201,9 +202,9 @@ export function BookCourtDialog({
 
   return (
     <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl font-sans sm:max-w-[460px]">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-[460px] min-w-0 overflow-y-auto rounded-2xl p-4 font-sans [overflow-wrap:anywhere] sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-sans">Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
+          <DialogTitle className="pr-6 font-sans leading-snug">Book {court?.name ?? `Court ${court?.court_number ?? ''}`}</DialogTitle>
           <DialogDescription>
             {start && end ? (
               <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -216,13 +217,14 @@ export function BookCourtDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {!validRange && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm">This time is no longer available for the selected duration. Choose a shorter duration, or return to the calendar for another time.</p>}
-          <div className={cn('space-y-2', spanChosen && 'hidden')}>
+        <div className="min-w-0 space-y-4">
+          {testCheckout && <p role="note" className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm leading-6"><strong>Test checkout only.</strong> Use a Stripe test card. No real money is charged and no real court reservation is created.</p>}
+          {!validRange && <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm">This selection is not available for this duration. Choose another duration, or return to the calendar for another time.</p>}
+          <div className="space-y-2">
             <Label htmlFor="booking-duration">Duration</Label>
-            <Select value={String(minutes)} onValueChange={(v) => setMinutes(Number(v))}>
-              <SelectTrigger id="booking-duration" disabled={saving}>
-                <SelectValue />
+            <Select value={options.includes(minutes) ? String(minutes) : ''} onValueChange={(v) => setMinutes(Number(v))}>
+              <SelectTrigger id="booking-duration" disabled={saving || !detailsReady || !options.length} aria-invalid={!validRange}>
+                <SelectValue placeholder="Choose a duration" />
               </SelectTrigger>
               <SelectContent>
                 {options.map((m) => (
@@ -238,8 +240,8 @@ export function BookCourtDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="booking-title">What for? (optional, free bookings only)</Label>
+          {detailsReady && !paid && <div className="space-y-2">
+            <Label htmlFor="booking-title">Booking name (optional)</Label>
             <Input
               id="booking-title"
               placeholder="Doubles with the Tuesday crew"
@@ -251,27 +253,27 @@ export function BookCourtDialog({
             <p className="text-xs text-muted-foreground">
               Named bookings show on the court grid, so members know what's on.
             </p>
-          </div>
-          {paymentDetails.isPending || paymentDetails.isFetching ? <p role="status" className="text-sm text-muted-foreground">Checking the booking price…</p> : paymentDetails.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>We couldn’t verify the booking price. Please retry before booking.</p><Button variant="link" onClick={() => paymentDetails.refetch()}>Retry</Button></div> : paymentDetails.data?.paid ? <div className="space-y-4">
-            {quote.isPending || quote.isFetching ? <p role="status" className="text-sm">Preparing your price…</p> : quote.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>{quote.error.message}</p><Button variant="link" onClick={() => quote.refetch()}>Check again</Button></div> : quote.data && <>
-              <div className="rounded-xl border bg-muted/20 p-4"><p className="text-xs font-medium text-muted-foreground">Paid to {quote.data.merchant_name}</p><div className="mt-2 flex items-end justify-between gap-3"><span className="text-sm">Court rental · {minutes} minutes</span><span className="text-2xl font-semibold tabular-nums">{formatMoney(quote.data.amount_cents)}</span></div><p className="mt-2 text-xs leading-5 text-muted-foreground">USD · {formatMoney(Math.round(quote.data.hourly_rate * 100))}/hour. Includes any applicable taxes. No PULSE booking surcharge.</p></div>
+          </div>}
+          {checkingPrice ? <p role="status" className="text-sm text-muted-foreground">Checking the booking price…</p> : priceUnavailable ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>We couldn’t verify the booking price. Please retry before booking.</p><Button variant="link" onClick={() => paymentDetails.refetch()}>Retry</Button></div> : paid ? <div className="space-y-4">
+            {!validRange ? null : quote.isPending || quote.isFetching ? <p role="status" className="text-sm">Preparing your price…</p> : quote.isError ? <div role="alert" className="rounded-xl border p-3 text-sm"><p>{quote.error.message}</p><Button variant="link" onClick={() => quote.refetch()}>Check again</Button></div> : quote.data && <>
+              <div className="rounded-xl border bg-muted/20 p-4"><p className="text-xs font-medium text-muted-foreground">{testCheckout ? 'Test payment to' : 'Paid to'} {quote.data.merchant_name}</p><div className="mt-2 flex flex-wrap items-end justify-between gap-3"><span className="text-sm">Court rental · {minutes} minutes</span><span className="text-2xl font-semibold tabular-nums">{formatMoney(quote.data.amount_cents)}</span></div><p className="mt-2 text-xs leading-5 text-muted-foreground">USD · {formatMoney(Math.round(quote.data.hourly_rate * 100))}/hour. Includes any applicable taxes. No PULSE booking surcharge.</p></div>
               <div><p className="text-sm font-semibold">Cancellation & refund policy</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{quote.data.policy}</p><p className="mt-2 break-all text-xs text-muted-foreground">Questions: {quote.data.support_email}</p></div>
               <p className="rounded-xl bg-muted/30 p-3 text-sm leading-6">Venue time: {start?.toLocaleString([], { timeZone: quote.data.timezone, dateStyle: 'medium', timeStyle: 'short' })} – {end?.toLocaleTimeString([], { timeZone: quote.data.timezone, hour: 'numeric', minute: '2-digit' })} ({quote.data.timezone}). Confirm this local venue time before paying.</p>
-              <label className="flex items-start gap-3 text-sm leading-6"><Checkbox disabled={saving} checked={accepted} onCheckedChange={value => setAccepted(value === true)} className="mt-1" /><span>I agree to pay {formatMoney(quote.data.amount_cents)} to {quote.data.merchant_name} and accept this cancellation policy.</span></label>
-              <p className="text-xs leading-5 text-muted-foreground">Your court is held during secure checkout and confirmed only after successful payment. Returning without paying does not complete the booking.</p>
+              <label className="flex items-start gap-3 text-sm leading-6"><Checkbox disabled={saving} checked={accepted} onCheckedChange={value => setAccepted(value === true)} className="mt-1" /><span>{testCheckout ? 'I agree to test a payment of' : 'I agree to pay'} {formatMoney(quote.data.amount_cents)} to {quote.data.merchant_name} and accept this cancellation policy.</span></label>
+              <p className="text-xs leading-5 text-muted-foreground">{testCheckout ? 'A successful test payment appears in Payments & purchases. It does not reserve this court.' : 'Your court is held during secure checkout and confirmed only after successful payment. Returning without paying does not complete the booking.'}</p>
             </>}
           </div> : <p className="rounded-xl bg-muted/30 p-3 text-sm">Free reservation · No payment required</p>}
         </div>
 
         {paymentDetails.data?.paid && <p className="text-xs leading-5 text-muted-foreground">Paid reservations use 30-minute increments, up to four hours, with at least 35 minutes’ notice. A failed or paused checkout does not create a free booking.</p>}
         {checkoutError && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm">{checkoutError}</p>}
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:space-x-0">
           <Button className="min-h-11" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="min-h-11" onClick={submit} disabled={saving || !court || !validRange || !paymentDetails.data || paymentDetails.isPending || paymentDetails.isFetching || paymentDetails.isError || (paymentDetails.data?.paid && (!accepted || !quote.data || quote.isFetching || quote.isError))}>
+          <Button className="h-auto min-h-11 whitespace-normal" onClick={submit} disabled={saving || !court || !validRange || !detailsReady || (paid && (!accepted || !quote.data || quote.isPending || quote.isFetching || quote.isError))}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {paymentDetails.data?.paid ? `Pay ${quote.data ? formatMoney(quote.data.amount_cents) : ''} & reserve` : 'Book free court'}
+            {saving ? (paid ? 'Opening secure checkout…' : 'Booking court…') : priceUnavailable ? 'Price unavailable' : !detailsReady ? 'Checking price…' : !validRange ? 'Choose an available duration' : paid ? quote.isError ? 'Checkout unavailable' : !quote.data || quote.isPending || quote.isFetching ? 'Checking total…' : testCheckout ? `Test payment · ${formatMoney(quote.data.amount_cents)}` : `Pay ${formatMoney(quote.data.amount_cents)} & reserve` : 'Book free court'}
           </Button>
         </DialogFooter>
       </DialogContent>

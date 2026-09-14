@@ -7,6 +7,7 @@ import { useVenueModules } from '@/hooks/useVenueModules';
 import { VenueStaffProvider } from '@/components/venue/VenueStaffContext';
 import { Button } from '@/components/ui/button';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { VenueEntrance } from '@/components/venue/VenueEntrance';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const VenueCommunity = lazy(() => import('./VenueCommunity'));
@@ -33,7 +34,7 @@ export default function GroupRoute() {
 
   if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetch()} />;
 
-  if (loading || (modules.loading && !communityView)) {
+  if (loading) {
     return (
       <div className="space-y-4 p-4">
         <Skeleton className="h-44 w-full rounded-2xl" />
@@ -43,12 +44,25 @@ export default function GroupRoute() {
     );
   }
 
-  if (isVenue && modules.isError && !communityView) return <div role="alert" className="m-4 space-y-3 rounded-2xl border p-5 font-sans sm:p-6"><h2 className="text-lg font-semibold">Facility features couldn’t load</h2><p className="text-sm leading-6 text-muted-foreground">Court booking and operations need a fresh access check. You can still open the venue’s community for posts, messages, and members.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="min-h-11" onClick={() => modules.refetch()}>Try again</Button><Button className="min-h-11" onClick={() => { const next = new URLSearchParams(params); next.set('view', 'community'); setParams(next); }}>Open community</Button></div></div>;
+  const moduleError = isVenue && modules.isError && !communityView;
+  const moduleFailure = <div role="alert" className="m-4 space-y-3 rounded-2xl border p-5 font-sans sm:p-6"><h2 className="text-lg font-semibold">Facility features couldn’t load</h2><p className="text-sm leading-6 text-muted-foreground">Court booking and operations need a fresh access check. You can still open the venue’s community for posts, messages, and members.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="min-h-11" onClick={() => modules.refetch()}>Try again</Button><Button className="min-h-11" onClick={() => { const next = new URLSearchParams(params); next.set('view', 'community'); setParams(next); }}>Open community</Button></div></div>;
   const facilityShell = isVenue && (modules.booking || modules.facility) && !communityView;
+  const page = facilityShell ? <VenueCommunity key={groupId} /> : <VenueStaffProvider venueId={isVenue ? group?.venue_id : null} venueName={group?.venue?.name} accent={group?.venue?.primary_color}><GroupDetail key={groupId} /></VenueStaffProvider>;
+
+  if (isVenue) return <VenueEntrance key={groupId} identity={{
+    name: group?.venue?.name || group?.name || 'Your venue',
+    logoUrl: group?.venue?.logo_url || group?.icon_url,
+    logoShape: group?.venue?.logo_shape,
+    logoImageFit: group?.venue?.logo_image_fit,
+    primaryColor: group?.venue?.primary_color,
+    secondaryColor: group?.venue?.secondary_color,
+  }} pending={modules.loading && !communityView} bypass={moduleError}>
+    {moduleError ? moduleFailure : page}
+  </VenueEntrance>;
 
   return (
     <Suspense fallback={<div className="p-4"><Skeleton className="h-64 w-full rounded-xl" /></div>}>
-      {facilityShell ? <VenueCommunity key={groupId} /> : <VenueStaffProvider venueId={isVenue ? group?.venue_id : null} venueName={group?.venue?.name} accent={group?.venue?.primary_color}><GroupDetail key={groupId} /></VenueStaffProvider>}
+      {page}
     </Suspense>
   );
 }

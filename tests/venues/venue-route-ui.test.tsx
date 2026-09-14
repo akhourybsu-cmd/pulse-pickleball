@@ -10,7 +10,7 @@ vi.mock('react', async importOriginal => {
   const actual = await importOriginal<typeof import('react')>(); let index = 0;
   return { ...actual, lazy: () => { const label = ++index === 1 ? 'Free community shell' : 'Facility shell'; return () => actual.createElement('p', null, label); } };
 });
-vi.mock('react-router-dom', () => ({ useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }) }));
+vi.mock('react-router-dom', () => ({ Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>, useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }) }));
 vi.mock('@/hooks/useGroupDetail', () => ({ useGroupDetail: () => state.group }));
 vi.mock('@/hooks/useVenueModules', () => ({ useVenueModules: () => state.modules }));
 vi.mock('@/lib/venues/featureFlag', () => ({ isVenueCommunitiesEnabled: () => true }));
@@ -25,6 +25,25 @@ beforeEach(() => {
 });
 
 describe('venue community fallback routing', () => {
+  it('uses the administrator’s branding while facility access is loading', () => {
+    state.group.group.venue = { name: 'Pickleball Palace', logo_url: '/palace-logo.png', primary_color: '#123456', secondary_color: '#26343a', logo_shape: 'circle', logo_image_fit: 'contain' };
+    state.modules.loading = true;
+    const html = render(); expect(html).toContain('Opening Pickleball Palace');
+    expect(html).toContain('/palace-logo.png'); expect(html).toContain('--venue-entrance-accent:#123456');
+    expect(html).not.toContain('Facility shell');
+  });
+  it('includes the entrance on a free venue without changing a direct chat link', () => {
+    state.modules.booking = false; state.modules.facility = false; state.params.set('tab', 'chat');
+    const html = render(); expect(html).toContain('Opening ELEVENO'); expect(html).toContain('Free community shell');
+    expect(state.setParams).not.toHaveBeenCalled(); expect(state.params.get('tab')).toBe('chat');
+  });
+  it('does not apply a venue entrance to ordinary communities or hide errors', () => {
+    state.group.group.venue_id = null;
+    expect(render()).not.toContain('venue-entrance');
+    state.group.group.venue_id = 'venue'; state.modules.isError = true;
+    expect(render()).not.toContain('data-testid="venue-entrance"');
+    expect(render()).toContain('Open community');
+  });
   it('uses the facility shell only with confirmed feature access', () => {
     expect(render()).toContain('Facility shell'); state.modules.booking = false; state.modules.facility = false;
     expect(render()).toContain('Free community shell');
