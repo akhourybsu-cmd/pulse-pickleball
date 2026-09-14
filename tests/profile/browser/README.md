@@ -17,7 +17,7 @@ Check 280, 320, 360, 375, 390, 414, 430, 480, 768, 844, 1024 and 1280px widths: 
 
 ## September 14 rendered verification
 
-- Confirmed main still points to `721c69f7`; the earlier mobile fix had **not been published**. These changes remain local pending publication approval.
+- At the start of verification, main still pointed to `721c69f7`; the earlier mobile fix had **not been published**. Publication was subsequently approved and completed as recorded below.
 - The actual Profile component was tested in the browser, not just inspected as source. All 12 widths above had document scroll width equal to available viewport width, with no overflowing menu buttons, identity text, location or stats. All 20 controls in the admin/assessment-enabled fixture were within bounds. Desktop retained two columns.
 - A remaining narrow-screen presentation issue was found: placing the avatar alongside three stat cells squeezed their labels. Avatar/location now share an identity row and the stats get the full content width.
 - The completed-assessment/125%-text case revealed cramped action buttons at 280px. Actions now occupy the full card width, labels wrap, and the level chip is width-constrained. Retested at 280, 320, 390, 430 and 844px: all 21 controls and text stayed in bounds.
@@ -27,3 +27,10 @@ Check 280, 320, 360, 375, 390, 414, 430, 480, 768, 844, 1024 and 1280px widths: 
 - This verifies browser-rendered responsive layout with fictional data. It does not claim testing every physical phone, installed PWA, or OS text-size setting. No production data, database migration, Android Studio or Google Play change is involved.
 
 September 11 historical checkpoint: 30 Profile/social tests and the production build passed, but browser automation stalled and rendered verification was incomplete. The September 14 checks above replace that limitation.
+
+## Approved publication — September 14
+
+- The user explicitly approved publishing the verified Profile fix to the live web/PWA. Source commit `14649ab08bbb957653b7705fddcc94c77273c41b` was pushed to main.
+- [Firebase deployment `34890006279`](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34890006279) succeeded. CI independently reproduced 1,137 passing tests (32 skipped, 10 todo), then built and deployed production successfully.
+- A read-only request to `https://pulsepb.com/player/profile` returned HTTP 200 and referenced `/assets/index-DAFlIWSj.js`. That entry referenced `PlayerProfile-CdvZ-SgW.js`, which also returned HTTP 200 and contained the full-width stats, separate identity row, mobile single-column and shrinkable desktop layout. These match the locally verified production build.
+- Existing PWA navigations fetch current HTML and use content-hashed assets. A refresh loads the new release. No database, payment configuration, Android Studio or Google Play change was made.
