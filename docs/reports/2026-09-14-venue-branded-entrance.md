@@ -1,6 +1,16 @@
 # Venue-branded entrance — September 14, 2026
 
-Status: implemented locally; pending publication alongside the previous venue booking/owner-polish pass. No migration, production data changes, new package, or Android Studio/Google Play work.
+Status: published to the production web/PWA on September 14, 2026, alongside the previous venue booking/owner-polish pass. No migration, production data changes, new package, or Android Studio/Google Play work.
+
+## Publication
+
+- Source commit: `d59bd316fb83920f2adfad7103b5cc2f726f8a41` on `main`.
+- [Firebase deployment run 34899136132](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34899136132) completed successfully at 21:31 UTC. CI repeated the full suite: 1,171 passed, 32 skipped, 10 todo; production build passed.
+- Firebase Hosting version: `371a13ed74b7f990`.
+- Live `https://pulsepb.com` serves `/assets/index-BVS4gExr.js`. The entry bundle, `VenueEntrance-CXHlI38L.js`, `GroupManage-DK5Zs1H7.js`, `VenueEventDialog-Bs1ybnqN.js`, and `Payments-JdTlIaDF.js` all returned HTTP 200 and matched the tested local build exactly.
+- Venue deep-link HTML returned HTTP 200 with the current entry bundle. This verifies SPA hosting, not authenticated production feature acceptance.
+- PWA manifest and service worker returned HTTP 200; service worker uses no-store/no-cache revalidation, and hashed assets remain immutable. Installed-device update uptake was not separately tested.
+- No production database records, financial settings, native Android artifacts, or Google Play releases were changed.
 
 ## Experience
 

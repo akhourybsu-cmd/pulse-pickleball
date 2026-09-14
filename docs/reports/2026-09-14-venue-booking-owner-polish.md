@@ -1,6 +1,6 @@
 # Venue booking and owner setup pass — September 14, 2026
 
-Status: implemented locally; not published. No database migration required.
+Status: published to the production web/PWA on September 14, 2026 in source commit `d59bd316fb83920f2adfad7103b5cc2f726f8a41`. No database migration required. [Firebase deployment](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34899136132) succeeded; the combined release passed 1,171 tests and the production build. Live bundles matched the tested build. See [the branded entrance report](2026-09-14-venue-branded-entrance.md#publication) for publication evidence and verification limits.
 
 ## Completed
 
@@ -31,4 +31,4 @@ Local QA: `npm exec vite -- --config tests/venues/browser/vite.config.ts --host 
 2. Add owner-dashboard attention summaries for payment requests where appropriate, respecting owner-only financial access rather than exposing financial details to general venue staff.
 3. Continue role-based venue acceptance across event creation/edit/cancel, RSVP/waitlist transitions, closures and court changes, staff access changes, ownership transfer, and member-facing calendar/feed consistency.
 
-Live collections, Stripe accounts, venue tiers and production database records were untouched. Pickleball Palace remains private; ELEVENO's free tier is unchanged. Android Studio and Google Play were not changed. Web/PWA source will receive these fixes on publication through the existing deployment workflow.
+Live collections, Stripe accounts, venue tiers and production database records were untouched. Pickleball Palace remains private; ELEVENO's free tier is unchanged. Android Studio and Google Play were not changed. The web/PWA release now includes these fixes through the existing deployment workflow.
