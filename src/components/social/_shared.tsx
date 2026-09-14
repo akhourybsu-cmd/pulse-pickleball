@@ -47,7 +47,7 @@ export function SocialHero({
             <div className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/80">
               {eyebrow}
             </div>
-            <h1 className="text-[23px] font-extrabold leading-[1.05] tracking-[-0.025em] text-foreground sm:text-[27px] lg:text-[32px]">
+            <h1 className="break-words text-[23px] font-extrabold leading-[1.05] tracking-[-0.025em] text-foreground sm:text-[27px] lg:text-[32px]">
               {title}
             </h1>
           </div>
@@ -72,14 +72,14 @@ export function SocialStatTile({
   accent?: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
-      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-        <Icon className={cn("h-3 w-3", accent ? "text-primary" : "text-primary/80")} />
-        {label}
+    <div className="min-w-0 rounded-xl border border-border/60 bg-card/80 px-2 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)] sm:px-2.5">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground sm:tracking-[0.16em]">
+        <Icon className={cn("h-3 w-3 shrink-0", accent ? "text-primary" : "text-primary/80")} />
+        <span className="min-w-0 break-words">{label}</span>
       </div>
       <div
         className={cn(
-          "mt-0.5 text-[15px] font-bold tabular-nums tracking-tight",
+          "mt-0.5 break-words text-[15px] font-bold tabular-nums tracking-tight",
           accent && value !== "0" ? "text-primary" : "text-foreground",
         )}
       >

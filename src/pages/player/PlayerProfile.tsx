@@ -265,7 +265,7 @@ export default function PlayerProfile() {
 
   const renderLinkGroup = (links: HubLink[], delayMs: number) => (
     <GlassPanel
-      className="opacity-0 animate-fade-up"
+      className="min-w-0 max-w-full opacity-0 animate-fade-up"
       style={{ animationDelay: `${delayMs}ms`, animationFillMode: 'forwards' }}
     >
       {links.map((link) => {
@@ -276,7 +276,7 @@ export default function PlayerProfile() {
             onClick={() => navigate(link.to)}
             type="button"
             className={cn(
-              'group flex min-h-[68px] w-full items-center gap-3.5 px-3.5 py-3 text-left transition-[transform,background-color] hover:bg-accent/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transform-none',
+              'group flex min-h-[68px] min-w-0 w-full items-center gap-3.5 px-3.5 py-3 text-left transition-[transform,background-color] hover:bg-accent/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transform-none',
               link.to === '/delete-account' && 'hover:bg-destructive/5',
             )}
           >
@@ -287,10 +287,10 @@ export default function PlayerProfile() {
               <Icon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className={cn('font-semibold leading-tight', link.to === '/delete-account' && 'text-destructive')}>{link.label}</div>
-              <div className="mt-0.5 truncate text-xs text-muted-foreground">{link.description}</div>
+              <div className={cn('break-words font-semibold leading-tight', link.to === '/delete-account' && 'text-destructive')}>{link.label}</div>
+              <div className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{link.description}</div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
           </button>
         );
       })}
@@ -298,7 +298,7 @@ export default function PlayerProfile() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div data-testid="profile-page" className="min-h-screen min-w-0 w-full max-w-full bg-background">
       <SocialHero
         eyebrow="Player"
         title={profileName}
@@ -315,28 +315,29 @@ export default function PlayerProfile() {
           </Button>
         }
       >
-        {locationStr && (
-          <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" />
-            {locationStr}
-          </p>
-        )}
-        <div className="mt-3 flex max-w-2xl items-stretch gap-2.5">
+        <div data-testid="profile-identity" className="mt-3 flex min-w-0 max-w-2xl items-center gap-3">
           <Avatar className="h-[58px] w-[58px] shrink-0 rounded-2xl border-2 border-primary/30 shadow-sm">
             <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
             <AvatarFallback className="rounded-2xl bg-primary/15 font-bold text-primary">{profileInitials}</AvatarFallback>
           </Avatar>
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 sm:gap-2">
+          {locationStr && (
+            <p className="flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 break-words">{locationStr}</span>
+            </p>
+          )}
+        </div>
+        <div data-testid="profile-stats" className="mt-3 grid min-w-0 max-w-2xl grid-cols-3 gap-2">
             <SocialStatTile icon={Gauge} label="Rating" value={profile?.current_rating ? profile.current_rating.toFixed(2) : '—'} accent />
             <SocialStatTile icon={Trophy} label="Matches" value={String(profile?.total_matches || 0)} />
             <SocialStatTile icon={ClipboardList} label="Record" value={`${profile?.wins || 0}–${profile?.losses || 0}`} />
-          </div>
         </div>
       </SocialHero>
 
-      <div className="container mx-auto max-w-[1400px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(460px,1.18fr)] lg:items-start xl:gap-10">
-          <div className="space-y-7">
+      <div className="container mx-auto min-w-0 max-w-[1400px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+        {/* A zero-minimum mobile track prevents long menu copy sizing the page wider than the viewport. */}
+        <div data-testid="profile-menu-grid" className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start xl:gap-10">
+          <div className="min-w-0 space-y-7">
 
         {/* Skill assessment — hero CTA at the top of the profile. */}
         <SkillAssessmentCTA userId={userId} />
@@ -349,7 +350,7 @@ export default function PlayerProfile() {
           <Button
             onClick={handleShare}
             variant="outline"
-            className="h-12 w-full gap-2 rounded-2xl border-border/60 bg-card/80 text-base font-semibold shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.5)] active:scale-[0.99]"
+            className="h-auto min-h-12 w-full gap-2 whitespace-normal rounded-2xl border-border/60 bg-card/80 py-3 text-base font-semibold shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.5)] active:scale-[0.99]"
             disabled={loading || !profile?.id}
           >
             <Share2 className="h-4 w-4" />
@@ -371,7 +372,7 @@ export default function PlayerProfile() {
         </div>
 
           </div>
-          <div className="space-y-7">
+          <div className="min-w-0 space-y-7">
 
         {/* Account group */}
         <div>

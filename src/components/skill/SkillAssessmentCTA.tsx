@@ -60,7 +60,7 @@ export function SkillAssessmentCTA({ userId }: { userId?: string }) {
           {hasResult ? (
             <>
               <div className="mt-2">
-                <SkillLevelChip level={row!.self_assessed_level} band={row!.self_assessed_band} />
+                <SkillLevelChip level={row!.self_assessed_level} band={row!.self_assessed_band} className="max-w-full flex-wrap [&>span]:min-w-0 [&>span]:break-words" />
               </div>
               <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
                 Your self-assessed level is on your profile. Retake it any time as your game changes.
@@ -71,38 +71,39 @@ export function SkillAssessmentCTA({ userId }: { userId?: string }) {
               Rate your game in 2 minutes — add your Skill Level to your profile.
             </p>
           )}
+        </div>
+      </div>
 
+      <div data-testid="profile-assessment-actions" className="relative mt-3 min-w-0">
           {hasResult ? (
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <Button
                 onClick={() => navigate("/player/self-assessment?mode=view")}
-                className="h-11 w-full gap-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
+                className="h-auto min-h-11 w-full gap-2 whitespace-normal py-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
               >
                 <Gauge className="h-4 w-4" />
-                View Skill Fingerprint
+                <span className="min-w-0 break-words">View Skill Fingerprint</span>
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/player/self-assessment?mode=retake")}
-                className="h-10 w-full gap-2 border-primary/40 text-sm font-semibold"
+                className="h-auto min-h-10 w-full gap-2 whitespace-normal border-primary/40 py-2 text-sm font-semibold"
               >
                 <RotateCcw className="h-4 w-4" />
-                Retake assessment
+                <span className="min-w-0 break-words">Retake assessment</span>
               </Button>
             </div>
           ) : (
             <Button
               onClick={() => navigate("/player/self-assessment")}
-              className="mt-3 h-11 w-full gap-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
+              className="h-auto min-h-11 w-full gap-2 whitespace-normal py-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
             >
               <Gauge className="h-4 w-4" />
-              Take the Skill Assessment
+              <span className="min-w-0 break-words">Take the Skill Assessment</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
-
-        </div>
       </div>
     </div>
   );
