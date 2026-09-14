@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { normalizeHex, venueChrome } from '@/lib/venues/branding';
 import { VenueBrandMark, type VenueIdentity } from './VenueBrandMark';
 
-export const VENUE_ENTRANCE_MS = 1100;
+export const VENUE_ENTRANCE_MS = 1500;
 export const VENUE_SLOW_LOAD_MS = 7000;
 
 /** Shared by the actual entrance and the admin's draft preview. No remote requests. */

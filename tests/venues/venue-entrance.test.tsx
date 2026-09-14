@@ -26,10 +26,10 @@ beforeEach(() => {
 afterEach(() => { state.cleanup.forEach(fn => fn()); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('venue entrance lifecycle', () => {
-  it('prepares children during the entrance and reveals them after 1.10 seconds', () => {
-    expect(VENUE_ENTRANCE_MS).toBe(1100);
+  it('prepares children during the entrance and reveals them after 1.5 seconds', () => {
+    expect(VENUE_ENTRANCE_MS).toBe(1500);
     const html = render(); expect(html).toContain('Venue chat'); expect(html).toContain('visibility:hidden'); mountEffects();
-    vi.advanceTimersByTime(1099); expect(render()).toContain('data-testid="venue-entrance"');
+    vi.advanceTimersByTime(1499); expect(render()).toContain('data-testid="venue-entrance"');
     vi.advanceTimersByTime(1); expect(render()).not.toContain('data-testid="venue-entrance"');
     expect(render()).not.toContain('visibility:hidden');
   });
