@@ -8,7 +8,7 @@ import { PROGRAM_FORMATS, programPhase, withConfirmedProgramRsvp } from '@/lib/v
 
 export async function fetchUpcomingVenuePrograms(venueId: string) {
   const { data, error } = await supabase.from('group_events')
-    .select('id,title,description,start_time').eq('venue_id', venueId)
+    .select('id,title,description,start_time,end_time,event_format,capacity,skill_level_min,skill_level_max').eq('venue_id', venueId)
     .is('parent_event_id', null).in('event_format', [...PROGRAM_FORMATS])
     .gte('start_time', new Date().toISOString()).order('start_time').limit(3);
   if (error) throw error;

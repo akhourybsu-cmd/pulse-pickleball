@@ -12,7 +12,7 @@ import type { VenueDaySession } from '@/hooks/useVenueDay';
 const noop = () => {};
 describe('venue service presentation', () => {
   it('distinguishes booking, sessions, coaching and competition without granting access', () => {
-    expect(venueTabService('book')).toBe('booking'); expect(venueTabService('play')).toBe('programs');
+    expect(venueTabService('book')).toBe('booking'); expect(venueTabService('play')).toBe('programs'); expect(venueTabService('events')).toBe('programs');
     expect(venueTabService('chat')).toBe('community'); expect(venueTabService('unknown')).toBe('community');
     expect(programService('open_play')).toBe('programs'); expect(programService('clinic')).toBe('coaching');
     expect(programService('practice')).toBe('coaching'); expect(programService('round_robin')).toBe('competition');

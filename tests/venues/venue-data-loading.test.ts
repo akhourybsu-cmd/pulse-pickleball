@@ -9,6 +9,7 @@ import { defaultVenueHours } from '@/lib/venues/hours';
 import { fetchUpcomingVenuePrograms, fetchVenueProgram, useVenuePrograms } from '@/hooks/useVenuePrograms';
 import { fetchVenueAdminCounts } from '@/lib/venues/adminOverview';
 import { listVenueApplications } from '@/lib/venues/venueApplications';
+import { fetchVenueCommunityPreview, useVenueCommunityPreview } from '@/hooks/useVenueCommunityPreview';
 import type { QueryClient } from '@tanstack/react-query';
 
 type Query = { queryKey: unknown[]; enabled: boolean; queryFn: () => Promise<unknown> };
@@ -84,6 +85,37 @@ describe('venue overview and ownership request reads', () => {
     await listVenueApplications('viewer-one', undefined, 0, 'venue-one');
     expect(state.calls).toContainEqual({ table: 'venue_applications', method: 'eq', args: ['applicant_id', 'viewer-one'] });
     expect(state.calls).toContainEqual({ table: 'venue_applications', method: 'eq', args: ['venue_id', 'venue-one'] });
+  });
+});
+
+describe('small venue community preview', () => {
+  it('reads only four active members and their public display fields in roster order', async () => {
+    state.responses.group_members = { data: [{ user_id: 'a' }, { user_id: 'b' }], error: null };
+    state.responses.profiles_public = { data: [{ id: 'b', display_name: 'B' }, { id: 'a', display_name: 'A' }], error: null };
+    await expect(fetchVenueCommunityPreview('group-one')).resolves.toEqual([{ id: 'a', display_name: 'A' }, { id: 'b', display_name: 'B' }]);
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'eq', args: ['group_id', 'group-one'] });
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'eq', args: ['status', 'active'] });
+    expect(state.calls).toContainEqual({ table: 'group_members', method: 'limit', args: [4] });
+    expect(state.calls).toContainEqual({ table: 'profiles_public', method: 'in', args: ['id', ['a', 'b']] });
+    expect(state.calls).toContainEqual({ table: 'profiles_public', method: 'select', args: ['id,display_name,full_name,avatar_url'] });
+  });
+  it('does not query profiles for an empty roster or fabricate missing profiles', async () => {
+    await expect(fetchVenueCommunityPreview('group-one')).resolves.toEqual([]);
+    expect(state.calls.some(call => call.table === 'profiles_public')).toBe(false);
+    state.responses.group_members = { data: [{ user_id: 'unavailable' }], error: null };
+    await expect(fetchVenueCommunityPreview('group-one')).resolves.toEqual([]);
+  });
+  it.each(['group_members', 'profiles_public'])('does not disguise a %s error as confirmed empty membership', async table => {
+    state.responses.group_members = { data: [{ user_id: 'a' }], error: null };
+    state.responses[table] = { data: null, error: { message: 'Preview unavailable' } };
+    await expect(fetchVenueCommunityPreview('group-one')).rejects.toMatchObject({ message: 'Preview unavailable' });
+  });
+  it('enables preview reads only for the active surface and scopes cache to the viewer', () => {
+    const capture = (enabled: boolean) => { renderToStaticMarkup(createElement(() => { useVenueCommunityPreview('group-one', enabled); return null; })); return state.queries.at(-1)!; };
+    expect(capture(true)).toMatchObject({ enabled: true, queryKey: ['venue-community-preview', 'group-one', 'viewer-one'] });
+    expect(capture(false).enabled).toBe(false);
+    state.user = null;
+    expect(capture(true).enabled).toBe(false);
   });
 });
 

@@ -1,6 +1,6 @@
-export type VenueCommunityTab = 'home' | 'book' | 'play' | 'feed' | 'chat' | 'more';
+export type VenueCommunityTab = 'home' | 'book' | 'play' | 'feed' | 'chat' | 'more' | 'events';
 
-const VENUE_TABS = new Set<VenueCommunityTab>(['home', 'book', 'play', 'feed', 'chat', 'more']);
+const VENUE_TABS = new Set<VenueCommunityTab>(['home', 'book', 'play', 'feed', 'chat', 'more', 'events']);
 
 /** Resolve the venue's initial destination from a Social/deep-link URL. */
 export function initialVenueCommunityTab(searchParams: URLSearchParams): VenueCommunityTab {

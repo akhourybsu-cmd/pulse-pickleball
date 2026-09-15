@@ -10,6 +10,6 @@ export function programService(format: string): VenueService {
 
 export function venueTabService(tab: string): VenueService {
   if (tab === 'book') return 'booking';
-  if (tab === 'play') return 'programs';
+  if (tab === 'play' || tab === 'events') return 'programs';
   return 'community';
 }

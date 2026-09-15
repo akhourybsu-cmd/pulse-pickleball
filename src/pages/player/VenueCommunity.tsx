@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Building2, Ticket, ChevronRight, CalendarPlus, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,11 @@ import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBa
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 import { initialVenueCommunityTab, venueTabParams } from '@/lib/venues/navigation';
 import { parseGroupSettings } from '@/types/groupSettings';
+import { VenueClubHeader } from '@/components/venue/VenueClubHeader';
+import { VenueClubHome, VenueClubCommunityNav, VenueClubAbout } from '@/components/venue/VenueClubHome';
+import { useVenueCommunityPreview } from '@/hooks/useVenueCommunityPreview';
+import { clubAccent, CLUB_PLAY_FORMATS } from '@/lib/venues/clubPresentation';
+import { programPhase, PROGRAM_FORMATS } from '@/lib/venues/programExperience';
 import {
   VenueDesktopNavigation,
   VenueDesktopRail,
@@ -86,6 +91,8 @@ export default function VenueCommunity() {
   const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
   );
+  const [communitySection, setCommunitySection] = useState<'posts' | 'members'>('posts');
+  const communityPreview = useVenueCommunityPreview(groupId, !isDesktopLayout && initialTab === 'home');
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 1024px)');
@@ -99,7 +106,17 @@ export default function VenueCommunity() {
     if (tab === 'home') { const today = venueCalendarNow(group?.venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
     setSearchParams(venueTabParams(searchParams, tab));
+    if (!isDesktopLayout && (tab === 'book' || tab === 'home')) window.scrollTo({ top: 0, behavior: 'auto' });
   };
+  useEffect(() => { if (!loading && activeTab === 'book' && !isDesktopLayout) document.getElementById('club-booking-title')?.focus(); }, [activeTab, isDesktopLayout, loading]);
+
+  // Browser Back can restore Overview without going through openTab.
+  useEffect(() => {
+    if (activeTab !== 'home') return;
+    const today = venueCalendarNow(group?.venue?.timezone);
+    today.setHours(0, 0, 0, 0);
+    setDay(previous => previous.getTime() === today.getTime() ? previous : today);
+  }, [activeTab, group?.venue?.timezone]);
 
   // Also honor a chat deep link that arrives while React Router reuses this
   // mounted route (for example, moving between group rows without a reload).
@@ -217,9 +234,12 @@ export default function VenueCommunity() {
   const dayEnd = availableBookingEnd(grid, bookingCourtId, bookingStart);
 
   const nextUp = programQueries.upcoming.data ?? [];
+  const todayPrograms = dayError ? [] : programming.filter(session => PROGRAM_FORMATS.some(format => format === session.event_format) && programPhase(session) !== 'ended');
+  const clubSessions = todayPrograms.length ? todayPrograms.map(session => ({ ...session, going: going[session.id] ?? 0 })) : nextUp;
 
   const showDesktopRail =
     activeTab === 'play' ||
+    activeTab === 'events' ||
     activeTab === 'feed' ||
     activeTab === 'chat' ||
     activeTab === 'more';
@@ -234,7 +254,7 @@ export default function VenueCommunity() {
     );
     const closeChat = () => {
       if (cameFromSocial) navigate(-1);
-      else openTab('home');
+      else openTab('feed');
     };
 
     return (
@@ -274,8 +294,8 @@ export default function VenueCommunity() {
       venueName={venue?.name ?? null}
       accent={chrome?.accentHex}
     >
-    <div className="flex min-h-[100dvh] flex-col bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
-      <VenueMasthead
+    <div style={clubAccent(chrome?.accentHex) as React.CSSProperties} className="flex min-h-[100dvh] flex-col bg-background lg:bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
+      {isDesktopLayout ? <VenueMasthead
         venueName={venue?.name ?? group.name}
         tagline={venue?.tagline}
         logoUrl={venue?.logo_url ?? group.icon_url}
@@ -298,11 +318,18 @@ export default function VenueCommunity() {
         onBack={() => navigate('/player/community')}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
-      />
+      /> : <VenueClubHeader
+        identity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
+        cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, focalPoint: venue?.cover_focal_point }}
+        city={venue?.city} state={venue?.state} verified={group.is_venue_verified} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone}
+        courtCount={dayLoading || dayError ? 0 : activeCourtCount} freeNow={freeNow} hasBooking={bookingTabAvailable} isAdmin={canManageSettings} isOperator={isOperator}
+        booking={activeTab === 'book'} showActions={activeTab === 'home'}
+        onBack={() => activeTab === 'book' ? openTab('home') : navigate('/player/community')}
+        onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
+        onBook={() => openTab('book')} onPlay={() => openTab('play')} onSchedule={() => openTab('events')}
+      />}
 
-      {privateSample ? <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div> : (canManageVenue(venueRole) || membership?.role === 'owner') && !modules.loading && !modules.isError && (
-        <div className="mx-auto w-full max-w-[1480px] px-4 pt-3 sm:px-6"><div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/70 px-3 py-2"><div className="min-w-0"><p className="text-xs font-semibold">{modules.booking || modules.facility ? 'Venue features enabled' : 'Free venue community'}</p><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{[modules.booking && 'Court booking', modules.facility && 'Facility tools'].filter(Boolean).join(' · ') || 'Community included · add features when you need them'}</p></div><Button asChild variant="ghost" className="min-h-11 rounded-lg text-xs"><Link to={'/player/community/group/' + groupId + '/manage?tab=modules'}>Plan &amp; upgrades<ChevronRight aria-hidden className="ml-1 h-3.5 w-3.5" /></Link></Button></div></div>
-      )}
+      {privateSample && <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div>}
 
       <Tabs
         orientation={isDesktopLayout ? 'vertical' : 'horizontal'}
@@ -311,7 +338,7 @@ export default function VenueCommunity() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        {!isDesktopLayout && <VenueMobileTabs hasCourts={bookingTabAvailable} chatEnabled={chatEnabled} />}
+        {!isDesktopLayout && activeTab !== 'book' && <VenueMobileTabs activeTab={activeTab} />}
 
         <div className="min-w-0 flex-1">
           <div className="mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
@@ -331,9 +358,9 @@ export default function VenueCommunity() {
               />}
 
               <main className="min-w-0">
-                {dayError && ['home', 'book', 'play'].includes(activeTab) && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>}
+                {dayError && ['home', 'book', 'play', 'events'].includes(activeTab) && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>}
                 <TabsContent value="home" className="venue-panel-enter mt-0">
-                  <VenueHome
+                  {isDesktopLayout ? <VenueHome
                     welcomeHeadline={venue?.welcome_headline ?? null}
                     welcomeMessage={venue?.welcome_message ?? null}
                     city={venue?.city ?? null}
@@ -354,11 +381,15 @@ export default function VenueCommunity() {
                     onBook={() => openTab('book')}
                     onOpenPlay={() => openTab('play')}
                     onBookings={() => navigate('/player/bookings')}
-                  />
+                  /> : <VenueClubHome name={venue?.name ?? group.name} hasBooking={bookingTabAvailable} sessions={clubSessions} timeZone={venue?.timezone}
+                    loading={dayLoading || (!todayPrograms.length && programQueries.upcoming.isPending)} error={!todayPrograms.length && programQueries.upcoming.isError} onRetry={() => void programQueries.upcoming.refetch()}
+                    players={communityPreview.data ?? []} memberCount={group.member_count ?? 0} onlineCount={onlineCount} welcomeHeadline={venue?.welcome_headline} welcomeMessage={venue?.welcome_message}
+                    onBook={() => openTab('book')} onPlay={() => openTab('play')} onSchedule={() => openTab('events')} onCommunity={() => { setCommunitySection('posts'); openTab('feed'); }} onMembers={() => { setCommunitySection('members'); openTab('feed'); }} onAbout={() => openTab('more')} onPick={setSelectedProgramId}
+                  />}
                 </TabsContent>
 
                 {bookingTabAvailable && (
-                  <TabsContent value="book" className="venue-panel-enter mt-0">
+                  <TabsContent value="book" {...(!isDesktopLayout ? { 'aria-labelledby': 'club-booking-title' } : {})} className="venue-panel-enter mt-0">
                     {!dayError && <VenueBookingGrid
                       timeZone={venue?.timezone}
                       closed={closed}
@@ -377,9 +408,9 @@ export default function VenueCommunity() {
                   </TabsContent>
                 )}
 
-                <TabsContent value="play" className="venue-panel-enter mt-0">
+                {(['play', 'events'] as const).map(programTab => <TabsContent key={programTab} value={programTab} className="venue-panel-enter mt-0">
                   <div className="max-w-3xl space-y-4">
-                    <VenueServiceHeading service="programs" icon={CalendarDays} title="Programs & play" description="Find open play, clinics and events. Choose a day, then a session for details and registration.">
+                    <VenueServiceHeading service="programs" icon={CalendarDays} title={programTab === 'events' ? 'Events & schedule' : isDesktopLayout ? 'Programs & play' : 'Open play & clinics'} description={programTab === 'events' ? 'Your club calendar. Choose a day to see sessions, events and local competition.' : 'Find your next game. Choose a day, then a session for details and registration.'}>
                       {canCreateProgram && (
                         <Button
                           size="sm"
@@ -395,7 +426,8 @@ export default function VenueCommunity() {
                     </VenueServiceHeading>
                     <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} timeZone={venue?.timezone} />
                     {!dayError && <VenueProgramming
-                      sessions={programming}
+                      sessions={!isDesktopLayout && programTab === 'play' ? programming.filter(session => CLUB_PLAY_FORMATS.includes(session.event_format)) : programming}
+                      initialFilter={!isDesktopLayout && programTab === 'play' ? 'open_play' : 'all'}
                       going={going}
                       loading={dayLoading}
                       venueName={venue?.name ?? null}
@@ -404,13 +436,16 @@ export default function VenueCommunity() {
                       onPick={setSelectedProgramId}
                     />}
                   </div>
-                </TabsContent>
+                </TabsContent>)}
 
                 <TabsContent
                   value="feed"
                   className={cn('mt-0 max-w-[760px]', activeTab !== 'feed' && 'hidden')}
                   forceMount={visitedTabs.has('feed') ? true : undefined}
                 >
+                  {!isDesktopLayout && <VenueClubCommunityNav section={communitySection} onPosts={() => setCommunitySection('posts')} onMembers={() => setCommunitySection('members')} onChat={chatEnabled ? () => openTab('chat') : undefined} />}
+                  {!isDesktopLayout && communitySection === 'members' && <GroupMembers groupId={groupId!} isAdmin={isCommunityAdmin} isOwner={membership?.role === 'owner'} currentUserId={membership?.user_id ?? null} isOnline={isOnline} />}
+                  <div className={!isDesktopLayout && communitySection === 'members' ? 'hidden' : undefined}>
                   {visitedTabs.has('feed') && (
                     <GroupFeed
                       groupId={groupId!}
@@ -419,9 +454,10 @@ export default function VenueCommunity() {
                       currentUserId={membership?.user_id ?? null}
                       venueMode
                       onOpenQuickPost={canCreatePosts ? (type) => openQuickPost(type as PostType) : undefined}
-                      onSwitchToEvents={() => openTab('play')}
+                      onSwitchToEvents={() => openTab('events')}
                     />
                   )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent
@@ -451,7 +487,8 @@ export default function VenueCommunity() {
 
                 <TabsContent value="more" className="venue-panel-enter mt-0">
                   <div className="max-w-[820px] space-y-4">
-                    <div className="rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)]">
+                    {!isDesktopLayout && <VenueClubAbout name={venue?.name ?? group.name} description={venue?.welcome_message || venue?.welcome_headline} city={venue?.city} state={venue?.state} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone} phone={venue?.phone} email={venue?.email} websiteUrl={venue?.website_url} />}
+                    <div className="hidden rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)] lg:block">
                       <div className="flex items-center gap-3">
                         <span
                           className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"
@@ -484,13 +521,13 @@ export default function VenueCommunity() {
                     </button>
 
                     <Button variant="outline" className="min-h-11 w-full whitespace-normal rounded-xl" onClick={() => navigate(`/player/community/group/${groupId}?view=community&tab=more`)}>{privateSample ? 'Community tools & notifications' : 'Community tools · Files, invites & notifications'}</Button>
-                    <GroupMembers
+                    {isDesktopLayout && <GroupMembers
                       groupId={groupId!}
                       isAdmin={isCommunityAdmin}
                       isOwner={membership?.role === 'owner'}
                       currentUserId={membership?.user_id ?? null}
                       isOnline={isOnline}
-                    />
+                    />}
                   </div>
                 </TabsContent>
               </main>
@@ -520,7 +557,7 @@ export default function VenueCommunity() {
 
       {/* Keep the fixed composer as a thumb-reachable mobile affordance. On
           desktop the feed's in-column Share card is the clearer entry point. */}
-      {activeTab === 'feed' && canCreatePosts && (
+      {activeTab === 'feed' && canCreatePosts && (isDesktopLayout || communitySection === 'posts') && (
         <CollapsedComposerBar
           className="lg:hidden"
           onExpand={() => openQuickPost('post')}

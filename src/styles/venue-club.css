@@ -1,0 +1,16 @@
+.club-primary { background: var(--club-accent, #c9962f); color: var(--club-on-accent, #000); transition: filter 140ms ease, transform 140ms ease; }
+.club-primary:active { transform: scale(.99); filter: brightness(.96); }
+.club-icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 999px; }
+.club-text-action { display: inline-flex; min-height: 44px; min-width: 0; align-items: center; justify-content: center; gap: 6px; padding: 6px 4px; font-size: .75rem; font-weight: 600; }
+.club-mobile-tabs { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.club-mobile-tabs::-webkit-scrollbar { display: none; }
+.club-mobile-tabs .club-tab { position: relative; min-height: 48px; border-radius: 0; padding: 12px 2px; background: transparent; font-size: .8125rem; font-weight: 500; color: hsl(var(--muted-foreground)); box-shadow: none; }
+.club-mobile-tabs .club-tab[data-state="active"] { color: hsl(var(--foreground)); background: transparent; box-shadow: none; }
+.club-tab::after { position: absolute; content: ''; bottom: 0; left: 0; right: 0; height: 2px; border-radius: 2px; background: var(--club-accent, #c9962f); transform: scaleX(0); transition: transform 140ms ease; }
+.club-tab[data-state="active"]::after { transform: scaleX(1); }
+.club-community-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border: 1px solid hsl(var(--border)); border-radius: 12px; padding: 8px 14px; font-size: .75rem; font-weight: 600; background: hsl(var(--card)); }
+.club-community-button[aria-pressed="true"] { background: hsl(var(--foreground)); color: hsl(var(--background)); border-color: transparent; }
+:is(.club-primary,.club-icon-button,.club-text-action,.club-play-card,.club-session-card,.club-community-button,.club-tab):focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: 3px; }
+[data-testid="club-mobile-header"] .club-icon-button:focus-visible { outline-color: white; }
+@media (hover:hover) and (pointer:fine) { .club-play-card:hover,.club-session-card:hover { border-color: var(--club-accent, #c9962f); } .club-text-action:hover { text-decoration: underline; text-underline-offset: 4px; } }
+@media (prefers-reduced-motion:reduce) { .club-primary,.club-tab::after { transition: none; } .club-primary:active { transform: none; } }

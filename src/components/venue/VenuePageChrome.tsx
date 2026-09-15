@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { venueTabService } from '@/lib/venues/servicePresentation';
 import {
   ArrowLeft,
@@ -26,7 +26,7 @@ import { VenueCoverImage } from './VenueCoverImage';
 import { describeDay, type VenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from '@/components/venue/VenueHome';
 
-export type VenuePageTab = 'home' | 'book' | 'play' | 'feed' | 'chat' | 'more';
+export type VenuePageTab = 'home' | 'book' | 'play' | 'feed' | 'chat' | 'more' | 'events';
 
 const NAV_ITEMS: Array<{
   value: VenuePageTab;
@@ -39,6 +39,7 @@ const NAV_ITEMS: Array<{
   { value: 'home', label: 'Venue home', mobileLabel: 'Home', icon: MapPin },
   { value: 'book', label: 'Book a court', mobileLabel: 'Book', icon: LayoutGrid, needsCourts: true },
   { value: 'play', label: 'Programs & play', mobileLabel: 'Play', icon: CalendarDays },
+  { value: 'events', label: 'Events & schedule', mobileLabel: 'Events', icon: CalendarClock },
   { value: 'feed', label: 'Venue updates', mobileLabel: 'Feed', icon: MessageSquare },
   { value: 'chat', label: 'Venue chat', mobileLabel: 'Chat', icon: MessageCircle, needsChat: true },
   { value: 'more', label: 'Venue info', mobileLabel: 'Info', icon: Building2 },
@@ -217,27 +218,24 @@ export function VenueMasthead({
   );
 }
 
-/** Phone/tablet navigation remains a compact horizontal strip. */
-export function VenueMobileTabs({ hasCourts, chatEnabled = true }: { hasCourts: boolean; chatEnabled?: boolean }) {
-  const items = NAV_ITEMS.filter(
-    (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
-  );
-
-  return (
-    <div className="sticky top-0 z-30 border-b border-border/70 bg-card/95 px-1.5 py-1.5 shadow-[0_8px_26px_-24px_hsl(var(--foreground)/0.7)] backdrop-blur-xl lg:hidden" data-testid="venue-mobile-nav">
-      <div className="mx-auto max-w-[1480px]">
-        <TabsList
-          aria-label="Venue sections"
-          className="grid h-auto w-full gap-1 rounded-2xl border border-border/60 bg-muted/35 p-1"
-          style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-        >
-          {items.map((item) => (
-            <MobileTab key={item.value} {...item} />
-          ))}
-        </TabsList>
-      </div>
+/** Five editorial sections, not a second app dock. Booking and chat remain action flows. */
+export function VenueMobileTabs({ activeTab }: { hasCourts?: boolean; chatEnabled?: boolean; activeTab?: VenuePageTab }) {
+  const scroll = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = scroll.current;
+    const active = strip?.querySelector<HTMLElement>('[data-state="active"]');
+    if (!strip || !active) return;
+    const item = active.getBoundingClientRect(), frame = strip.getBoundingClientRect();
+    if (item.right > frame.right) strip.scrollLeft += item.right - frame.right + 16;
+    else if (item.left < frame.left) strip.scrollLeft -= frame.left - item.left + 16;
+  }, [activeTab]);
+  return <div className="sticky top-0 z-30 border-b border-border/70 bg-background/95 backdrop-blur-md lg:hidden" data-testid="venue-mobile-nav">
+    <div ref={scroll} className="club-mobile-tabs px-4">
+      <TabsList aria-label="Venue sections" className="flex h-auto w-max min-w-full justify-between gap-6 rounded-none bg-transparent p-0">
+        {([['home','Overview'],['play','Play'],['feed','Community'],['events','Events'],['more','About']] as const).map(([value,label]) => <TabsTrigger key={value} value={value} className="club-tab">{label}</TabsTrigger>)}
+      </TabsList>
     </div>
-  );
+  </div>;
 }
 
 /** Desktop navigation uses the left edge for orientation instead of another top bar. */
@@ -423,19 +421,6 @@ export function VenueDesktopRail({
         </section>
       </div>
     </aside>
-  );
-}
-
-function MobileTab({ value, mobileLabel, icon: Icon }: (typeof NAV_ITEMS)[number]) {
-  return (
-    <TabsTrigger
-      value={value}
-      data-venue-service={venueTabService(value)}
-      className="venue-nav-tab min-h-12 min-w-0 flex-col gap-1 rounded-xl border-0 bg-transparent px-1 py-2 text-[11px] font-semibold leading-none text-muted-foreground shadow-none transition-colors data-[state=active]:shadow-none sm:flex-row sm:gap-1.5 sm:px-2"
-    >
-      <Icon className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
-      <span className="max-w-full truncate">{mobileLabel}</span>
-    </TabsTrigger>
   );
 }
 

@@ -23,6 +23,9 @@ import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { VenueServiceHeading } from '@/components/venue/VenueServiceHeading';
+import { VenueClubHeader } from '@/components/venue/VenueClubHeader';
+import { VenueClubHome, VenueClubCommunityNav, VenueClubAbout } from '@/components/venue/VenueClubHome';
+import { clubAccent, CLUB_PLAY_FORMATS } from '@/lib/venues/clubPresentation';
 import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import {
@@ -766,6 +769,7 @@ function AdminPreviewPlaceholder({ item }: { item?: VenueAdminNavItem }) {
 
 export function VenueDesktopPagePreview() {
   const [activeTab, setActiveTab] = useState<VenuePageTab>('home');
+  const [communitySection, setCommunitySection] = useState<'posts' | 'members'>('posts');
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [notice, setNotice] = useState('');
   useEffect(() => { const media=window.matchMedia('(min-width: 1024px)'); const sync=()=>setDesktop(media.matches); media.addEventListener('change',sync); return ()=>media.removeEventListener('change',sync); },[]);
@@ -777,11 +781,13 @@ export function VenueDesktopPagePreview() {
   const programming = SESSIONS.filter(
     (session) => session.event_format !== 'reservation' && session.event_format !== 'maintenance',
   );
-  const nextUp = programming.slice(0, 3).map((session) => ({
+  const nextUp = programming.slice(0, 3).map((session, index) => ({
+    ...session, going: GOING[session.id] ?? 0,
     id: session.id,
     title: session.title,
     description: session.description,
-    start_time: session.start_time,
+    start_time: new Date(Date.now() + (index + 1) * 3600000).toISOString(),
+    end_time: new Date(Date.now() + (index + 2) * 3600000).toISOString(),
   }));
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
     openHour: 8,
@@ -790,14 +796,14 @@ export function VenueDesktopPagePreview() {
     now: NOW,
   });
   const showDesktopRail =
-    activeTab === 'play' ||
+    activeTab === 'events' || activeTab === 'play' ||
     activeTab === 'feed' ||
     activeTab === 'chat' ||
     activeTab === 'more';
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
-      <VenueMasthead
+    <div style={clubAccent('#c9962f') as React.CSSProperties} className="flex min-h-screen flex-col bg-background lg:bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
+      {desktop ? <VenueMasthead
         venueName={previewName}
         tagline="Premium pickleball, thoughtfully played"
         logoUrl={previewParams.has('broken-images') ? '/missing-venue-logo.png' : '/pulse-icon-512.png'}
@@ -820,7 +826,7 @@ export function VenueDesktopPagePreview() {
         onBack={() => setNotice('Back to Community')}
         onOperations={() => setNotice('Open venue operations')}
         onSettings={() => setNotice('Open venue settings')}
-      />
+      /> : <VenueClubHeader identity={{name:previewName,logoImageFit:'contain',logoShape:'circle'}} cover={{src:previewParams.has('broken-images')?'/missing-banner.png':'/tests/venues/browser/club-cover.svg',fit:previewParams.has('contain-images')?'contain':'cover'}} city="North Attleboro" state="MA" verified hoursRaw={{days:Object.fromEntries(Array.from({length:7},(_,i)=>[i,{open:'08:00',close:'22:00'}]))}} timeZone="America/New_York" courtCount={3} freeNow={previewParams.has('unknown')?null:2} hasBooking={hasCourts} isAdmin={!previewParams.has('player')} isOperator={false} booking={activeTab==='book'} showActions={activeTab==='home'} onBack={()=>activeTab==='book'?setActiveTab('home'):setNotice('Back to Community')} onSettings={()=>setNotice('Open venue settings')} onOperations={()=>setNotice('Open operations')} onBook={()=>setActiveTab('book')} onPlay={()=>setActiveTab('play')} onSchedule={()=>setActiveTab('events')} />}
 
       <Tabs
         orientation={desktop ? 'vertical' : 'horizontal'}
@@ -829,7 +835,7 @@ export function VenueDesktopPagePreview() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': ACCENT } as React.CSSProperties}
       >
-        {!desktop && <VenueMobileTabs hasCourts={hasCourts} chatEnabled={chatEnabled} />}
+        {!desktop && activeTab !== 'book' && <VenueMobileTabs activeTab={activeTab} />}
         {notice && <p role="status" className="mx-auto w-full max-w-[1480px] px-4 pt-3 text-sm">{notice} · Local preview only</p>}
         <div className="flex-1">
           <div className="mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
@@ -850,7 +856,7 @@ export function VenueDesktopPagePreview() {
 
               <main className="min-w-0">
                 <TabsContent value="home" className="venue-panel-enter mt-0">
-                  <VenueHome
+                  {desktop ? <VenueHome
                     welcomeHeadline={'Welcome to ' + previewName}
                     welcomeMessage="Book court time, find today’s sessions, and stay connected with the players and staff at ELEVENO."
                     city="Foxboro"
@@ -867,10 +873,13 @@ export function VenueDesktopPagePreview() {
                     onBook={() => setActiveTab('book')}
                     onOpenPlay={() => setActiveTab('play')}
                     onBookings={() => setNotice('Open my bookings')}
-                  />
+                  /> : <VenueClubHome name={previewName} hasBooking={hasCourts} sessions={previewParams.has('empty')?[]:nextUp} timeZone="America/New_York" loading={previewParams.has('loading')} error={previewParams.has('error')} onRetry={()=>setNotice('Retry programs')}
+                    players={previewParams.has('empty')?[]:[{id:'a',display_name:'Sarah K.',full_name:'Sarah',avatar_url:null},{id:'b',display_name:'Mike D.',full_name:'Mike',avatar_url:null},{id:'c',display_name:'Alex K.',full_name:'Alex',avatar_url:null}]} memberCount={previewParams.has('empty')?0:26} onlineCount={previewParams.has('empty')?0:2} welcomeMessage="A place to play, meet your next doubles partner, and make more of your time on court."
+                    onBook={()=>setActiveTab('book')} onPlay={()=>setActiveTab('play')} onSchedule={()=>setActiveTab('events')} onCommunity={()=>{setCommunitySection('posts');setActiveTab('feed');}} onMembers={()=>{setCommunitySection('members');setActiveTab('feed');}} onAbout={()=>setActiveTab('more')} onPick={()=>setNotice('Open program registration')} />}
+
                 </TabsContent>
 
-                <TabsContent value="book" className="venue-panel-enter mt-0">
+                <TabsContent value="book" {...(!desktop ? {'aria-labelledby':'club-booking-title'} : {})} className="venue-panel-enter mt-0">
                   <VenueBookingGrid
                     grid={grid}
                     day={day}
@@ -882,20 +891,22 @@ export function VenueDesktopPagePreview() {
                   />
                 </TabsContent>
 
-                <TabsContent value="play" className="venue-panel-enter mt-0 max-w-3xl">
-                  <VenueServiceHeading service="programs" icon={CalendarDays} title="Programs & play" description="Find open play, clinics and events. Choose a session for details and registration." />
+                {(['play','events'] as const).map(programTab => <TabsContent key={programTab} value={programTab} className="venue-panel-enter mt-0 max-w-3xl">
+                  <VenueServiceHeading service="programs" icon={CalendarDays} title={programTab==='events'?'Events & schedule':'Open play & clinics'} description="Find open play, clinics and events. Choose a session for details and registration." />
                   <VenueProgramming
-                    sessions={programming}
+                    sessions={!desktop && programTab==='play' ? programming.filter(s=>CLUB_PLAY_FORMATS.includes(s.event_format)) : programming}
+                    initialFilter={!desktop && programTab==='play' ? 'open_play' : 'all'}
                     going={GOING}
                     loading={false}
                     venueName="ELEVENO"
                     accent={ACCENT}
                     onPick={() => setNotice('Open program registration')}
                   />
-                </TabsContent>
+                </TabsContent>)}
 
                 <TabsContent value="feed" className="mt-0 max-w-[760px]">
-                  <VenueFeedPreview />
+                  {!desktop && <VenueClubCommunityNav section={communitySection} onPosts={()=>setCommunitySection('posts')} onMembers={()=>setCommunitySection('members')} onChat={chatEnabled?()=>setActiveTab('chat'):undefined} />}
+                  {!desktop && communitySection==='members' ? <p>26 community members · Local fixture</p> : <p>Club updates and conversations · Local fixture</p>}
                 </TabsContent>
 
                 <TabsContent value="chat" className="mt-0 max-w-[820px]">
@@ -905,6 +916,7 @@ export function VenueDesktopPagePreview() {
                 </TabsContent>
 
                 <TabsContent value="more" className="mt-0 max-w-[820px]">
+                  <VenueClubAbout name={previewName} description="A place to play, meet your next doubles partner, and make more of your time on court." city="North Attleboro" state="MA" hoursRaw={{days:{0:{open:'08:00',close:'22:00'},1:{open:'08:00',close:'22:00'}}}} phone="(508) 555-0111" />
                   <div className="rounded-2xl border border-border/70 bg-card p-6">
                     <p className="text-lg font-semibold tracking-tight">ELEVENO community</p>
                     <p className="mt-1 text-sm text-muted-foreground">284 members · 8 online now</p>

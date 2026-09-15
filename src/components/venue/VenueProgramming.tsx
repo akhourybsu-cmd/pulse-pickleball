@@ -63,6 +63,7 @@ const ROTATION_LABEL: Record<string, string> = {
 const URGENT_AT = 5;
 
 interface VenueProgrammingProps {
+  initialFilter?: string;
   sessions: VenueDaySession[];
   /** eventId → confirmed sign-ups. */
   going: Record<string, number>;
@@ -74,6 +75,7 @@ interface VenueProgrammingProps {
 }
 
 export function VenueProgramming({
+  initialFilter = 'all',
   sessions,
   going,
   loading,
@@ -82,7 +84,7 @@ export function VenueProgramming({
   onPick,
   viewerRsvpByEvent = {},
 }: VenueProgrammingProps) {
-  const [filter, setFilter] = useState<string>('all');
+  const [filter, setFilter] = useState<string>(initialFilter);
 
   const { available, active: activeFilter, shown } = useMemo(() => programFilterState(sessions, filter), [sessions, filter]);
 
