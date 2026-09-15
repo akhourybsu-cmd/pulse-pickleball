@@ -24,6 +24,7 @@ import {
 } from '@/lib/chat/scroll';
 import { isSameSenderRun } from '@/lib/chat/grouping';
 import { useAuthState } from '@/hooks/useAuthState';
+import { VenueBrandMark, type VenueIdentity } from '@/components/venue/VenueBrandMark';
 
 interface GroupChatProps {
   groupId: string;
@@ -45,6 +46,7 @@ interface GroupChatProps {
   title?: string;
   subtitle?: string;
   avatarUrl?: string | null;
+  venueIdentity?: VenueIdentity;
   /** Adds an in-thread back control when chat owns the full viewport. */
   onBack?: () => void;
   /** Enables safe-area header treatment and focus/viewport locking. */
@@ -64,6 +66,7 @@ export const GroupChat = memo(function GroupChat({
   title,
   subtitle,
   avatarUrl,
+  venueIdentity,
   onBack,
   immersive = false,
   canSendMessages = true,
@@ -409,7 +412,7 @@ export const GroupChat = memo(function GroupChat({
           </Button>
         )}
 
-        {title ? (
+        {venueIdentity ? <VenueBrandMark {...venueIdentity} className="h-9 w-9 bg-muted text-[36px] text-foreground ring-1 ring-border/70" /> : title ? (
           <Avatar className="h-9 w-9 shrink-0 rounded-xl ring-1 ring-border/70">
             <AvatarImage src={avatarUrl || undefined} alt="" />
             <AvatarFallback className="rounded-xl bg-primary/10 text-xs font-bold text-primary">

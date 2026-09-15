@@ -3,6 +3,7 @@ import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import type { GroupWithMembership } from '@/hooks/useGroups';
+import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
 
 interface ReorderableGroupListProps {
   groups: GroupWithMembership[];
@@ -80,7 +81,7 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
       <div className="p-4 flex items-center gap-3">
         {/* Avatar — soft gradient swatch when no icon. Subtle ring on
             verified venues for status without yet another pill. */}
-        <div
+        {group.venue ? <VenueBrandMark name={group.venue.name || group.name} logoUrl={group.venue.logo_url || group.icon_url} logoImageFit={group.venue.logo_image_fit} logoShape={group.venue.logo_shape} secondaryColor={group.venue.secondary_color} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/40" /> : <div
           className={cn(
             'h-12 w-12 rounded-xl flex items-center justify-center text-base font-semibold shrink-0 ring-1 ring-border/40',
             isVerifiedVenue && 'ring-amber-400/40',
@@ -93,7 +94,7 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
           }
         >
           {!group.icon_url && initials}
-        </div>
+        </div>}
 
         {/* Content — title row + one tight metadata line. The role +
             type + members + visibility used to render as four separate

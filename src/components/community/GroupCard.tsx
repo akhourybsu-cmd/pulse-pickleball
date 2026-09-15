@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import type { GroupWithMembership } from '@/hooks/useGroups';
 import { fetchGroupPosts } from '@/hooks/useGroupPosts';
 import { fetchGroupEvents } from '@/hooks/useGroupEvents';
+import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
 
 interface GroupCardProps {
   group: GroupWithMembership;
@@ -98,7 +99,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
     >
       <div className="flex items-center gap-3">
         {/* Avatar - smaller, more refined */}
-        <div
+        {group.venue ? <VenueBrandMark name={group.venue.name || group.name} logoUrl={group.venue.logo_url || group.icon_url} logoImageFit={group.venue.logo_image_fit} logoShape={group.venue.logo_shape} secondaryColor={group.venue.secondary_color} className="h-11 w-11 bg-muted text-[44px] text-foreground ring-1 ring-border/40" /> : <div
           className={cn(
             'h-11 w-11 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0',
             group.icon_url ? '' : avatarColors[colorIndex]
@@ -106,7 +107,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
           style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
         >
           {!group.icon_url && initials}
-        </div>
+        </div>}
 
         {/* Content */}
         <div className="flex-1 min-w-0">

@@ -800,11 +800,11 @@ export function VenueDesktopPagePreview() {
       <VenueMasthead
         venueName={previewName}
         tagline="Premium pickleball, thoughtfully played"
-        logoUrl="/pulse-icon-512.png"
-        coverImageUrl="/pulse-og.png"
+        logoUrl={previewParams.has('broken-images') ? '/missing-venue-logo.png' : '/pulse-icon-512.png'}
+        coverImageUrl={previewParams.has('broken-images') ? '/missing-venue-cover.png' : '/pulse-og.png'}
         logoImageFit="contain"
-        coverImageFit="cover"
-        logoShape="square"
+        coverImageFit={previewParams.has('contain-images') ? 'contain' : 'cover'}
+        logoShape={previewParams.has('contain-images') ? 'circle' : 'square'}
         coverFocalPoint="center"
         fallbackBackground="linear-gradient(145deg, #202329 0%, #141619 58%, #090a0c 100%)"
         bloom="rgba(197, 173, 17, 0.28)"

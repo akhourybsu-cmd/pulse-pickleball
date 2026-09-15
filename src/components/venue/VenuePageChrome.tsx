@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { formatSlotTime } from '@/lib/venues/availability';
 import { programDateLabel } from '@/lib/venues/programExperience';
 import { VenueBrandMark } from './VenueBrandMark';
+import { VenueCoverImage } from './VenueCoverImage';
 import { describeDay, type VenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from '@/components/venue/VenueHome';
 
@@ -74,7 +75,7 @@ export function VenueMasthead({
   tagline,
   logoUrl,
   coverImageUrl,
-  logoImageFit = 'cover',
+  logoImageFit = 'contain',
   coverImageFit = 'cover',
   logoShape = 'square',
   coverFocalPoint = 'center',
@@ -93,33 +94,51 @@ export function VenueMasthead({
   onOperations,
   onSettings,
 }: VenueMastheadProps) {
+  const fullPhoto = !!coverImageUrl && coverImageFit === 'contain';
+  const identity = (
+          <div className={cn("flex items-end gap-3 px-4 sm:px-6 lg:gap-5 lg:px-8", fullPhoto ? "relative bg-card py-4 lg:py-5" : "absolute inset-x-0 bottom-0 pb-4 lg:pb-7")}>
+            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className={cn("h-14 w-14 text-[56px] ring-1 sm:h-16 sm:w-16 sm:text-[64px] lg:h-20 lg:w-20 lg:text-[80px]", fullPhoto ? "bg-muted text-foreground ring-border" : "shadow-xl ring-white/30")} />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className={cn("truncate font-sans text-2xl font-bold leading-none tracking-[-0.025em] sm:text-3xl lg:text-[40px]", fullPhoto ? "text-foreground" : "text-white")}>
+                  {venueName}
+                </h1>
+                {verified && (
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-amber-400 lg:h-5 lg:w-5" aria-label="Verified venue" />
+                )}
+              </div>
+              {tagline && (
+                <p className={cn("mt-1.5 max-w-2xl truncate text-sm lg:mt-2 lg:text-base", fullPhoto ? "text-muted-foreground" : "text-white/[0.78]")}>
+                  {tagline}
+                </p>
+              )}
+            </div>
+          </div>
+  );
   return (
     <header className="relative shrink-0 lg:bg-muted/[0.16] lg:px-6 lg:pt-6">
       <div className="lg:mx-auto lg:max-w-[1480px] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-card lg:shadow-[0_18px_55px_-38px_hsl(var(--foreground)/0.45)]">
         <div
-          className="relative h-40 sm:h-48 lg:h-[240px]"
+          className="relative isolate h-[clamp(11rem,25vw,18rem)] overflow-hidden"
           style={{
-            backgroundImage: coverImageUrl
-              ? `url(${coverImageUrl})`
-              : fallbackBackground ??
+            backgroundImage: coverImageUrl ? undefined : fallbackBackground ??
                 'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 100%)',
-            backgroundSize: coverImageUrl ? (coverImageFit ?? 'cover') : 'cover',
-            backgroundPosition: coverFocalPoint === 'top' ? 'center top' : 'center',
-            backgroundRepeat: 'no-repeat',
             // A deliberate dark matte keeps `contain` covers looking finished
             // instead of exposing the page background around the image.
             backgroundColor: '#171a1f',
           }}
         >
-          <div
+          <VenueCoverImage src={coverImageUrl} fit={coverImageFit} focalPoint={coverFocalPoint} alt={`${venueName} banner`} />
+          {!fullPhoto && <div
             aria-hidden
             className="absolute inset-0"
             style={{
               background:
                 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.14) 100%)',
             }}
-          />
-          {bloom && (
+          />}
+          {!fullPhoto && bloom && (
             <div
               aria-hidden
               className="absolute inset-0"
@@ -167,26 +186,10 @@ export function VenueMasthead({
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-4 pb-4 sm:px-6 lg:gap-5 lg:px-8 lg:pb-7">
-            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className="h-14 w-14 text-[56px] shadow-xl ring-1 ring-white/30 sm:h-16 sm:w-16 sm:text-[64px] lg:h-20 lg:w-20 lg:text-[80px]" />
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate font-sans text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl lg:text-[40px]">
-                  {venueName}
-                </h1>
-                {verified && (
-                  <BadgeCheck className="h-4 w-4 shrink-0 text-amber-400 lg:h-5 lg:w-5" aria-label="Verified venue" />
-                )}
-              </div>
-              {tagline && (
-                <p className="mt-1.5 max-w-2xl truncate text-sm text-white/[0.78] lg:mt-2 lg:text-base">
-                  {tagline}
-                </p>
-              )}
-            </div>
-          </div>
+          {!fullPhoto && identity}
         </div>
+
+        {fullPhoto && identity}
 
         <div className="border-b border-border/70 bg-card lg:border-b-0">
           <div

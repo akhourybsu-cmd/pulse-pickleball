@@ -21,8 +21,8 @@ export function VenueBrandMark({ name, logoUrl, logoShape, logoImageFit, seconda
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const showImage = !!logoUrl && failedUrl !== logoUrl;
-  return <div className={cn('relative flex shrink-0 items-center justify-center overflow-hidden bg-white/10 text-white', logoShape === 'circle' ? 'rounded-full' : 'rounded-2xl', className)} style={{ backgroundColor: showImage && loadedUrl === logoUrl ? normalizeHex(secondaryColor) ?? undefined : undefined }}>
+  return <div className={cn('relative flex aspect-square max-w-full shrink-0 items-center justify-center overflow-hidden bg-white/10 text-white', logoShape === 'circle' ? 'rounded-full' : 'rounded-2xl', className)} style={{ backgroundColor: showImage && loadedUrl === logoUrl ? normalizeHex(secondaryColor) ?? undefined : undefined }}>
     {(!showImage || loadedUrl !== logoUrl) && <span aria-hidden className="font-sans text-[0.3em] font-semibold tracking-tight">{venueInitials(name)}</span>}
-    {showImage && <img src={logoUrl!} alt={`${name} logo`} width={128} height={128} decoding="async" onLoad={() => setLoadedUrl(logoUrl!)} onError={() => setFailedUrl(logoUrl!)} className="absolute inset-0 h-full w-full transition-opacity duration-150 motion-reduce:transition-none" style={{ objectFit: logoImageFit ?? 'contain', opacity: loadedUrl === logoUrl ? 1 : 0 }} />}
+    {showImage && <img src={logoUrl!} alt={`${name} logo`} width={128} height={128} decoding="async" onLoad={() => setLoadedUrl(logoUrl!)} onError={() => setFailedUrl(logoUrl!)} className="absolute inset-0 h-full w-full transition-opacity duration-150 motion-reduce:transition-none" style={{ objectFit: logoImageFit ?? 'contain', padding: logoImageFit === 'cover' ? 0 : logoShape === 'circle' ? '15%' : '4%', opacity: loadedUrl === logoUrl ? 1 : 0 }} />}
   </div>;
 }

@@ -1,13 +1,33 @@
 import palaceLogo from '../../../src/assets/pickleball-palace-logo.png';
 const params = new URLSearchParams(window.location.search);
 const config = { mode: 'test', livemode: false, cadence: 'monthly', ready: true };
+let imageVenue = { name: 'Pickleball Palace', primary_color: '#c9962f', secondary_color: '#183936', logo_url: palaceLogo, cover_image_url: '/pulse-og.png', logo_shape: 'circle', logo_image_fit: 'contain', cover_image_fit: 'cover', cover_focal_point: 'center' };
+const imageObjects = new Map<string, string>();
+function imageFixtureOnly() { if (!params.has('images')) throw new Error('Image mutations are blocked outside the local image fixture.'); }
+function imageQaNotice(detail: string) { window.dispatchEvent(new CustomEvent('venue-image-qa', { detail })); }
 export const useAuthState = () => ({ user: { id: 'sample-owner' } });
 export const formatMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 export const openStripe = () => { throw new Error('External checkout is blocked in this local preview.'); };
 export const supabase = {
+  rpc: async (name: string) => { imageFixtureOnly(); if (name !== 'can_upload_public_venue_media') throw new Error('Unsupported local RPC'); return { data: !params.has('private'), error: null }; },
+  storage: { from: (bucket: string) => {
+    imageFixtureOnly(); if (bucket !== 'venue-logos') throw new Error('Unsupported local bucket');
+    return {
+      upload: async (path: string, blob: Blob) => { imageObjects.set(path, URL.createObjectURL(blob)); imageQaNotice(`Prepared upload: ${blob.type}, ${blob.size} bytes. Local memory only.`); return { error: null }; },
+      getPublicUrl: (path: string) => ({ data: { publicUrl: imageObjects.get(path)! } }),
+      remove: async (paths: string[]) => { paths.forEach(path => { const url = imageObjects.get(path); if (url) URL.revokeObjectURL(url); imageObjects.delete(path); }); return { error: null }; },
+    };
+  } },
   from: (table: string) => {
     if (table === 'venue_module_access') return { select: () => ({ eq: async () => ({ data: ['court_booking','facility_tools'].map(module_key => ({venue_id:'local-sample',module_key,source:params.has('subscribed')?'subscription':'staff_grant',enabled:true,expires_at:null})), error:null }) }) };
     if (table !== 'venues') throw new Error('Backend access is blocked in this local preview.');
+    if (params.has('images')) return {
+      select: () => ({ eq: () => ({ single: async () => ({ data: imageVenue, error: null }) }) }),
+      update: (patch: Record<string, unknown>) => ({ eq: () => ({ select: () => ({ single: async () => {
+        if (params.has('save-error')) return { data: null, error: new Error('Local save failure: previous image retained') };
+        imageVenue = { ...imageVenue, ...patch }; imageQaNotice(`Saved locally: ${Object.keys(patch).join(', ')}`); return { data: { id: 'local-sample' }, error: null };
+      } }) }) }),
+    };
     return { select: () => ({ eq: () => ({ single: async () => ({ data: { name: 'Pickleball Palace', primary_color: '#c9962f', secondary_color: '#183936', logo_url: palaceLogo, logo_shape: 'circle', logo_image_fit: 'contain' }, error: null }) }) }) };
   },
 };

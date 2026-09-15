@@ -188,13 +188,22 @@ export function useGroups(options: UseGroupsOptions = {}) {
     try {
       const { data, error } = await supabase
         .from('groups')
-        .select('*')
+        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message)')
         .eq('visibility', 'public')
         .order('member_count', { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      setPublicGroups(data || []);
+      setPublicGroups((data || []).map((row): Group => ({
+        ...row,
+        venue: row.venue ? {
+          ...row.venue,
+          logo_image_fit: row.venue.logo_image_fit === 'cover' ? 'cover' : 'contain',
+          cover_image_fit: row.venue.cover_image_fit === 'contain' ? 'contain' : 'cover',
+          logo_shape: row.venue.logo_shape === 'circle' ? 'circle' : 'square',
+          cover_focal_point: row.venue.cover_focal_point === 'top' ? 'top' : 'center',
+        } : null,
+      })));
     } catch (error) {
       console.error('Error fetching public groups:', error);
     }

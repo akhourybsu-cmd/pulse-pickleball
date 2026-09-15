@@ -12,6 +12,7 @@ import { VenueDesktopPagePreview } from '../../../src/pages/dev/VenuePreview';
 import { VenueModulesPanel } from '../../../src/components/venue/VenueModulesPanel';
 import { VenueAdminShell } from '../../../src/components/community/admin/VenueAdminShell';
 import { LayoutGrid, Settings } from 'lucide-react';
+import { ImagesPreview } from './images-preview';
 
 const params = new URLSearchParams(window.location.search);
 if (params.has('dark')) document.documentElement.classList.add('dark');
@@ -38,4 +39,4 @@ function ModulesPreview() {
     <VenueModulesPanel venueId="local-sample" venueName="Pickleball Palace" verified canVerify />
   </VenueAdminShell>;
 }
-createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);
+createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('images') ? <ImagesPreview /> : params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);

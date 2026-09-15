@@ -258,6 +258,7 @@ export default function VenueCommunity() {
             title={venue?.name ?? group.name}
             subtitle={privateSample ? "Private sample · Only you" : "Venue chat"}
             avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
+            venueIdentity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
             onBack={closeChat}
             immersive
             canSendMessages={canSendChat}
@@ -441,6 +442,7 @@ export default function VenueCommunity() {
                         title={venue?.name ?? group.name}
                         subtitle={privateSample ? 'Private sample · Only you' : 'Venue chat'}
                         avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
+                        venueIdentity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
                         canSendMessages={canSendChat}
                       />
                     </div>

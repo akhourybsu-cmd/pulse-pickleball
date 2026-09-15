@@ -121,6 +121,8 @@ export async function prepareImageForUpload(
     const side = Math.max(1, Math.round(Math.min(maxDimension, sourceReference)));
     canvas.width = side;
     canvas.height = side;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
     const scale = squareFit === 'cover'
       ? Math.max(side / sourceWidth, side / sourceHeight)
@@ -138,6 +140,8 @@ export async function prepareImageForUpload(
     const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
     canvas.width = Math.max(1, Math.round(sourceWidth * scale));
     canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
   }
 
@@ -150,7 +154,8 @@ export async function prepareImageForUpload(
 
   return {
     blob,
-    extension: 'webp',
+    // Browsers that cannot encode WebP may return PNG instead.
+    extension: extensionFor(blob.type),
     width: canvas.width,
     height: canvas.height,
   };

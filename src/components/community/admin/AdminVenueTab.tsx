@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X, BadgeCheck, ShieldQuestion } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { assertPublicVenueMediaUploadAllowed } from '@/lib/venues/privateMedia';
+import { uploadVenueImage, removeVenueImage } from '@/lib/venues/imageUpload';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,14 +15,13 @@ import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   IMAGE_FILE_ACCEPT,
-  prepareImageForUpload,
-  storagePathFromPublicUrl,
   type ImageFit,
 } from '@/lib/images/prepareImageUpload';
 import { VenueCourtsSection } from './VenueCourtsSection';
 import { VenueHoursSection } from './VenueHoursSection';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
 import { VenueLoadingScreen } from '@/components/venue/VenueEntrance';
+import { VenueImagePreview } from '@/components/venue/VenueImagePreview';
 
 /**
  * Venue identity for a venue community.
@@ -81,7 +80,7 @@ const EMPTY: VenueForm = {
   cover_image_url: null,
   logo_shape: 'square',
   cover_focal_point: 'center',
-  logo_image_fit: 'cover',
+  logo_image_fit: 'contain',
   cover_image_fit: 'cover',
   website_url: '',
   phone: '',
@@ -110,6 +109,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
 
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
+  const imageMutation = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,7 +143,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
             cover_image_url: data.cover_image_url ?? null,
             logo_shape: data.logo_shape === 'circle' ? 'circle' : 'square',
             cover_focal_point: data.cover_focal_point === 'top' ? 'top' : 'center',
-            logo_image_fit: data.logo_image_fit === 'contain' ? 'contain' : 'cover',
+            logo_image_fit: data.logo_image_fit === 'cover' ? 'cover' : 'contain',
             cover_image_fit: data.cover_image_fit === 'contain' ? 'contain' : 'cover',
             tagline: data.tagline ?? '',
             welcome_headline: data.welcome_headline ?? '',
@@ -176,49 +176,13 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   }, []);
 
   const upload = async (kind: 'logo' | 'cover', file: File) => {
+    if (imageMutation.current || saving) return;
+    imageMutation.current = true;
     setUploading(kind);
     try {
-      await assertPublicVenueMediaUploadAllowed('venue-logos', `${venueId}/upload`);
-      const prepared = await prepareImageForUpload(file, {
-        maxInputMB: 12,
-        maxOutputMB: 8,
-        maxDimension: kind === 'cover' ? 2560 : 1600,
-        minWidth: kind === 'cover' ? 1200 : 320,
-        minHeight: kind === 'cover' ? 400 : 320,
-        quality: 0.92,
-      });
-      // First path segment must be the venue id — that's what the bucket's
-      // RLS checks.
-      const path = `${venueId}/venue-${kind}-${Date.now()}.${prepared.extension}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('venue-logos')
-        .upload(path, prepared.blob, {
-          upsert: false,
-          contentType: prepared.blob.type,
-          cacheControl: '31536000',
-        });
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('venue-logos').getPublicUrl(path);
-
       const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
-      const previousPath = storagePathFromPublicUrl(form[column], 'venue-logos');
-      const { error: updateError } = await supabase
-        .from('venues')
-        .update({ [column]: publicUrl })
-        .eq('id', venueId);
-      if (updateError) {
-        await supabase.storage.from('venue-logos').remove([path]);
-        throw updateError;
-      }
-
-      set(column as 'logo_url' | 'cover_image_url', publicUrl);
-      if (previousPath && previousPath !== path) {
-        void supabase.storage.from('venue-logos').remove([previousPath]);
-      }
+      const prepared = await uploadVenueImage(venueId, kind, file, form[column]);
+      set(column, prepared.publicUrl);
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       toast({
         title: kind === 'logo' ? 'Logo updated' : 'Cover updated',
@@ -231,29 +195,31 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
         variant: 'destructive',
       });
     } finally {
+      imageMutation.current = false;
       setUploading(null);
     }
   };
 
   const removeImage = async (kind: 'logo' | 'cover') => {
-    const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
-    const previousPath = storagePathFromPublicUrl(form[column], 'venue-logos');
-    const { error } = await supabase
-      .from('venues')
-      .update({ [column]: null })
-      .eq('id', venueId);
-
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
+    if (imageMutation.current || saving) return;
+    imageMutation.current = true;
+    setUploading(kind);
+    try {
+      const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
+      await removeVenueImage(venueId, kind, form[column]);
+      set(column, null);
+      void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      toast({ title: kind === 'logo' ? 'Logo removed' : 'Cover removed' });
+    } catch (error) {
+      toast({ title: 'Could not remove image', description: getErrorMessage(error, 'Your saved image is unchanged.'), variant: 'destructive' });
+    } finally {
+      imageMutation.current = false;
+      setUploading(null);
     }
-    set(column as 'logo_url' | 'cover_image_url', null);
-    if (previousPath) void supabase.storage.from('venue-logos').remove([previousPath]);
-    void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
   };
 
   const save = async () => {
-    if (loading || loadError || saving) return;
+    if (loading || loadError || saving || imageMutation.current) return;
     if (!form.name.trim()) {
       toast({ title: 'Name required', description: 'Give your venue a name.', variant: 'destructive' });
       return;
@@ -355,75 +321,22 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Cover with the logo overlaid — the same arrangement the community
-              header uses, so this reads as a preview rather than a form. */}
-          <div>
-            <Label className="mb-2 block">Cover image</Label>
-            <div className="relative overflow-hidden rounded-xl ring-1 ring-border">
-              <button
-                type="button"
-                onClick={() => coverInput.current?.click()}
-                disabled={uploading !== null}
-                className="group relative block h-32 w-full bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label="Upload cover image"
-                style={
-                  !form.cover_image_url && isHex(form.secondary_color)
-                    ? { backgroundColor: form.secondary_color }
-                    : undefined
-                }
-              >
-                {form.cover_image_url && (
-                  <img
-                    src={form.cover_image_url}
-                    alt="Venue cover preview"
-                    className="h-full w-full"
-                    style={{
-                      objectFit: form.cover_image_fit,
-                      objectPosition: form.cover_focal_point === 'top' ? 'center top' : 'center',
-                    }}
-                  />
-                )}
-                <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
-                  <Camera className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-                </span>
-                {uploading === 'cover' && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-background/80">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => logoInput.current?.click()}
-                disabled={uploading !== null}
-                className={cn(
-                  'group absolute bottom-3 left-3 h-16 w-16 overflow-hidden ring-2 ring-background bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                  form.logo_shape === 'circle' ? 'rounded-full' : 'rounded-xl',
-                )}
-                aria-label="Upload logo"
-              >
-                {form.logo_url ? (
-                  <img
-                    src={form.logo_url}
-                    alt="Venue logo preview"
-                    className="h-full w-full"
-                    style={{ objectFit: form.logo_image_fit }}
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
-                    {(form.name || 'V').slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-                <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
-                  <Camera className="h-4 w-4 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-                </span>
-                {uploading === 'logo' && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-background/80">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  </span>
-                )}
-              </button>
+          <div className="min-w-0 space-y-4">
+            <VenueImagePreview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, secondaryColor: form.secondary_color }} cover={{ src: form.cover_image_url, fit: form.cover_image_fit, focalPoint: form.cover_focal_point }} />
+            <div className="flex flex-wrap gap-2" aria-busy={uploading !== null}>
+              <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => coverInput.current?.click()} disabled={uploading !== null || saving}>
+                {uploading === 'cover' ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Camera className="mr-2 h-4 w-4 shrink-0" />}
+                {form.cover_image_url ? 'Replace banner' : 'Upload banner'}
+              </Button>
+              <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => logoInput.current?.click()} disabled={uploading !== null || saving}>
+                {uploading === 'logo' ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Camera className="mr-2 h-4 w-4 shrink-0" />}
+                {form.logo_url ? 'Replace logo / photo' : 'Upload logo / photo'}
+              </Button>
+            </div>
+            <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+              <p>JPG, PNG or WebP · up to 12 MB. Banners: at least 1200 × 400 px; 2880 × 960 px recommended. Logos/profile photos: at least 320 × 320 px; 1024 × 1024 px recommended.</p>
+              <p>One image adapts to every screen without stretching. Fill frame crops differently on phones and desktops; Show full photo keeps all edges visible with space around the image. Keep important subjects near the center.</p>
+              <p>Uploads and removals save immediately. Display options below are previews until you select Save venue profile.</p>
             </div>
 
             {(form.cover_image_url || form.logo_url) && (
@@ -475,12 +388,12 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
 
             <div className="mt-2 flex flex-wrap gap-2">
               {form.logo_url && (
-                <Button variant="ghost" size="sm" onClick={() => removeImage('logo')}>
+                <Button variant="ghost" size="sm" disabled={uploading !== null || saving} onClick={() => removeImage('logo')}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Remove logo
                 </Button>
               )}
               {form.cover_image_url && (
-                <Button variant="ghost" size="sm" onClick={() => removeImage('cover')}>
+                <Button variant="ghost" size="sm" disabled={uploading !== null || saving} onClick={() => removeImage('cover')}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Remove cover
                 </Button>
               )}
@@ -746,7 +659,7 @@ function ChoiceButtons({
   onChange: (value: string) => void;
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex max-w-full rounded-lg border border-border bg-background p-1">
+    <div role="group" aria-label={label} className="flex w-full min-w-0 rounded-lg border border-border bg-background p-1">
       {choices.map(([choiceValue, choiceLabel]) => (
         <button
           key={choiceValue}
@@ -754,7 +667,7 @@ function ChoiceButtons({
           onClick={() => onChange(choiceValue)}
           aria-pressed={value === choiceValue}
           className={cn(
-            'min-w-0 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3',
+            'min-h-11 min-w-0 flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors sm:px-3',
             value === choiceValue
               ? 'bg-foreground text-background shadow-sm'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',

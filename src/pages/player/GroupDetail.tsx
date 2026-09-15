@@ -36,6 +36,8 @@ import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
+import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
+import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
 import { parseGroupSettings } from '@/types/groupSettings';
 
 
@@ -301,6 +303,9 @@ export default function GroupDetail() {
         '--venue-primary': venueColor,
       } as React.CSSProperties : undefined}
     >
+      {isVenueGroup && group.venue?.cover_image_url && activeTab !== 'chat' && <div className="relative h-[clamp(7rem,20vw,12rem)] w-full shrink-0 overflow-hidden bg-[#171a1f]">
+        <VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} />
+      </div>}
       {/* Community header — a compact dark-ink banner. The ink is the app's
           own charcoal (hue 220 @ ~10% saturation → reads gray, not blue) so
           it carries real contrast against the cream/ink app chrome while
@@ -363,13 +368,7 @@ export default function GroupDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {isVenueGroup && group.venue?.logo_url && (
-            <img
-              src={group.venue.logo_url}
-              alt=""
-              className={cn('h-9 w-9 shrink-0 rounded-lg ring-1 ring-white/20', group.venue.logo_image_fit === 'contain' ? 'object-contain' : 'object-cover')}
-            />
-          )}
+          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} className="h-9 w-9 text-[36px] ring-1 ring-white/20" />}
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
