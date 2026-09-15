@@ -1,6 +1,16 @@
 # Mobile venue club home
 
-Status: implemented locally; not committed, pushed or deployed in this pass.
+Status: published to production September 15, 2026 (America/New_York), following explicit publication approval.
+
+## Production release
+
+- Application commit: `91792cfb87743e0fbc5d80858901eade7ccc6626`, pushed to `main`.
+- [Firebase deployment run 34927217493](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34927217493), job `104247694097`: successful. CI confirmed 1,244 passing tests and a successful 4,719-module build.
+- Firebase Hosting version: `989974437d77cf5d`.
+- Public home and `/player/community` returned HTTP 200 and referenced `/assets/index-CxRwuVYS.js` and `/assets/index-YwtjDld2.css`.
+- Entry JavaScript, stylesheet and `/assets/VenueCommunity-Dc_RioDj.js` returned HTTP 200 and matched the tested local build byte-for-byte.
+- `/manifest.json` returned HTTP 200 with standalone display. `/sw.js` returned HTTP 200 as JavaScript with no-cache/no-store/revalidation headers. Both match local content after normalizing Windows CRLF to the Linux deployment's LF line endings.
+- Release delivery is verified; this does not claim live authenticated booking, RSVP or messaging transactions. Existing web/PWA sessions may need a reload or reopen to load the new app entry.
 
 ## Scope
 
@@ -45,4 +55,4 @@ Browser checks used the local, backend-isolated real-component harness, not prod
 - Verified loading, empty, error/retry, unknown availability, disabled booking/chat and failed-image states. Contain image fit was measured in the browser.
 - Visually inspected mobile hero/actions/session cards and the retained desktop layout. Preview names, schedules and cover SVG are local fixture data, not changes to ELEVENO.
 
-Live authenticated booking, RSVP and messaging transactions were not repeated for this presentation-only pass. Publishing remains the next step when requested.
+Live authenticated booking, RSVP and messaging transactions were not repeated for this presentation-only pass. Publication checks are recorded above.
