@@ -1,6 +1,16 @@
 # Venue image sizing and upload verification
 
-Status: implemented locally, not committed or published. No database migration, production media changes, Stripe changes, Android Studio or Google Play work.
+Status: published to production September 14, 2026 (America/New_York). No database migration, production media changes, Stripe changes, Android Studio or Google Play work.
+
+## Production release
+
+- Application commit: `79bf23380f011f41daff3d2858883ade96b0a8e3`, pushed to `main` with explicit publication approval.
+- [Firebase deployment run 34916700060](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34916700060), job `104215769138`: successful. CI confirmed 1,225 passing tests, 32 skipped, 10 todo and a successful 4,715-module production build.
+- Firebase Hosting version: `1533379be90e5ef4`.
+- The live ELEVENO route returned HTTP 200 using `/assets/index-DiLxJdm6.js` and `/assets/index-Bx0M_cKU.css`, matching the CI build.
+- Entry JavaScript, stylesheet, `VenueCommunity-GnmL88e4.js`, `GroupManage-BLiejjDe.js` and `GroupDetail-DqMMi8dj.js` returned HTTP 200 and matched the locally verified build content exactly.
+- `/manifest.json` returned HTTP 200 with standalone display; `/sw.js` returned JavaScript with no-cache/no-store/revalidation headers. Existing PWA installations may need a reload/reopen to activate the update.
+- Production checks confirm release delivery, not live authenticated storage writes or physical-device acceptance. No existing venue image was replaced during verification.
 
 ## Changes
 
