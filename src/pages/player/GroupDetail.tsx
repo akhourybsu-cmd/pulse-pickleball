@@ -39,10 +39,12 @@ import { VenueWelcome } from '@/components/community/VenueWelcome';
 import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
 import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
 import { parseGroupSettings } from '@/types/groupSettings';
+import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 
 
 
 export default function GroupDetail() {
+  const viewport = useVisualViewportPane();
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -298,12 +300,14 @@ export default function GroupDetail() {
 
   return (
     <div 
-      className="flex flex-col h-[100dvh]"
+      className={cn('flex flex-col h-[100dvh]', isVenueGroup && 'venue-community-frame font-sans [&_h1]:font-sans [&_h2]:font-sans')}
       style={isVenueGroup ? {
         '--venue-primary': venueColor,
+        '--venue-pane-height': viewport.height,
+        '--venue-pane-top': viewport.top ?? 0,
       } as React.CSSProperties : undefined}
     >
-      {isVenueGroup && group.venue?.cover_image_url && activeTab !== 'chat' && <div className="relative h-[clamp(7rem,20vw,12rem)] w-full shrink-0 overflow-hidden bg-[#171a1f]">
+      {isVenueGroup && group.venue?.cover_image_url && activeTab !== 'chat' && <div className="hidden relative h-[clamp(7rem,20vw,12rem)] w-full shrink-0 overflow-hidden bg-[#171a1f] lg:block lg:h-24 xl:h-28">
         <VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} />
       </div>}
       {/* Community header — a compact dark-ink banner. The ink is the app's
@@ -312,7 +316,7 @@ export default function GroupDetail() {
           staying on-brand. Deliberately dark in both themes (a hero band).
           A faint pickleball-court watermark adds depth without noise. */}
       <div
-        className="relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
+        className="venue-community-toolbar relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
         style={{
           // PULSE ink band — same ink ramp as the rest of the app chrome
           // (hsl 220 10%), finished with a gold hairline. A venue community
@@ -362,13 +366,13 @@ export default function GroupDetail() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 -ml-0.5 shrink-0 rounded-full border border-white/15 text-white/90 hover:text-white hover:bg-white/10"
-            onClick={() => navigate('/player/community')}
-            aria-label="Back to Community"
+            onClick={() => navigate(isVenueGroup && searchParams.get('view') === 'community' ? `/player/community/group/${groupId}` : '/player/community')}
+            aria-label={isVenueGroup && searchParams.get('view') === 'community' ? 'Back to venue' : 'Back to Community'}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} className="h-9 w-9 text-[36px] ring-1 ring-white/20" />}
+          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} className="h-8 w-8 text-[32px] ring-1 ring-white/20 lg:h-9 lg:w-9 lg:text-[36px]" />}
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
@@ -391,7 +395,7 @@ export default function GroupDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10"
+                className={cn('h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10', isVenueGroup && 'hidden lg:inline-flex')}
                 onClick={() => setInviteModalOpen(true)}
                 aria-label="Invite"
               >
@@ -401,7 +405,7 @@ export default function GroupDetail() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10" aria-label="Create">
+                <Button variant="ghost" size="icon" className={cn('h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10', isVenueGroup && 'hidden lg:inline-flex')} aria-label="Create">
                   <Plus className="h-[18px] w-[18px]" />
                 </Button>
               </DropdownMenuTrigger>
@@ -428,6 +432,11 @@ export default function GroupDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {isVenueGroup && <>
+                  <DropdownMenuItem className="min-h-11 lg:hidden" onClick={() => openQuickPost('post')}><MessageSquare className="mr-2 h-4 w-4" />Post update</DropdownMenuItem>
+                  <DropdownMenuItem className="min-h-11 lg:hidden" onClick={() => handleTabChange('schedule')}><Calendar className="mr-2 h-4 w-4" />Create event</DropdownMenuItem>
+                  <DropdownMenuItem className="min-h-11 lg:hidden" onClick={() => openQuickPost('poll')}><MessageSquare className="mr-2 h-4 w-4" />Create poll</DropdownMenuItem>
+                </>}
                 {group.invite_code && (
                   <DropdownMenuItem onClick={() => setInviteModalOpen(true)}>
                     <Share2 className="h-4 w-4 mr-2" />
@@ -465,7 +474,7 @@ export default function GroupDetail() {
           override the underline color to the venue accent inline. */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div
-          className="border-b border-border/30 bg-background shrink-0 relative"
+          className="venue-community-nav border-b border-border/30 bg-background shrink-0 relative"
           style={
             chrome?.accentHex ? { borderColor: `${chrome.accentHex}20` } : undefined
           }
@@ -519,7 +528,7 @@ export default function GroupDetail() {
         </div>
 
         {/* Content Area - Lazy mounted tabs */}
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {/* Feed Tab - Always mounted first */}
           <TabsContent 
             value="feed" 
@@ -531,6 +540,7 @@ export default function GroupDetail() {
           >
             {visitedTabs.has('feed') && (
               <div className="space-y-4">
+                {isVenueGroup && group.venue?.cover_image_url && <div className="relative h-[6.25rem] overflow-hidden rounded-xl bg-[#171a1f] lg:hidden"><VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} /></div>}
                 {membership && (
                   <EnablePushBanner
                     dismissKey={`pulse.enablePushBanner.group.${groupId}`}
@@ -632,6 +642,7 @@ export default function GroupDetail() {
                     About
                   </div>
                   <div className="rounded-xl border border-border/40 bg-card p-4 space-y-3">
+                    {isVenueGroup && <div className="space-y-1 lg:hidden"><p className="flex items-center gap-1 text-sm font-medium">{group.is_venue_verified && <BadgeCheck className="h-4 w-4" />}{group.is_venue_verified ? 'Verified venue community' : 'Venue community'}</p>{group.venue?.tagline && <p className="text-sm text-muted-foreground">{group.venue.tagline}</p>}</div>}
                     <div className="flex items-center gap-2 text-sm text-foreground">
                       <VisibilityIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>{subtitle}</span>
@@ -715,6 +726,7 @@ export default function GroupDetail() {
       {/* Collapsed Composer Bar - Only show on Feed tab */}
       {activeTab === 'feed' && (
         <CollapsedComposerBar
+          embedded={isVenueGroup}
           onExpand={() => openQuickPost('post')}
           onPhotoClick={() => openQuickPost('photo')}
           avatarUrl={currentUserProfile?.avatar_url}

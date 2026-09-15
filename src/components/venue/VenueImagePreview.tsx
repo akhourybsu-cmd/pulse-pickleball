@@ -10,7 +10,7 @@ export function VenueImagePreview({ identity, cover }: { identity: VenueIdentity
       return <section key={device} className="min-w-0 space-y-2">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Icon className="h-3.5 w-3.5" />{device === 'phone' ? 'Phone' : 'Desktop'}</p>
         <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="relative isolate overflow-hidden bg-[#171a1f]" style={{ aspectRatio: device === 'phone' ? '390 / 176' : '1440 / 288' }}>
+          <div className="relative isolate overflow-hidden bg-[#171a1f]" style={{ aspectRatio: device === 'phone' ? '390 / 100' : '1440 / 112' }}>
             <VenueCoverImage {...cover} alt={`${device === 'phone' ? 'Phone' : 'Desktop'} banner preview`} />
           </div>
           <div className="flex min-w-0 items-center gap-2 p-2.5">

@@ -1,4 +1,36 @@
 .club-primary { background: var(--club-accent, #c9962f); color: var(--club-on-accent, #000); transition: filter 140ms ease, transform 140ms ease; }
+.venue-mobile-shell { position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: hsl(var(--background)); }
+.venue-app-bar { display: flex; flex-shrink: 0; align-items: center; gap: 8px; height: calc(3.5rem + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); background: #151b24; color: #fff; }
+.venue-app-icon { display: inline-flex; width: 44px; height: 44px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 12px; }
+.venue-app-icon:hover { background: #ffffff12; }
+.venue-app-icon:focus-visible { outline: 2px solid white; outline-offset: -3px; }
+.venue-mobile-shell [data-testid="venue-mobile-nav"] { background: #151b24; border-color: #ffffff18; }
+.venue-mobile-shell .club-mobile-tabs .club-tab { color: #ffffffb3; }
+.venue-mobile-shell .club-mobile-tabs .club-tab[data-state="active"] { color: white; }
+.venue-mobile-shell .club-tab:focus-visible { outline-color: white; outline-offset: -3px; }
+.venue-app-body { flex: 1; min-height: 0; overflow: hidden; }
+.venue-mobile-shell :is(.venue-page-body,.venue-page-container,.venue-page-columns,.venue-page-main) { height: 100%; min-height: 0; max-width: none; padding: 0; }
+.venue-mobile-shell .venue-app-panel { height: 100%; min-height: 0; max-width: none; margin: 0; padding: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior-y: contain; overflow-anchor: none; }
+.venue-mobile-shell .venue-app-chat-panel { padding: 0; overflow: hidden; }
+.venue-mobile-shell .venue-chat-frame { height: 100%; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
+.venue-management-frame { min-height: 100dvh; }
+@media (max-width:1023px) {
+  .venue-management-frame,.venue-community-frame { position:fixed; inset-inline:0; top:var(--venue-pane-top,0); height:var(--venue-pane-height,100dvh); min-height:0; z-index:30; display:flex; flex-direction:column; overflow:hidden; background:hsl(var(--background)); }
+  .venue-management-toolbar { height:calc(3.5rem + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 8px 0; display:flex; align-items:center; }
+  .venue-management-toolbar > div { width:100%; }
+  .venue-management-body { flex:1; min-height:0; overflow-y:auto; overscroll-behavior-y:contain; }
+  .venue-community-frame .venue-community-toolbar { height:calc(3.5rem + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 8px 0; display:flex; align-items:center; background:#151b24 !important; }
+  .venue-community-frame .venue-community-toolbar > .relative { width:100%; }
+  .venue-community-frame .venue-community-toolbar h1 { font-size:1rem; font-weight:600; }
+  .venue-community-frame .venue-community-toolbar p,.venue-community-frame .venue-community-toolbar h1 + div { display:none; }
+  .venue-community-frame .venue-community-toolbar button { width:44px; height:44px; }
+  .venue-community-frame .venue-community-nav { background:#151b24; }
+  .venue-community-frame .venue-community-nav > .grid button { height:48px; font-size:.8125rem; color:#ffffffb3; }
+  .venue-community-frame .venue-community-nav > .grid button[aria-current="page"] { color:white !important; }
+  .venue-community-frame .venue-community-nav > .grid svg { display:none; }
+  .venue-ops-toolbar { background:#151b24; color:white; border-color:#ffffff18; }
+  .venue-ops-toolbar .text-muted-foreground { color:#ffffffb3; }
+}
 .club-primary:active { transform: scale(.99); filter: brightness(.96); }
 .club-icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 999px; }
 .club-text-action { display: inline-flex; min-height: 44px; min-width: 0; align-items: center; justify-content: center; gap: 6px; padding: 6px 4px; font-size: .75rem; font-weight: 600; }

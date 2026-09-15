@@ -12,6 +12,7 @@ interface CollapsedComposerBarProps {
   displayName?: string | null;
   contextName?: string;
   venueMode?: boolean;
+  embedded?: boolean;
 }
 
 function getInitials(name?: string | null): string {
@@ -29,13 +30,14 @@ export function CollapsedComposerBar({
   displayName,
   contextName,
   venueMode = false,
+  embedded = false,
 }: CollapsedComposerBarProps) {
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-40',
+        embedded ? 'relative shrink-0' : 'fixed bottom-0 left-0 right-0 z-40',
         'border-t border-border/60 bg-background/[0.92] backdrop-blur-xl',
         'shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.28)]',
         'pb-[env(safe-area-inset-bottom,0px)]',
@@ -55,7 +57,7 @@ export function CollapsedComposerBar({
           type="button"
           onClick={onExpand}
           className={cn(
-            'flex h-11 flex-1 items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5',
+            'flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5',
             'text-left text-sm text-muted-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.04)]',
             'transition-colors duration-150 hover:border-primary/35 hover:text-foreground',
           )}

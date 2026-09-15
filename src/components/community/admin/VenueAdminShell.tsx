@@ -1,8 +1,9 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, BadgeCheck, ExternalLink, Gauge, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 
 export interface VenueAdminNavItem {
   value: string;
@@ -40,8 +41,12 @@ export function VenueAdminShell({
   showOperations?: boolean;
   children: ReactNode;
 }) {
+  const viewport = useVisualViewportPane();
   const activeItem = items.find((item) => item.value === activeTab) ?? items[0];
   const mobileNav = useRef<HTMLElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  // A different settings section opens at its beginning; the toolbar stays put.
+  useLayoutEffect(() => { body.current?.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab]);
   useEffect(() => {
     const nav = mobileNav.current;
     const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -61,11 +66,11 @@ export function VenueAdminShell({
   return (
     <div
       data-venue-service="operations"
-      className="min-h-[100dvh] bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
-      style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))' } as CSSProperties}
+      className="venue-management-frame bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
+      style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))', '--venue-pane-height': viewport.height, '--venue-pane-top': viewport.top ?? 0 } as CSSProperties}
     >
-      <header className="border-b border-white/10 bg-[#15171b] text-white">
-        <div className="mx-auto max-w-[1480px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
+      <header className="shrink-0 border-b border-white/10 bg-[#151b24] text-white">
+        <div className="venue-management-toolbar mx-auto max-w-[1480px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
@@ -117,12 +122,9 @@ export function VenueAdminShell({
             </div>
           </div>
 
-          <div className="mt-5 lg:hidden">
-            <p className="text-xs leading-5 text-white/70">{activeItem?.description}</p>
-          </div>
         </div>
 
-        <div className="border-t border-white/[0.08] lg:hidden">
+        <div className="lg:hidden">
           <nav ref={mobileNav} aria-label="Venue management sections" className="overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex w-max items-center">
               {items.map((item) => {
@@ -149,7 +151,7 @@ export function VenueAdminShell({
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:py-8 xl:gap-8">
+      <div ref={body} className="venue-management-body mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:py-8 xl:gap-8">
         <aside className="hidden self-stretch lg:block">
           <div className="sticky top-6 max-h-[calc(100dvh-3rem)] space-y-5 overflow-y-auto p-1">
             {sections.map((section) => {
@@ -194,6 +196,7 @@ export function VenueAdminShell({
         </aside>
 
         <main className="min-w-0">
+          <p className="mb-4 text-sm leading-6 text-muted-foreground lg:hidden">{activeItem?.description}</p>
           <div className="mb-6 hidden items-end justify-between gap-4 border-b border-border/70 pb-4 lg:flex">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Venue admin</p>

@@ -19,6 +19,8 @@ export interface VenueClubHeaderProps {
   isOperator: boolean;
   booking?: boolean;
   showActions?: boolean;
+  /** The persistent app shell owns back/settings controls and safe-area padding. */
+  embedded?: boolean;
   onBack: () => void;
   onSettings: () => void;
   onOperations: () => void;
@@ -27,29 +29,30 @@ export interface VenueClubHeaderProps {
   onSchedule: () => void;
 }
 
-export function VenueClubHeader({ identity, cover, city, state, verified, hoursRaw, timeZone, courtCount, freeNow, hasBooking, isAdmin, isOperator, booking, showActions = true, onBack, onSettings, onOperations, onBook, onPlay, onSchedule }: VenueClubHeaderProps) {
+export function VenueClubHeader({ identity, cover, city, state, verified, hoursRaw, timeZone, courtCount, freeNow, hasBooking, isAdmin, isOperator, booking, showActions = true, embedded = false, onBack, onSettings, onOperations, onBook, onPlay, onSchedule }: VenueClubHeaderProps) {
   const location = [city, state].filter(Boolean).join(', ');
+  const Heading = embedded ? 'h2' : 'h1';
   if (booking) return <header className="flex items-center gap-3 border-b border-border bg-background px-4 pb-3 pt-[calc(0.5rem+env(safe-area-inset-top))]">
     <button type="button" aria-label="Back to venue overview" onClick={onBack} className="club-icon-button"><ArrowLeft className="h-5 w-5" /></button>
     <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{identity.name}</p><h1 id="club-booking-title" tabIndex={-1} className="text-lg font-semibold outline-none">Book a court</h1></div>
   </header>;
   return <>
     <header className="bg-card" data-testid="club-mobile-header">
-      <div className="relative isolate h-[calc(6.25rem+env(safe-area-inset-top))] overflow-hidden bg-[#111b29]">
+      <div className={cn('relative isolate overflow-hidden bg-[#111b29]', embedded ? 'h-[6.25rem]' : 'h-[calc(6.25rem+env(safe-area-inset-top))]')}>
         <VenueCoverImage {...cover} alt={`${identity.name} banner`} />
         <div aria-hidden className={cn('pointer-events-none absolute inset-0', cover.fit !== 'contain' && 'bg-gradient-to-b from-[#081322]/45 via-transparent to-[#081322]/20')} />
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-[calc(0.375rem+env(safe-area-inset-top))]">
+        {!embedded && <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-[calc(0.375rem+env(safe-area-inset-top))]">
           <button type="button" aria-label="Back to Community" onClick={onBack} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><ArrowLeft className="h-[18px] w-[18px]" /></button>
           <div className="flex gap-1.5">
             {isOperator && <button type="button" aria-label="Venue operations" onClick={onOperations} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><Gauge className="h-[18px] w-[18px]" /></button>}
             {isAdmin && <button type="button" aria-label="Manage venue" onClick={onSettings} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><Settings className="h-[18px] w-[18px]" /></button>}
           </div>
-        </div>
+        </div>}
       </div>
       <div className="px-4 pb-3 pt-3">
         <div className="flex min-w-0 items-center gap-3">
           <VenueBrandMark {...identity} className="h-10 w-10 bg-muted text-[40px] text-foreground ring-1 ring-border/60" />
-          <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h1 className="truncate text-xl font-semibold tracking-tight">{identity.name}</h1>{verified && <BadgeCheck aria-label="Verified venue" className="h-4 w-4 shrink-0 text-muted-foreground" />}</div>
+          <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><Heading className="truncate text-xl font-semibold tracking-tight">{identity.name}</Heading>{verified && <BadgeCheck aria-label="Verified venue" className="h-4 w-4 shrink-0 text-muted-foreground" />}</div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{location || 'Your venue community'}</p>
           </div>
         </div>

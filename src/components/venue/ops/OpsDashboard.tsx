@@ -90,7 +90,7 @@ export function OpsDashboard({
       {/* Toolbar. One slim row: where you are on the left, what you can do on
           the right. A chevron rather than a filled circle button — going back
           is not an action worth the visual weight of a control. */}
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-xl">
+      <header className="venue-ops-toolbar sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[calc(3.5rem+env(safe-area-inset-top))] max-w-[1400px] items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-4">
           <button
             type="button"

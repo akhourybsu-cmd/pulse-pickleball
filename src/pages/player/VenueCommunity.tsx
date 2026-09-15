@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { Building2, Ticket, ChevronRight, CalendarPlus, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueModules } from '@/hooks/useVenueModules';
@@ -34,7 +34,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useVenuePrograms } from '@/hooks/useVenuePrograms';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
-import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
+import { VenueMobileShell, VenuePanel } from '@/components/venue/VenueMobileShell';
 import { initialVenueCommunityTab, venueTabParams } from '@/lib/venues/navigation';
 import { parseGroupSettings } from '@/types/groupSettings';
 import { VenueClubHeader } from '@/components/venue/VenueClubHeader';
@@ -46,7 +46,6 @@ import {
   VenueDesktopNavigation,
   VenueDesktopRail,
   VenueMasthead,
-  VenueMobileTabs,
   type VenuePageTab,
 } from '@/components/venue/VenuePageChrome';
 
@@ -106,9 +105,7 @@ export default function VenueCommunity() {
     if (tab === 'home') { const today = venueCalendarNow(group?.venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
     setSearchParams(venueTabParams(searchParams, tab));
-    if (!isDesktopLayout && (tab === 'book' || tab === 'home')) window.scrollTo({ top: 0, behavior: 'auto' });
   };
-  useEffect(() => { if (!loading && activeTab === 'book' && !isDesktopLayout) document.getElementById('club-booking-title')?.focus(); }, [activeTab, isDesktopLayout, loading]);
 
   // Browser Back can restore Overview without going through openTab.
   useEffect(() => {
@@ -123,12 +120,6 @@ export default function VenueCommunity() {
   useEffect(() => {
     setVisitedTabs((seen) => (seen.has(activeTab) ? seen : new Set([...seen, activeTab])));
   }, [activeTab]);
-
-  // A fixed pane sized to window.visualViewport is what keeps the composer
-  // immediately above an overlay keyboard in Capacitor/iOS/Android WebViews.
-  // It is applied only to the immersive chat state; the venue's other tabs
-  // remain a normally scrolling page.
-  const chatPaneStyle = useVisualViewportPane();
 
   // One presence subscription for the page, shared with chat. Two would
   // double-count who is online.
@@ -244,49 +235,8 @@ export default function VenueCommunity() {
     activeTab === 'chat' ||
     activeTab === 'more';
 
-  // Chat is a conversation, not a card in the middle of a venue brochure.
-  // Give it the whole visible viewport so focusing the composer cannot move
-  // the hero, tab strip, or document around it. The normal venue shell remains
-  // mounted only for Home/Book/Play/Feed/More.
-  if (activeTab === 'chat' && chatEnabled && !isDesktopLayout) {
-    const cameFromSocial = Boolean(
-      (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox,
-    );
-    const closeChat = () => {
-      if (cameFromSocial) navigate(-1);
-      else openTab('feed');
-    };
-
-    return (
-      <VenueStaffProvider
-        venueId={group.venue_id}
-        venueName={venue?.name ?? null}
-        accent={chrome?.accentHex}
-      >
-        <div
-          className="z-40 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background"
-          style={chatPaneStyle}
-        >
-          <GroupChat
-            groupId={groupId!}
-            currentUserId={membership?.user_id ?? null}
-            onlineCount={onlineCount}
-            isConnected={isConnected}
-            isAdmin={isCommunityAdmin}
-            lastReadAt={lastReadRef.current}
-            isActive
-            title={venue?.name ?? group.name}
-            subtitle={privateSample ? "Private sample · Only you" : "Venue chat"}
-            avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
-            venueIdentity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
-            onBack={closeChat}
-            immersive
-            canSendMessages={canSendChat}
-          />
-        </div>
-      </VenueStaffProvider>
-    );
-  }
+  const identity = { name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color };
+  const availabilityError = dayError && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>;
 
   return (
     <VenueStaffProvider
@@ -295,7 +245,7 @@ export default function VenueCommunity() {
       accent={chrome?.accentHex}
     >
     <div style={clubAccent(chrome?.accentHex) as React.CSSProperties} className="flex min-h-[100dvh] flex-col bg-background lg:bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
-      {isDesktopLayout ? <VenueMasthead
+      {isDesktopLayout && <VenueMasthead
         venueName={venue?.name ?? group.name}
         tagline={venue?.tagline}
         logoUrl={venue?.logo_url ?? group.icon_url}
@@ -318,18 +268,9 @@ export default function VenueCommunity() {
         onBack={() => navigate('/player/community')}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
-      /> : <VenueClubHeader
-        identity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
-        cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, focalPoint: venue?.cover_focal_point }}
-        city={venue?.city} state={venue?.state} verified={group.is_venue_verified} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone}
-        courtCount={dayLoading || dayError ? 0 : activeCourtCount} freeNow={freeNow} hasBooking={bookingTabAvailable} isAdmin={canManageSettings} isOperator={isOperator}
-        booking={activeTab === 'book'} showActions={activeTab === 'home'}
-        onBack={() => activeTab === 'book' ? openTab('home') : navigate('/player/community')}
-        onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
-        onBook={() => openTab('book')} onPlay={() => openTab('play')} onSchedule={() => openTab('events')}
       />}
 
-      {privateSample && <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div>}
+      {privateSample && isDesktopLayout && <div className="mx-auto w-full max-w-[1480px] px-4 pt-4 sm:px-6"><PrivateVenueNotice /></div>}
 
       <Tabs
         orientation={isDesktopLayout ? 'vertical' : 'horizontal'}
@@ -338,13 +279,20 @@ export default function VenueCommunity() {
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        {!isDesktopLayout && activeTab !== 'book' && <VenueMobileTabs activeTab={activeTab} />}
-
-        <div className="min-w-0 flex-1">
-          <div className="mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
+        <VenueMobileShell mobile={!isDesktopLayout} activeTab={activeTab} visited={visitedTabs} identity={identity} hasBooking={bookingTabAvailable}
+          onCommunity={() => openTab('feed')}
+          onExit={() => (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox ? navigate(-1) : navigate('/player/community')}
+          onBookings={() => navigate('/player/bookings')}
+          onTools={() => navigate(`/player/community/group/${groupId}?view=community&tab=more`)}
+          onSettings={canManageSettings ? () => navigate(`/player/community/group/${groupId}/manage`) : undefined}
+          onOperations={isOperator ? () => navigate(`/player/community/group/${groupId}/ops`) : undefined}
+          footer={activeTab === 'feed' && canCreatePosts && communitySection === 'posts' ? <CollapsedComposerBar embedded onExpand={() => openQuickPost('post')} onPhotoClick={() => openQuickPost('photo')} avatarUrl={profile?.avatar_url} displayName={profile?.display_name || profile?.full_name} contextName={identity.name} venueMode /> : undefined}
+        >
+        <div className="venue-page-body min-w-0 flex-1">
+          <div className="venue-page-container mx-auto max-w-[1480px] px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
             <div
               className={cn(
-                'lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-6 min-[1440px]:gap-8',
+                'venue-page-columns lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-6 min-[1440px]:gap-8',
                 showDesktopRail && 'min-[1280px]:grid-cols-[200px_minmax(0,1fr)_260px]',
               )}
             >
@@ -357,9 +305,17 @@ export default function VenueCommunity() {
                 onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
               />}
 
-              <main className="min-w-0">
-                {dayError && ['home', 'book', 'play', 'events'].includes(activeTab) && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>}
-                <TabsContent value="home" className="venue-panel-enter mt-0">
+              <main className="venue-page-main min-w-0">
+                <VenuePanel value="home" className="venue-panel-enter mt-0">
+                  {!isDesktopLayout && <div className="-mx-4 -mt-4 mb-6"><VenueClubHeader embedded
+                    identity={identity} cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, focalPoint: venue?.cover_focal_point }}
+                    city={venue?.city} state={venue?.state} verified={group.is_venue_verified} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone}
+                    courtCount={dayLoading || dayError ? 0 : activeCourtCount} freeNow={freeNow} hasBooking={bookingTabAvailable} isAdmin={canManageSettings} isOperator={isOperator}
+                    onBack={() => navigate('/player/community')} onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
+                    onBook={() => openTab('book')} onPlay={() => openTab('play')} onSchedule={() => openTab('events')}
+                  /></div>}
+                  {privateSample && !isDesktopLayout && <div className="mb-4"><PrivateVenueNotice /></div>}
+                  {availabilityError}
                   {isDesktopLayout ? <VenueHome
                     welcomeHeadline={venue?.welcome_headline ?? null}
                     welcomeMessage={venue?.welcome_message ?? null}
@@ -386,10 +342,11 @@ export default function VenueCommunity() {
                     players={communityPreview.data ?? []} memberCount={group.member_count ?? 0} onlineCount={onlineCount} welcomeHeadline={venue?.welcome_headline} welcomeMessage={venue?.welcome_message}
                     onBook={() => openTab('book')} onPlay={() => openTab('play')} onSchedule={() => openTab('events')} onCommunity={() => { setCommunitySection('posts'); openTab('feed'); }} onMembers={() => { setCommunitySection('members'); openTab('feed'); }} onAbout={() => openTab('more')} onPick={setSelectedProgramId}
                   />}
-                </TabsContent>
+                </VenuePanel>
 
                 {bookingTabAvailable && (
-                  <TabsContent value="book" {...(!isDesktopLayout ? { 'aria-labelledby': 'club-booking-title' } : {})} className="venue-panel-enter mt-0">
+                  <VenuePanel value="book" className="venue-panel-enter mt-0">
+                    {availabilityError}
                     {!dayError && <VenueBookingGrid
                       timeZone={venue?.timezone}
                       closed={closed}
@@ -405,10 +362,11 @@ export default function VenueCommunity() {
                         setBookingMinutes(minutes || null);
                       }}
                     />}
-                  </TabsContent>
+                  </VenuePanel>
                 )}
 
-                {(['play', 'events'] as const).map(programTab => <TabsContent key={programTab} value={programTab} className="venue-panel-enter mt-0">
+                {(['play', 'events'] as const).map(programTab => <VenuePanel key={programTab} value={programTab} className="venue-panel-enter mt-0">
+                  {availabilityError}
                   <div className="max-w-3xl space-y-4">
                     <VenueServiceHeading service="programs" icon={CalendarDays} title={programTab === 'events' ? 'Events & schedule' : isDesktopLayout ? 'Programs & play' : 'Open play & clinics'} description={programTab === 'events' ? 'Your club calendar. Choose a day to see sessions, events and local competition.' : 'Find your next game. Choose a day, then a session for details and registration.'}>
                       {canCreateProgram && (
@@ -436,9 +394,9 @@ export default function VenueCommunity() {
                       onPick={setSelectedProgramId}
                     />}
                   </div>
-                </TabsContent>)}
+                </VenuePanel>)}
 
-                <TabsContent
+                <VenuePanel
                   value="feed"
                   className={cn('mt-0 max-w-[760px]', activeTab !== 'feed' && 'hidden')}
                   forceMount={visitedTabs.has('feed') ? true : undefined}
@@ -458,15 +416,15 @@ export default function VenueCommunity() {
                     />
                   )}
                   </div>
-                </TabsContent>
+                </VenuePanel>
 
-                <TabsContent
+                <VenuePanel
                   value="chat"
                   className={cn('mt-0 max-w-[820px]', activeTab !== 'chat' && 'hidden')}
                   forceMount={visitedTabs.has('chat') ? true : undefined}
                 >
                   {visitedTabs.has('chat') && (
-                    <div className="h-[min(720px,calc(100dvh-8rem))] min-h-[520px] overflow-hidden rounded-[20px] border border-border/80 bg-card shadow-[0_16px_45px_-30px_hsl(var(--foreground)/0.42)]">
+                    <div className="venue-chat-frame h-[min(720px,calc(100dvh-8rem))] min-h-[520px] overflow-hidden rounded-[20px] border border-border/80 bg-card shadow-[0_16px_45px_-30px_hsl(var(--foreground)/0.42)]">
                       <GroupChat
                         groupId={groupId!}
                         currentUserId={membership?.user_id ?? null}
@@ -475,17 +433,17 @@ export default function VenueCommunity() {
                         isAdmin={isCommunityAdmin}
                         lastReadAt={lastReadRef.current}
                         isActive={activeTab === 'chat'}
-                        title={venue?.name ?? group.name}
-                        subtitle={privateSample ? 'Private sample · Only you' : 'Venue chat'}
-                        avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
-                        venueIdentity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color }}
+                        title={isDesktopLayout ? identity.name : undefined}
+                        subtitle={isDesktopLayout ? (privateSample ? 'Private sample · Only you' : 'Venue chat') : undefined}
+                        venueIdentity={isDesktopLayout ? identity : undefined}
+                        onBack={!isDesktopLayout ? () => openTab('feed') : undefined}
                         canSendMessages={canSendChat}
                       />
                     </div>
                   )}
-                </TabsContent>
+                </VenuePanel>
 
-                <TabsContent value="more" className="venue-panel-enter mt-0">
+                <VenuePanel value="more" className="venue-panel-enter mt-0">
                   <div className="max-w-[820px] space-y-4">
                     {!isDesktopLayout && <VenueClubAbout name={venue?.name ?? group.name} description={venue?.welcome_message || venue?.welcome_headline} city={venue?.city} state={venue?.state} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone} phone={venue?.phone} email={venue?.email} websiteUrl={venue?.website_url} />}
                     <div className="hidden rounded-[20px] border border-border/70 bg-card/65 p-4 shadow-[0_14px_38px_-34px_hsl(var(--foreground)/0.5)] lg:block">
@@ -529,7 +487,7 @@ export default function VenueCommunity() {
                       isOnline={isOnline}
                     />}
                   </div>
-                </TabsContent>
+                </VenuePanel>
               </main>
 
               {showDesktopRail && (
@@ -553,21 +511,8 @@ export default function VenueCommunity() {
             </div>
           </div>
         </div>
+        </VenueMobileShell>
       </Tabs>
-
-      {/* Keep the fixed composer as a thumb-reachable mobile affordance. On
-          desktop the feed's in-column Share card is the clearer entry point. */}
-      {activeTab === 'feed' && canCreatePosts && (isDesktopLayout || communitySection === 'posts') && (
-        <CollapsedComposerBar
-          className="lg:hidden"
-          onExpand={() => openQuickPost('post')}
-          onPhotoClick={() => openQuickPost('photo')}
-          avatarUrl={profile?.avatar_url}
-          displayName={profile?.display_name || profile?.full_name}
-          contextName={venue?.name ?? group.name}
-          venueMode
-        />
-      )}
 
       <QuickPostComposer
         open={quickPostOpen}

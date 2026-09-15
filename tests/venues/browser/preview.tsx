@@ -35,8 +35,9 @@ function Preview() {
   </main>;
 }
 function ModulesPreview() {
-  return <VenueAdminShell venueName={params.has('long') ? 'TheVeryLongVenueNameForResponsiveTestingPickleballPalace' : 'Pickleball Palace'} verified roleLabel="Owner" accent="#C5AD11" activeTab="modules" items={[{value:'overview',label:'Overview',description:'Venue activity and next steps.',icon:LayoutGrid},{value:'modules',label:'Plan & upgrades',description:'Your included and purchased venue features.',icon:Settings}]} onTabChange={()=>{}} onBack={()=>{}} onViewVenue={()=>{}} onOperations={()=>{}}>
-    <VenueModulesPanel venueId="local-sample" venueName="Pickleball Palace" verified canVerify />
+  const [activeTab, setActiveTab] = useState('modules');
+  return <VenueAdminShell venueName={params.has('long') ? 'TheVeryLongVenueNameForResponsiveTestingPickleballPalace' : 'Pickleball Palace'} verified roleLabel="Owner" accent="#C5AD11" activeTab={activeTab} items={[{value:'overview',label:'Overview',description:'Venue activity and next steps. Review upcoming programs, community activity, court readiness and the tasks that need your attention.',icon:LayoutGrid},{value:'modules',label:'Plan & upgrades',description:'Your included and purchased venue features.',icon:Settings}]} onTabChange={setActiveTab} onBack={()=>{}} onViewVenue={()=>{}} onOperations={()=>{}}>
+    {activeTab === 'modules' ? <VenueModulesPanel venueId="local-sample" venueName="Pickleball Palace" verified canVerify /> : <div className="space-y-4">{Array.from({length:12},(_,index)=><p key={index} className="rounded-xl border p-4">Local management preview · Task {index+1}</p>)}</div>}
   </VenueAdminShell>;
 }
 createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('images') ? <ImagesPreview /> : params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);

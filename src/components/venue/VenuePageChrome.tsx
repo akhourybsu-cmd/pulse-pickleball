@@ -70,7 +70,7 @@ interface VenueMastheadProps {
   onSettings: () => void;
 }
 
-/** Responsive venue identity. Desktop is deliberately bounded like a product surface. */
+/** A shallow club cover and separate identity keep desktop activity above the fold. */
 export function VenueMasthead({
   venueName,
   tagline,
@@ -97,20 +97,20 @@ export function VenueMasthead({
 }: VenueMastheadProps) {
   const fullPhoto = !!coverImageUrl && coverImageFit === 'contain';
   const identity = (
-          <div className={cn("flex items-end gap-3 px-4 sm:px-6 lg:gap-5 lg:px-8", fullPhoto ? "relative bg-card py-4 lg:py-5" : "absolute inset-x-0 bottom-0 pb-4 lg:pb-7")}>
-            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className={cn("h-14 w-14 text-[56px] ring-1 sm:h-16 sm:w-16 sm:text-[64px] lg:h-20 lg:w-20 lg:text-[80px]", fullPhoto ? "bg-muted text-foreground ring-border" : "shadow-xl ring-white/30")} />
+          <div className="relative flex min-w-0 items-center gap-3 bg-card px-4 py-3 sm:px-6" data-testid="venue-desktop-identity">
+            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/70" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h1 className={cn("truncate font-sans text-2xl font-bold leading-none tracking-[-0.025em] sm:text-3xl lg:text-[40px]", fullPhoto ? "text-foreground" : "text-white")}>
+                <h1 title={venueName} className="truncate font-sans text-2xl font-semibold leading-tight tracking-[-0.025em] text-foreground">
                   {venueName}
                 </h1>
                 {verified && (
-                  <BadgeCheck className="h-4 w-4 shrink-0 text-amber-400 lg:h-5 lg:w-5" aria-label="Verified venue" />
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="Verified venue" />
                 )}
               </div>
               {tagline && (
-                <p className={cn("mt-1.5 max-w-2xl truncate text-sm lg:mt-2 lg:text-base", fullPhoto ? "text-muted-foreground" : "text-white/[0.78]")}>
+                <p className="mt-1 max-w-2xl truncate text-sm text-muted-foreground">
                   {tagline}
                 </p>
               )}
@@ -118,10 +118,11 @@ export function VenueMasthead({
           </div>
   );
   return (
-    <header className="relative shrink-0 lg:bg-muted/[0.16] lg:px-6 lg:pt-6">
-      <div className="lg:mx-auto lg:max-w-[1480px] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-card lg:shadow-[0_18px_55px_-38px_hsl(var(--foreground)/0.45)]">
+    <header className="relative shrink-0 lg:bg-muted/[0.16] lg:px-6 lg:pt-4" data-testid="venue-desktop-header">
+      <div className="lg:mx-auto lg:max-w-[1480px] lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-border/70 lg:bg-card lg:shadow-[0_12px_36px_-30px_hsl(var(--foreground)/0.35)]">
         <div
-          className="relative isolate h-[clamp(11rem,25vw,18rem)] overflow-hidden"
+          className="relative isolate h-24 overflow-hidden xl:h-28"
+          data-testid="venue-desktop-cover"
           style={{
             backgroundImage: coverImageUrl ? undefined : fallbackBackground ??
                 'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 100%)',
@@ -136,7 +137,7 @@ export function VenueMasthead({
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.14) 100%)',
+                'linear-gradient(to bottom, rgba(8,19,34,0.32), rgba(8,19,34,0.08))',
             }}
           />}
           {!fullPhoto && bloom && (
@@ -147,11 +148,11 @@ export function VenueMasthead({
             />
           )}
 
-          <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-[calc(0.6rem+env(safe-area-inset-top))] lg:px-7 lg:pt-6">
+          <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-[calc(0.6rem+env(safe-area-inset-top))] lg:px-6 lg:pt-3">
             <Button
               variant="ghost"
               size="sm"
-              className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+              className="h-11 min-w-11 rounded-full border border-white/20 bg-[#081322]/70 px-2.5 text-white backdrop-blur-md hover:bg-[#081322]/90 hover:text-white focus-visible:ring-white lg:px-3.5"
               onClick={onBack}
               aria-label="Back to Community"
             >
@@ -164,7 +165,7 @@ export function VenueMasthead({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+                  className="h-11 min-w-11 rounded-full border border-white/20 bg-[#081322]/70 px-2.5 text-white backdrop-blur-md hover:bg-[#081322]/90 hover:text-white focus-visible:ring-white lg:px-3.5"
                   onClick={onOperations}
                   aria-label="Venue operations"
                 >
@@ -176,7 +177,7 @@ export function VenueMasthead({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-11 min-w-11 rounded-full border border-white/20 bg-black/25 px-2.5 text-white backdrop-blur-md hover:bg-black/40 hover:text-white lg:px-3.5"
+                  className="h-11 min-w-11 rounded-full border border-white/20 bg-[#081322]/70 px-2.5 text-white backdrop-blur-md hover:bg-[#081322]/90 hover:text-white focus-visible:ring-white lg:px-3.5"
                   onClick={onSettings}
                   aria-label="Manage venue"
                 >
@@ -187,14 +188,13 @@ export function VenueMasthead({
             </div>
           </div>
 
-          {!fullPhoto && identity}
         </div>
 
-        {fullPhoto && identity}
+        {identity}
 
         <div className="border-b border-border/70 bg-card lg:border-b-0">
           <div
-            className="grid w-full px-3 py-2.5 sm:px-6 lg:flex lg:flex-wrap lg:items-center lg:gap-y-2 lg:px-8 lg:py-3.5"
+            className="grid w-full px-3 py-2.5 sm:px-6 lg:flex lg:flex-wrap lg:items-center lg:gap-y-2"
             style={{ gridTemplateColumns: `repeat(${nextStart ? 3 : 2}, minmax(0, 1fr))` }}
           >
             <MastheadStat
@@ -218,8 +218,8 @@ export function VenueMasthead({
   );
 }
 
-/** Five editorial sections, not a second app dock. Booking and chat remain action flows. */
-export function VenueMobileTabs({ activeTab }: { hasCourts?: boolean; chatEnabled?: boolean; activeTab?: VenuePageTab }) {
+/** Stable venue sections; chat keeps Community selected and booking retains a return path. */
+export function VenueMobileTabs({ activeTab, hasCourts = false, onOpenCommunity }: { hasCourts?: boolean; chatEnabled?: boolean; activeTab?: VenuePageTab; onOpenCommunity?: () => void }) {
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const strip = scroll.current;
@@ -229,10 +229,14 @@ export function VenueMobileTabs({ activeTab }: { hasCourts?: boolean; chatEnable
     if (item.right > frame.right) strip.scrollLeft += item.right - frame.right + 16;
     else if (item.left < frame.left) strip.scrollLeft -= frame.left - item.left + 16;
   }, [activeTab]);
-  return <div className="sticky top-0 z-30 border-b border-border/70 bg-background/95 backdrop-blur-md lg:hidden" data-testid="venue-mobile-nav">
+  const sections = [
+    ['home', 'Overview'], ...(hasCourts ? [['book', 'Book']] : []), ['play', 'Play'],
+    [activeTab === 'chat' ? 'chat' : 'feed', 'Community'], ['events', 'Events'], ['more', 'About'],
+  ];
+  return <div className="shrink-0 border-b border-border/70 bg-background lg:hidden" data-testid="venue-mobile-nav">
     <div ref={scroll} className="club-mobile-tabs px-4">
-      <TabsList aria-label="Venue sections" className="flex h-auto w-max min-w-full justify-between gap-6 rounded-none bg-transparent p-0">
-        {([['home','Overview'],['play','Play'],['feed','Community'],['events','Events'],['more','About']] as const).map(([value,label]) => <TabsTrigger key={value} value={value} className="club-tab">{label}</TabsTrigger>)}
+      <TabsList aria-label="Venue sections" className="flex h-auto w-max min-w-full justify-between gap-4 rounded-none bg-transparent p-0">
+        {sections.map(([value,label]) => <TabsTrigger key={label} value={value} className="club-tab" onClick={value === 'chat' ? onOpenCommunity : undefined}>{label}</TabsTrigger>)}
       </TabsList>
     </div>
   </div>;
