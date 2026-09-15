@@ -1,6 +1,15 @@
 # Venue mobile navigation consistency
 
-Status: implemented locally; not committed, pushed or deployed. Includes the previously pending compact desktop hero work. Web/PWA only; no Android Studio or Google Play changes, SQL migrations, payment operations or live venue data writes.
+Status: published September 15, 2026 following explicit approval. Includes the previously pending compact desktop hero work. Web/PWA only; no Android Studio or Google Play changes, SQL migrations, payment operations or live venue data writes.
+
+## Production release
+
+- Application commit `dfa899e151a19386df95b78a6e5489ffbed4fb3d`, pushed to `main`.
+- [Firebase deployment run 34972023664](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/34972023664), job `104390361882`: successful, including automated tests, production build and live deployment.
+- Public `/` and `/player/community` returned HTTP 200 with the expected new entry `/assets/index-D5qAWSDj.js` and stylesheet `/assets/index-CtggEAXE.css`.
+- Entry JavaScript, stylesheet, `VenueCommunity-BNo_JkW1.js`, `GroupManage-mxFeDGBn.js` and `GroupDetail-BA7ZarTW.js` returned HTTP 200 and matched the tested local build byte-for-byte (SHA-256).
+- `/manifest.json` and `/sw.js` returned HTTP 200 and matched local content after Windows/Linux line-ending normalization. Manifest display is `standalone`; service worker retains no-store/no-cache/revalidation headers.
+- Existing web/PWA sessions should refresh or reopen to load the new app entry. This verifies release delivery, not authenticated live transactions or a physical phone keyboard.
 
 ## Changes
 
