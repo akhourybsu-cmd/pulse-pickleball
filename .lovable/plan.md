@@ -1,77 +1,33 @@
-# Unified League Design System
+# Fix guest match submission
 
-Bring `PlayerLeagues`, `PlayerLeagueDetail`, and `AdminLeagueDetail` under one visual language so a player and an organizer feel like they're inside the same product — from the league list, through the detail page, into the management console.
+## Short answer on writing changes
 
-## Direction
+Yes — I can still write and change app code normally. What I cannot do right now is touch your database directly: the saved connection password is rejected ("password authentication failed"), and the built-in database tools still point at the retired Lovable Cloud instance.
 
-Adopt **Emerald Prestige** (the admin theme you already approved) as the single league identity. The admin surface stays visually anchored; the player pages get retrofitted to match. Both surfaces render correctly in **light and dark app themes**.
+## What I confirmed about guest matches
 
-- Colors: emerald `#0D7A5F` + deep `#064E3B`, gold accent `#C9A84C`, cream text `#F5F0E0` on dark / navy ink `#0A2A20` on light.
-- Type: Bebas Neue for page titles + big numerals; Barlow (semibold) for nav, chips, and body labels; Inter stays for long-form paragraphs.
-- Motifs: gold hairline separators, diagonal court-line texture on heroes, scoreboard-style KPI blocks.
+Submitting a match with a guest does this, in order:
 
-## Scope
+1. Create the match record.
+2. Read your saved guests to reuse a matching name.
+3. Create any missing guest.
+4. Add all players (real and guest) to the match.
 
-### 1. Promote `.league-admin` → `.league-scope` (shared token layer)
-`src/index.css`
-- Rename the scope from `.league-admin` to `.league-scope`. Keep every token (`--lg-*`) and helper class (`.lg-card`, `.lg-hero-gradient`, `.lg-court-lines`, `.lg-num`, `.font-display`).
-- Add a **light-mode variant**: `.league-scope.league-scope--light` swaps `--background`, `--card`, `--foreground`, `--border`, `--muted-foreground` to a cream-on-emerald-ink palette (bg `#F5F0E0`, card `#FFFFFF`, ink `#0A2A20`, border `hsl(165 30% 82%)`, muted `hsl(165 20% 40%)`). Emerald + gold accents unchanged so brand reads the same.
-- Player pages: use the light variant when the app is in light mode, dark variant when dark. Admin can stay dark-locked (organizer console reads best on dark) OR follow theme — I'll follow theme for consistency.
-- Detect theme via `next-themes` `useTheme()` and toggle the modifier class on the outer wrapper.
+Steps 2 and 3 both touch the guest table — and on the migrated backend every signed-in read or write of that table takes 6–9 seconds and frequently times out, even though it holds only 39 guests. Anonymous reads of the same table are instant. So a match with a guest either hangs or fails, usually after the match row has already been created, which leaves a half-saved match behind.
 
-### 2. Rebuild `PlayerLeagues` hero + cards
-`src/pages/player/PlayerLeagues.tsx`
-- Wrap the page in `<div className="league-scope ...">`.
-- Hero: replace the navy `#0B171F` gradient with `.lg-hero-gradient` + `.lg-court-lines`. Eyebrow chip becomes emerald/gold. Title uses `.font-display` (Bebas). "My Leagues" reads as a scoreboard title.
-- Primary CTA (Create): swap PULSE-green button for `.lg-btn-primary` — emerald fill, gold hover ring. Secondary (Join): outline with gold border.
-- League row cards: replace `bg-card` + `meta.stripe` colored bars with `.lg-card` (emerald surface, gold inset hairline). The league-type stripe becomes a thin gold left-bar for the league you own/manage, emerald for player-role. Type label uses Barlow uppercase tracking.
-- Discover section: same card treatment, slightly desaturated (`.lg-card` with 60% opacity).
+The exact database rule causing that cost is not yet confirmed — a per-row security rule on the guest table is the leading suspect, but an insert being equally slow also points at a trigger or an invalid index. Confirming it is the first step, not an assumption.
 
-### 3. Rebuild `PlayerLeagueDetail` to mirror admin
-`src/pages/player/PlayerLeagueDetail.tsx`
-- Wrap in `.league-scope`.
-- Hero: same `.lg-hero-gradient` + `.lg-court-lines` + gold hairline used on admin. Reuse the exact meta chip / status pill treatment. Add a **"Managed by {name}"** row (already exists on admin — pull it here too) so players know who's running the league.
-- Add a **player-scoped KPI strip** below hero title: `Season` · `Your record` · `Position` (ladder) or `Standing` (others) · `Upcoming`. Same `HeroStat` component visual (Bebas numeral over gold uppercase label).
-- Section headers: switch from lowercase `text-muted-foreground` to gold uppercase Barlow tracking labels with a gold underline hairline (matches admin's tab header treatment).
-- Match rows + standings tables: emerald borders, gold accent on winners, `.lg-num` for scores.
+## Plan
 
-### 4. Small shared primitives
-`src/components/leagues/_shared.tsx` (new — mirror of `admin/leagues/_shared.tsx`, or move the shared bits up)
-- Extract `LeagueHero`, `LeagueHeroStat`, `LeagueSectionHeader`, `LeagueMetaChip`, `StatusPill` from admin so both player + admin call the same component. This is the mechanism that keeps them cohesive over time — one component, one look.
-
-### 5. Admin console adjustments
-`src/pages/admin/AdminLeagueDetail.tsx`
-- Rename class from `league-admin` → `league-scope`. Update all references in `_shared.tsx`, `LeagueManageNav.tsx`, `index.css`.
-- Consume the extracted `LeagueHero` primitive so admin stops carrying a duplicate implementation.
-
-### 6. Light-mode contrast pass
-For every `.lg-*` helper and every custom color used in components:
-- Verify text-on-emerald and text-on-cream pairs hit WCAG AA (4.5:1 for body, 3:1 for large).
-- Gold `#C9A84C` on cream `#F5F0E0` fails contrast — use gold only on dark surfaces; on light surfaces switch the eyebrow to `--lg-emerald-deep` `#064E3B` on cream, keeping gold reserved for accent hairlines/icons.
-- Muted text on light: use `hsl(165 20% 35%)` (not the dim cream token, which is dark-mode only).
-
-## Non-goals
-
-- No changes to league business logic, RPCs, or data flow.
-- No changes to tab bodies (Members/Ladder/Matches/etc.) beyond inheriting the new tokens — those already live inside `.league-admin` so the rename picks them up for free.
-- Not restyling `JoinLeagueByCode` public teaser or `CreateLeagueDialog` in this pass (can follow up).
+1. **Regain database access.** Reset the database password in your Supabase project (Project Settings → Database → Database password) and paste me the full connection string. Everything below then happens end to end from here. If you prefer not to, I hand you the SQL and you run it.
+2. **Confirm the cause.** Run the timing/plan diagnostics against the guest table as a signed-in role: list its security rules, check for invalid indexes, look for triggers, and read the query plan that shows where the seconds go.
+3. **Apply the targeted database fix.** Depending on what step 2 shows, that is one of: replacing the expensive per-row rule with a fast helper-function version, adding the missing index the rule depends on, rebuilding an invalid index, or removing/repairing a slow trigger. Then re-time the same reads and writes and confirm they are sub-100ms.
+4. **Make guest submission resilient in the app.** Independent of the database fix: resolve/create guests *before* creating the match row so a failure can't leave an orphan match, and roll back the match if adding players fails. Surface a clear message instead of a silent spinner.
+5. **Verify on the live site.** Sign in as a throwaway test account on pulsepb.com, submit a doubles match with one new guest and one existing guest, confirm both resolve to the right guest records and the match appears with correct names. Remove the test data afterwards.
 
 ## Technical notes
 
-```text
-league-scope (shared class, token layer)
-├── .lg-hero-gradient    ─ emerald→deep radial + gold sheen
-├── .lg-court-lines      ─ 45° cream hairlines @ 6% opacity
-├── .lg-card             ─ surface + gold inset shadow + emerald border
-├── .lg-num              ─ Bebas Neue tabular
-├── .font-display        ─ Bebas Neue uppercase
-└── .league-scope--light ─ light mode token overrides (cream bg, ink text)
-
-Consumers:
-├─ PlayerLeagues.tsx           (list + discover)
-├─ PlayerLeagueDetail.tsx      (player view of one league)
-├─ AdminLeagueDetail.tsx       (organizer console) — already consumes it
-└─ components/leagues/_shared  (LeagueHero, HeroStat, SectionHeader, StatusPill)
-```
-
-Approve and I'll ship it in one pass; if you want to keep the player pages on a lighter/less-editorial variant, say so and I'll dial back the Bebas display type on the player side while keeping the emerald+gold palette.
+- Guest resolution lives in `src/components/match-wizard/MatchWizardContainer.tsx` (`handleSubmit`, steps 2–4): a `guest_players` select filtered on `created_by`, then a batch insert, then `match_participants`.
+- Step 4 reorders that to: resolve guests → insert `matches` → insert `match_participants`, with a compensating delete of the match row on participant failure.
+- The diagnostic queries already drafted live in `supabase/diagnostics/guest-players-timeout.sql`.
+- Separate, already-known issue not addressed here: this project's Lovable preview binding still points at the old backend, so preview-based testing of signed-in flows isn't reliable; live-site testing is used instead.
