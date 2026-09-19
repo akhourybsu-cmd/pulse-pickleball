@@ -1,9 +1,14 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { validateProductionSupabase } from "./scripts/validate-supabase-config.mjs";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ command, mode }) => {
+  if (command === "build" && mode === "production") {
+    validateProductionSupabase(loadEnv(mode, process.cwd(), "VITE_SUPABASE_"));
+  }
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -37,4 +42,5 @@ export default defineConfig(({ mode }) => ({
   }
 
 
-}));
+  };
+});
