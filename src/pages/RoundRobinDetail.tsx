@@ -100,6 +100,7 @@ import { roundProgress } from "@/lib/roundRobin/roundProgress";
 
 
 import { EventTabs } from "@/components/round-robin/EventTabs";
+import { persistRosterAdditions } from "@/lib/roundRobin/persistRosterAdditions";
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -1182,7 +1183,7 @@ export default function RoundRobinDetail() {
         player_id: input.playerId,
         guest_player_id: input.guestPlayerId ?? null,
         guest_name: input.guestName ?? existing?.guest_name ?? null,
-        status: "active",
+        status: "active" as const,
       }));
 
     try {
@@ -1190,13 +1191,9 @@ export default function RoundRobinDetail() {
         actionable.map(({ input }) => input),
       );
 
-      // One upsert statement makes a mixed batch of new players and returning
-      // dropouts all-or-nothing. A policy or identity failure cannot leave
-      // only half of the selected roster active.
-      const { error: rosterError } = await supabase
-        .from("round_robin_players")
-        .upsert(rosterUpserts as never, { onConflict: "id" });
-      if (rosterError) throw rosterError;
+      // New arrivals use one bulk insert. Batches containing returning players
+      // retain one upsert so a failure cannot leave half the selection active.
+      await persistRosterAdditions(supabase, rosterUpserts, reactivationCount > 0);
 
       const auditPlayers = actionable.map(({ input, existing }) => ({
         player_id: input.playerId,
