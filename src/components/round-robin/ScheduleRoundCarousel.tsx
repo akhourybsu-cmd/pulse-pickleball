@@ -6,7 +6,8 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import "./event.css";
 
 interface ScheduleRoundCarouselProps {
   totalRounds: number;
@@ -24,6 +25,7 @@ export function ScheduleRoundCarousel({
 }: ScheduleRoundCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const reducedMotion = useReducedMotion();
 
   // Track current slide
   useEffect(() => {
@@ -45,35 +47,35 @@ export function ScheduleRoundCarousel({
   useEffect(() => {
     if (carouselApi && currentRound && currentRound > 0) {
       // Scroll to current round (0-indexed)
-      carouselApi.scrollTo(currentRound - 1);
+      carouselApi.scrollTo(currentRound - 1, !!reducedMotion);
     }
-  }, [carouselApi, currentRound]);
+  }, [carouselApi, currentRound, reducedMotion]);
 
   if (totalRounds === 0) return null;
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: reducedMotion ? 0 : 5 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="space-y-4"
     >
       {/* Compact Round selector with optional inline action (e.g. Edit schedule) */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1 px-1 py-1 rounded-full bg-card border border-border/60 shadow-sm">
+      <div className="rr-round-toolbar">
+        <div className="rr-round-switcher">
           <button
-            onClick={() => carouselApi?.scrollPrev()}
+            onClick={() => carouselApi?.scrollPrev(!!reducedMotion)}
             disabled={currentSlide === 0}
             className="p-1.5 rounded-full hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Previous round"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-semibold text-foreground px-2 min-w-[110px] text-center">
+          <span className="text-sm font-semibold text-foreground px-2 min-w-[110px] text-center" aria-live="polite" aria-atomic="true">
             Round {currentSlide + 1} <span className="text-muted-foreground font-normal">of {totalRounds}</span>
           </span>
           <button
-            onClick={() => carouselApi?.scrollNext()}
+            onClick={() => carouselApi?.scrollNext(!!reducedMotion)}
             disabled={currentSlide === totalRounds - 1}
             className="p-1.5 rounded-full hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Next round"
@@ -90,11 +92,11 @@ export function ScheduleRoundCarousel({
       <Carousel
         setApi={setCarouselApi}
         opts={{ align: "start", loop: false }}
-        className="w-full"
+        className="rr-schedule-carousel w-full"
       >
         <CarouselContent className="-ml-0">
           {Array.from({ length: totalRounds }, (_, i) => i + 1).map((roundNo) => (
-            <CarouselItem key={roundNo} className="pl-0">
+            <CarouselItem key={roundNo} className="pl-0" aria-label={`Round ${roundNo}`} aria-hidden={roundNo !== currentSlide + 1} {...(roundNo !== currentSlide + 1 ? { inert: "" } : {})}>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

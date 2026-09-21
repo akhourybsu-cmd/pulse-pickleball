@@ -3,7 +3,7 @@ import {
   ClipboardList, CalendarClock, MapPin, CalendarDays, Trophy,
   ListChecks,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDateEST, formatTime12Hour } from "@/lib/utils";
 
 /**
  * Desktop-only sidebar cards for the Round Robin management console.
@@ -74,7 +74,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
       {/* Setup progress */}
       <SidebarCard icon={ListChecks} title="Setup progress">
         <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-          Complete the steps below to generate your schedule.
+          {props.status === "draft" ? "Get everything ready for the first serve." : "Your event is set up. Manage play from the schedule."}
         </p>
         <ol className="space-y-2.5">
           {steps.map((s) => (
@@ -130,7 +130,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
             className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             <Pencil className="w-4 h-4" />
-            Edit Event
+            Edit schedule mode
           </button>
           <button
             type="button"
@@ -145,7 +145,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
       </SidebarCard>
 
       {/* Status / info */}
-      <SidebarCard>
+      {(props.allowGuests || !props.ratingEligible) && <SidebarCard>
         <div className="space-y-3">
           {props.allowGuests && (
             <StatusRow
@@ -162,7 +162,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
             />
           )}
         </div>
-      </SidebarCard>
+      </SidebarCard>}
     </div>
   );
 }
@@ -198,12 +198,12 @@ export function RRRightSidebar(props: RRSidebarProps) {
           onClick={props.onGoToPlayers}
           className="w-full mt-3 h-10 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted/50 active:scale-[0.98] transition-all"
         >
-          Manage Players
+          View players
         </button>
       </SidebarCard>
 
       {/* Next steps */}
-      <SidebarCard icon={ClipboardList} title="Next steps">
+      {props.status === "draft" && <SidebarCard icon={ClipboardList} title="Next steps">
         <ol className="space-y-3">
           <NextStep
             icon={UserPlus}
@@ -226,7 +226,7 @@ export function RRRightSidebar(props: RRSidebarProps) {
             done={props.status !== "draft" && props.hasSchedule}
           />
         </ol>
-      </SidebarCard>
+      </SidebarCard>}
 
       {/* Event details */}
       <SidebarCard icon={ClipboardList} title="Event details">
@@ -235,10 +235,10 @@ export function RRRightSidebar(props: RRSidebarProps) {
             <DetailRow icon={MapPin} value={props.location} />
           )}
           {props.startTime && (
-            <DetailRow icon={CalendarClock} value={props.startTime} />
+            <DetailRow icon={CalendarClock} value={formatTime12Hour(props.startTime)} />
           )}
           {props.date && (
-            <DetailRow icon={CalendarDays} value={props.date} />
+            <DetailRow icon={CalendarDays} value={formatDateEST(props.date, "MMM d, yyyy")} />
           )}
           {props.format && (
             <DetailRow icon={Trophy} value={`Format: ${props.format}`} />

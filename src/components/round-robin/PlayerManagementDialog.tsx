@@ -493,6 +493,7 @@ export function PlayerManagementDialog({
             <div className="space-y-2">
               <Label>Player to Add</Label>
               <PlayerPickerSheet
+                contentClassName="rr-event-picker"
                 mode="multi"
                 allowGuest
                 selectedPlayers={addPicks}
@@ -740,6 +741,7 @@ export function PlayerManagementDialog({
             <div className="space-y-2">
               <Label>New Player (substitute)</Label>
               <PlayerPickerSheet
+                contentClassName="rr-event-picker"
                 mode="single"
                 allowGuest
                 selectedPlayers={substituteNewPick ? [substituteNewPick] : []}

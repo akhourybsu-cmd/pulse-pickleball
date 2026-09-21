@@ -3,11 +3,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
+import { Calendar, Trophy, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
 
@@ -15,8 +15,10 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
-import { motion } from "framer-motion";
-import { formatDateEST, formatTime12Hour } from "@/lib/utils";
+import { motion, MotionConfig } from "framer-motion";
+import { EventTabs } from "./EventTabs";
+import { RoundRobinHostHero } from "./RoundRobinHostHero";
+import { PlayerEventBriefing } from "./PlayerEventBriefing";
 import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
 import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import {
@@ -47,6 +49,9 @@ interface Event {
   status: "draft" | "live" | "completed" | "voided";
   rating_eligible: boolean;
   rating_type: string;
+  format?: string;
+  allow_guests?: boolean;
+  voided?: boolean;
 }
 
 interface Player {
@@ -314,33 +319,6 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       .slice(0, 2);
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === "live") {
-      return (
-        <Badge className="bg-primary text-primary-foreground shadow-[0_0_12px_rgba(197,232,108,0.5)] animate-pulse">
-          <span className="mr-2 relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-          </span>
-          LIVE
-        </Badge>
-      );
-    }
-    if (status === "completed") {
-      return (
-        <Badge className="bg-secondary text-secondary-foreground">
-          <Trophy className="h-3 w-3 mr-1" />
-          COMPLETED
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="text-muted-foreground">
-        DRAFT
-      </Badge>
-    );
-  };
-
   const filteredPlayers = players.filter((p) =>
     (p.profiles?.display_name || p.profiles?.full_name || p.guest_display_name || "")
       .toLowerCase()
@@ -389,11 +367,17 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     );
   }
 
+  const myIds = new Set(userId ? [userId, ...players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : []);
+  const myMatch = schedule.find(m => m.round_no === (event.current_round || 1) && [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id, m.a1_guest_id, m.a2_guest_id, m.b1_guest_id, m.b2_guest_id].some(id => id && myIds.has(id)));
+  const onTeamA = myMatch && [myMatch.a1_player_id, myMatch.a2_player_id, myMatch.a1_guest_id, myMatch.a2_guest_id].some(id => id && myIds.has(id));
+  const myStats = standings.find(row => myIds.has(row.playerId));
+
   return (
-    <div className="min-h-screen bg-background">
+    <MotionConfig reducedMotion="user">
+    <div className="rr-event-page">
       {/* PULSE Player Header — matches the sticky top bar used across player pages */}
       <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+        <div className="rr-event-width flex items-center justify-between h-[64px] sm:h-[72px]">
           <div className="flex items-center gap-2 min-w-0">
             <Button
               variant="ghost"
@@ -420,127 +404,34 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       </header>
 
 
-      {/* Premium Hero Banner */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        className="relative overflow-hidden border-b border-border/50"
-      >
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/10" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
-        <div className="container relative mx-auto py-5 px-4 md:py-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            {/* Left: Title and details */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="space-y-3 flex-1 min-w-0"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 flex-shrink-0">
-                  <Trophy className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground break-words">
-                    {event.name}
-                  </h1>
-
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="h-1 w-24 mt-2 origin-left bg-gradient-to-r from-primary to-primary/50 rounded-full"
-                  />
-                </div>
-              </div>
-
-              {/* Info pills */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>{formatDateEST(event.date, "EEEE, MMMM d, yyyy")}</span>
-                </div>
-                {event.start_time && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <span>{formatTime12Hour(event.start_time)}</span>
-                  </div>
-                )}
-                {event.location && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span>{event.location}</span>
-                  </div>
-                )}
-              </div>
-
-              {event.notes && (
-                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                  {event.notes}
-                </p>
-              )}
-
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span className="font-medium text-foreground">{players.length}</span> players
-                </div>
-                <div className="h-4 w-px bg-border" />
-                <span className="text-muted-foreground">Doubles Format</span>
-              </div>
-            </motion.div>
-            
-            {/* Right: Status badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {getStatusBadge(event.status)}
-            </motion.div>
-          </div>
-        </div>
-      </motion.div>
+      <RoundRobinHostHero
+        name={event.name} date={event.date} startTime={event.start_time} status={event.status}
+        voided={event.voided} ratingEligible={event.rating_eligible} allowGuests={event.allow_guests}
+        format={event.format} numRounds={event.num_rounds} numCourts={event.num_courts}
+        playerCount={players.filter(p => p.registration_status).length} hasSchedule={schedule.length > 0}
+        eventId={event.id} location={event.location}
+      />
 
       {/* Main Content Area */}
-      <div className="container mx-auto px-4 py-8">
+      <main className="rr-event-width rr-event-main rr-player-layout" aria-label="Player event view">
+        <div className="rr-player-info">
+          <PlayerEventBriefing status={event.voided ? "voided" : event.status} round={event.current_round || 1}
+            court={myMatch && !myMatch.is_bye ? myMatch.court_no : undefined} resting={myMatch?.is_bye}
+            completedMatch={myMatch?.completed} wins={myStats?.wins} gamesPlayed={myStats?.gamesPlayed}
+            team={myMatch ? (onTeamA ? [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')] : [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')]).join(' & ') : undefined}
+            opponents={myMatch ? (onTeamA ? [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')] : [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')]).join(' & ') : undefined}
+          />
+          {event.notes && <p className="rr-event-notes">{event.notes}</p>}
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ duration: 0.26 }}
+          className="rr-host-workspace"
         >
           <Tabs defaultValue="schedule" className="space-y-6">
-            {/* Premium Tab List */}
-            <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 p-1 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm">
-              <TabsTrigger 
-                value="schedule" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule
-              </TabsTrigger>
-              <TabsTrigger 
-                value="players"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Players
-              </TabsTrigger>
-              <TabsTrigger 
-                value="standings"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
-              >
-                <Trophy className="h-4 w-4 mr-2" />
-                Standings
-              </TabsTrigger>
-            </TabsList>
+            <EventTabs playerCount={players.filter(p => p.registration_status).length} />
 
-            {/* Schedule Tab */}
             <TabsContent value="schedule" className="space-y-4">
               {Object.keys(groupedSchedule).length === 0 ? (
                 <Card className="border-dashed">
@@ -562,19 +453,19 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                     const isCurrentRound = event.current_round === roundNo;
                     
                     return (
-                      <Card className={`transition-all duration-300 ${isCurrentRound ? "border-primary shadow-[0_0_20px_rgba(197,232,108,0.15)]" : "border-border/50"}`}>
+                      <Card className={`transition-all duration-300 ${isCurrentRound ? "border-primary shadow-[0_0_20px_hsl(var(--primary)/0.15)]" : "border-border/50"}`}>
                         <CardHeader className="pb-4">
                           <CardTitle className="flex items-center justify-between">
                             <span className="text-xl">Round {roundNo}</span>
                             {isCurrentRound && event.status === "live" && (
-                              <Badge className="bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]">
+                              <Badge className="bg-primary text-primary-foreground shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
                                 Current Round
                               </Badge>
                             )}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-3">
+                          <div className="rr-court-grid">
                             {matches.map((match, idx) => {
                               const a1Id = match.a1_player_id ?? match.a1_guest_id;
                               const b1Id = match.b1_player_id ?? match.b1_guest_id;
@@ -590,7 +481,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: idx * 0.05 }}
-                                  className={`p-4 rounded-xl border transition-all ${
+                                  className={`p-4 rounded-xl border transition-all ${match.id === myMatch?.id ? "rr-your-match" : ""} ${
                                     match.completed 
                                       ? "bg-gradient-to-r from-card to-muted/30 border-border" 
                                       : "bg-card border-border/50 hover:border-border"
@@ -619,7 +510,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                         </Badge>
                                         {!match.completed && (
                                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                            Upcoming
+                                            {isCurrentRound && event.status === "live" ? "On court" : "Upcoming"}
                                           </span>
                                         )}
                                       </div>
@@ -753,7 +644,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <Table>
+                  <Table className="rr-event-table">
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableHead className="w-16 text-center font-semibold">Rank</TableHead>
@@ -764,8 +655,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                         <TableHead className="text-center font-semibold">
                           <span className="text-destructive">L</span>
                         </TableHead>
-                        <TableHead className="text-center font-semibold">PF</TableHead>
-                        <TableHead className="text-center font-semibold">PA</TableHead>
+                        <TableHead className="hidden sm:table-cell text-center font-semibold">PF</TableHead>
+                        <TableHead className="hidden sm:table-cell text-center font-semibold">PA</TableHead>
                         <TableHead className="text-center font-semibold">+/-</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -805,8 +696,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                             </TableCell>
                             <TableCell className="text-center font-semibold text-primary">{row.wins}</TableCell>
                             <TableCell className="text-center font-semibold text-destructive">{row.losses}</TableCell>
-                            <TableCell className="text-center text-muted-foreground">{row.pointsFor}</TableCell>
-                            <TableCell className="text-center text-muted-foreground">{row.pointsAgainst}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-center text-muted-foreground">{row.pointsFor}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-center text-muted-foreground">{row.pointsAgainst}</TableCell>
                             <TableCell className={`text-center font-semibold ${diff > 0 ? "text-primary" : diff < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {diff > 0 ? "+" : ""}{diff}
                             </TableCell>
@@ -820,7 +711,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
             </TabsContent>
           </Tabs>
         </motion.div>
-      </div>
+      </main>
     </div>
+    </MotionConfig>
   );
 }
