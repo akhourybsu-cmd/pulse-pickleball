@@ -44,6 +44,7 @@ import { Send } from "lucide-react";
 import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
 import { RoundRobinTopBar } from "@/components/round-robin/RoundRobinTopBar";
 import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero";
+import { OrganizerCommandCenter } from "@/components/round-robin/OrganizerCommandCenter";
 import { HostControlsMenu } from "@/components/round-robin/HostControlsMenu";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
@@ -2213,6 +2214,37 @@ export default function RoundRobinDetail() {
           ) : undefined
         }
       />
+
+      {isOrganizer && hasSchedule && (
+        <div className="rr-event-width py-3">
+          <OrganizerCommandCenter
+            name={event.name}
+            status={event.status}
+            voided={event.voided}
+            currentRound={currentRound}
+            totalRounds={event.num_rounds}
+            canStart={canGenerate}
+            matches={schedule.map(match => ({
+              ...match,
+              team1: (['a1', 'a2'] as const).filter(seat => match[`${seat}_player_id`] || match[`${seat}_guest_id`]).map(seat => getSeatName(match, seat)),
+              team2: (['b1', 'b2'] as const).filter(seat => match[`${seat}_player_id`] || match[`${seat}_guest_id`]).map(seat => getSeatName(match, seat)),
+            }))}
+            scores={scores}
+            savingScore={savingScore}
+            busy={closingRound || !!savingScore}
+            loadError={loadError}
+            onRefresh={fetchEventDetails}
+            onScoreChange={handleScoreChange}
+            onSaveScore={async matchId => {
+              const match = schedule.find(row => row.id === matchId);
+              if (match) await handleSaveScore(match);
+            }}
+            onStart={handleStartEvent}
+            onAdvance={() => handleCloseRound(currentRound)}
+            onComplete={handleCompleteEvent}
+          />
+        </div>
+      )}
 
       {isEditMode && (
         <div className="bg-warning/20 border-b border-warning">
