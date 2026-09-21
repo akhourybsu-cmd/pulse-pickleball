@@ -5,7 +5,7 @@ import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
 import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { RRLeftSidebar, RRRightSidebar } from "@/components/roundrobin/RoundRobinManageSidebars";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, UserMinus, Calendar, MapPin, Zap, RefreshCw, Medal, Clock, ShieldCheck, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
 
@@ -98,6 +98,8 @@ import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchSchedule
 import { useAuthState } from "@/hooks/useAuthState";
 import { roundProgress } from "@/lib/roundRobin/roundProgress";
 
+
+import { EventTabs } from "@/components/round-robin/EventTabs";
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -2183,7 +2185,8 @@ export default function RoundRobinDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <MotionConfig reducedMotion="user">
+    <div className="rr-event-page">
       {/* Slim top bar — back · "Round Robin" · share · overflow.
           Replaces the global PULSE/Bell/Profile/Theme/Sign-out toolbar
           on this route so the host has a focused command-center surface
@@ -2269,15 +2272,15 @@ export default function RoundRobinDetail() {
             </div>
           )}
 
-      <main className="container max-w-[1280px] lg:max-w-[1536px] mx-auto px-4 pt-3 pb-6">
+      <main className="rr-event-width rr-event-main" aria-label="Manage event">
         {/* Desktop management console: 3-column grid at lg+.
             On mobile the grid classes are inert (block), the sidebars
             are display:none, and the center column renders exactly the
             existing single-column flow — mobile is unchanged. */}
-        <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)_320px] lg:gap-6 lg:items-start">
+        <div className={cn("rr-host-layout", isOrganizer && "has-sidebars")}>
           {/* LEFT — setup progress, quick actions, status (desktop only) */}
           {isOrganizer && (
-            <aside className="hidden lg:block">
+            <aside className="rr-host-aside rr-host-aside-left" aria-label="Event setup and quick actions">
               <RRLeftSidebar
                 playerCount={activeRoster.length}
                 hasSchedule={hasSchedule}
@@ -2296,8 +2299,8 @@ export default function RoundRobinDetail() {
             </aside>
           )}
 
-          {/* CENTER — primary working area (existing flow, untouched) */}
-          <div className="min-w-0">
+          {/* Primary event workspace */}
+          <div className="rr-host-workspace">
         {isOrganizer && isEditMode && (
           <div className="mb-6">
             <EditModeBanner
@@ -2382,64 +2385,7 @@ export default function RoundRobinDetail() {
 
         <div>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-          {/* Premium tab strip — sliding primary underline indicator.
-              Mirrors the MatchHistory pattern (and PlayerShell's bottom
-              nav) so the visual language carries across the app. The
-              hidden shadcn TabsList stays mounted to satisfy Radix's
-              accessibility tree without rendering its pill chrome. */}
-          {(() => {
-            const tabs: { value: typeof activeTab; label: string; icon: typeof Calendar; count?: number }[] = [
-              { value: "schedule", label: "Schedule", icon: Calendar },
-              { value: "players", label: "Players", icon: Users, count: activeRoster.length },
-              { value: "standings", label: "Standings", icon: Trophy },
-            ];
-            const activeIndex = tabs.findIndex((t) => t.value === activeTab);
-            return (
-              <div className="relative border-b border-border/40 max-w-md mx-auto mb-4">
-                <div className="grid grid-cols-3">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = tab.value === activeTab;
-                    return (
-                      <button
-                        key={tab.value}
-                        type="button"
-                        onClick={() => setActiveTab(tab.value)}
-                        className={cn(
-                          "relative inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors duration-200",
-                          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{tab.label}</span>
-                        {tab.count != null && (
-                          <span className={cn(
-                            "ml-0.5 text-xs font-semibold tabular-nums transition-colors",
-                            isActive ? "text-primary" : "text-muted-foreground/70"
-                          )}>
-                            {tab.count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Sliding underline indicator */}
-                <div
-                  className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
-                  style={{
-                    width: `${100 / tabs.length}%`,
-                    left: `${(100 / tabs.length) * activeIndex}%`,
-                  }}
-                />
-              </div>
-            );
-          })()}
-          <TabsList className="sr-only">
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="players">Players</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-          </TabsList>
+          <EventTabs playerCount={activeRoster.length} />
 
           <TabsContent value="schedule" className="mt-4 space-y-4">
             {!hasSchedule ? (
@@ -2475,8 +2421,7 @@ export default function RoundRobinDetail() {
                           variant="link" 
                           size="sm"
                           onClick={() => {
-                            const playersTab = document.querySelector('[value="players"]') as HTMLElement;
-                            playersTab?.click();
+                            setActiveTab('players');
                           }}
                         >
                           Review players
@@ -2491,7 +2436,8 @@ export default function RoundRobinDetail() {
                 {isOrganizer && event.status === "live" && (
                   <Button 
                     onClick={handleCompleteEvent} 
-                    className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    variant="outline"
+                    className="w-full min-h-11 mb-4 whitespace-normal text-left sm:text-center"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Complete Event & Submit to Match History
@@ -2547,7 +2493,7 @@ export default function RoundRobinDetail() {
                             {isCurrentRound && event.status === 'live' && (
                               <span className="ml-2 inline-flex items-center gap-1 text-primary normal-case font-bold tracking-normal">
                                 <span className="relative flex h-1.5 w-1.5">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                                  <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
                                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
                                 </span>
                                 Active
@@ -2575,7 +2521,7 @@ export default function RoundRobinDetail() {
                             gets clipped. minmax(0,1fr) (what grid-cols-1
                             compiles to) pins the track to the container so the
                             name truncation below can actually kick in. */}
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="rr-court-grid">
                           {courtMatches.map((match, idx) => {
                             const isCompleted = match.team1_score !== null && match.team2_score !== null;
                             const team1Won = isCompleted && match.team1_score! > match.team2_score!;
@@ -2629,6 +2575,7 @@ export default function RoundRobinDetail() {
                                             inputMode="numeric"
                                             className="w-16 h-11 text-center text-lg font-bold tabular-nums ml-1 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
+                                            aria-label={`Court ${match.court_no}, team one score`}
                                             value={scores[match.id]?.team1_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
                                           />
@@ -2663,6 +2610,7 @@ export default function RoundRobinDetail() {
                                             inputMode="numeric"
                                             className="w-16 h-11 text-center text-lg font-bold tabular-nums ml-1 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
+                                            aria-label={`Court ${match.court_no}, team two score`}
                                             value={scores[match.id]?.team2_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
                                           />
@@ -2932,7 +2880,7 @@ export default function RoundRobinDetail() {
 
           {/* RIGHT — roster summary, next steps, event details (desktop only) */}
           {isOrganizer && (
-            <aside className="hidden lg:block">
+            <aside className="rr-host-aside rr-host-aside-right" aria-label="Event progress">
               <RRRightSidebar
                 playerCount={activeRoster.length}
                 hasSchedule={hasSchedule}
@@ -3256,7 +3204,6 @@ export default function RoundRobinDetail() {
         );
       })()}
     </div>
+    </MotionConfig>
   );
 }
-
-

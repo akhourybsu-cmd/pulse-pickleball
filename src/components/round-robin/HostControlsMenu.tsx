@@ -1,5 +1,5 @@
 import {
-  MoreVertical, Settings, Grid3X3, RefreshCw, Monitor, Trash2, ChevronRight,
+  SlidersHorizontal, X, Settings, Grid3X3, RefreshCw, Monitor, Trash2, ChevronRight,
   ArrowLeftRight, ClipboardList, History,
 } from "lucide-react";
 import { useState } from "react";
@@ -12,10 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerDescription, DrawerClose,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import "./event.css";
 
 interface HostControlsMenuProps {
   /** Event status — drives which entries are shown. */
@@ -194,11 +195,11 @@ export function HostControlsMenu({
   const trigger = (
     <Button
       variant="ghost"
-      size="icon"
       aria-label="Host controls"
-      className="h-11 w-11 text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
+      className="rr-control-trigger text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
     >
-      <MoreVertical className="h-5 w-5" />
+      <SlidersHorizontal className="h-4 w-4" />
+      <span>Controls</span>
     </Button>
   );
 
@@ -212,21 +213,23 @@ export function HostControlsMenu({
     return (
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-        <DrawerContent className="max-h-[85vh] border-t border-border/60">
+        <DrawerContent className="rr-event-modal max-h-[calc(100dvh-env(safe-area-inset-top)-16px)] border-t border-border/60">
           {/* Ambient wash so the sheet feels designed, not stock */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.10] to-transparent"
           />
-          <DrawerHeader className="relative text-left pb-2 pt-3">
+          <DrawerHeader className="relative shrink-0 text-left pb-4 pt-3 pr-16">
             <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
               Round Robin
             </div>
             <DrawerTitle className="text-[20px] font-extrabold tracking-[-0.01em]">
               Event controls
             </DrawerTitle>
+            <DrawerDescription>Everything you need to run your event.</DrawerDescription>
+            <DrawerClose className="rr-modal-close" aria-label="Close event controls"><X className="h-5 w-5" /></DrawerClose>
           </DrawerHeader>
-          <div className="relative px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-y-auto">
+          <div className="rr-event-modal-scroll relative px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-y-auto">
             {groups.map((group) => (
               <div key={group.key}>
                 {groupLabel(group.key)}
@@ -259,7 +262,7 @@ export function HostControlsMenu({
                           )}>
                             {e.label}
                           </div>
-                          <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-snug truncate">
+                          <div className="mt-1 text-xs text-muted-foreground leading-relaxed">
                             {e.hint}
                           </div>
                         </div>
@@ -283,7 +286,7 @@ export function HostControlsMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-72 p-1.5 rounded-xl border-border/70 bg-popover/95 backdrop-blur-md shadow-[0_20px_50px_-20px_hsl(var(--foreground)/0.35)]"
+        className="rr-control-menu border-border/70 bg-popover/95 backdrop-blur-md shadow-[0_20px_50px_-20px_hsl(var(--foreground)/0.35)]"
       >
         <DropdownMenuLabel className="px-2 pt-1.5 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">
           Event controls

@@ -74,7 +74,7 @@ export function AuditHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
+      <DialogContent className="rr-event-modal max-w-[calc(100vw-24px)] sm:max-w-3xl max-h-[90dvh] overflow-hidden">
         <PremiumDialogHeader
           icon={FileEdit}
           title="Activity log"
@@ -95,13 +95,13 @@ export function AuditHistoryDialog({
                     key={entry.id}
                     className="border rounded-lg p-4 space-y-3 bg-card"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex-1">
                         <Badge variant={getActionColor(entry.change_type)}>
                           {getActionLabel(entry.change_type)}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <User className="w-4 h-4" />
                           <span>{entry.editor_name || "Unknown"}</span>

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCourtName } from "@/hooks/useCourtName";
+import "./event.css";
 
 interface RoundRobinHostHeroProps {
   name: string;
@@ -161,43 +162,24 @@ export function RoundRobinHostHero({
     ? `${numRounds} ${numRounds === 1 ? "round" : "rounds"} · ${numCourts} ${numCourts === 1 ? "court" : "courts"}`
     : "Schedule not generated";
 
-  const formatLabel = eventFormat
-    ? eventFormat.charAt(0).toUpperCase() + eventFormat.slice(1) + " · Doubles"
-    : "Doubles";
+  const formatLabel = ({ open: "Open", mixed: "Mixed", male: "Men's", female: "Women's" }[eventFormat || ""] || "Doubles");
 
   return (
     <section
       className={cn(
-        "relative overflow-hidden",
-        // Layered wash + hairline base for a sense of place without a box.
-        "bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background",
-        "border-b border-border/50",
+        "rr-event-hero",
         className,
       )}
     >
-      {/* Ambient glow — top-left primary bloom */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
-        style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
-      />
-      {/* Court-line texture — faint diagonal rule, sports-broadcast feel */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
-        }}
-      />
-
-      <div className="relative container max-w-2xl mx-auto px-4 pt-5 pb-4 sm:pt-6 sm:pb-5">
+      <div className="rr-event-width rr-event-identity">
         {/* Status chips first — small, restrained */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
-          {status === "live" ? (
+        <div className="rr-event-status flex items-center gap-1.5 flex-wrap mb-2.5">
+          {voided || status === "voided" ? (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tracking-[0.14em] uppercase">Voided</span>
+          ) : status === "live" ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-[0.14em] uppercase shadow-[0_2px_10px_-2px_hsl(var(--primary)/0.55)]">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-60" />
+                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-60" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
               </span>
               Live
@@ -212,12 +194,7 @@ export function RoundRobinHostHero({
               Draft
             </span>
           )}
-          {voided && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-              Voided
-            </span>
-          )}
-          {ratingEligible ? (
+          {ratingEligible && !voided && status !== "voided" ? (
             <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-primary/25 bg-primary/12 text-primary text-[10px] font-bold tracking-[0.14em] uppercase">
               Rating eligible
             </span>
@@ -233,7 +210,7 @@ export function RoundRobinHostHero({
         </div>
 
         {/* Eyebrow + title — editorial, with an accent rule for weight */}
-        <div className="relative pl-3.5 mb-3.5">
+        <div className="rr-event-title relative pl-3.5 mb-3.5">
           <span
             aria-hidden
             className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
@@ -247,7 +224,7 @@ export function RoundRobinHostHero({
         </div>
 
         {/* Metadata — stat strip reads like a scoreboard instead of icon soup */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="rr-event-metrics grid grid-cols-2 sm:grid-cols-4">
           <StatTile
             icon={Calendar}
             label="When"
@@ -266,13 +243,13 @@ export function RoundRobinHostHero({
           <StatTile
             icon={Trophy}
             label="Format"
-            value={formatLabel.replace(" · Doubles", "")}
+            value={formatLabel}
           />
         </div>
 
 
         {/* Secondary line — schedule state + location, quiet by design */}
-        <div className="mt-2.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] sm:text-[13px] text-muted-foreground">
+        <div className="rr-event-meta mt-2.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] sm:text-[13px] text-muted-foreground">
           <span className="font-medium text-foreground/80">{scheduleStatus}</span>
           {(resolvedLocation || canEditLocation) && (
             <>
@@ -296,7 +273,7 @@ export function RoundRobinHostHero({
 
         {/* Invite-code row — compact, inline. Only when invite-only. */}
         {showInviteCode && (
-          <div className="mt-3 pt-3 border-t border-border/60">
+          <div className="rr-event-invite mt-3 pt-3 border-t border-border/60">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
                 <Lock className="h-4 w-4" />
@@ -340,6 +317,9 @@ export function RoundRobinHostHero({
           </div>
         )}
       </div>
+      <svg className="rr-event-signal" viewBox="0 0 1200 18" preserveAspectRatio="none" fill="none" aria-hidden="true">
+        <path pathLength="1" d="M0 9h550l12-5 10 9 12-12 14 16 12-8h590" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
     </section>
   );
 }
@@ -358,12 +338,12 @@ function StatTile({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+    <div className="rr-event-stat">
       <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         <Icon className="h-3 w-3 text-primary/80" />
         {label}
       </div>
-      <div className="mt-0.5 text-[15px] font-bold tracking-tight text-foreground tabular-nums truncate">
+      <div className="rr-event-stat-value mt-0.5 font-semibold tracking-tight text-foreground tabular-nums">
         {value}
       </div>
     </div>

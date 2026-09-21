@@ -166,7 +166,7 @@ export function ScoreManagementDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rr-event-modal max-w-[calc(100vw-24px)] sm:max-w-[760px] max-h-[90dvh] overflow-y-auto">
           <PremiumDialogHeader
             icon={ClipboardList}
             title="Score corrections"

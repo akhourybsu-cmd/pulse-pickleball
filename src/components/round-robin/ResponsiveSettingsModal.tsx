@@ -3,10 +3,12 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
+  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerClose,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
+import "./event.css";
 
 /**
  * One shell for every Round Robin settings surface.
@@ -64,18 +66,19 @@ export function ResponsiveSettingsModal({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[92vh] border-t border-border/60">
+        <DrawerContent className="rr-event-modal max-h-[calc(100dvh-env(safe-area-inset-top)-16px)] border-t border-border/60">
           {wash}
-          <DrawerHeader className="relative text-left pb-2 pt-3">
+          <DrawerHeader className="relative shrink-0 text-left pb-4 pt-3 pr-16">
             <DrawerTitle asChild><div>{heading}</div></DrawerTitle>
             {description && (
               <DrawerDescription className="text-xs leading-snug">
                 {description}
               </DrawerDescription>
             )}
+            <DrawerClose className="rr-modal-close" aria-label={`Close ${title}`}><X className="h-5 w-5" /></DrawerClose>
           </DrawerHeader>
 
-          <div className="relative flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+          <div className="rr-event-modal-scroll relative flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
             {children}
           </div>
 
@@ -93,17 +96,17 @@ export function ResponsiveSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden rounded-xl border-border/70",
+          "rr-event-modal sm:max-w-[680px] max-h-[90dvh] flex flex-col overflow-hidden border-border/70",
           className,
         )}
       >
         {wash}
-        <DialogHeader className="relative flex-shrink-0 text-left">
+        <DialogHeader className="relative flex-shrink-0 text-left pr-8">
           <DialogTitle asChild><div>{heading}</div></DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <div className="relative flex-1 overflow-y-auto px-1">{children}</div>
+        <div className="rr-event-modal-scroll relative flex-1 overflow-y-auto px-1">{children}</div>
 
         {footer && (
           <div className="relative flex-shrink-0 pt-3 border-t border-border/60">{footer}</div>

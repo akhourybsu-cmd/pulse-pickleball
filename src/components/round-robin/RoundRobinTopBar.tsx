@@ -4,6 +4,7 @@ import { ChevronLeft, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
+import "./event.css";
 
 interface RoundRobinTopBarProps {
   /** Where to go when the back button is pressed. Defaults to in-app history. */
@@ -46,7 +47,7 @@ export function RoundRobinTopBar({
   return (
     <nav
       className={cn(
-        "sticky top-0 z-40 bg-secondary text-secondary-foreground",
+        "rr-event-topbar sticky top-0 z-40 bg-secondary text-secondary-foreground",
         "border-b border-secondary-foreground/10 shadow-[0_4px_20px_-8px_hsl(var(--foreground)/0.35)]",
         "backdrop-blur supports-[backdrop-filter]:bg-secondary/95",
         className,
@@ -57,29 +58,21 @@ export function RoundRobinTopBar({
         aria-hidden
         className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
       />
-      <div className="container max-w-[1280px] mx-auto px-2 sm:px-4 h-[72px] flex items-center gap-1.5 relative">
+      <div className="rr-event-width rr-event-topbar-inner h-[72px] flex items-center gap-1.5 relative">
         {/* Back button — left */}
         <Button
           variant="ghost"
           size="icon"
           onClick={handleBack}
           aria-label="Back"
-          className="h-9 w-9 rounded-full text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
+          className="h-11 w-11 rounded-full text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
 
-        {/* Center branding */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[9px] font-semibold tracking-[0.28em] uppercase text-secondary-foreground/60 mb-0.5">
-            Round Robin by
-          </span>
-          <Logo className="h-7 w-auto text-secondary-foreground" />
+        <div className="flex flex-1 min-w-0 items-center pointer-events-none">
+          <Logo className="h-auto w-full max-w-[116px] text-secondary-foreground" />
         </div>
-
-
-        {/* Spacer to balance the left button */}
-        <div className="flex-1" />
 
         {/* Right actions */}
         {onShare && (
@@ -88,7 +81,7 @@ export function RoundRobinTopBar({
             size="icon"
             onClick={onShare}
             aria-label="Share event"
-            className="h-9 w-9 text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
+            className="h-11 w-11 text-secondary-foreground hover:bg-secondary-foreground/10 flex-shrink-0"
           >
             <Share2 className="h-[18px] w-[18px]" />
           </Button>
