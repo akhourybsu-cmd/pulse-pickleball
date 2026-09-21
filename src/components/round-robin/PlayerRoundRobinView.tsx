@@ -19,6 +19,7 @@ import { motion, MotionConfig } from "framer-motion";
 import { EventTabs } from "./EventTabs";
 import { RoundRobinHostHero } from "./RoundRobinHostHero";
 import { PlayerEventBriefing } from "./PlayerEventBriefing";
+import { playerRoundFocus } from "@/lib/roundRobin/playerRoundFocus";
 import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
 import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import {
@@ -109,9 +110,42 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [activeView, setActiveView] = useState("court");
 
   useEffect(() => {
-    fetchEventData();
+    let disposed = false;
+    let refreshing = false;
+    let queued = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = async () => {
+      if (disposed) return;
+      if (refreshing) { queued = true; return; }
+      refreshing = true;
+      await fetchEventData();
+      refreshing = false;
+      if (queued && !disposed) { queued = false; void refresh(); }
+    };
+    const queueRefresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void refresh(), 180);
+    };
+    void refresh();
+    // Stay on the player's chosen tab as the host posts scores or advances play.
+    const channel = supabase.channel(`rr-player-view-${eventId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_events", filter: `id=eq.${eventId}` }, queueRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_schedule", filter: `event_id=eq.${eventId}` }, queueRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_players", filter: `event_id=eq.${eventId}` }, queueRefresh)
+      .subscribe();
+    const onVisible = () => { if (document.visibilityState === "visible") queueRefresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      void supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [eventId]);
 
   const fetchEventData = async () => {
@@ -368,16 +402,15 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   }
 
   const myIds = new Set(userId ? [userId, ...players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : []);
-  const myMatch = schedule.find(m => m.round_no === (event.current_round || 1) && [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id, m.a1_guest_id, m.a2_guest_id, m.b1_guest_id, m.b2_guest_id].some(id => id && myIds.has(id)));
-  const onTeamA = myMatch && [myMatch.a1_player_id, myMatch.a2_player_id, myMatch.a1_guest_id, myMatch.a2_guest_id].some(id => id && myIds.has(id));
+  const { current: myMatch, next: nextMatch, onTeamA, resting } = playerRoundFocus(schedule, myIds, event.current_round || 1);
   const myStats = standings.find(row => myIds.has(row.playerId));
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="rr-event-page">
+    <div className="rr-event-page rr-player-page">
       {/* PULSE Player Header — matches the sticky top bar used across player pages */}
       <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
-        <div className="rr-event-width flex items-center justify-between h-[64px] sm:h-[72px]">
+        <div className="rr-event-width rr-player-topbar flex items-center justify-between h-[64px] sm:h-[72px]">
           <div className="flex items-center gap-2 min-w-0">
             <Button
               variant="ghost"
@@ -405,6 +438,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
 
       <RoundRobinHostHero
+        compact
+        className="rr-player-identity"
         name={event.name} date={event.date} startTime={event.start_time} status={event.status}
         voided={event.voided} ratingEligible={event.rating_eligible} allowGuests={event.allow_guests}
         format={event.format} numRounds={event.num_rounds} numCourts={event.num_courts}
@@ -413,24 +448,28 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       />
 
       {/* Main Content Area */}
-      <main className="rr-event-width rr-event-main rr-player-layout" aria-label="Player event view">
-        <div className="rr-player-info">
-          <PlayerEventBriefing status={event.voided ? "voided" : event.status} round={event.current_round || 1}
-            court={myMatch && !myMatch.is_bye ? myMatch.court_no : undefined} resting={myMatch?.is_bye}
-            completedMatch={myMatch?.completed} wins={myStats?.wins} gamesPlayed={myStats?.gamesPlayed}
-            team={myMatch ? (onTeamA ? [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')] : [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')]).join(' & ') : undefined}
-            opponents={myMatch ? (onTeamA ? [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')] : [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')]).join(' & ') : undefined}
-          />
-          {event.notes && <p className="rr-event-notes">{event.notes}</p>}
-        </div>
+      <main className="rr-event-width rr-event-main rr-player-main" aria-label="Player event view">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.26 }}
-          className="rr-host-workspace"
+          className="rr-host-workspace rr-player-workspace"
         >
-          <Tabs defaultValue="schedule" className="space-y-6">
-            <EventTabs playerCount={players.filter(p => p.registration_status).length} />
+          <Tabs value={activeView} onValueChange={setActiveView} className="rr-player-view-tabs">
+            <EventTabs playerHome playerCount={players.filter(p => p.registration_status).length} />
+
+            <TabsContent value="court" className="rr-courtside-panel">
+              <PlayerEventBriefing status={event.voided ? "voided" : event.status} round={event.current_round || 1} totalRounds={event.num_rounds}
+                court={myMatch && !resting ? myMatch.court_no : undefined} resting={resting}
+                completedMatch={myMatch?.completed} wins={myStats?.wins} gamesPlayed={myStats?.gamesPlayed}
+                team={myMatch ? (onTeamA ? [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')] : [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')]) : undefined}
+                opponents={myMatch ? (onTeamA ? [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')] : [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')]) : undefined}
+                score={myMatch ? (onTeamA ? [myMatch.team_a_score, myMatch.team_b_score] : [myMatch.team_b_score, myMatch.team_a_score]) : undefined}
+                next={nextMatch ? { round: nextMatch.round_no, court: nextMatch.court_no } : undefined}
+                onExplore={setActiveView}
+              />
+              {event.notes && <details className="rr-host-note"><summary>From your host</summary><p>{event.notes}</p></details>}
+            </TabsContent>
 
             <TabsContent value="schedule" className="space-y-4">
               {Object.keys(groupedSchedule).length === 0 ? (

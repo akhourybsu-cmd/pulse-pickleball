@@ -22,6 +22,7 @@ interface Props {
 
 export function WizardStepMenu({ steps, current, furthest, isStepValid, onSelect, disabled }: Props) {
   const [open, setOpen] = useState(false);
+  const completed = steps.filter((step, index) => index < furthest && isStepValid(step.id)).length;
   const menu = (mobile = false) => (
     <nav aria-label={mobile ? "All creation steps" : "Creation steps"}>
       <ol className="space-y-1">
@@ -50,7 +51,10 @@ export function WizardStepMenu({ steps, current, furthest, isStepValid, onSelect
   );
   return <>
     <aside className="rr-step-sidebar">
-      <p className="rr-eyebrow mb-4 px-3">Your event, step by step</p>
+      <div className="rr-journey-progress">
+        <div><span className="rr-eyebrow">Build your event</span><strong>{completed}<span> / {steps.length}</span></strong></div>
+        <div role="progressbar" aria-label="Setup steps completed" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={completed}><span style={{ transform: `scaleX(${completed / steps.length})` }} /></div>
+      </div>
       {menu()}
       <p className="mt-5 px-3 text-xs leading-relaxed text-muted-foreground">Make it yours. You can revisit any completed step before creating your event.</p>
     </aside>

@@ -35,7 +35,7 @@ export function StepHeader({
   className,
 }: StepHeaderProps) {
   return (
-    <div className={cn("flex items-start gap-3 mb-7", className)}>
+    <div className={cn("rr-step-header flex items-start gap-3 mb-7", className)}>
       {Icon && (
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary flex-shrink-0">
           <Icon className="h-5 w-5" />

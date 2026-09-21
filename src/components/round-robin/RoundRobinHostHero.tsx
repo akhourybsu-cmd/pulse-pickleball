@@ -47,6 +47,7 @@ interface RoundRobinHostHeroProps {
   /** Called after a successful location update so the parent can refetch. */
   onLocationUpdated?: () => void;
   className?: string;
+  compact?: boolean;
 }
 
 /**
@@ -92,6 +93,7 @@ export function RoundRobinHostHero({
   canEditLocation,
   onLocationUpdated,
   className,
+  compact = false,
 }: RoundRobinHostHeroProps) {
   const [copied, setCopied] = useState(false);
   // Resolve UUIDs (legacy: location used to hold a court_id) to a readable
@@ -163,6 +165,24 @@ export function RoundRobinHostHero({
     : "Schedule not generated";
 
   const formatLabel = ({ open: "Open", mixed: "Mixed", male: "Men's", female: "Women's" }[eventFormat || ""] || "Doubles");
+
+  if (compact) return (
+    <section className={cn("rr-player-event-header rr-event-width", className)} aria-label="Event information">
+      <div className="min-w-0">
+        <p className="rr-player-event-eyebrow">Round Robin <span>{voided ? "voided" : status}</span></p>
+        <h1>{name}</h1>
+      </div>
+      <details className="rr-player-event-details">
+        <summary>Event info</summary>
+        <div>
+          <p>{format(parseISO(date + "T00:00:00"), "MMM d")}{startTime ? ` · ${formatStartTime(startTime)}` : ""}</p>
+          {resolvedLocation && <p>{resolvedLocation}</p>}
+          <p>{playerCount} players · {numCourts} courts · {formatLabel}</p>
+          <p>{ratingEligible && !voided && status !== "voided" ? "PULSE rating eligible" : "Not rating eligible"}</p>
+        </div>
+      </details>
+    </section>
+  );
 
   return (
     <section

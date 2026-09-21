@@ -486,7 +486,7 @@ export function WizardContainer() {
   };
 
   return (
-    <div className="rr-wizard">
+    <div className="rr-wizard rr-studio-shell" data-step={currentStep.id}>
       <header className="rr-wizard-header">
         <svg className="rr-header-pulse" viewBox="0 0 1200 18" preserveAspectRatio="none" fill="none" aria-hidden="true">
           <path className="rr-heartbeat" pathLength="1" d="M0 9h550l12-5 10 9 12-12 14 16 12-8h590" stroke="currentColor" strokeWidth="1.5" />
@@ -519,7 +519,7 @@ export function WizardContainer() {
             <p className="rr-eyebrow" aria-live="polite">Step {String(currentStepIndex + 1).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")} <span className="ml-3 tracking-normal normal-case font-medium">{currentStep.label}</span></p>
             <span className="text-[11px]">{currentStep.isOptional ? "Optional · make it yours" : "Your event, your way"}</span>
           </div>
-          <fieldset disabled={loading} className="min-w-0">
+          <fieldset disabled={loading} className="rr-step-viewport min-w-0">
             <legend className="sr-only">{currentStep.label}</legend>
             <AnimatePresence mode="wait" custom={direction}>
               <WizardCard key={currentStep.id} direction={direction}>{renderStep()}</WizardCard>

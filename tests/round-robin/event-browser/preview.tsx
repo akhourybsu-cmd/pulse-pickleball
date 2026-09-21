@@ -6,6 +6,7 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import RoundRobinDetail from '../../../src/pages/RoundRobinDetail';
 import '../../../src/index.css';
+import { advancePreviewRound } from './stub';
 const params = new URLSearchParams(window.location.search);
 const query = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 createRoot(document.getElementById('root')!).render(
@@ -14,7 +15,7 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={query}><Routes>
         <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
         <Route path="*" element={<p className="p-8">Local preview navigation complete. Reload to return.</p>} />
-      </Routes><Toaster /></QueryClientProvider>
+      </Routes>{params.has('simulate') && <button className="fixed bottom-0 left-0 z-[100] bg-primary text-primary-foreground p-2 text-xs" onClick={advancePreviewRound}>Advance preview round</button>}<Toaster /></QueryClientProvider>
     </MemoryRouter>
   </ThemeProvider>
 );
