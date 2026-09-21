@@ -5,7 +5,7 @@ import { SelectionTick } from "../SelectionTick";
 import { PRESSABLE_CARD } from "@/lib/motion";
 
 const OPTION_BASE =
-  "relative flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-colors " +
+  "rr-mode-choice relative rounded-2xl border-2 text-left transition-colors " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 " +
   PRESSABLE_CARD;
 
@@ -19,11 +19,11 @@ export function EventModeStep({ value, onChange }: EventModeStepProps) {
     <div className="flex flex-col h-full">
       <StepHeader
         icon={Zap}
-        title="How are you running this?"
-        description="Pick a mode — you can change the details next."
+        title="Every great event starts with a plan."
+        description="Choose when to play. Make the rest your own."
       />
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="rr-choice-grid flex-1">
         <button
           type="button"
           onClick={() => onChange("immediate")}
@@ -37,16 +37,17 @@ export function EventModeStep({ value, onChange }: EventModeStepProps) {
         >
           <SelectionTick active={value === "immediate"} />
           <div className={cn(
-            "p-3 rounded-lg motion-safe:transition-colors",
+            "rr-choice-icon p-3 rounded-xl motion-safe:transition-colors",
             value === "immediate" ? "bg-primary text-primary-foreground" : "bg-muted"
           )}>
             <Zap className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold">Immediate Event</p>
+            <p className="font-semibold text-lg">Play today</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Add players now and start playing today
+              Bring your players, build the rotation, and get on court.
             </p>
+            <p className="rr-choice-detail">Select this mode, then continue →</p>
           </div>
         </button>
 
@@ -63,16 +64,17 @@ export function EventModeStep({ value, onChange }: EventModeStepProps) {
         >
           <SelectionTick active={value === "open_registration"} />
           <div className={cn(
-            "p-3 rounded-lg motion-safe:transition-colors",
+            "rr-choice-icon p-3 rounded-xl motion-safe:transition-colors",
             value === "open_registration" ? "bg-primary text-primary-foreground" : "bg-muted"
           )}>
             <CalendarClock className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold">Future Event with Registration</p>
+            <p className="font-semibold text-lg">Plan ahead</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Schedule the event and let players sign up
+              Pick a date and give your players time to sign up.
             </p>
+            <p className="rr-choice-detail">Select this mode, then continue →</p>
           </div>
         </button>
       </div>

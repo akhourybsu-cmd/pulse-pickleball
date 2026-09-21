@@ -52,7 +52,7 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
       id: "shared_group",
       icon: Megaphone,
       title: "Share to a group",
-      desc: "Auto-posts to the group feed and creates a public sign-up link.",
+      desc: "Post to the group feed and add the event to its calendar.",
       requiresGroup: true,
     },
   ];
@@ -87,7 +87,7 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
                   }
                 }}
                 className={cn(
-                  "relative w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors",
+                  "relative w-full flex items-start gap-4 p-5 rounded-2xl border-2 text-left transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
                   !disabled && PRESSABLE_CARD,
                   selected
@@ -118,12 +118,12 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
 
               {/* Group picker shown directly under selected option */}
               {selected && opt.requiresGroup && hasGroups && (
-                <div className="mt-2 ml-1 pl-12">
+                <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <Select
                     value={groupId || ""}
                     onValueChange={(v) => onChange(opt.id, v)}
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger aria-label="Choose a group" className="h-12">
                       <SelectValue placeholder="Choose a group" />
                     </SelectTrigger>
                     <SelectContent>

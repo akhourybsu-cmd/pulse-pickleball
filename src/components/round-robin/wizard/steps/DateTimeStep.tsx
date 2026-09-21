@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { DUR, EASE_OUT, PRESSABLE } from "@/lib/motion";
-import { format, addDays, isAfter, isBefore, startOfToday, parse } from "date-fns";
+import { format, isBefore, startOfToday, parse } from "date-fns";
 
 interface DateTimeStepProps {
   eventMode: "immediate" | "open_registration";
@@ -153,7 +153,7 @@ export function DateTimeStep({
                 variant={startTime === preset.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => onStartTimeChange(preset.value)}
-                className={cn("text-xs", PRESSABLE)}
+                className={cn("min-h-11 whitespace-normal px-1.5 text-xs", PRESSABLE)}
               >
                 {preset.label}
               </Button>
@@ -166,10 +166,11 @@ export function DateTimeStep({
               <Clock className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <Label className="text-xs text-muted-foreground mb-1 block">
+              <Label htmlFor="rr-start-time" className="text-xs text-muted-foreground mb-1 block">
                 Or pick a custom time
               </Label>
               <Input
+                id="rr-start-time"
                 type="time"
                 value={startTime}
                 onChange={(e) => onStartTimeChange(e.target.value)}
@@ -197,7 +198,7 @@ export function DateTimeStep({
         description="Date, start time, and registration deadline."
       />
 
-      <div className="flex-1 space-y-5">
+      <div className="rr-field-grid flex-1">
         {/* Event Date Picker */}
         <div className="space-y-2">
           <Label className="text-sm font-medium flex items-center gap-2">
@@ -215,7 +216,7 @@ export function DateTimeStep({
                 )}
               >
                 <CalendarClock className="mr-2 h-4 w-4" />
-                {selectedDateOnly ? format(selectedDateOnly, "EEEE, MMMM d, yyyy") : "Select a date"}
+                {selectedDateOnly ? format(selectedDateOnly, "EEE, MMM d, yyyy") : "Select a date"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 z-50" align="start">
@@ -233,7 +234,7 @@ export function DateTimeStep({
 
         {/* Start Time */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium flex items-center gap-2">
+          <Label htmlFor="rr-start-time" className="text-sm font-medium flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Start Time
           </Label>
@@ -247,7 +248,7 @@ export function DateTimeStep({
                 variant={startTime === preset.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleTimePreset(preset.value)}
-                className={cn("text-xs", PRESSABLE)}
+                className={cn("min-h-11 whitespace-normal px-1.5 text-xs", PRESSABLE)}
               >
                 {preset.label}
               </Button>
@@ -255,6 +256,7 @@ export function DateTimeStep({
           </div>
           
           <Input
+            id="rr-start-time"
             type="time"
             value={startTime}
             onChange={(e) => handleTimePreset(e.target.value)}
@@ -264,7 +266,7 @@ export function DateTimeStep({
 
         {/* Registration Deadline */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Registration Deadline</Label>
+          <Label htmlFor="rr-deadline" className="text-sm font-medium">Registration Deadline</Label>
           
           {/* Deadline presets - only show if event date is set */}
           {eventDate && (
@@ -276,7 +278,7 @@ export function DateTimeStep({
                   variant="outline"
                   size="sm"
                   onClick={() => handleDeadlinePreset(preset)}
-                  className={cn("text-xs", PRESSABLE)}
+                  className={cn("min-h-11 whitespace-normal px-1.5 text-xs", PRESSABLE)}
                 >
                   {preset.label}
                 </Button>
@@ -285,6 +287,7 @@ export function DateTimeStep({
           )}
           
           <Input
+            id="rr-deadline"
             type="datetime-local"
             value={registrationDeadline}
             onChange={(e) => onRegistrationDeadlineChange(e.target.value)}
@@ -305,7 +308,7 @@ export function DateTimeStep({
 
         {/* Summary */}
         {eventDate && startTime && registrationDeadline && isDeadlineValid() && (
-          <motion.div {...reveal} className="p-3 rounded-lg bg-muted/50 border text-sm space-y-1">
+          <motion.div {...reveal} className="rr-field-wide p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm space-y-2">
             <p>
               <span className="text-muted-foreground">Event:</span>{" "}
               <span className="font-medium">

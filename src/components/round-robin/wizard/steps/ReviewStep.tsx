@@ -1,4 +1,4 @@
-import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, type LucideIcon } from "lucide-react";
+import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, Share2, UserPlus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardFormData, calculateScheduleMetrics } from "../hooks/useWizardSteps";
 import { StepHeader } from "../StepHeader";
@@ -87,7 +87,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
 
   // Step indices match useWizardSteps.ts:
   //   0=mode, 1=format, 2=details, 3=players, 4=schedule, 5=datetime,
-  //   6=ratings, 7=review.
+  //   6=ratings, 7=sharing, 8=review.
   const basics: ReviewItem[] = [
     {
       icon: FileText,
@@ -151,12 +151,18 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
     {
       icon: TrendingUp,
       label: "Ratings",
-      value: formData.ratingEligible
+      value: formData.ratingEligible && !formData.allowGuests
         ? `Counts · ${ratingTypeLabels[formData.ratingType]}`
         : "Not counted",
       stepIndex: 6,
     },
   ];
+
+  settings.push({ icon: UserPlus, label: "Guests", value: formData.allowGuests ? "Welcome · unrated play" : "Registered players", stepIndex: 6 });
+  settings.push({ icon: Share2, label: "Sharing", value: { personal: "Just me / friends I add", private_group: "Private to a group", shared_group: "Shared to a group" }[formData.groupVisibility], stepIndex: 7 });
+  if (formData.eventMode === "open_registration" && formData.registrationDeadline) {
+    basics.push({ icon: Calendar, label: "Sign-up closes", value: new Date(formData.registrationDeadline).toLocaleString(), stepIndex: 5 });
+  }
 
   // "Who can join" is only meaningful for open_registration events.
   if (formData.eventMode === "open_registration") {
@@ -194,22 +200,11 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
     <div className="flex flex-col h-full">
       <StepHeader
         icon={CheckCircle2}
-        title="Looks right?"
-        description="Tap any section to edit it."
+        title="Ready for a great event?"
+        description="Your event, all together. Fine-tune any detail before you create it."
       />
 
-      <div className="flex-1 space-y-3 -mx-1">
-        <ScheduleImpactPreview
-          playerCount={playerCount}
-          courtCount={formData.courtCount}
-          gamesPerPlayer={formData.gamesPerPlayer}
-          title="Your rotation"
-          compact
-          plan={creationPlan}
-          mixedRosterEstimate={formData.format === "mixed" && !rosterCompositionKnown}
-          showImpactSummary={false}
-        />
-
+      <div className="rr-review-grid flex-1">
         {groups.map((group) => (
           <div
             key={group.id}
@@ -225,7 +220,8 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={cn("group/edit h-7 -mr-2 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground", PRESSABLE)}
+                className={cn("group/edit h-11 -mr-2 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground", PRESSABLE)}
+                aria-label={`Edit ${group.title.toLowerCase()}`}
                 onClick={() => onEdit(group.editStepIndex)}
               >
                 <Pencil className="h-3 w-3 motion-safe:transition-transform motion-safe:group-hover/edit:-rotate-12" />
@@ -242,7 +238,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
                     type="button"
                     onClick={() => onEdit(item.stepIndex)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2.5 text-left",
+                      "w-full flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3 text-left",
                       "transition-colors hover:bg-muted/40 active:bg-muted/60",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40",
                       PRESSABLE_CARD,
@@ -252,7 +248,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
                     <span className="text-xs text-muted-foreground flex-shrink-0 w-24">
                       {item.label}
                     </span>
-                    <span className="text-sm font-medium text-foreground truncate flex-1">
+                    <span className="text-sm font-medium text-foreground break-words min-w-0 basis-32 flex-1">
                       {item.value}
                     </span>
                   </button>
@@ -261,6 +257,17 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
             </div>
           </div>
         ))}
+
+        <ScheduleImpactPreview
+          playerCount={playerCount}
+          courtCount={formData.courtCount}
+          gamesPerPlayer={formData.gamesPerPlayer}
+          title="Your rotation"
+          compact
+          plan={creationPlan}
+          mixedRosterEstimate={formData.format === "mixed" && !rosterCompositionKnown}
+          showImpactSummary={false}
+        />
       </div>
     </div>
   );

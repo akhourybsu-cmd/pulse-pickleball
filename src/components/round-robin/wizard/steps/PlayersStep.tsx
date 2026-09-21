@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { UserPlus, Hash, Users, Pencil, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { StepHeader } from "../StepHeader";
@@ -66,6 +65,7 @@ export function PlayersStep({
           </p>
         </div>
         <Switch
+          aria-label="Allow guest players"
           checked={!!allowGuests}
           onCheckedChange={(v) => {
             onAllowGuestsChange(v);
@@ -85,6 +85,13 @@ export function PlayersStep({
     </div>
   ) : null;
 
+  const methodTabs = (
+    <div className="rr-player-methods" role="group" aria-label="Player setup method">
+      <button type="button" aria-pressed={inputMethod === "add"} onClick={() => onInputMethodChange("add")}>Pick your players</button>
+      <button type="button" aria-pressed={inputMethod === "count"} onClick={() => onInputMethodChange("count")}>Enter a count</button>
+    </div>
+  );
+
   // For future events, just show max players input
   if (eventMode === "open_registration") {
     return (
@@ -95,7 +102,7 @@ export function PlayersStep({
           description="Set the cap on registrations."
         />
 
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="rr-count-surface flex-1 flex flex-col items-center justify-center">
           <WizardStepper
             value={maxPlayers}
             onChange={onMaxPlayersChange}
@@ -128,12 +135,12 @@ export function PlayersStep({
           description="Count only, or pick them individually."
         />
 
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="rr-choice-grid flex-1">
           <button
             type="button"
             onClick={() => onInputMethodChange("add")}
             className={cn(
-              "group flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-colors",
+              "group flex items-start gap-4 p-5 rounded-2xl border-2 border-border hover:border-primary/50 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
               PRESSABLE_CARD,
             )}
@@ -153,7 +160,7 @@ export function PlayersStep({
             type="button"
             onClick={() => onInputMethodChange("count")}
             className={cn(
-              "group flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-colors",
+              "group flex items-start gap-4 p-5 rounded-2xl border-2 border-border hover:border-primary/50 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
               PRESSABLE_CARD,
             )}
@@ -184,8 +191,9 @@ export function PlayersStep({
           title="How many players?"
           description="Minimum 4 — partners are paired automatically."
         />
+        {methodTabs}
 
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="rr-count-surface flex-1 flex flex-col items-center justify-center">
           <WizardStepper
             value={playerCount}
             onChange={onPlayerCountChange}
@@ -206,7 +214,7 @@ export function PlayersStep({
         <button
           type="button"
           onClick={() => onInputMethodChange("add")}
-          className="text-sm text-primary underline-offset-4 hover:underline mt-4"
+          className="min-h-11 text-sm text-primary underline-offset-4 hover:underline mt-4"
         >
           Or add players from roster instead
         </button>
@@ -236,11 +244,13 @@ export function PlayersStep({
         title="Add players"
         description={`${selectedPlayers.length} selected · minimum 4`}
       />
+      {methodTabs}
 
       <div className="flex-1 space-y-4">
         {guestToggle}
 
         <PlayerPickerSheet
+          contentClassName="rr-picker"
           selectedPlayers={selectedPlayers}
           onPlayersChange={onPlayersChange}
           genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
@@ -322,7 +332,7 @@ export function PlayersStep({
       <button
         type="button"
         onClick={() => onInputMethodChange("count")}
-        className="text-sm text-primary underline-offset-4 hover:underline mt-4"
+        className="min-h-11 text-sm text-primary underline-offset-4 hover:underline mt-4"
       >
         Or just enter a player count instead
       </button>
