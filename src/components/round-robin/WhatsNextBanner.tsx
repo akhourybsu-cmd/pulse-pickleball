@@ -105,12 +105,12 @@ export function WhatsNextBanner({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-primary/20 overflow-hidden",
+        "rr-host-mission rounded-2xl border border-primary/20 overflow-hidden",
         "bg-gradient-to-br from-primary/[0.07] via-card to-primary/[0.03]",
         "shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.18)]",
       )}
     >
-      <div className="p-4 sm:p-5 flex items-start gap-4">
+      <div className="rr-host-mission-inner p-4 sm:p-5 flex items-start gap-4">
         {/* Icon tile */}
         <div
           className={cn(
@@ -122,8 +122,8 @@ export function WhatsNextBanner({
         </div>
 
         {/* Text + action */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="rr-host-mission-content flex-1 min-w-0" key={`${prompt.pill}-${currentRound}`}>
+          <div className="rr-host-mission-label flex items-center gap-2 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
               {prompt.pill}
             </span>
@@ -138,12 +138,12 @@ export function WhatsNextBanner({
           )}
 
           {!prompt.informational && prompt.onClick && (
-            <div className="mt-3">
+            <div className="rr-host-mission-action mt-3">
               <Button
                 onClick={prompt.onClick}
                 disabled={busy}
                 aria-busy={busy}
-                className="gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
+                className="gap-1.5 min-h-11 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
                 size="sm"
               >
                 {prompt.cta}
@@ -153,6 +153,11 @@ export function WhatsNextBanner({
           )}
         </div>
       </div>
+      {status === "live" && !voided && currentRoundTotalCount > 0 && (
+        <div className="rr-host-round-progress" role="progressbar" aria-label="Current round results recorded" aria-valuemin={0} aria-valuemax={currentRoundTotalCount} aria-valuenow={Math.min(currentRoundScoredCount, currentRoundTotalCount)}>
+          <span style={{ transform: `scaleX(${Math.min(1, currentRoundScoredCount / currentRoundTotalCount)})` }} />
+        </div>
+      )}
     </div>
   );
 

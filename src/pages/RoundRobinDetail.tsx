@@ -2430,19 +2430,6 @@ export default function RoundRobinDetail() {
               </Card>
             ) : (
               <>
-                {isOrganizer && event.status === "live" && (
-                  <Button 
-                    onClick={handleCompleteEvent} 
-                    variant="outline"
-                    className="w-full min-h-11 mb-4 whitespace-normal text-left sm:text-center"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Complete Event & Submit to Match History
-                  </Button>
-                )}
-
-
-
                 <ScheduleRoundCarousel 
                   totalRounds={event.num_rounds} 
                   currentRound={event.current_round || 1}
@@ -2660,6 +2647,16 @@ export default function RoundRobinDetail() {
                     );
                   }}
                 </ScheduleRoundCarousel>
+                {isOrganizer && event.status === "live" && (
+                  <Button
+                    onClick={handleCompleteEvent}
+                    variant="outline"
+                    className="w-full min-h-11 mt-4 whitespace-normal text-left sm:text-center"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Complete Event & Submit to Match History
+                  </Button>
+                )}
               </>
             )}
           </TabsContent>

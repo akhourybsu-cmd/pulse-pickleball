@@ -39,6 +39,8 @@ export function WizardCard({ children, direction }: WizardCardProps) {
   const reduced = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const viewport = cardRef.current?.closest(".rr-step-viewport");
+    viewport?.scrollTo({ top: 0, behavior: "instant" });
     cardRef.current?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
   }, []);
   return (
@@ -49,7 +51,7 @@ export function WizardCard({ children, direction }: WizardCardProps) {
       animate="center"
       exit="exit"
       transition={{ duration: DUR.press }}
-      className="w-full"
+      className="rr-step-motion w-full"
     >
       <div ref={cardRef} className="rr-step-card">
         {children}
