@@ -45,7 +45,7 @@ export function FormatStep({ value, onChange }: FormatStepProps) {
         description="Pick the player mix for this event."
       />
 
-      <div className="flex-1 grid grid-cols-2 gap-3">
+      <div className="flex-1 grid grid-cols-2 gap-3 sm:gap-4">
         {formats.map((format) => {
           const Icon = format.icon;
           return (
@@ -55,7 +55,7 @@ export function FormatStep({ value, onChange }: FormatStepProps) {
               onClick={() => onChange(format.id)}
               aria-pressed={value === format.id}
               className={cn(
-                "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 text-center transition-colors",
+                "relative flex flex-col items-center justify-center gap-4 py-7 px-3 rounded-2xl border-2 text-center transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
                 PRESSABLE_CARD,
                 value === format.id
@@ -66,14 +66,14 @@ export function FormatStep({ value, onChange }: FormatStepProps) {
               <SelectionTick active={value === format.id} />
               <div
                 className={cn(
-                  "p-2 rounded-lg motion-safe:transition-colors",
+                  "p-3 rounded-xl motion-safe:transition-colors",
                   value === format.id ? "bg-primary text-primary-foreground" : "bg-muted"
                 )}
               >
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold text-sm">{format.label}</p>
+                <p className="font-semibold text-base">{format.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{format.description}</p>
               </div>
             </button>

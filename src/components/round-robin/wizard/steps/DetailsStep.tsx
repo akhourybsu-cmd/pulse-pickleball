@@ -63,13 +63,16 @@ export function DetailsStep({
         description="Just the essentials — players see these in the invite."
       />
 
-      <div className="flex-1 space-y-5">
+      <div className="rr-field-grid flex-1">
         {/* Event name */}
         <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-1">
+          <label htmlFor="rr-event-name" className="text-sm font-medium flex items-center gap-1">
             Event name <Asterisk className="h-3 w-3 text-destructive" />
           </label>
           <Input
+            id="rr-event-name"
+            autoComplete="off"
+            required
             value={eventName}
             onChange={(e) => onEventNameChange(e.target.value)}
             placeholder={defaultName}
@@ -83,7 +86,7 @@ export function DetailsStep({
 
         {/* Location Name (free text) */}
         <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-1">
+          <label htmlFor="rr-location" className="text-sm font-medium flex items-center gap-1">
             Location name <Asterisk className="h-3 w-3 text-destructive" />
           </label>
           <div className="flex items-center gap-3">
@@ -91,6 +94,8 @@ export function DetailsStep({
               <MapPin className="h-4 w-4" />
             </div>
             <Input
+              id="rr-location"
+              required
               value={locationLabel}
               onChange={(e) => onLocationLabelChange(e.target.value)}
               placeholder="e.g., Memorial Park Court 2"
@@ -138,12 +143,13 @@ export function DetailsStep({
 
         {/* Notes */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Notes for players</label>
+          <label htmlFor="rr-notes" className="text-sm font-medium">Notes for players <span className="text-muted-foreground font-normal">· optional</span></label>
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-lg bg-muted flex-shrink-0">
               <FileText className="h-4 w-4" />
             </div>
             <Textarea
+              id="rr-notes"
               value={notes}
               onChange={(e) => onNotesChange(e.target.value)}
               placeholder="e.g., Bring water bottles, parking info, skill level..."
@@ -158,7 +164,7 @@ export function DetailsStep({
 
         {/* Who can join? — open-registration only */}
         {eventMode === "open_registration" && (
-          <div className="space-y-2">
+          <div className="rr-field-wide space-y-2">
             <label className="text-sm font-medium">Who can join?</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
@@ -185,7 +191,7 @@ export function DetailsStep({
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm">Open to everyone</div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                    Discoverable in the player Available feed.
+                    Players can register without an invite code.
                   </div>
                 </div>
               </button>

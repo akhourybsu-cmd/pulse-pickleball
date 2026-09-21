@@ -83,9 +83,9 @@ export function ScheduleStep({
         description="Every change previews the new rotation instantly."
       />
 
-      <div className="flex-1 space-y-6">
+      <div className="rr-schedule-grid flex-1">
         {/* Courts stepper */}
-        <div>
+        <div className="rr-count-surface">
           <label className="text-sm font-medium mb-3 block">
             Courts available
           </label>
@@ -184,7 +184,7 @@ export function ScheduleStep({
               value={gamesPerPlayer.toString()}
               onValueChange={(v) => onGamesPerPlayerChange(parseInt(v))}
             >
-              <SelectTrigger className="h-12 mt-3">
+              <SelectTrigger aria-label="Custom games per player" className="h-12 mt-3">
                 <SelectValue placeholder="Select games per player" />
               </SelectTrigger>
               <SelectContent>

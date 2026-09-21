@@ -35,21 +35,21 @@ export function StepHeader({
   className,
 }: StepHeaderProps) {
   return (
-    <div className={cn("flex items-start gap-3 mb-5", className)}>
+    <div className={cn("flex items-start gap-3 mb-7", className)}>
       {Icon && (
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/12 text-primary flex-shrink-0">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary flex-shrink-0">
           <Icon className="h-5 w-5" />
         </div>
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-[17px] sm:text-lg font-semibold leading-tight tracking-tight">
+          <h2 tabIndex={-1} className="rr-step-heading">
             {title}
           </h2>
           {trailing && <div className="ml-auto flex-shrink-0">{trailing}</div>}
         </div>
         {description && (
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-snug">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed">
             {description}
           </p>
         )}

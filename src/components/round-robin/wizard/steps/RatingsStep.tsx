@@ -53,8 +53,8 @@ export function RatingsStep({
         {/* Guest toggle */}
         <div className="p-5 rounded-xl border bg-card">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-lg bg-muted shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="p-2 sm:p-3 rounded-lg bg-muted shrink-0 shrink-0">
                 <UserPlus className="h-5 w-5" />
               </div>
               <div className="space-y-1">
@@ -67,6 +67,7 @@ export function RatingsStep({
               </div>
             </div>
             <Switch
+              aria-label="Allow guest players"
               checked={allowGuests}
               onCheckedChange={(v) => {
                 onAllowGuestsChange(v);
@@ -78,9 +79,8 @@ export function RatingsStep({
             <motion.div {...reveal} className="mt-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
-                Heads up: scheduled generation and live scoring don't yet
-                support guest slots. You'll be prompted to swap guests for
-                registered players before generating a schedule.
+                Guests can join your roster and play in the rotation. Results
+                stay outside PULSE Ratings while guests are allowed.
               </span>
             </motion.div>
           )}
@@ -89,12 +89,12 @@ export function RatingsStep({
         {/* Rating eligible */}
         <div
           className={cn(
-            "flex items-center justify-between p-5 rounded-xl border bg-card transition-opacity",
+            "flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl border bg-card transition-opacity",
             allowGuests && "opacity-70",
           )}
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-muted">
+          <div className="flex items-center gap-3">
+            <div className="p-2 sm:p-3 rounded-lg bg-muted shrink-0">
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
@@ -107,6 +107,7 @@ export function RatingsStep({
             </div>
           </div>
           <Switch
+            aria-label="Count results toward PULSE Ratings"
             checked={effectiveRatingEligible}
             disabled={allowGuests}
             onCheckedChange={onRatingEligibleChange}
@@ -117,7 +118,7 @@ export function RatingsStep({
           <motion.div {...reveal} className="space-y-2">
             <Label className="text-sm font-medium">Rating Type</Label>
             <Select value={ratingType} onValueChange={onRatingTypeChange}>
-              <SelectTrigger className="h-14">
+              <SelectTrigger aria-label="Rating type" className="h-14">
                 <SelectValue placeholder="Select rating type" />
               </SelectTrigger>
               <SelectContent>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2, type LucideIcon } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,8 @@ interface PlayerPickerSheetProps {
   /** Show the Guest tab. Default: true in multi mode, false in single mode
    *  (single is used for substitution which writes to schedule.player_id). */
   allowGuest?: boolean;
+  /** Optional creation-only presentation, without changing other picker callers. */
+  contentClassName?: string;
 }
 
 type PickerTab = "friends" | "group" | "recent" | "search" | "guest";
@@ -86,7 +88,9 @@ export function PlayerPickerSheet({
   mode = "multi",
   excludePlayerIds,
   allowGuest,
+  contentClassName,
 }: PlayerPickerSheetProps) {
+  const tabId = useId();
   const [open, setOpen] = useState(false);
   const [local, setLocal] = useState<PickerPlayer[]>(selectedPlayers);
   const [tab, setTab] = useState<PickerTab>("friends");
@@ -225,7 +229,7 @@ export function PlayerPickerSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="bottom"
-        className="h-[90vh] p-0 flex flex-col gap-0 rounded-t-2xl border-t border-border/60"
+        className={cn("h-[90vh] p-0 flex flex-col gap-0 rounded-t-2xl border-t border-border/60", contentClassName)}
       >
         {/* Sticky header */}
         <div className="relative px-4 pt-4 pb-2 border-b border-border/60 bg-background overflow-hidden">
@@ -233,14 +237,15 @@ export function PlayerPickerSheet({
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/[0.10] to-transparent"
           />
-          <div className="relative flex items-start justify-between gap-3 mb-3">
+          <div className="relative flex items-start justify-between gap-3 mb-3 pr-10">
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
                 Roster
               </div>
-              <h3 className="text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
+              <SheetTitle className="text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
                 {mode === "single" ? "Choose a player" : "Add players"}
-              </h3>
+              </SheetTitle>
+              <SheetDescription className="mt-1 text-xs">{mode === "single" ? "Choose a player to continue." : "Find your people. Select players, then tap Done."}</SheetDescription>
             </div>
             {mode === "multi" && (
               <span className="flex-shrink-0 mt-1 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-primary tabular-nums">
@@ -287,12 +292,25 @@ export function PlayerPickerSheet({
             style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
             role="tablist"
             aria-label="Player sources"
+            onKeyDown={(event) => {
+              const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+              if (!keys.includes(event.key)) return;
+              event.preventDefault();
+              const current = tabs.findIndex((item) => item.value === tab);
+              const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+                : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+              setTab(tabs[next].value);
+              document.getElementById(`${tabId}-${tabs[next].value}`)?.focus();
+            }}
           >
             {tabs.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
                 type="button"
                 role="tab"
+                id={`${tabId}-${value}`}
+                aria-controls={`${tabId}-panel`}
+                tabIndex={tab === value ? 0 : -1}
                 aria-selected={tab === value}
                 onClick={() => setTab(value)}
                 className={cn(
@@ -309,7 +327,7 @@ export function PlayerPickerSheet({
           </div>
 
 
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-${tab}`} className="flex-1 min-h-0 overflow-hidden">
             {tab === "friends" && (
               <FriendsList
                 selectedIds={selectedIds}

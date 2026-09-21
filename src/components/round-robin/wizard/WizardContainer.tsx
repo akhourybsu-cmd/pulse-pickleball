@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PRESSABLE } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
-import { WizardProgress } from "./WizardProgress";
+import { WizardStepMenu } from "./WizardStepMenu";
+import { WizardEventPreview } from "./WizardEventPreview";
+import "./wizard.css";
 import { WizardCard } from "./WizardCard";
 import { WizardNavigation } from "./WizardNavigation";
 import { useWizardSteps, WizardFormData, calculateScheduleMetrics } from "./hooks/useWizardSteps";
@@ -42,6 +44,8 @@ export function WizardContainer() {
   const [courts, setCourts] = useState<Court[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [furthestStep, setFurthestStep] = useState(0);
+  const [editingFromReview, setEditingFromReview] = useState(false);
 
   const [formData, setFormData] = useState<WizardFormData>({
     eventMode: "immediate",
@@ -89,25 +93,27 @@ export function WizardContainer() {
   };
 
   const goNext = () => {
-    if (currentStepIndex < totalSteps - 1) {
-      setDirection(1);
-      setCurrentStepIndex((prev) => prev + 1);
+    if (!loading && isValid && currentStepIndex < totalSteps - 1) {
+      goToStep(currentStepIndex + 1);
     }
   };
 
   const goBack = () => {
-    if (currentStepIndex > 0) {
-      setDirection(-1);
-      setCurrentStepIndex((prev) => prev - 1);
+    if (!loading && currentStepIndex > 0) {
+      goToStep(currentStepIndex - 1);
     }
   };
 
   const goToStep = (index: number) => {
+    if (loading || index < 0 || index >= totalSteps) return;
     setDirection(index > currentStepIndex ? 1 : -1);
     setCurrentStepIndex(index);
+    setFurthestStep((previous) => Math.max(previous, index));
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handleContinue = async () => {
+    if (loading || !isValid) return;
     if (isLastStep) {
       await handleCreate();
     } else {
@@ -124,11 +130,19 @@ export function WizardContainer() {
     while (next < totalSteps - 1 && steps[next].isOptional) {
       next++;
     }
-    setDirection(1);
-    setCurrentStepIndex(next);
+    goToStep(next);
   };
 
   const handleCreate = async () => {
+    // Review and step-menu edits can invalidate an earlier choice. Reuse
+    // the existing validations before invoking the unchanged creation flow.
+    const incomplete = steps.findIndex((step) => !isStepValid(step.id));
+    if (incomplete >= 0) {
+      setEditingFromReview(true);
+      goToStep(incomplete);
+      toast.error(`Complete ${steps[incomplete].label.toLowerCase()} before creating your event`, { position: "top-center" });
+      return;
+    }
     const name = formData.eventName.trim();
     const locationLabel = formData.locationLabel.trim();
 
@@ -344,20 +358,14 @@ export function WizardContainer() {
         return (
           <EventModeStep
             value={formData.eventMode}
-            onChange={(v) => {
-              updateFormData("eventMode", v);
-              setTimeout(() => goNext(), 150);
-            }}
+            onChange={(v) => updateFormData("eventMode", v)}
           />
         );
       case "format":
         return (
           <FormatStep
             value={formData.format}
-            onChange={(v) => {
-              updateFormData("format", v);
-              setTimeout(() => goNext(), 150);
-            }}
+            onChange={(v) => updateFormData("format", v)}
           />
         );
       case "details":
@@ -460,7 +468,7 @@ export function WizardContainer() {
         return (
           <ReviewStep
             formData={formData}
-            onEdit={goToStep}
+            onEdit={(index) => { setEditingFromReview(true); goToStep(index); }}
             courts={courts}
           />
         );
@@ -469,97 +477,62 @@ export function WizardContainer() {
     }
   };
 
+  const validationHints: Record<string, string> = {
+    details: "Add an event name and location to continue.",
+    players: "Choose your player setup and add at least 4 eligible players.",
+    schedule: "Choose at least 1 court and 1 game per player.",
+    datetime: formData.eventMode === "immediate" ? "Choose a start time to continue." : "Set a date, start time, and an earlier registration deadline.",
+    sharing: "Choose a group, or select Just me / friends I add.",
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* PULSE-branded header — matches the Record Match wizard so both
-          flows feel like one product. Step chrome lives in the body. */}
-      <div className="sticky top-0 z-40 bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 flex items-center justify-between h-[72px]">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/player/dashboard')}
-            className={cn("group h-9 w-9 text-white hover:text-white hover:bg-white/10", PRESSABLE)}
-            aria-label="Cancel and return home"
-          >
-            <ArrowLeft className="h-5 w-5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
-          </Button>
-          <Link
-            to="/player/dashboard"
-            className="text-secondary-foreground hover:opacity-90 transition-opacity"
-          >
-            <Logo className="h-[52px] sm:h-[65px] w-auto" />
-          </Link>
-          <div className="h-9 w-9" aria-hidden="true" />
-        </div>
-      </div>
-
-      {/* Premium title band — same visual language as the Round Robin host
-          hero: ambient primary bloom, faint court-line texture, accent-ruled
-          eyebrow and an editorial extrabold title. */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background border-b border-border/50">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
-          style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
-          }}
-        />
-        <div className="relative max-w-lg mx-auto px-4 pt-5 pb-4">
-          <div className="relative pl-3.5">
-            <span
-              aria-hidden
-              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
-            />
-            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80 mb-1">
-              Round Robin
-            </div>
-            <h1 className="text-[24px] sm:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.05] text-foreground text-balance">
-              Create your event
-            </h1>
-            <p className="mt-1 text-[12.5px] sm:text-sm text-muted-foreground leading-snug">
-              A few quick steps and your schedule builds itself.
-            </p>
+    <div className="rr-wizard">
+      <header className="rr-wizard-header">
+        <svg className="rr-header-pulse" viewBox="0 0 1200 18" preserveAspectRatio="none" fill="none" aria-hidden="true">
+          <path className="rr-heartbeat" pathLength="1" d="M0 9h550l12-5 10 9 12-12 14 16 12-8h590" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+        <div className="rr-header-inner">
+          <div className="flex items-center">
+            <Link to="/player/dashboard" aria-label="PULSE home"><Logo className="h-12 w-auto" /></Link>
+            <span className="rr-header-label rr-eyebrow">Event studio</span>
           </div>
+          <Button variant="ghost" disabled={loading} onClick={() => navigate('/player/dashboard')}
+            className={cn("h-11 gap-2 text-secondary-foreground hover:bg-white/10 hover:text-white", PRESSABLE)}>
+            <ArrowLeft className="h-4 w-4" /><span className="text-xs">Exit setup</span>
+          </Button>
         </div>
+      </header>
+      <section className="rr-masthead" aria-labelledby="rr-creation-title">
+        <div>
+          <p className="rr-eyebrow text-primary">Round robin / Create an event</p>
+          <h1 id="rr-creation-title">Set the stage. <span className="text-primary">Find your PULSE.</span></h1>
+          <p>Bring your players together. We’ll take care of the rotation.</p>
+        </div>
+        <div className="rr-masthead-note"><Activity className="h-5 w-5 text-primary" /><span>Great games.<br />Thoughtfully organized.</span></div>
       </section>
-
-      {/* Content */}
-      <div className="max-w-lg mx-auto px-4 py-6 pb-28">
-
-
-        <WizardProgress
-          currentStep={currentStepIndex}
-          totalSteps={totalSteps}
-          onBack={goBack}
-          canGoBack={currentStepIndex > 0}
-          stepLabel={currentStep.label}
-        />
-
-        <AnimatePresence mode="wait" custom={direction}>
-          <WizardCard key={currentStep.id} direction={direction}>
-            {renderStep()}
-          </WizardCard>
-        </AnimatePresence>
+      <div className="rr-layout">
+        <WizardStepMenu steps={steps} current={currentStepIndex} furthest={furthestStep}
+          isStepValid={isStepValid} disabled={loading}
+          onSelect={(index) => { setEditingFromReview(false); goToStep(index); }} />
+        <main className="rr-main" aria-label="Event setup">
+          <div className="rr-main-topline">
+            <p className="rr-eyebrow" aria-live="polite">Step {String(currentStepIndex + 1).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")} <span className="ml-3 tracking-normal normal-case font-medium">{currentStep.label}</span></p>
+            <span className="text-[11px]">{currentStep.isOptional ? "Optional · make it yours" : "Your event, your way"}</span>
+          </div>
+          <fieldset disabled={loading} className="min-w-0">
+            <legend className="sr-only">{currentStep.label}</legend>
+            <AnimatePresence mode="wait" custom={direction}>
+              <WizardCard key={currentStep.id} direction={direction}>{renderStep()}</WizardCard>
+            </AnimatePresence>
+          </fieldset>
+        </main>
+        <WizardEventPreview formData={formData} />
       </div>
-
-      {/* Hide nav on auto-advance steps */}
-      {currentStep.id !== 'mode' && currentStep.id !== 'format' && (
-        <WizardNavigation
-          onContinue={handleContinue}
-          onSkip={currentStep.isOptional ? handleSkip : undefined}
-          isValid={isValid}
-          isOptional={currentStep.isOptional}
-          isLastStep={isLastStep}
-          isLoading={loading}
-        />
-      )}
+      <WizardNavigation onContinue={handleContinue} onBack={goBack} canGoBack={currentStepIndex > 0}
+        onSkip={currentStep.isOptional && !editingFromReview ? handleSkip : undefined}
+        onReturnToReview={editingFromReview && !isLastStep ? () => { setEditingFromReview(false); goToStep(totalSteps - 1); } : undefined}
+        isValid={isValid} isOptional={currentStep.isOptional} isLastStep={isLastStep} isLoading={loading}
+        nextLabel={steps[currentStepIndex + 1]?.label} hint={validationHints[currentStep.id]} />
     </div>
   );
 }
