@@ -2,6 +2,8 @@
 
 This mounts the real RoundRobinDetail route, including its organizer controls, nested dialogs, and PlayerRoundRobinView. Backend and auth imports are replaced with local fixtures. Mutations return a preview error; nothing reaches Supabase or sends invitations.
 
+Command center QA: add `?command` to enable score saves and round advancement **in memory only**. `&saveerror` keeps score saves failing for retry/retention checks. `&manycourts` expands the display fixture to 12 courts (reuses names for layout stress, not a valid generated schedule). `&longnames`, `&rest`, and `&dark` cover name wrapping, the resting-player page, and dark appearance. Reload resets all fixture changes. Start/completion and other backend mutations remain disabled.
+
 ```powershell
 node node_modules/vite/bin/vite.js --config tests/round-robin/event-browser/vite.config.ts --host 127.0.0.1 --port 5183 --strictPort
 ```
