@@ -6,10 +6,11 @@ import { Toaster } from 'sonner';
 import SelfAssessment from '../../../src/pages/player/SelfAssessment';
 import GuestSkillAssessment from '../../../src/pages/GuestSkillAssessment';
 import Auth from '../../../src/pages/Auth';
+import PickleballGuide from '../../../src/pages/PickleballGuide';
 import { PublicHomepage } from '../../../src/components/homepage/PublicHomepage';
 import { AssessmentQuestion } from '../../../src/components/skill/AssessmentQuestion';
 import { QUESTION_BANK_V2 } from '../../../src/lib/skill/questionBankV2';
-import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview } from './stub';
+import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa } from './stub';
 import '../../../src/index.css';
 import '../../../src/components/homepage/marketing.css';
 function RememberRoute() { const loc = useLocation(); useEffect(() => { localStorage.setItem('skill-preview-route', loc.pathname + loc.search); }, [loc]); return null; }
@@ -24,6 +25,7 @@ export default function Preview() {
       <Link className="min-h-10 rounded border p-3" to="/">Homepage</Link>
       <button className="min-h-10 rounded border px-3" onClick={signInPreview}>Simulate sign-in</button>
       <button className="min-h-10 rounded border px-3" onClick={signOutPreview}>Simulate sign-out</button>
+      <button className="min-h-10 rounded border px-3" onClick={enablePreviewMfa}>Require mock email MFA</button>
       <button className="min-h-10 rounded border px-3" onClick={() => setWidth('390px')}>Phone width</button>
       <button className="min-h-10 rounded border px-3" onClick={() => setWidth('100%')}>Full width</button>
       <button className="min-h-10 rounded border px-3" onClick={failNextSave}>Fail next save</button>
@@ -39,6 +41,7 @@ export default function Preview() {
       {scene === 'flow' ? <Routes>
         <Route path="/skill-assessment" element={<GuestSkillAssessment />} /><Route path="/auth" element={<Auth />} />
         <Route path="/player/self-assessment" element={<SelfAssessment />} /><Route path="/" element={<PublicHomepage />} />
+        <Route path="/pickleball-guide" element={<PickleballGuide />} />
         <Route path="*" element={<p className="p-10">Preview destination reached.</p>} />
       </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V2.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
     </main><Toaster richColors /></div></MemoryRouter></HelmetProvider>;

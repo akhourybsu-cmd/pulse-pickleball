@@ -20,6 +20,7 @@ export function AssessmentSection() {
         </article>)}
       </div>
       <div className="mkt-actions"><Link className="mkt-button mkt-button-gold" to="/skill-assessment?source=homepage">Discover my skill profile <ArrowRight aria-hidden="true" /></Link><p className="mkt-assessment-note">No signup to take it or read your analysis.<br />A self-assessment, separate from your match rating.</p></div>
+      <p className="mt-5"><Link className="mkt-text-link" to="/pickleball-guide">Learn pickleball fundamentals and what PULSE scores mean <ArrowRight aria-hidden="true" /></Link></p>
     </div>
   </section>;
 }

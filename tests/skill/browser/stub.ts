@@ -13,13 +13,16 @@ const read = (): Record<string, Row[]> => JSON.parse(localStorage.getItem(storag
 const write = (data: Record<string, Row[]>) => localStorage.setItem(storageKey, JSON.stringify(data));
 let failSave = false;
 const authListeners = new Set<(event: string, session: unknown) => void>();
-const currentUser = () => localStorage.getItem('skill-preview-user') === 'yes' ? { id: 'preview-player' } : null;
+const currentUser = () => localStorage.getItem('skill-preview-user') === 'yes' ? { id: 'preview-player', email: 'player@example.test' } : null;
+const currentSession = () => currentUser() ? { access_token: 'local-preview-only', user: currentUser() } : null;
+let previewMfa = false;
+export function enablePreviewMfa() { previewMfa = true; }
 export function signInPreview() {
   localStorage.setItem('skill-preview-user', 'yes');
   for (const fn of authListeners) fn('SIGNED_IN', { user: currentUser() });
   window.dispatchEvent(new Event('preview-auth'));
 }
-export function signOutPreview() { localStorage.removeItem('skill-preview-user'); window.dispatchEvent(new Event('preview-auth')); }
+export function signOutPreview() { localStorage.removeItem('skill-preview-user'); for (const fn of authListeners) fn('SIGNED_OUT', null); window.dispatchEvent(new Event('preview-auth')); }
 export function useAuthState() {
   const [user, setUser] = useState(currentUser);
   useEffect(() => { const changed = () => setUser(currentUser()); window.addEventListener('preview-auth', changed); return () => window.removeEventListener('preview-auth', changed); }, []);
@@ -50,12 +53,17 @@ function seedResponses(answer: ResponseKey) {
 export const supabase = {
   auth: {
     getUser: async () => ({ data: { user: currentUser() }, error: null }),
+    getSession: async () => ({ data: { session: currentSession() }, error: null }),
+    signOut: async () => { signOutPreview(); return { error: null }; },
+    signInWithPassword: async () => { signInPreview(); return { data: { user: currentUser(), session: currentSession() }, error: null }; },
+    signUp: async () => ({ data: { user: { id: 'preview-player' }, session: null }, error: null }),
     onAuthStateChange: (fn: (event: string, session: unknown) => void) => { authListeners.add(fn); return { data: { subscription: { unsubscribe: () => authListeners.delete(fn) } } }; },
   },
   from(table: string) {
     const filters: [string, unknown][] = [];
     let operation = 'select'; let payload: Row | Row[] = {}; let single = false;
     const execute = async () => {
+      if (table === 'profiles') return { data: { mfa_method: previewMfa ? 'email' : 'none' }, error: null };
       const data = read();
       const rows = data[table] ?? [];
       const matches = (r: Row) => filters.every(([key, value]) => r[key] === value);
@@ -87,6 +95,8 @@ export const supabase = {
     return query;
   },
   functions: { async invoke(_name: string, options: { body: { attemptId: string; assessmentVersion?: number; responses?: Responses } }) {
+    if (_name === 'get-biometric-credentials') return { data: { biometric_enabled: false }, error: null };
+    if (_name === 'send-mfa-code' || _name === 'verify-mfa-code') return { data: { success: true }, error: null };
     const data = read();
     if (_name === 'skill-claim') {
       if (!currentUser() || failSave) { failSave = false; return { data: null, error: new Error('Preview save failure') }; }

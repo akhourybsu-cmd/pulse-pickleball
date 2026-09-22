@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { sendAuthEmail } from "@/lib/authEmail";
@@ -89,6 +89,11 @@ const Auth = () => {
   // instead of showing the sign-in form. QoL pass — no form-flash.
   const [sessionChecked, setSessionChecked] = useState(false);
   const [alreadyAuthed, setAlreadyAuthed] = useState(false);
+  // A password session arrives before the MFA check. This form owns that
+  // transition until the challenge finishes; background listeners must wait.
+  const authFlowActive = useRef(false);
+  const [sessionCheckError, setSessionCheckError] = useState(false);
+  const [sessionCheckAttempt, setSessionCheckAttempt] = useState(0);
 
   const [isLogin, setIsLogin] = useState(() => searchParams.get('mode') !== 'signup');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -108,8 +113,10 @@ const Auth = () => {
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [staySignedIn, setStaySignedIn] = useState(() => {
     // Check localStorage for persisted preference (default to true)
-    const saved = localStorage.getItem('pulse_persist_session');
-    return saved === null ? true : saved === 'true';
+    try {
+      const saved = localStorage.getItem('pulse_persist_session');
+      return saved === null ? true : saved === 'true';
+    } catch { return true; }
   });
   const [tosAccepted, setTosAccepted] = useState(false);
   const navigate = useNavigate();
@@ -119,16 +126,19 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (cancelled) return;
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (cancelled || authFlowActive.current) return;
+      if (error && error.name !== 'AuthSessionMissingError' && error.status !== 401 && error.status !== 403) throw error;
       if (user) {
         setAlreadyAuthed(true);
       }
       setSessionChecked(true);
+    }).catch(() => {
+      if (!cancelled && !authFlowActive.current) { setSessionCheckError(true); setSessionChecked(true); }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled && session?.user) {
+      if (!cancelled && !authFlowActive.current && session?.user) {
         setAlreadyAuthed(true);
         setSessionChecked(true);
       }
@@ -138,7 +148,7 @@ const Auth = () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [sessionCheckAttempt]);
 
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
@@ -150,7 +160,9 @@ const Auth = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    authFlowActive.current = true;
     setLoading(true);
+    let awaitingMfa = false;
 
     try {
       // Validate based on mode
@@ -195,7 +207,8 @@ const Auth = () => {
       }
 
       // Save "stay signed in" preference
-      localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      try { localStorage.setItem('pulse_persist_session', staySignedIn.toString()); } catch { /* Optional preference. */ }
+      if (assessmentReturn && !stashPostAuthRedirect(redirectPath)) throw new Error('Allow browser storage before signing in so your assessment can return here.');
 
       if (isLogin) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -206,18 +219,24 @@ const Auth = () => {
         if (authError) throw authError;
 
         // Check if MFA is enabled for this user
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('mfa_method')
           .eq('id', authData.user?.id)
           .maybeSingle();
+        if (profileError) {
+          await supabase.auth.signOut();
+          throw new Error('Could not check your sign-in requirements. Please try again.');
+        }
 
         if (profile?.mfa_method === 'authenticator') {
+          awaitingMfa = true;
           // Need to complete MFA challenge
           setShowMFAChallenge(true);
           setMfaMethod('authenticator');
           return;
         } else if (profile?.mfa_method === 'email') {
+          awaitingMfa = true;
           setShowEmailMFA(true);
           setMfaMethod('email');
           return;
@@ -259,6 +278,9 @@ const Auth = () => {
       toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
+      // Keep ownership through MFA. Success/cancel explicitly releases it.
+      // A failed sign-in can be retried without a background redirect.
+      authFlowActive.current = awaitingMfa;
     }
   };
 
@@ -293,6 +315,7 @@ const Auth = () => {
   };
 
   const handleMFASuccess = () => {
+    authFlowActive.current = false;
     setShowMFAChallenge(false);
     setShowEmailMFA(false);
     toast.success("Logged in successfully!");
@@ -305,6 +328,7 @@ const Auth = () => {
     setShowMFAChallenge(false);
     setShowEmailMFA(false);
     await supabase.auth.signOut();
+    authFlowActive.current = false;
     toast.info("Login cancelled");
   };
 
@@ -319,7 +343,7 @@ const Auth = () => {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
       // Stash the intended deep link — OAuth strips React Router location.state
       // when the browser bounces back from the provider.
-      stashPostAuthRedirect(redirectPath);
+      if (!stashPostAuthRedirect(redirectPath) && assessmentReturn) throw new Error('Allow browser storage before signing in so your assessment can return here.');
       // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
       // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
       // the provider to bounce the user back to /auth without a session.
@@ -388,6 +412,9 @@ const Auth = () => {
   // Short-circuit while we check the session, or while we're bouncing
   // an already-authed user. Avoids the sign-in form flashing on screen
   // for returning users.
+  if (sessionCheckError && !alreadyAuthed) {
+    return <div className="min-h-screen flex items-center justify-center p-6"><div role="alert" className="max-w-sm space-y-4 text-center"><h1 className="text-xl font-semibold">Couldn’t check your session</h1><p>Check your connection and try again. Your assessment stays in this browser.</p><Button onClick={() => { setSessionCheckError(false); setSessionChecked(false); setSessionCheckAttempt(n => n + 1); }}>Retry session check</Button></div></div>;
+  }
   if (!sessionChecked || alreadyAuthed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary">

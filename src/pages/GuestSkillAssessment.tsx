@@ -17,6 +17,7 @@ import { clearPostAuthRedirect, peekPostAuthRedirect, stashPostAuthRedirect } fr
 import { ASSESSMENT_PATH, canAutoSaveGuest, guestSaveReturnPath } from '@/lib/skill/guestAssessment';
 import { trackAssessmentFunnel } from '@/lib/skill/assessmentFunnel';
 import type { ScoringSnapshot } from '@/lib/skill/scoring';
+import { claimGuestReport, GuestClaimError, type ClaimFailure } from '@/lib/skill/claimGuestReport';
 
 export default function GuestSkillAssessment() {
   const a = useGuestSkillAssessment();
@@ -24,60 +25,74 @@ export default function GuestSkillAssessment() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
-  const [savedReport, setSaved] = useState<{ id: string; snapshot: ScoringSnapshot } | null>(null);
-  const saved = savedReport?.id === a.draft?.id ? savedReport?.snapshot : null;
+  const [saveError, setSaveError] = useState<ClaimFailure | null>(null);
+  const [savedReport, setSaved] = useState<{ id: string; ownerId: string; snapshot: ScoringSnapshot } | null>(null);
+  const saved = savedReport?.id === a.draft?.id && savedReport?.ownerId === auth.user?.id ? savedReport?.snapshot : null;
+  const current = useRef({ ownerId: auth.user?.id, attemptId: a.draft?.id });
+  current.current = { ownerId: auth.user?.id, attemptId: a.draft?.id };
   const inFlight = useRef(false);
-  const autoTried = useRef(false);
+  const autoTried = useRef<string | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, [a.phase]);
   useEffect(() => {
     const saveId = params.get('save');
     // Acknowledge arrival only after the public destination has mounted with
     // a session. Other auth resolvers must retain this link until this point.
-    if (auth.user && saveId && peekPostAuthRedirect() === guestSaveReturnPath(saveId)) clearPostAuthRedirect();
+    if (auth.user && saveId && peekPostAuthRedirect() === guestSaveReturnPath(saveId)) clearPostAuthRedirect(guestSaveReturnPath(saveId));
   }, [auth.user, params]);
 
   const saveToAccount = useCallback(async () => {
     if (!a.draft || !a.canFinalize || !auth.user || inFlight.current || saved) return;
     inFlight.current = true;
     setSaving(true);
-    setSaveError(false);
+    setSaveError(null);
+    const ownerId = auth.user.id;
+    const attemptId = a.draft.id;
     try {
-      const { data, error } = await supabase.functions.invoke('skill-claim', {
-        body: { attemptId: a.draft.id, assessmentVersion: 2, responses: a.draft.responses },
+      const snapshot = await claimGuestReport(a.draft, ownerId, {
+        getSession: () => supabase.auth.getSession(),
+        invoke: (name, options) => supabase.functions.invoke(name, options),
+        isCurrent: () => mounted.current && current.current.ownerId === ownerId && current.current.attemptId === attemptId,
       });
-      if (error || !data?.authoritative || !data?.snapshot || data.attemptId !== a.draft.id) throw new Error('save_failed');
-      setSaved({ id: a.draft.id, snapshot: data.snapshot as ScoringSnapshot });
-      a.clearSaved(a.draft.id);
+      setSaved({ id: attemptId, ownerId, snapshot });
+      a.clearSaved(attemptId);
       setParams({}, { replace: true });
       trackAssessmentFunnel('saved');
-    } catch {
-      setSaveError(true);
+    } catch (error) {
+      if (!mounted.current) return;
+      setSaveError(error instanceof GuestClaimError ? error.reason : 'retry');
       trackAssessmentFunnel('save_failed');
-    } finally { setSaving(false); inFlight.current = false; }
+    } finally { if (mounted.current) setSaving(false); inFlight.current = false; }
   }, [a, auth.user, saved, setParams]);
 
   useEffect(() => {
     // Authentication alone never claims a cached report on a shared browser.
     // Require the explicit save intent AND its matching auth return URL.
-    if (!auth.loading && auth.user && !autoTried.current && canAutoSaveGuest(a.draft, params.get('save'))) {
-      autoTried.current = true;
+    const saveKey = a.draft?.id ?? null;
+    if (!auth.loading && auth.user && !inFlight.current && autoTried.current !== saveKey && canAutoSaveGuest(a.draft, params.get('save'))) {
+      autoTried.current = saveKey;
       void saveToAccount();
     }
   }, [auth.loading, auth.user, a.draft, params, saveToAccount]);
 
-  const save = (mode: 'signup' | 'login' = 'signup') => {
+  const save = async (mode: 'signup' | 'login' = 'signup') => {
     trackAssessmentFunnel('save_requested');
-    if (auth.user) { void saveToAccount(); return; }
+    const needsSignIn = saveError === 'sign_in' || saveError === 'conflict';
+    if (auth.user && !needsSignIn) { void saveToAccount(); return; }
     if (!a.draft || !a.requestSave()) {
-      toast.error('Browser storage is unavailable. Allow site storage before leaving this page to keep your answers through sign-in.');
+      toast.error('Your temporary assessment changed or could not be retained. Review the current analysis and allow site storage before signing in.');
       return;
     }
     const returnTo = guestSaveReturnPath(a.draft.id);
-    stashPostAuthRedirect(returnTo);
+    if (!stashPostAuthRedirect(returnTo)) { toast.error('Could not retain your return link. Allow site storage and try again.'); return; }
+    if (auth.user && needsSignIn) {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) { toast.error('Could not end the current session. Try again before signing in.'); return; }
+    }
     trackAssessmentFunnel('auth_started');
-    navigate(`/auth?mode=${mode}&redirect=${encodeURIComponent(returnTo)}`);
+    navigate(`/auth?mode=${needsSignIn ? 'login' : mode}&redirect=${encodeURIComponent(returnTo)}`);
   };
   const inviteUrl = typeof window === 'undefined' ? ASSESSMENT_PATH : `${window.location.origin}${ASSESSMENT_PATH}?source=friend`;
   const copyInvite = async () => {
@@ -98,7 +113,7 @@ export default function GuestSkillAssessment() {
     <main className={`skill-public-main space-y-6 ${a.phase === 'in_progress' ? 'is-question' : ''}`}>
       {a.phase === 'intro' ? <>
         <p className="skill-notice">Take it free. Read the full analysis. Create an account only when you want to save it.</p>
-        <SkillIntro guest onStart={() => { setSaved(null); setSaveError(false); void a.start(); }} hasDraft={!!a.draft && !a.draft.completedAt} minItems={a.minItems} maxItems={a.maxItems} />
+        <SkillIntro guest onStart={() => { setSaved(null); setSaveError(null); void a.start(); }} hasDraft={!!a.draft && !a.draft.completedAt} minItems={a.minItems} maxItems={a.maxItems} />
         {a.draft?.completedAt && !saved && <p className="text-sm text-muted-foreground">Starting again replaces your temporary browser copy. Return to your analysis first if you want to save it to an account.</p>}
         {a.draft?.completedAt && <Button variant="ghost" className="w-full" onClick={a.showResult}>Back to my analysis</Button>}
       </> : a.phase === 'in_progress' ? <>
@@ -126,9 +141,10 @@ export default function GuestSkillAssessment() {
             <h2 id="save-heading" className="text-xl font-semibold">Make this your starting point</h2>
             <p className="text-sm text-muted-foreground">Save your analysis to a free PULSE account. Come back to your strengths and practice priorities, then build a history as your game develops.</p>
             <ul className="space-y-1 text-sm"><li>• Keep your full skill breakdown</li><li>• Access it on your phone or computer</li><li>• Revisit past assessments after more games</li></ul>
-            {saveError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Your analysis hasn’t been saved to your account yet. It’s still here. Check your connection and retry; you won’t create a duplicate.</p>}
+            {auth.user && <p className="text-xs text-muted-foreground">Saving to {auth.user.email ?? 'your signed-in PULSE account'}.</p>}
+            {saveError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">{saveError === 'sign_in' ? 'Your session needs to be renewed. Sign in again to save; your answers are still here.' : saveError === 'conflict' ? 'This assessment is already linked to another account. Sign in to that account to view its saved history.' : saveError === 'account_changed' ? 'Your account or assessment changed during the save. Check the account shown here before trying again.' : saveError === 'timeout' ? 'The save is taking too long to confirm. Your answers are still here. Retry safely; the same assessment will not be duplicated.' : 'Your analysis hasn’t been saved to your account yet. It’s still here. Check your connection and retry; you won’t create a duplicate.'}</p>}
             <Button disabled={saving || auth.loading} className="skill-primary-button min-h-12 w-full whitespace-normal" onClick={() => save()}>
-              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving your analysis…</> : saveError ? 'Retry saving my analysis' : auth.user ? 'Save my analysis to my account' : 'Create free account & save my analysis'}
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving your analysis…</> : saveError === 'sign_in' ? 'Sign in again to save my analysis' : saveError === 'conflict' ? 'Sign in to the linked account' : saveError ? 'Retry saving my analysis' : auth.user ? 'Save my analysis to my account' : 'Create free account & save my analysis'}
             </Button>
             {!auth.user && <button type="button" disabled={saving || auth.loading} className="min-h-11 w-full text-sm underline underline-offset-4" onClick={() => save('login')}>Already a member? Sign in to save</button>}
             <p className="text-xs leading-relaxed text-muted-foreground">Your full analysis is already unlocked. Without an account, answers are kept temporarily in this browser for up to 7 days and can be lost if you clear site data. Finish sign-in in this browser to transfer them.</p>

@@ -113,6 +113,39 @@
 .skill-group-rows { padding: 17px; border-top: 1px solid #ffffff0d; }
 .skill-assessment-details { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 4px; border-top: 1px solid #ffffff15; }
 .skill-quiet-link { color: var(--skill-gold); text-decoration: underline; text-underline-offset: 4px; }
+.skill-group-skill + .skill-group-skill { margin-top: 22px; padding-top: 18px; border-top: 1px solid #ffffff12; }
+.skill-question-help { border: 1px solid #64e9cf30; border-radius: 12px; background: #64e9cf06; padding: 0 14px; font-size: 13px; color: #c2cfdf; }
+.skill-question-help summary { display: flex; gap: 8px; align-items: center; min-height: 44px; cursor: pointer; color: var(--skill-teal); }
+.skill-question-help[open] > div { padding: 0 0 16px; line-height: 1.65; }
+.skill-guide { font-size: 14px; line-height: 1.75; }
+.skill-guide h2 { font-size: clamp(23px, 3vw, 30px); line-height: 1.2; letter-spacing: -.035em; font-weight: 600; }
+.skill-guide h3 { color: #f0f5fc; font-size: 16px; font-weight: 600; line-height: 1.4; margin-bottom: 12px; }
+.skill-guide p, .skill-guide dd { color: #b9c7d8; }
+.skill-guide strong { color: #e0e9f4; font-weight: 600; }
+.skill-guide :is(section, details) { scroll-margin-top: 24px; }
+.skill-guide-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-guide-nav a { padding: 10px 16px; border-radius: 24px; background: #1c2c3b; border: 1px solid #64e9cf24; color: var(--skill-teal); font-size: 12px; }
+.skill-guide-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 16px; }
+.skill-guide-columns article { border: 1px solid #ffffff15; border-top: 2px solid #64e9cf70; border-radius: 14px; padding: 22px; background: #14212f; }
+.skill-guide-columns article:nth-child(3n+2) { border-top-color: #79baff90; }
+.skill-guide-columns article:nth-child(3n+3) { border-top-color: #b4a4ff90; }
+.skill-guide-callout { border-left: 3px solid var(--skill-gold); padding: 15px 18px; background: #ffd16a09; border-radius: 0 12px 12px 0; }
+.skill-guide details { border: 1px solid #ffffff1a; background: #14202e; border-radius: 12px; padding: 0 18px; }
+.skill-guide details + details { margin-top: 10px; }
+.skill-guide summary { padding: 16px 0; min-height: 52px; cursor: pointer; color: var(--skill-gold); font-weight: 550; }
+.skill-guide details[open] > :not(summary) { margin-bottom: 18px; }
+.skill-guide-bands { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.skill-guide-bands article { background: #1b2a3a; padding: 20px; border-radius: 12px; }
+.skill-guide-bands small { display: block; margin-top: 6px; font-size: 12px; color: var(--skill-teal); }
+.skill-guide-bands article p + p { margin-top: 12px; }
+.skill-guide-search { display: flex; align-items: center; gap: 10px; padding: 4px 16px; border: 1px solid #64e9cf50; border-radius: 12px; color: var(--skill-teal); background: #0c1621; }
+.skill-guide-search input { background: transparent; color: #f0f5fc; min-height: 44px; min-width: 0; width: 100%; padding: 8px 0; }
+.skill-guide-search input::placeholder { color: #9dacc0; }
+.skill-guide-group > h3 { margin-top: 28px; color: var(--skill-teal); }
+.skill-source-links { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin-top: 16px; list-style: none; }
+.skill-source-links a { display: inline-block; padding: 4px 0; color: #8ebeff; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.skill-guide-glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.skill-guide-glossary dt { color: var(--skill-teal); font-weight: 600; margin-bottom: 5px; }
 .skill-conversion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; }
 .skill-save-card { background: radial-gradient(at top right, #8b642127, transparent 65%), #18212c; border: 1px solid #ffd16a50; border-radius: 22px; padding: 28px; }
 .skill-save-card h2 { font-size: 25px; line-height: 1.15; letter-spacing: -.03em; }

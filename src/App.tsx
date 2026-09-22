@@ -30,6 +30,7 @@ import { ScrollManager } from "@/components/ScrollManager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { clearPostAuthRedirect, consumePostAuthRedirect, isAuthEntryPath } from "@/lib/authRedirect";
+const PickleballGuide = lazy(() => import('./pages/PickleballGuide'));
 
 /**
  * Forward the current location's `search` (and `hash`) when redirecting from a
@@ -366,7 +367,9 @@ const AppContent = () => {
         // without an authed user, so registering only at cold startup can miss it.
         void initNativePush();
         const currentPath = window.location.pathname;
-        if (isAuthEntryPath(currentPath)) {
+        // Auth owns its password/MFA and email-confirmation transition. A
+        // SIGNED_IN event alone must not unmount an unfinished MFA challenge.
+        if (currentPath === '/') {
           navigate(consumePostAuthRedirect(), { replace: true });
         }
       }
@@ -407,6 +410,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           {isSkillAssessmentEnabled() && <Route path="/skill-assessment" element={<GuestSkillAssessment />} />}
+          <Route path="/pickleball-guide" element={<PickleballGuide />} />
           <Route path="/reset-password" element={<ResetPassword />} />
          <Route path="/unsubscribe" element={<Unsubscribe />} />
          <Route path="/claim-guest/:token" element={<ClaimGuest />} />

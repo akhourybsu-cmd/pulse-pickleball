@@ -56,7 +56,12 @@ export function useGuestSkillAssessment() {
     persist({ ...draft, completedAt: Date.now() });
     trackAssessmentFunnel('completed');
   };
-  const requestSave = () => draft && canFinalize && persist({ ...draft, saveRequested: true });
+  const requestSave = () => {
+    if (!draft || !canFinalize || draft.expiresAt <= Date.now()) return false;
+    const latest = readGuestAssessment(browserGuestStorage());
+    if (latest && latest.id !== draft.id) { setDraft(latest); return false; }
+    return persist({ ...draft, saveRequested: true });
+  };
   const clearSaved = (id: string) => clearGuestAssessment(browserGuestStorage(), id);
   return { draft, durable, bank: QUESTION_BANK_V2, assessmentVersion: 2, responses, nextItemKey,
     answeredCount: Object.keys(responses).length, complete, canFinalize, runningSnapshot,

@@ -7,6 +7,7 @@ import { RESPONSE_KEYS, RESPONSE_MASTERY, SUBSKILL_LABELS, type AssessmentItem, 
 import { MEASURE_LABELS } from '@/lib/skill/questionBankV2';
 import { cn } from '@/lib/utils';
 import './assessment-brand.css';
+import { QuestionSkillHelp } from './SkillKnowledge';
 
 export function AssessmentQuestion({ item, initialValue, saving, editing, onConfirm }: {
   item: AssessmentItem; initialValue?: ResponseKey; saving: boolean; editing?: boolean;
@@ -24,6 +25,7 @@ export function AssessmentQuestion({ item, initialValue, saving, editing, onConf
         {item.version === 2 && item.dimension && <span className="rounded-full bg-primary/10 px-2.5 py-1.5">{MEASURE_LABELS[item.dimension]}</span>}
       </div>
       <h2 ref={heading} tabIndex={-1} className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight outline-none">{item.situation ?? item.text}</h2>
+      {item.version === 2 && <QuestionSkillHelp skill={item.subskill} />}
       {item.version === 2 && <>
         <CourtScenario item={item} />
         <div className="flex gap-2.5 rounded-xl bg-muted/50 p-3">

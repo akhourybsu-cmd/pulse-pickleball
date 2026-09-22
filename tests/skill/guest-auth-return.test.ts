@@ -33,4 +33,28 @@ describe('assessment auth callback coordination', () => {
     stashPostAuthRedirect('//example.com');
     expect(consumePostAuthRedirect()).toBe(DEFAULT_AUTH_DESTINATION);
   });
+  it('does not let arrival in an older tab remove a newer return destination', () => {
+    const old = guestSaveReturnPath('10000000-0000-4000-8000-000000000001');
+    const next = guestSaveReturnPath('10000000-0000-4000-8000-000000000002');
+    stashPostAuthRedirect(next);
+    clearPostAuthRedirect(old);
+    expect(peekPostAuthRedirect()).toBe(next);
+    clearPostAuthRedirect(next);
+    expect(peekPostAuthRedirect()).toBeNull();
+  });
+  it('reports a failed handoff when storage is blocked and falls back when just one store works', () => {
+    const blocked = { getItem() { throw Error('blocked'); }, setItem() { throw Error('blocked'); }, removeItem() { throw Error('blocked'); } };
+    vi.stubGlobal('sessionStorage', blocked);
+    const path = guestSaveReturnPath('10000000-0000-4000-8000-000000000001');
+    expect(stashPostAuthRedirect(path)).toBe(true);
+    vi.stubGlobal('localStorage', blocked);
+    expect(stashPostAuthRedirect(path)).toBe(false);
+    expect(consumePostAuthRedirect()).toBe(DEFAULT_AUTH_DESTINATION);
+  });
+  it('rejects browser-normalized external paths and control characters', () => {
+    for (const path of ['/\\evil.example', '/\n/evil.example', '/\t/evil.example']) {
+      stashPostAuthRedirect(path);
+      expect(consumePostAuthRedirect()).toBe(DEFAULT_AUTH_DESTINATION);
+    }
+  });
 });

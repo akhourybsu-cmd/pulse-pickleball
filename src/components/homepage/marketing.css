@@ -96,6 +96,23 @@
 .mkt-preview-bottom > span:last-child { display: flex; gap: 6px; align-items: center; }
 .mkt-preview-bottom svg { width: 12px; height: 12px; }
 .mkt-hero-preview figcaption { padding: 12px 20px; border-top: 1px solid #d9d7cb; font-size: 10px; text-align: center; color: #5b6057; }
+.mkt-assessment-preview { background: radial-gradient(at top left, #58492855, transparent 70%), #111d2b; border-color: #ffd16a55; color: #f8f4e9; transform: none; }
+.mkt-assessment-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-bottom: 1px solid #ffffff15; }
+.mkt-assessment-preview-head svg { width: 110px; height: auto; }
+.mkt-assessment-preview-head > span { font-size: 9px; letter-spacing: .16em; color: #ffd16a; }
+.mkt-assessment-preview-body { padding: 28px; }
+.mkt-assessment-preview-score { display: flex; align-items: center; gap: 24px; }
+.mkt-assessment-preview-score > strong { font-size: 80px; line-height: 1; letter-spacing: -.06em; color: #ffdc87; }
+.mkt-assessment-preview-score span, .mkt-assessment-preview-score small { display: block; }
+.mkt-assessment-preview-score span { font-size: 15px; font-weight: 600; }
+.mkt-assessment-preview-score small { font-size: 11px; color: #b6c4d5; margin-top: 7px; }
+.mkt-assessment-preview-measures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; margin: 20px 0 28px; }
+.mkt-assessment-preview-measures span { font-size: 12px; }
+.mkt-assessment-preview-measures .skill-track { margin-top: 10px; }
+.mkt-assessment-preview-body p { font-size: 14px; line-height: 1.8; color: #c4cedb; }
+.mkt-assessment-preview-body p strong { color: #f8f4e9; }
+.mkt-assessment-preview-body > small { display: block; margin-top: 15px; font-size: 11px; line-height: 1.7; color: #aebdce; }
+.mkt-assessment-preview figcaption { border-color: #ffffff15; color: #aebdce; }
 .mkt-hero-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-block: 25px; border-top: 1px solid #4a5445; }
 .mkt-hero-foot > span { font-size: 9px; color: #b6c0ae; letter-spacing: .12em; font-weight: 600; }
 .mkt-hero-foot > p { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; }

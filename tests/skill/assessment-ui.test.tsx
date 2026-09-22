@@ -1,5 +1,6 @@
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { StaticRouter } from 'react-router-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { AssessmentQuestion } from '../../src/components/skill/AssessmentQuestion';
 import { CourtScenario } from '../../src/components/skill/CourtScenario';
@@ -11,6 +12,7 @@ import { selectNextV2 } from '../../src/lib/skill/adaptiveV2';
 import type { Responses } from '../../src/lib/skill/scoring';
 import { QUESTION_BANK_V1 } from '../../src/lib/skill/questionBank';
 vi.mock('framer-motion', async importOriginal => ({ ...await importOriginal<typeof import('framer-motion')>(), useReducedMotion: () => true }));
+const renderToStaticMarkup = (element: React.ReactElement) => renderMarkup(<StaticRouter location="/skill-assessment">{element}</StaticRouter>);
 
 describe('assessment accessibility and privacy', () => {
   it('does not submit a silently preselected midpoint', () => {

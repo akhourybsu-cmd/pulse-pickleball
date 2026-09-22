@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from "framer-motion";
 import { Gauge, Clock, ShieldCheck, PlayCircle, ListChecks, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { staggerContainer, staggerItem } from "@/lib/motion";
 import { Logo } from '@/components/Logo';
 import { PulseTrace } from './PulseTrace';
 import './assessment-brand.css';
+import { GUIDE_PATH } from '@/lib/skill/knowledge';
 
 /**
  * Assessment introduction. Sets expectations before the player starts:
@@ -70,6 +72,7 @@ export function SkillIntro({
       </motion.div>
 
       {/* Expectations */}
+      <p className="text-center text-sm"><Link className="skill-quiet-link" to={GUIDE_PATH}>New to the terms? Explore the pickleball fundamentals guide</Link></p>
       <motion.section {...item} className="skill-intro-grid">
         <Point icon={<Gauge className="h-4 w-4" />}>
           Gives your <strong>PULSE Self-Assessed Level</strong> — separate from your match-based

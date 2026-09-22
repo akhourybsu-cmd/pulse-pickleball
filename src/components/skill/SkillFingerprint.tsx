@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useId, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowUpRight, CheckCheck, ChevronDown, Info, Layers3, RotateCcw, Target, TrendingUp } from 'lucide-react';
@@ -9,6 +10,8 @@ import { explainScore } from '@/lib/skill/scoreExplanation';
 import { MEASURE_LABELS, QUESTION_BANK_V2 } from '@/lib/skill/questionBankV2';
 import { PulseTrace } from './PulseTrace';
 import './assessment-brand.css';
+import { ScoreMeaning } from './SkillKnowledge';
+import { GUIDE_PATH } from '@/lib/skill/knowledge';
 
 const TONES = ['gold', 'teal', 'blue', 'violet'] as const;
 
@@ -35,6 +38,7 @@ export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, n
       <div className="skill-evidence-note"><Info size={14} /><p className="skill-help">These percentages summarize your own answers, not your percentile among players. Question difficulty and the number of answers vary, so compare the situations as well as the percentages.</p></div>
     </section>}
     <ScoreCalculation snapshot={snapshot} />
+    <ScoreMeaning snapshot={snapshot} />
     <section className="skill-surface" data-tone="teal" aria-labelledby="skill-strengths-title">
       <SectionHeading id="skill-strengths-title" icon={<TrendingUp />} title="Where your game shines" subtitle="Relative strengths supported by your answers" />
       {snapshot.strengths.length ? <ul className="skill-insight-list">{snapshot.strengths.map(s => <li key={s.subskill}>
@@ -167,5 +171,5 @@ function SubskillGroup({ title, subskills, snapshot }: { title: string; subskill
   const supported = rows.filter(s => !s.insufficientEvidence).length;
   return <div className="skill-group"><button type="button" className="skill-group-toggle" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-controls={id}>
     <strong>{title}</strong><span className="flex items-center gap-3"><small>{supported}/{rows.length} supported</small><ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined }} /></span>
-  </button><div id={id} hidden={!open} className="skill-group-rows">{open && rows.map(s => <SkillBar key={s.subskill} label={SUBSKILL_LABELS[s.subskill]} level={s.displayLevel} insufficient={s.insufficientEvidence} evidenceCount={s.evidenceCount} version={snapshot.scoringModelVersion} tone="teal" />)}</div></div>;
+  </button><div id={id} hidden={!open} className="skill-group-rows">{open && rows.map(s => <div key={s.subskill} className="skill-group-skill"><SkillBar label={SUBSKILL_LABELS[s.subskill]} level={s.displayLevel} insufficient={s.insufficientEvidence} evidenceCount={s.evidenceCount} version={snapshot.scoringModelVersion} tone="teal" /><Link className="skill-quiet-link text-xs inline-block mt-2" to={`${GUIDE_PATH}#skill-${s.subskill}`}>Understand {SUBSKILL_LABELS[s.subskill].toLowerCase()}</Link></div>)}</div></div>;
 }
