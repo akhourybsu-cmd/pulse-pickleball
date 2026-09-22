@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Loader2, History, ChevronRight, Gauge, Check, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ResponseScalePicker } from "@/components/skill/ResponseScalePicker";
+import { AssessmentQuestion } from "@/components/skill/AssessmentQuestion";
 import { SkillIntro } from "@/components/skill/SkillIntro";
 import { SkillFingerprint } from "@/components/skill/SkillFingerprint";
 import { useSkillAssessment, type CompletedAttempt } from "@/hooks/useSkillAssessment";
-import { itemByKey } from "@/lib/skill/questionBank";
-import { SUBSKILL_LABELS, clamp, type ResponseKey } from "@/lib/skill/model";
+import { SUBSKILL_LABELS, RESPONSE_MASTERY, RESPONSE_LABELS, clamp } from "@/lib/skill/model";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +28,13 @@ export default function SelfAssessment() {
   const [params] = useSearchParams();
   const initialMode = params.get("mode") === "retake" ? "retake" : params.get("mode") === "view" ? "view" : null;
   const [mode, setMode] = useState<"view" | "retake" | null>(initialMode);
+  const intentApplied = useRef(false);
+  const { phase: assessmentPhase, showIntro } = a;
+  useEffect(() => {
+    if (intentApplied.current || assessmentPhase === 'loading' || assessmentPhase === 'error') return;
+    intentApplied.current = true;
+    if (initialMode === 'retake' && assessmentPhase === 'result') showIntro();
+  }, [assessmentPhase, showIntro, initialMode]);
 
   if (a.phase === "loading") {
     return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
@@ -40,6 +46,9 @@ export default function SelfAssessment() {
         <Button className="mt-4" onClick={() => navigate("/auth")}>Sign in</Button>
       </Centered>
     );
+  }
+  if (a.phase === 'error') {
+    return <Centered><p>We couldn’t load your assessment.</p><Button className="mt-4" onClick={a.reload}>Retry</Button></Centered>;
   }
 
   const hasResult = !!a.latest?.scoring_snapshot;
@@ -92,7 +101,7 @@ export default function SelfAssessment() {
           {a.attemptId && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/35 bg-primary/10 p-3">
               <p className="text-xs text-muted-foreground">You have an assessment in progress.</p>
-              <Button size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => setMode("retake")}>
+              <Button size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => { setMode("retake"); void a.start(); }}>
                 <PlayCircle className="h-3.5 w-3.5" /> Resume
               </Button>
             </div>
@@ -104,12 +113,13 @@ export default function SelfAssessment() {
             canRetake
           />
         </div>
-      ) : a.phase === "in_progress" && (mode === "retake" || !hasResult) ? (
+      ) : a.phase === "in_progress" && mode !== 'view' ? (
         <WizardStep a={a} onExit={() => navigate("/player/profile")} />
       ) : (
         <div className="space-y-3">
           <SkillIntro
-            onStart={a.start}
+            onStart={() => { setMode('retake'); void a.start(); }}
+            starting={a.starting}
             hasDraft={!!a.attemptId}
             minItems={a.minItems}
             maxItems={a.maxItems}
@@ -128,101 +138,49 @@ export default function SelfAssessment() {
 
 /* ---------------- adaptive wizard step ---------------- */
 
-function WizardStep({
-  a,
-  onExit,
-}: {
-  a: ReturnType<typeof useSkillAssessment>;
-  onExit: () => void;
-}) {
-  const reduced = useReducedMotion();
-  const item = a.nextItemKey ? itemByKey(a.nextItemKey) : null;
+function WizardStep({ a, onExit }: { a: ReturnType<typeof useSkillAssessment>; onExit: () => void }) {
+  const [reviewing, setReviewing] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const itemKey = editingKey ?? a.nextItemKey;
+  const item = a.bank.find(i => i.itemKey === itemKey);
   const answered = a.answeredCount;
-  const softTotal = Math.max(a.minItems, answered + 1);
-  const pct = a.complete ? 100 : Math.round(clamp((answered / softTotal) * 100, 4, 96));
-
-  // Complete (or no eligible item left) → offer results.
-  if (!item || a.complete) {
-    return (
-      <div className="space-y-5 pt-6 text-center">
-        <motion.div
-          initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-          animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-          transition={reduced ? { duration: 0.15 } : { type: "spring", stiffness: 380, damping: 18 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/25 shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.5)]"
-        >
-          <Check className="h-8 w-8" strokeWidth={2.5} />
-        </motion.div>
-        <div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight">You're all set</h2>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
-            You answered {answered} questions. Generate your PULSE Self-Assessed Level and Skill Fingerprint.
-          </p>
-        </div>
-        <Button onClick={a.finalize} className="h-12 w-full gap-2 rounded-xl font-semibold shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.6)]">
-          See my results <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" onClick={onExit} className="w-full text-muted-foreground">
-          Save &amp; finish later
-        </Button>
-      </div>
-    );
-  }
-
-  // Dense, single-viewport layout: slim progress + inline exit, then a compact
-  // card whose question + all response options fit without scrolling.
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-foreground">Question {answered + 1}</span>
-          <div className="flex items-center gap-3">
-            {a.saving && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground" aria-live="polite">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={onExit}
-              className="font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Save &amp; exit
-            </button>
-          </div>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} answered`}>
-          <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={item.itemKey}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, x: 28 }}
-          animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
-          exit={reduced ? { opacity: 0 } : { opacity: 0, x: -28 }}
-          transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.7 }}
-          className="rounded-2xl border border-border/60 p-4 shadow-[0_4px_20px_-6px_hsl(var(--foreground)/0.07)]"
-          style={{
-            background:
-              "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)) 62%, hsl(var(--primary) / 0.045) 100%)",
-          }}
-        >
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-            {SUBSKILL_LABELS[item.subskill]}
-          </div>
-          <p className="mb-3.5 text-[15px] font-semibold leading-snug text-balance">{item.text}</p>
-          <ResponseScalePicker
-            value={(a.responses[item.itemKey] as ResponseKey | undefined) ?? null}
-            onSelect={(key) => void a.answer(item.itemKey, key)}
-          />
-        </motion.div>
-      </AnimatePresence>
+  const pct = a.complete ? 100 : Math.round(clamp(answered / a.maxItems * 100, 0, 99));
+  const reviewList = a.bank.filter(i => a.responses[i.itemKey] !== undefined);
+  const review = <div className="space-y-3">
+    <h2 className="text-lg font-semibold">Review your answers</h2>
+    <p className="text-xs text-muted-foreground">Tap an answer to change it. Updates may add a follow-up question.</p>
+    {reviewList.map(i => {
+      const response = a.responses[i.itemKey];
+      const value = RESPONSE_MASTERY[response];
+      return <button type="button" key={i.itemKey} disabled={a.saving} onClick={() => { setEditingKey(i.itemKey); setReviewing(false); }}
+        className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+        <span className="min-w-0"><span className="block text-[10px] font-semibold uppercase tracking-wider text-primary">{SUBSKILL_LABELS[i.subskill]}</span>
+          <span className="mt-1 block text-sm">{i.situation ?? i.text}</span></span>
+        <span className="shrink-0 text-xs font-semibold">{i.version === 1 ? RESPONSE_LABELS[response] : value === null ? 'Unsure' : `${value * 10}/10`}</span>
+      </button>;
+    })}
+  </div>;
+  return <div className="space-y-4">
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="font-semibold">{answered} saved · up to {a.maxItems}</span>
+      <button type="button" disabled={a.saving} onClick={onExit} className="min-h-11 rounded-lg px-2 text-muted-foreground">Exit</button>
     </div>
-  );
+    <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} saved answers, maximum ${a.maxItems}`}>
+      <div className="h-full bg-primary motion-safe:transition-[width]" style={{ width: `${pct}%` }} />
+    </div>
+    {a.assessmentVersion === 1 && <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">You’re finishing an earlier assessment with its original questions and scoring. Your next assessment will use the updated format.</p>}
+    {reviewing ? review : editingKey || !a.complete ? item && <AssessmentQuestion key={item.itemKey} item={item} initialValue={a.responses[item.itemKey]} saving={a.saving} editing={!!editingKey}
+      onConfirm={async value => { const saved = await a.answer(item.itemKey, value); if (saved && editingKey) { setEditingKey(null); setReviewing(true); } }} /> : <section className="space-y-4 rounded-2xl border bg-card p-5 text-center">
+        <Check className="mx-auto h-9 w-9 text-primary" />
+        <h2 className="text-xl font-semibold">{a.canFinalize ? 'Your skill picture is ready' : 'A little more game evidence is needed'}</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">{a.canFinalize ? 'Review your answers or generate your provisional level and skill breakdown.' : 'Review uncertain answers if you now have enough experience to answer. Otherwise, save this assessment and return after more games. We won’t turn missing experience into a low skill rating.'}</p>
+        <Button disabled={!a.canFinalize || a.saving} onClick={a.finalize} className="h-12 w-full rounded-xl">See my results <ChevronRight className="ml-2 h-4 w-4" /></Button>
+      </section>}
+    {answered > 0 && <Button variant="outline" disabled={a.saving} className="min-h-11 w-full rounded-xl"
+      onClick={() => { setEditingKey(null); setReviewing(v => !v); }}>{editingKey ? 'Cancel edit' : reviewing ? 'Back to assessment' : `Review ${answered} saved answers`}</Button>}
+    {!reviewing && !editingKey && !a.complete && <p className="text-center text-[11px] text-muted-foreground">Question count adapts to the evidence in your answers.</p>}
+  </div>;
 }
-
 /* ---------------- history ---------------- */
 
 function AssessmentHistory({ history }: { history: CompletedAttempt[] }) {

@@ -19,12 +19,12 @@
  *            ├▶ styles         (rule-based; primary + optional secondary)
  *            └▶ strengths / development priorities (traceable to evidence)
  */
+import { scoreAssessmentV2, type AssessmentEvidence } from './scoringV2.ts';
 import {
   ANCHOR_LEVELS,
   DIMENSION_WEIGHTS,
   ESSENTIAL_SUBSKILLS,
   RESPONSE_MASTERY,
-  SCORING_MODEL_VERSION,
   SELF_ASSESSMENT_CAP,
   SUBSKILLS,
   SUBSKILL_DOMAIN,
@@ -110,7 +110,7 @@ export type ConfidenceLabel =
   | "Confirmed profile";
 
 export interface ConfidenceBreakdown {
-  completionCoverage: number; // ≤20
+  completionCoverage: number; // v1 ≤20; v2 ≤40 (breadth + known answers)
   recentActivity: number; // ≤15
   recentMatchVolume: number; // ≤15
   internalConsistency: number; // ≤20
@@ -154,6 +154,8 @@ export interface ScoringSnapshot {
   developmentPriorities: StrengthOrPriority[];
   /** Diagnostics for tests/debugging (never shown to players). */
   meta: {
+    /** Private v2 evidence diagnostics; organizer RPCs already strip meta. */
+    evidence?: AssessmentEvidence;
     answeredCount: number;
     scoredCount: number;
     notSureCount: number;
@@ -517,6 +519,7 @@ export function scoreAssessment(
   responses: Responses,
   ctx: ScoringContext = {},
 ): ScoringSnapshot {
+  if (items.some(item => item.version === 2)) return scoreAssessmentV2(items, responses);
   const answered = collect(items, responses);
   const contradictions = detectContradictions(answered);
   const contradictionSeverity = contradictions.length;
@@ -572,7 +575,7 @@ export function scoreAssessment(
   }
 
   return {
-    scoringModelVersion: SCORING_MODEL_VERSION,
+    scoringModelVersion: 1,
     estimatedLevelRaw: round3(cappedRaw),
     estimatedLevelDisplay: displayLevel(cappedRaw),
     displayBand: bandForLevel(cappedRaw).label,

@@ -12,7 +12,6 @@
  * items are gated by the adaptive engine.
  */
 import {
-  ASSESSMENT_VERSION,
   type AnchorLevel,
   type AdaptiveRule,
   type AssessmentItem,
@@ -169,7 +168,7 @@ const DRAFTS: Draft[] = [
 function build(): AssessmentItem[] {
   return DRAFTS.map((d, i) => ({
     itemKey: d.key,
-    version: ASSESSMENT_VERSION,
+    version: 1,
     text: d.text,
     domain: d.domain,
     subskill: d.subskill,

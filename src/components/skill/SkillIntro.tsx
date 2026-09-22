@@ -43,8 +43,7 @@ export function SkillIntro({
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">PULSE</div>
           <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Skill Assessment</h1>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-            A quick, adaptive self-assessment that estimates your current ability and builds your
-            personal Skill Fingerprint.
+            Picture the play. Slide to your answer. Discover the skills that support your game and the ones to practise next.
           </p>
         </div>
       </motion.header>
@@ -53,7 +52,7 @@ export function SkillIntro({
       <motion.div {...item} className="flex flex-wrap justify-center gap-1.5">
         {[
           { icon: <Gauge className="h-3.5 w-3.5" />, label: "Self-Assessed Level" },
-          { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Play style" },
+          { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Visual game situations" },
           { icon: <TrendingUp className="h-3.5 w-3.5" />, label: "Strengths & priorities" },
         ].map((c) => (
           <span
@@ -73,16 +72,13 @@ export function SkillIntro({
           <strong> PULSE Performance Rating</strong>. It isn't an official tournament rating.
         </Point>
         <Point icon={<ListChecks className="h-4 w-4" />}>
-          Answer for your <strong>normal games</strong> against players near your level — your last
-          ten games or past 90 days, not drills or your best-ever day.
+          Think about your <strong>last 10 doubles games</strong> against similar players. Estimate successful opportunities out of 10. Shot execution, repeatability, decisions and pressure are measured separately.
         </Point>
         <Point icon={<Clock className="h-4 w-4" />}>
-          Adaptive — most people answer about <strong>{minItems}–{maxItems}</strong> questions.
-          Progress saves as you go, so you can leave and pick up right where you left off.
+          Up to <strong>{maxItems}</strong> questions, with an aim of about <strong>{minItems}</strong> when there is enough evidence. Confirm each slider answer to save it. Review and change answers before finishing.
         </Point>
         <Point icon={<ShieldCheck className="h-4 w-4" />}>
-          Your answers stay <strong>private</strong>. You control whether your level shows on your
-          profile, and “Not sure” is always a fine answer.
+          “Not enough game experience” is a valid answer. Your estimate includes its evidence limits; games and coach observation are needed to validate it. You control your skill-profile visibility in your profile settings.
         </Point>
       </motion.section>
 

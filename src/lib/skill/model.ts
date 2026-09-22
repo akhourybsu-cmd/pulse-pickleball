@@ -19,10 +19,10 @@
 /* ------------------------------------------------------------------ */
 
 /** Question-bank version. Stored on every response + attempt. */
-export const ASSESSMENT_VERSION = 1;
+export const ASSESSMENT_VERSION = 2;
 /** Scoring-model version. Stored on every snapshot so history stays
  *  interpretable when the math evolves. */
-export const SCORING_MODEL_VERSION = 1;
+export const SCORING_MODEL_VERSION = 2;
 
 /* ------------------------------------------------------------------ */
 /*  Broad domains (9)                                                 */
@@ -175,7 +175,10 @@ export type ResponseKey = (typeof RESPONSE_KEYS)[number];
 /**
  * Internal mastery value for a response. `not_sure` is deliberately
  * `null` — excluded from mastery, but counted by the confidence model.
- * Player-facing UI must NEVER render these numbers.
+ * These are internal mastery values in v1. In v2, the same storage keys
+ * encode the six frequency choices (0/2/4/6/8/10 successful opportunities).
+ * A key such as drill_only therefore has VERSION-SPECIFIC semantics; use
+ * the legacy labels only for version 1. Unknown is never a failed attempt.
  */
 export const RESPONSE_MASTERY: Record<ResponseKey, number | null> = {
   not_yet: 0.0,
@@ -301,6 +304,9 @@ export interface AssessmentItem {
   phase: ItemPhase;
   order: number;
   active: boolean;
+  /** V2: observable game situation and success criterion, independent of frequency. */
+  situation?: string;
+  success?: string;
 }
 
 /* ------------------------------------------------------------------ */

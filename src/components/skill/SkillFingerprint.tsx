@@ -12,6 +12,7 @@ import {
 } from "@/lib/skill/model";
 import type { ScoringSnapshot } from "@/lib/skill/scoring";
 import { staggerContainer, staggerItem } from "@/lib/motion";
+import { MEASURE_LABELS } from '@/lib/skill/questionBankV2';
 
 /**
  * PULSE Skill Fingerprint result screen. Hierarchy follows the product
@@ -58,12 +59,28 @@ export function SkillFingerprint({
           upper={snapshot.upperBound}
           total={snapshot.confidence.total}
           label={snapshot.confidence.label}
+          provisional={snapshot.scoringModelVersion === 2}
         />
         <p className="mt-4 text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-          This is your self-assessment. It is separate from your PULSE Performance Rating,
-          which comes from verified match results.
+          {snapshot.scoringModelVersion === 2
+            ? 'A provisional estimate from your answers. The range is a guide, not a validated confidence interval. Confirm your level through games or a coach assessment.'
+            : 'This is your self-assessment. It is separate from your PULSE Performance Rating, which comes from verified match results.'}
         </p>
       </motion.section>
+
+      {snapshot.meta.evidence && <motion.section {...itemProps} className="space-y-3 rounded-2xl border bg-card p-4">
+        <h2 className="text-sm font-semibold">What your estimate is based on</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {snapshot.meta.evidence.dimensions.map(d => <div key={d.dimension} className="rounded-xl bg-muted/50 p-3">
+            <p className="text-xs font-medium">{MEASURE_LABELS[d.dimension]}</p>
+            <p className="mt-1 text-sm font-semibold text-primary">{d.scored ? `${d.scored} supporting answers` : 'Not enough evidence'}</p>
+          </div>)}
+        </div>
+        <p className="text-xs text-muted-foreground">{snapshot.meta.evidence.skillsCovered} of 16 skills have multiple answers · {snapshot.meta.evidence.essentialSkillsCovered} of 6 essential skills covered.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Confidence reflects coverage and agreement in your answers, not the probability that your level is correct.</p>
+        {snapshot.meta.evidence.limitations.map(note => <p key={note} className="text-xs leading-relaxed text-muted-foreground">{note}</p>)}
+        <p className="text-xs leading-relaxed text-muted-foreground">To check your estimate, record 10 attempts at a priority skill during games and ask a coach or experienced organiser to observe the same success criteria.</p>
+      </motion.section>}
 
       {/* Style identity */}
       {snapshot.primaryStyle && (
@@ -149,7 +166,7 @@ export function SkillFingerprint({
         {completedAt && <div>Completed {new Date(completedAt).toLocaleDateString()}</div>}
         <div>Scoring model v{snapshot.scoringModelVersion} · {snapshot.meta.answeredCount} questions answered</div>
         {snapshot.contradictions.length > 0 && (
-          <div>{snapshot.contradictions.length} response(s) flagged for a closer look — this lowers confidence, not your level.</div>
+          <div>{snapshot.contradictions.length} pattern(s) need a closer look. Differences between basic and advanced situations reduce the support for this estimate.</div>
         )}
       </motion.section>
 
@@ -221,12 +238,12 @@ function LevelGauge({ level, lower, upper }: { level: number; lower: number; upp
   );
 }
 
-function ConfidenceMeter({ lower, upper, total, label }: { lower: number; upper: number; total: number; label: string }) {
+function ConfidenceMeter({ lower, upper, total, label, provisional }: { lower: number; upper: number; total: number; label: string; provisional?: boolean }) {
   const pct = Math.max(0, Math.min(100, total));
   return (
     <div className="mx-auto mt-3 max-w-[15rem] space-y-1.5">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Likely {lower.toFixed(1)}–{upper.toFixed(1)}</span>
+        <span>{provisional ? 'Guide' : 'Likely'} {lower.toFixed(1)}–{upper.toFixed(1)}</span>
         <span className="font-medium text-foreground/80">{label}</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label={`Confidence ${total} of 100 (${label})`}>

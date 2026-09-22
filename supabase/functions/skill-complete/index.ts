@@ -23,6 +23,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { RESPONSE_MASTERY, type ResponseKey } from "../_shared/skill/model.ts";
 import { computeAuthoritativeResult, type StoredResponse } from "../_shared/skill/complete.ts";
+import { QUESTION_BANK_V1 } from '../_shared/skill/questionBank.ts';
+import { QUESTION_BANK_V2 } from '../_shared/skill/questionBankV2.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,9 +72,15 @@ Deno.serve(async (req) => {
     if (attempt.status !== "in_progress") return json({ error: "invalid_state", state: attempt.status }, 409);
 
     // ---- persist any final unsaved answers (response_key only) -------
-    if (finalResponses && typeof finalResponses === "object") {
+    if (finalResponses !== undefined) {
+      if (!finalResponses || typeof finalResponses !== 'object' || Array.isArray(finalResponses)) return json({ error: 'invalid_response' }, 422);
+      const bank = attempt.assessment_version === 2 ? QUESTION_BANK_V2 : attempt.assessment_version === 1 ? QUESTION_BANK_V1 : null;
+      if (!bank) return json({ error: 'unsupported_assessment_version' }, 422);
+      const activeKeys = new Set(bank.filter(i => i.active).map(i => i.itemKey));
+      if (Object.entries(finalResponses).some(([item, key]) => !activeKeys.has(item) || typeof key !== 'string' || !Object.hasOwn(RESPONSE_MASTERY, key))) {
+        return json({ error: 'invalid_response', message: 'Unknown question or response. No answers were saved.' }, 422);
+      }
       const rows = Object.entries(finalResponses)
-        .filter(([, key]) => key in RESPONSE_MASTERY)
         .map(([item_key, key]) => ({
           attempt_id: attemptId,
           item_key,
@@ -88,8 +96,9 @@ Deno.serve(async (req) => {
     }
 
     // ---- load AUTHORITATIVE responses from the DB --------------------
-    const { data: stored } = await admin
+    const { data: stored, error: storedError } = await admin
       .from("skill_assessment_responses").select("item_key, response_key").eq("attempt_id", attemptId);
+    if (storedError) return json({ error: 'response_load_failed' }, 500);
     const responses: StoredResponse[] = (stored ?? []) as StoredResponse[];
 
     // ---- independent recompute ---------------------------------------
