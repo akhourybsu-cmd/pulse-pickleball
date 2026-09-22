@@ -10,6 +10,7 @@ import PickleballGuide from '../../../src/pages/PickleballGuide';
 import { PublicHomepage } from '../../../src/components/homepage/PublicHomepage';
 import { AssessmentQuestion } from '../../../src/components/skill/AssessmentQuestion';
 import { QUESTION_BANK_V2 } from '../../../src/lib/skill/questionBankV2';
+import { AuthStateProvider } from '../../../src/hooks/useAuthState';
 import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa } from './stub';
 import '../../../src/index.css';
 import '../../../src/components/homepage/marketing.css';
@@ -46,4 +47,4 @@ export default function Preview() {
       </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V2.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
     </main><Toaster richColors /></div></MemoryRouter></HelmetProvider>;
 }
-createRoot(document.getElementById('root')!).render(<Preview />);
+createRoot(document.getElementById('root')!).render(<AuthStateProvider><Preview /></AuthStateProvider>);

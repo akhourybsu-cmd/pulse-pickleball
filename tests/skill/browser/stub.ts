@@ -6,7 +6,6 @@ import type { Responses } from '../../../src/lib/skill/scoring';
 import type { ResponseKey } from '../../../src/lib/skill/model';
 import { createGuestAssessment, writeGuestAssessment, GUEST_ASSESSMENT_KEY } from '../../../src/lib/skill/guestAssessment';
 import { computeGuestClaim } from '../../../supabase/functions/_shared/skill/claim';
-import { useEffect, useState } from 'react';
 type Row = Record<string, unknown>;
 const storageKey = 'pulse-assessment-v2-preview';
 const read = (): Record<string, Row[]> => JSON.parse(localStorage.getItem(storageKey) ?? '{"skill_assessment_attempts":[],"skill_assessment_responses":[]}');
@@ -15,21 +14,19 @@ let failSave = false;
 const authListeners = new Set<(event: string, session: unknown) => void>();
 const currentUser = () => localStorage.getItem('skill-preview-user') === 'yes' ? { id: 'preview-player', email: 'player@example.test' } : null;
 const currentSession = () => currentUser() ? { access_token: 'local-preview-only', user: currentUser() } : null;
-let previewMfa = false;
-export function enablePreviewMfa() { previewMfa = true; }
+const mfaRequired = () => localStorage.getItem('skill-preview-mfa') === 'yes';
+const mfaVerified = () => !mfaRequired() || sessionStorage.getItem('skill-preview-verified') === 'yes';
+let previewChallenge: string | null = null;
+export function enablePreviewMfa() { localStorage.setItem('skill-preview-mfa', 'yes'); sessionStorage.removeItem('skill-preview-verified'); for (const fn of authListeners) fn('SIGNED_IN', currentSession()); }
 export function signInPreview() {
+  sessionStorage.removeItem('skill-preview-verified');
   localStorage.setItem('skill-preview-user', 'yes');
   for (const fn of authListeners) fn('SIGNED_IN', { user: currentUser() });
   window.dispatchEvent(new Event('preview-auth'));
 }
-export function signOutPreview() { localStorage.removeItem('skill-preview-user'); for (const fn of authListeners) fn('SIGNED_OUT', null); window.dispatchEvent(new Event('preview-auth')); }
-export function useAuthState() {
-  const [user, setUser] = useState(currentUser);
-  useEffect(() => { const changed = () => setUser(currentUser()); window.addEventListener('preview-auth', changed); return () => window.removeEventListener('preview-auth', changed); }, []);
-  return { user, loading: false, isAuthenticated: !!user };
-}
+export function signOutPreview() { localStorage.removeItem('skill-preview-user'); sessionStorage.removeItem('skill-preview-verified'); previewChallenge = null; for (const fn of authListeners) fn('SIGNED_OUT', null); window.dispatchEvent(new Event('preview-auth')); }
 export function failNextSave() { failSave = true; }
-export function resetPreview() { localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
+export function resetPreview() { localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.removeItem('skill-preview-mfa'); sessionStorage.removeItem('skill-preview-verified'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
 export function seedGuest() {
   const draft = createGuestAssessment();
   while (Object.keys(draft.responses).length < 64) { const key = selectNextV2(QUESTION_BANK_V2, draft.responses); if (!key) break; draft.responses[key] = 'usually'; }
@@ -51,6 +48,10 @@ function seedResponses(answer: ResponseKey) {
   location.reload();
 }
 export const supabase = {
+  rpc(name: string) {
+    const result = name === 'pulse_mfa_status' ? { data: currentUser() ? { userId: currentUser()!.id, sessionId: 'local-preview-session', method: mfaRequired() ? 'email' : 'none', verified: mfaVerified() } : { error: 'sign_in_required' }, error: null } : { data: null, error: new Error('Unsupported preview RPC') };
+    return { abortSignal: () => Promise.resolve(result) };
+  },
   auth: {
     getUser: async () => ({ data: { user: currentUser() }, error: null }),
     getSession: async () => ({ data: { session: currentSession() }, error: null }),
@@ -63,7 +64,7 @@ export const supabase = {
     const filters: [string, unknown][] = [];
     let operation = 'select'; let payload: Row | Row[] = {}; let single = false;
     const execute = async () => {
-      if (table === 'profiles') return { data: { mfa_method: previewMfa ? 'email' : 'none' }, error: null };
+      if (table === 'profiles') return { data: { id: 'preview-player', player_state: 'active', tutorial_completed: true, full_name: 'Preview Player', display_name: 'Preview Player', mfa_method: mfaRequired() ? 'email' : 'none' }, error: null };
       const data = read();
       const rows = data[table] ?? [];
       const matches = (r: Row) => filters.every(([key, value]) => r[key] === value);
@@ -94,11 +95,17 @@ export const supabase = {
     };
     return query;
   },
-  functions: { async invoke(_name: string, options: { body: { attemptId: string; assessmentVersion?: number; responses?: Responses } }) {
+  functions: { async invoke(_name: string, options: { body: { attemptId: string; assessmentVersion?: number; responses?: Responses; code?: string; challengeId?: string } }) {
     if (_name === 'get-biometric-credentials') return { data: { biometric_enabled: false }, error: null };
-    if (_name === 'send-mfa-code' || _name === 'verify-mfa-code') return { data: { success: true }, error: null };
+    if (_name === 'send-mfa-code') { previewChallenge = crypto.randomUUID(); return { data: { success: true, challengeId: previewChallenge }, error: null }; }
+    if (_name === 'verify-mfa-code') {
+      if (!currentUser() || !previewChallenge || options.body.challengeId !== previewChallenge || options.body.code !== '123456') return { data: null, error: new Error('Invalid preview code') };
+      previewChallenge = null; sessionStorage.setItem('skill-preview-verified', 'yes');
+      return { data: { success: true }, error: null };
+    }
     const data = read();
     if (_name === 'skill-claim') {
+      if (!mfaVerified()) return { data: null, error: { context: { status: 403 } } };
       if (!currentUser() || failSave) { failSave = false; return { data: null, error: new Error('Preview save failure') }; }
       const existing = data.skill_assessment_attempts.find(r => r.id === options.body.attemptId);
       if (existing) return { data: { authoritative: true, attemptId: existing.id, snapshot: existing.scoring_snapshot }, error: null };

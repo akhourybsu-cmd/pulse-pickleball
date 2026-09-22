@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // App-controlled auth emails.
 //
 // Replaces GoTrue's built-in mailer (which is owned by the platform hook and
@@ -94,6 +95,7 @@ Deno.serve(async (req) => {
   // email_change and invite are privileged: require the caller's own session.
   if (type === 'email_change' || type === 'invite') {
     const jwt = req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: caller } = await admin.auth.getUser(jwt)
     if (!caller?.user) return bad('Unauthorized', 401)
     if (type === 'email_change' && caller.user.email?.toLowerCase() !== email) {

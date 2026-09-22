@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // Slice 2b — server orchestration for round-robin participant changes.
 //
 // Flow (Amendment 4): authenticate -> snapshot event/players/schedule ->
@@ -150,6 +151,7 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: userData, error: authErr } = await supabase.auth.getUser(token);
     const user = userData?.user;
     if (authErr || !user) return json({ error: { code: "not_authenticated" } }, 401);

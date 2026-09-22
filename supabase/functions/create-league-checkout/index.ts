@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // Creates a one-time Stripe Checkout session for a single league slot.
 //
 // Env vars required:
@@ -44,6 +45,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: userData } = await supabaseClient.auth.getUser(token);
     const user = userData.user;
     if (!user?.email) throw new Error("Not authenticated");

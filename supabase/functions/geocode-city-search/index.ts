@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // Verified-city autocomplete proxy for the Record Match wizard.
 // Uses Google Maps Platform Places API (New) directly,
 // restricted to city / town level results so the stored location is always
@@ -59,6 +60,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
+  const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return bad(401, 'Not authenticated');
 

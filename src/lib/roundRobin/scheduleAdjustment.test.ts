@@ -169,6 +169,7 @@ describe("planScheduleAdjustment", () => {
     expect(plan.capacity.playersNeededForAnotherCourt).toBe(2);
     expect(plan.capacity.recommendedTotalRounds).toBe(5);
     expect(plan.impact.reasons).toContain("no_effective_capacity_change");
+    expect(plan.impact.summary).toContain('extra court does not reduce rounds');
     expect(
       plan.warnings.find((warning) => warning.code === "unused_courts")?.message
     ).toContain("2 more eligible players");

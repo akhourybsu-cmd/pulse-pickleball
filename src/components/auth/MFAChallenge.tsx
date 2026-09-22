@@ -24,6 +24,7 @@ export const MFAChallenge = ({ open, onSuccess, onCancel }: MFAChallengeProps) =
   const [loading, setLoading] = useState(false);
 
   const handleVerify = async () => {
+    if (loading) return;
     if (!code || code.length !== 6) {
       toast.error("Please enter a valid 6-digit code");
       return;
@@ -64,9 +65,9 @@ export const MFAChallenge = ({ open, onSuccess, onCancel }: MFAChallengeProps) =
       } else {
         throw new Error("Verification failed");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("MFA verification error:", error);
-      toast.error(error.message || "Invalid verification code. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Invalid verification code. Please try again.");
       setCode(""); // Clear the code on error
     } finally {
       setLoading(false);
@@ -74,7 +75,7 @@ export const MFAChallenge = ({ open, onSuccess, onCancel }: MFAChallengeProps) =
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
+    <Dialog open={open} onOpenChange={(open) => !open && !loading && onCancel()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -96,6 +97,7 @@ export const MFAChallenge = ({ open, onSuccess, onCancel }: MFAChallengeProps) =
               pattern="[0-9]*"
               maxLength={6}
               value={code}
+              disabled={loading}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               placeholder="000000"
               className="text-center text-lg tracking-widest"

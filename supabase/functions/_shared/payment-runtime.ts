@@ -1,4 +1,5 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { MfaAccessError, readCallerMfa } from './mfa.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { privatePaymentTestAllowed } from './payment-private-sandbox.ts';
 import { stripeRequestOptions } from './payment-stripe-options.ts';
@@ -36,10 +37,12 @@ export function options(r: Runtime, account: string, key?: string) {
   return stripeRequestOptions(r.platform, account, key);
 }
 export async function authenticate(req: Request, store = db()) {
+  const security = await readCallerMfa(req);
+  if (!security.verified) throw new MfaAccessError(403, 'mfa_required');
   const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
   if (!token) throw new Error("Sign in to manage payments.");
   const { data, error } = await store.auth.getUser(token);
-  if (error || !data.user?.email || !data.user.email_confirmed_at)
+  if (error || !data.user?.email || !data.user.email_confirmed_at || data.user.id !== security.userId)
     throw new Error("Sign in with a confirmed email to manage payments.");
   return data.user;
 }

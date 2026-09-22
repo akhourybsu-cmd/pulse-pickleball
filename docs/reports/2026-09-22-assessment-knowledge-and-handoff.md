@@ -2,6 +2,8 @@
 
 Reviewed 22 September 2026. This work is local and has not been published.
 
+Follow-up: [session-verification fixes and independent staging](2026-09-22-session-verification-and-independent-staging.md) implements the server-side MFA work described below, clears the TypeScript/test failures and records current release gates. The findings in this document describe the preceding pass; live-provider checks remain outstanding.
+
 ## Delivered experience
 
 - With `VITE_SKILL_ASSESSMENT=on`, the anonymous homepage leads with **Take my free assessment**. Navigation and the next section repeat the invitation. The branded sample result is explicitly illustrative.

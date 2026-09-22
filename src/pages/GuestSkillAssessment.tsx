@@ -44,7 +44,7 @@ export default function GuestSkillAssessment() {
   }, [auth.user, params]);
 
   const saveToAccount = useCallback(async () => {
-    if (!a.draft || !a.canFinalize || !auth.user || inFlight.current || saved) return;
+    if (!a.draft || !a.canFinalize || !auth.user || !auth.isAuthenticated || inFlight.current || saved) return;
     inFlight.current = true;
     setSaving(true);
     setSaveError(null);
@@ -65,22 +65,23 @@ export default function GuestSkillAssessment() {
       setSaveError(error instanceof GuestClaimError ? error.reason : 'retry');
       trackAssessmentFunnel('save_failed');
     } finally { if (mounted.current) setSaving(false); inFlight.current = false; }
-  }, [a, auth.user, saved, setParams]);
+  }, [a, auth.user, auth.isAuthenticated, saved, setParams]);
 
   useEffect(() => {
     // Authentication alone never claims a cached report on a shared browser.
     // Require the explicit save intent AND its matching auth return URL.
     const saveKey = a.draft?.id ?? null;
-    if (!auth.loading && auth.user && !inFlight.current && autoTried.current !== saveKey && canAutoSaveGuest(a.draft, params.get('save'))) {
+    if (!auth.loading && auth.isAuthenticated && auth.user && !inFlight.current && autoTried.current !== saveKey && canAutoSaveGuest(a.draft, params.get('save'))) {
       autoTried.current = saveKey;
       void saveToAccount();
     }
-  }, [auth.loading, auth.user, a.draft, params, saveToAccount]);
+  }, [auth.loading, auth.user, auth.isAuthenticated, a.draft, params, saveToAccount]);
 
   const save = async (mode: 'signup' | 'login' = 'signup') => {
     trackAssessmentFunnel('save_requested');
     const needsSignIn = saveError === 'sign_in' || saveError === 'conflict';
-    if (auth.user && !needsSignIn) { void saveToAccount(); return; }
+    const needsVerification = saveError === 'mfa_required' || (auth.user && !auth.isAuthenticated);
+    if (auth.user && !needsSignIn && !needsVerification) { void saveToAccount(); return; }
     if (!a.draft || !a.requestSave()) {
       toast.error('Your temporary assessment changed or could not be retained. Review the current analysis and allow site storage before signing in.');
       return;
@@ -92,7 +93,7 @@ export default function GuestSkillAssessment() {
       if (error) { toast.error('Could not end the current session. Try again before signing in.'); return; }
     }
     trackAssessmentFunnel('auth_started');
-    navigate(`/auth?mode=${needsSignIn ? 'login' : mode}&redirect=${encodeURIComponent(returnTo)}`);
+    navigate(`/auth?mode=${needsSignIn || needsVerification ? 'login' : mode}&redirect=${encodeURIComponent(returnTo)}`);
   };
   const inviteUrl = typeof window === 'undefined' ? ASSESSMENT_PATH : `${window.location.origin}${ASSESSMENT_PATH}?source=friend`;
   const copyInvite = async () => {
@@ -142,9 +143,9 @@ export default function GuestSkillAssessment() {
             <p className="text-sm text-muted-foreground">Save your analysis to a free PULSE account. Come back to your strengths and practice priorities, then build a history as your game develops.</p>
             <ul className="space-y-1 text-sm"><li>• Keep your full skill breakdown</li><li>• Access it on your phone or computer</li><li>• Revisit past assessments after more games</li></ul>
             {auth.user && <p className="text-xs text-muted-foreground">Saving to {auth.user.email ?? 'your signed-in PULSE account'}.</p>}
-            {saveError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">{saveError === 'sign_in' ? 'Your session needs to be renewed. Sign in again to save; your answers are still here.' : saveError === 'conflict' ? 'This assessment is already linked to another account. Sign in to that account to view its saved history.' : saveError === 'account_changed' ? 'Your account or assessment changed during the save. Check the account shown here before trying again.' : saveError === 'timeout' ? 'The save is taking too long to confirm. Your answers are still here. Retry safely; the same assessment will not be duplicated.' : 'Your analysis hasn’t been saved to your account yet. It’s still here. Check your connection and retry; you won’t create a duplicate.'}</p>}
+            {saveError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">{saveError === 'mfa_required' ? 'Complete your account verification to save. Your analysis is still here.' : saveError === 'sign_in' ? 'Your session needs to be renewed. Sign in again to save; your answers are still here.' : saveError === 'conflict' ? 'This assessment is already linked to another account. Sign in to that account to view its saved history.' : saveError === 'account_changed' ? 'Your account or assessment changed during the save. Check the account shown here before trying again.' : saveError === 'timeout' ? 'The save is taking too long to confirm. Your answers are still here. Retry safely; the same assessment will not be duplicated.' : 'Your analysis hasn’t been saved to your account yet. It’s still here. Check your connection and retry; you won’t create a duplicate.'}</p>}
             <Button disabled={saving || auth.loading} className="skill-primary-button min-h-12 w-full whitespace-normal" onClick={() => save()}>
-              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving your analysis…</> : saveError === 'sign_in' ? 'Sign in again to save my analysis' : saveError === 'conflict' ? 'Sign in to the linked account' : saveError ? 'Retry saving my analysis' : auth.user ? 'Save my analysis to my account' : 'Create free account & save my analysis'}
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving your analysis…</> : saveError === 'mfa_required' || (auth.user && !auth.isAuthenticated) ? 'Verify my account & save analysis' : saveError === 'sign_in' ? 'Sign in again to save my analysis' : saveError === 'conflict' ? 'Sign in to the linked account' : saveError ? 'Retry saving my analysis' : auth.user ? 'Save my analysis to my account' : 'Create free account & save my analysis'}
             </Button>
             {!auth.user && <button type="button" disabled={saving || auth.loading} className="min-h-11 w-full text-sm underline underline-offset-4" onClick={() => save('login')}>Already a member? Sign in to save</button>}
             <p className="text-xs leading-relaxed text-muted-foreground">Your full analysis is already unlocked. Without an account, answers are kept temporarily in this browser for up to 7 days and can be lost if you clear site data. Finish sign-in in this browser to transfer them.</p>

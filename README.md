@@ -26,7 +26,17 @@ npm run test
 - Backend, authentication, database, storage, and Edge Functions: Supabase
 - Source control and deployment automation: GitHub Actions
 - Web hosting: Firebase Hosting
+- Transactional email: direct Resend delivery, branded as PULSE
 - Native packaging: Capacitor for Android and iOS
+
+PULSE runs independently of Lovable. Runtime and deployment checks reject its
+gateways, credentials, client packages and hosting origins.
+
+For isolated signup testing, use a separate Supabase project and copy
+`.env.staging.example` to `.env.staging.local`. `npm run dev:staging` refuses
+to use the production project. See
+`docs/reports/2026-09-22-session-verification-and-independent-staging.md`
+for the account-verification rollout and required live checks.
 
 ## Web deployment
 

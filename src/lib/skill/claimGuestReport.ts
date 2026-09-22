@@ -1,7 +1,7 @@
 import type { GuestAssessment } from './guestAssessment';
 import type { Responses, ScoringSnapshot } from './scoring';
 
-export type ClaimFailure = 'sign_in' | 'account_changed' | 'conflict' | 'timeout' | 'retry';
+export type ClaimFailure = 'sign_in' | 'mfa_required' | 'account_changed' | 'conflict' | 'timeout' | 'retry';
 export class GuestClaimError extends Error {
   constructor(public readonly reason: ClaimFailure) { super(reason); }
 }
@@ -36,7 +36,7 @@ export async function claimGuestReport(draft: GuestAssessment, ownerId: string, 
     assertCurrent();
     if (result.error) {
       const status = (result.error as { context?: { status?: number } }).context?.status;
-      throw new GuestClaimError(status === 401 ? 'sign_in' : status === 409 ? 'conflict' : 'retry');
+      throw new GuestClaimError(status === 401 ? 'sign_in' : status === 403 ? 'mfa_required' : status === 409 ? 'conflict' : 'retry');
     }
     const data = result.data as { authoritative?: boolean; attemptId?: string; snapshot?: ScoringSnapshot } | null;
     if (!data?.authoritative || data.attemptId !== draft.id || data.snapshot?.scoringModelVersion !== 2 ||

@@ -12,6 +12,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { isTransientAuthError } from '@/lib/authErrors';
+import { getMfaStatus, MFA_VERIFIED_EVENT } from '@/lib/mfa';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type AuthProfile = Pick<
@@ -170,6 +171,24 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     }
 
     const user = session.user;
+    // Cached profile data is never evidence that the current session completed
+    // MFA. Recheck before rendering it, including OAuth, reloads and refreshes.
+    if (mountedRef.current && showLoader) setState({ ...SIGNED_OUT_STATE, user, loading: true });
+    try {
+      const security = await getMfaStatus();
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (security.userId !== user.id || !security.verified) {
+        clearCachedProfile();
+        setState({ ...SIGNED_OUT_STATE, user });
+        return;
+      }
+    } catch (error) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      clearCachedProfile();
+      setSessionError(error instanceof Error ? error.message : 'Could not verify your sign-in security.');
+      setState({ ...SIGNED_OUT_STATE, user });
+      return;
+    }
     const cachedProfile = readCachedProfile(user.id);
     if (cachedProfile && mountedRef.current) {
       // Returning sessions can paint the shell immediately from a small,
@@ -230,13 +249,13 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoader = true) => {
     const generation = requestIdRef.current;
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (!mountedRef.current || generation !== requestIdRef.current) return;
       if (error) throw error;
-      await loadSession(session, true);
+      await loadSession(session, showLoader);
     } catch (error) {
       if (!mountedRef.current || generation !== requestIdRef.current) return;
       console.error('Error reading auth session:', error);
@@ -266,10 +285,19 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
+    const recheck = () => { if (document.visibilityState === 'visible') void refresh(false); };
+    const verified = () => { void refresh(); };
+    window.addEventListener(MFA_VERIFIED_EVENT, verified);
+    document.addEventListener('visibilitychange', recheck);
+    const checkTimer = window.setInterval(recheck, 60_000);
+
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
       subscription.unsubscribe();
+      window.removeEventListener(MFA_VERIFIED_EVENT, verified);
+      document.removeEventListener('visibilitychange', recheck);
+      window.clearInterval(checkTimer);
     };
   }, [loadSession, refresh]);
 

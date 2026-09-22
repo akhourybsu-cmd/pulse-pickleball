@@ -14,7 +14,7 @@ const roundRobinDetail = readFileSync(
 const migration = readFileSync(
   path.join(root, "supabase/migrations/20260912100000_round_robin_atomic_schedule_rebuild.sql"),
   "utf8",
-);
+).replace(/\r\n/g, '\n');
 
 const rebuildStart = migration.indexOf(
   "CREATE OR REPLACE FUNCTION public.rr_apply_schedule_rebuild",

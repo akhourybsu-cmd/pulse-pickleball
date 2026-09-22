@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // =====================================================================
 // skill-complete  (server-authoritative PULSE Skill Assessment completion)
 //
@@ -46,6 +47,7 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) return json({ error: "unauthorized" }, 401);
 

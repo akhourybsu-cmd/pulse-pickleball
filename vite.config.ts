@@ -1,10 +1,11 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { validateProductionSupabase } from "./scripts/validate-supabase-config.mjs";
+import { validateProductionSupabase, validateStagingSupabase } from "./scripts/validate-supabase-config.mjs";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
+  if (mode === 'staging') validateStagingSupabase(loadEnv(mode, process.cwd(), 'VITE_SUPABASE_'));
   if (command === "build" && mode === "production") {
     validateProductionSupabase(loadEnv(mode, process.cwd(), "VITE_SUPABASE_"));
   }

@@ -38,7 +38,7 @@ describe('guest report account handoff', () => {
     await expect(claimGuestReport(draft, 'player-a', deps)).rejects.toMatchObject({ reason: 'account_changed' });
     expect(deps.invoke).toHaveBeenCalledOnce();
   });
-  it.each([[401, 'sign_in'], [409, 'conflict'], [503, 'retry']] as const)('provides a recovery path for HTTP %s', async (status, reason) => {
+  it.each([[401, 'sign_in'], [403, 'mfa_required'], [409, 'conflict'], [503, 'retry']] as const)('provides a recovery path for HTTP %s', async (status, reason) => {
     await expect(claimGuestReport(draft, 'player-a', { ...setup(), invoke: async () => ({ data: null, error: { context: { status } } }) })).rejects.toMatchObject({ reason });
   });
   it.each([

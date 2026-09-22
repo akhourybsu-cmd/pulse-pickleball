@@ -7,7 +7,6 @@ export default defineConfig({
   optimizeDeps: { entries: ['tests/skill/browser/index.html'] },
   resolve: { alias: [
     { find: '@/integrations/supabase/client', replacement: path.resolve(__dirname, 'stub.ts') },
-    { find: '@/hooks/useAuthState', replacement: path.resolve(__dirname, 'stub.ts') },
     { find: '@', replacement: path.resolve(__dirname, '../../../src') },
   ] },
 });

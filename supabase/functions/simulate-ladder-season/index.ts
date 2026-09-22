@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // =====================================================================
 // simulate-ladder-season
 //
@@ -312,6 +313,7 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization') ?? ''
   const bearer = authHeader.replace('Bearer ', '').trim()
   if (!bearer) return json({ error: 'Unauthorized' }, 401)
+  const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
   const { data: { user } } = await admin.auth.getUser(bearer)
   if (!user) return json({ error: 'Unauthorized' }, 401)
   const { data: roleRow } = await admin.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()

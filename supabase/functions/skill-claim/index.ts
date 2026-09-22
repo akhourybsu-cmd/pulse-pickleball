@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { computeGuestClaim } from '../_shared/skill/claim.ts';
 
@@ -12,6 +13,7 @@ Deno.serve(async req => {
       global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: { user }, error: authError } = await caller.auth.getUser();
     if (authError || !user || user.is_anonymous) return json({ error: 'unauthorized' }, 401);
     // Bound body consumption as well as the parsed response count.

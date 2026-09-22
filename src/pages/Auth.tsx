@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { confirmMfaSession, getMfaStatus } from '@/lib/mfa';
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { sendAuthEmail } from "@/lib/authEmail";
@@ -126,21 +127,35 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
+    let checkId = 0;
+    const resolveSession = async (userId: string) => {
+      const generation = ++checkId;
+      const security = await getMfaStatus();
+      if (cancelled || generation !== checkId || authFlowActive.current) return;
+      if (security.userId !== userId) throw new Error('Session changed during verification.');
+      if (security.verified) setAlreadyAuthed(true);
+      else if (security.method === 'email' || security.method === 'authenticator') {
+        authFlowActive.current = true;
+        setShowEmailMFA(security.method === 'email');
+        setShowMFAChallenge(security.method === 'authenticator');
+      } else throw new Error('This verification method needs account support.');
+      setSessionChecked(true);
+    };
+    const failed = () => { if (!cancelled && !authFlowActive.current) { setSessionCheckError(true); setSessionChecked(true); } };
+    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
       if (cancelled || authFlowActive.current) return;
       if (error && error.name !== 'AuthSessionMissingError' && error.status !== 401 && error.status !== 403) throw error;
       if (user) {
-        setAlreadyAuthed(true);
+        await resolveSession(user.id);
+        return;
       }
       setSessionChecked(true);
-    }).catch(() => {
-      if (!cancelled && !authFlowActive.current) { setSessionCheckError(true); setSessionChecked(true); }
-    });
+    }).catch(failed);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled && !authFlowActive.current && session?.user) {
-        setAlreadyAuthed(true);
-        setSessionChecked(true);
+        // Defer Supabase calls until its auth event callback has released its lock.
+        setTimeout(() => { if (!cancelled) void resolveSession(session.user.id).catch(failed); }, 0);
       }
     });
 
@@ -218,29 +233,22 @@ const Auth = () => {
 
         if (authError) throw authError;
 
-        // Check if MFA is enabled for this user
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('mfa_method')
-          .eq('id', authData.user?.id)
-          .maybeSingle();
-        if (profileError) {
-          await supabase.auth.signOut();
-          throw new Error('Could not check your sign-in requirements. Please try again.');
-        }
+        const security = await getMfaStatus();
+        if (security.userId !== authData.user?.id) throw new Error('Your account changed. Please sign in again.');
 
-        if (profile?.mfa_method === 'authenticator') {
+        if (!security.verified && security.method === 'authenticator') {
           awaitingMfa = true;
           // Need to complete MFA challenge
           setShowMFAChallenge(true);
           setMfaMethod('authenticator');
           return;
-        } else if (profile?.mfa_method === 'email') {
+        } else if (!security.verified && security.method === 'email') {
           awaitingMfa = true;
           setShowEmailMFA(true);
           setMfaMethod('email');
           return;
         }
+        if (!security.verified) throw new Error('This verification method needs account support.');
 
         await waitForAuthenticatedUser();
         toast.success("Logged in successfully!");
@@ -314,22 +322,29 @@ const Auth = () => {
     }
   };
 
-  const handleMFASuccess = () => {
-    authFlowActive.current = false;
-    setShowMFAChallenge(false);
-    setShowEmailMFA(false);
-    toast.success("Logged in successfully!");
-    setTimeout(() => {
+  const handleMFASuccess = async () => {
+    try {
+      await confirmMfaSession();
+      authFlowActive.current = false;
+      setShowMFAChallenge(false);
+      setShowEmailMFA(false);
+      toast.success("Logged in successfully!");
       navigate(redirectPath, { replace: true });
-    }, 100);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not confirm verification.'); }
   };
 
   const handleMFACancel = async () => {
-    setShowMFAChallenge(false);
-    setShowEmailMFA(false);
-    await supabase.auth.signOut();
-    authFlowActive.current = false;
-    toast.info("Login cancelled");
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+      setShowMFAChallenge(false);
+      setShowEmailMFA(false);
+      authFlowActive.current = false;
+      setAlreadyAuthed(false);
+      setSessionCheckError(false);
+      setSessionChecked(true);
+      toast.info("Signed out on this device. Your assessment is still here.");
+    } catch { toast.error('Could not sign out. Check your connection and retry.'); }
   };
 
   const handleBiometricSuccess = () => {
@@ -365,55 +380,31 @@ const Auth = () => {
     }
   };
 
-  const checkBiometricAvailability = async () => {
-    if (!email || !isLogin) {
+  useEffect(() => {
+    let cancelled = false;
+    if (!isLogin || !email.includes('@')) {
       setShowBiometric(false);
       setBiometricAvailable(false);
       return;
     }
-
-    try {
-      // Use the edge function to check biometric availability (bypasses RLS)
-      const { data, error } = await supabase.functions.invoke('get-biometric-credentials', {
-        body: { email },
-      });
-
-      if (error) {
-        console.error('Error checking biometric:', error);
-        setBiometricAvailable(false);
-        setShowBiometric(false);
-        return;
+    const debounce = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-biometric-credentials', { body: { email } });
+        if (cancelled) return;
+        const available = !error && !!data?.biometric_enabled && data?.credentials?.length > 0 && window.PublicKeyCredential !== undefined;
+        setBiometricAvailable(available);
+        setShowBiometric(available && !showPasswordLogin);
+      } catch {
+        if (!cancelled) { setShowBiometric(false); setBiometricAvailable(false); }
       }
-
-      const hasBiometric = data?.biometric_enabled && data?.credentials?.length > 0;
-      const isSupported = window.PublicKeyCredential !== undefined;
-      
-      setBiometricAvailable(hasBiometric && isSupported);
-      setShowBiometric(hasBiometric && isSupported && !showPasswordLogin);
-    } catch (error) {
-      console.error('Error checking biometric:', error);
-      setBiometricAvailable(false);
-      setShowBiometric(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isLogin && email && email.includes('@')) {
-      const debounce = setTimeout(() => {
-        checkBiometricAvailability();
-      }, 500);
-      return () => clearTimeout(debounce);
-    } else {
-      setShowBiometric(false);
-      setBiometricAvailable(false);
-    }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(debounce); };
   }, [email, isLogin, showPasswordLogin]);
-
   // Short-circuit while we check the session, or while we're bouncing
   // an already-authed user. Avoids the sign-in form flashing on screen
   // for returning users.
   if (sessionCheckError && !alreadyAuthed) {
-    return <div className="min-h-screen flex items-center justify-center p-6"><div role="alert" className="max-w-sm space-y-4 text-center"><h1 className="text-xl font-semibold">Couldn’t check your session</h1><p>Check your connection and try again. Your assessment stays in this browser.</p><Button onClick={() => { setSessionCheckError(false); setSessionChecked(false); setSessionCheckAttempt(n => n + 1); }}>Retry session check</Button></div></div>;
+    return <div className="min-h-screen flex items-center justify-center p-6"><div role="alert" className="max-w-sm space-y-4 text-center"><h1 className="text-xl font-semibold">Couldn’t check your session</h1><p>Check your connection and try again, or sign out on this device to start a fresh sign-in. Your assessment stays in this browser.</p><Button onClick={() => { setSessionCheckError(false); setSessionChecked(false); setSessionCheckAttempt(n => n + 1); }}>Retry session check</Button><Button variant="outline" onClick={() => void handleMFACancel()}>Sign out on this device</Button></div></div>;
   }
   if (!sessionChecked || alreadyAuthed) {
     return (

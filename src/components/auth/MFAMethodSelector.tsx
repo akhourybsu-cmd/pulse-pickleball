@@ -11,7 +11,7 @@ export const MFAMethodSelector = ({ onSelectMethod }: MFAMethodSelectorProps) =>
     <div className="space-y-4">
       <div className="text-center mb-6">
         <Shield className="h-12 w-12 text-primary mx-auto mb-2" />
-        <h2 className="text-2xl font-bold">Choose Your MFA Method</h2>
+        <h2 className="text-2xl font-bold">Choose sign-in protection</h2>
         <p className="text-muted-foreground mt-2">
           Select how you want to secure your account
         </p>
@@ -25,7 +25,7 @@ export const MFAMethodSelector = ({ onSelectMethod }: MFAMethodSelectorProps) =>
               Authenticator App
             </CardTitle>
             <CardDescription>
-              Use Google Authenticator, Authy, or similar apps
+              Recommended for stronger account protection. Use your preferred authenticator app.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -42,7 +42,7 @@ export const MFAMethodSelector = ({ onSelectMethod }: MFAMethodSelectorProps) =>
               Email Code
             </CardTitle>
             <CardDescription>
-              Receive verification codes via email
+              Verify each sign-in session before accessing PULSE data. An authenticator provides stronger protection for account changes.
             </CardDescription>
           </CardHeader>
           <CardContent>

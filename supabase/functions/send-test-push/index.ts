@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // send-test-push: send a test web-push to the authenticated caller's own devices only.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
@@ -45,6 +46,7 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {

@@ -34,6 +34,7 @@ const NAME_CONFIRM_DISMISS_KEY = "pulse:name-confirm-dismissed";
 
 interface Profile {
   id: string;
+  tutorial_completed: boolean | null;
   full_name: string;
   display_name: string | null;
   first_name: string | null;
