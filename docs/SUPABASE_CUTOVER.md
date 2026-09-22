@@ -107,8 +107,10 @@ live acceptance checklist. Do not attribute failures to a provider outage
 without project-specific evidence.
 
 Repeatable checks live in `scripts/verify-supabase-staging.mjs` and
-`scripts/audit-supabase-staging.sql`. The integration runner is pinned to the
-destination and requires `--allow-fixtures`. Inject
+`scripts/audit-supabase-staging.sql`. As of September 22 the integration runner
+only accepts the separate PULSE Staging project `svdpujbstxiaunoeqlee`, requires
+`PULSE_STAGING_PROJECT_REF` to explicitly match it, and requires `--allow-fixtures`.
+It no longer permits fixture writes to the former test destination, which is now production. Inject
 `PULSE_STAGING_SERVICE_ROLE_KEY` and `PULSE_STAGING_ANON_KEY` only in process
 memory. `PULSE_STAGING_SECRET_KEY` is optional: the CLI-returned key failed the
 gateway in this session, whereas the dashboard's managed-key request passed.

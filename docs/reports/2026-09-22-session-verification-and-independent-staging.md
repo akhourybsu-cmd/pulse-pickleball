@@ -40,14 +40,14 @@ A Lovable project-list/database-status lookup was initially read-only. No build,
 
 ## Staging setup and release order
 
-The Supabase **New project** form is prepared in the PULSE organization with the name **PULSE Staging**. It has not been created: the user must enter/generate its new database password and complete creation. Browser credential rules require the user to perform that step; never request the password in chat.
+The user created **PULSE Staging**, `svdpujbstxiaunoeqlee`, in the PULSE organization. Its dashboard reports Healthy, in East US (Ohio), with no migrations yet. Its local public client configuration is saved only in ignored `.env.staging.local`; Google/Apple login and the assessment release flag remain off until backend setup and checks complete. The staging build passes. Production remains `rqfqwavhtfwwtmfjnxkx`.
 
 The staging example now contains separate-project placeholders. Vite staging mode rejects missing configuration, production fallback, mismatched URLs and server keys. The earlier example pointed at production, which was unsafe for real signup tests.
 
 After the test project exists:
 
 1. Configure the independent test backend and a Firebase preview/local frontend using `.env.staging.local`. Keep production users/data separate. Configure its exact callback origin and direct PULSE email delivery without copying production Auth users.
-2. Apply the repository migrations to staging; deploy the new send/verify functions and every modified user-authenticated function (including `payments`). Configure email confirmation and the direct email hook. This is a coordinated database/functions/frontend release: the legacy MFA wire format is incompatible with the new challenge-ID flow.
+2. Use `scripts/deploy-supabase-staging.mjs` (read-only plan by default; explicit `--apply`) with `PULSE_STAGING_PROJECT_REF=svdpujbstxiaunoeqlee` and a staging-scoped `SUPABASE_ACCESS_TOKEN`. Historical migrations contain production endpoint literals: the staging runner binds them to staging and disables cron jobs in each migration transaction before commit. It rejects unknown external Supabase origins and production targets. Do not replay the unmodified production bootstrap against a test project. Deploy the new send/verify functions and every modified user-authenticated function (including `payments` and `auth-email-hook`). Configure email confirmation and the direct email hook. This is a coordinated database/functions/frontend release: the legacy MFA wire format is incompatible with the new challenge-ID flow.
 3. Run `scripts/check-session-mfa-readiness.sql`. Verify the pre-request hook is active in the deployed Data API, role grants are closed, table policies cover every intended table and there are no stranded SMS/authenticator preferences. Resolve stale preferences through authenticated account recovery.
 4. Exercise real signup/confirmation, password sign-in, authenticator enrollment/verification/disable, email enrollment/verification/disable, enabled OAuth callbacks, refresh/logout and expiry. Attempt direct Data API, GraphQL, Storage, Realtime and user Edge requests before/after verification. Check private responses as well as status codes.
 5. Complete a guest report, save after confirmation in the same/second tab, retry after a dropped response, reject cross-account claims and reopen the one saved report on another device. Confirmation opened on a different browser must explain that the original browser holds the answers.
@@ -67,3 +67,10 @@ The assessment score still needs independent coach-observation calibration befor
 - Branded email HTML was visually inspected in the browser. No real signup, outgoing email, OAuth login, migration, function deployment or production write was performed in this pass.
 
 Local email preview: `docs/reports/artifacts/pulse-verification-email.html` (illustrative code `123456`).
+
+## Follow-up after staging creation
+
+- Fixed `verify-supabase-staging.mjs`: it was still pinned to the former migration destination, now production. The fixture runner now requires the explicitly approved new staging project and verifies both JWT key roles/project claims before creating a client. It cannot target production or the retired backend.
+- Fixed the auth email hook's confirmation links. `email_data.site_url` is a frontend URL; verification must use `SUPABASE_URL` at `/auth/v1/verify`, with the nested assessment return path retained in `redirect_to`. Missing token hashes now fail instead of sending a non-verifying website link. This follows the [official Supabase email-hook example](https://supabase.com/docs/guides/functions/examples/auth-send-email-hook-react-email-resend). The shared URL builder is used by the real hook and tested for all six supported message types.
+- Additional tests pass: 3 staging destination guards, 9 email-link cases, 5 staging migration preparation checks. The latter prepares every repository migration and verifies that plan mode does not initialize history or write SQL. Focused ESLint and a real staging Vite build pass. These do not establish successful hosted migration replay or email delivery.
+- Deployment access is being prepared as a 24-hour token for **PULSE Staging only**. The user approved that scope; automatic review then required explicit approval of the granular API-key/secret/authentication permissions. That follow-up approval is pending. No token was generated, migrations applied, provider emails sent, or production changes made during this follow-up so far.

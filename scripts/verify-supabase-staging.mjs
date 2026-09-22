@@ -4,15 +4,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { requireStagingTarget, requireStagingJwt } from './staging-target.mjs';
 
-const ref = 'rqfqwavhtfwwtmfjnxkx';
-const url = `https://${ref}.supabase.co`;
+const { ref, url } = requireStagingTarget(process.env.PULSE_STAGING_PROJECT_REF);
 const serviceKey = process.env.PULSE_STAGING_SERVICE_ROLE_KEY;
 const anonKey = process.env.PULSE_STAGING_ANON_KEY;
 const secretKey = process.env.PULSE_STAGING_SECRET_KEY;
 if (!process.argv.includes('--allow-fixtures') || !serviceKey || !anonKey) {
   throw new Error('Requires --allow-fixtures and PULSE_STAGING_SERVICE_ROLE_KEY / PULSE_STAGING_ANON_KEY in memory.');
 }
+requireStagingJwt(serviceKey, 'service_role');
+requireStagingJwt(anonKey, 'anon');
 const options = { auth: { persistSession: false, autoRefreshToken: false },
   realtime: { logger: (kind, message) => {
     if (process.argv.includes('--realtime-debug')) console.log(JSON.stringify({ realtime: kind,
