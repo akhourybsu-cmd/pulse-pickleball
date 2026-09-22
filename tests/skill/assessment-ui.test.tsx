@@ -9,6 +9,7 @@ import { sanitizeForOrganizer } from '../../src/lib/skill/organizerCard';
 import { SkillFingerprint } from '../../src/components/skill/SkillFingerprint';
 import { selectNextV2 } from '../../src/lib/skill/adaptiveV2';
 import type { Responses } from '../../src/lib/skill/scoring';
+import { QUESTION_BANK_V1 } from '../../src/lib/skill/questionBank';
 vi.mock('framer-motion', async importOriginal => ({ ...await importOriginal<typeof import('framer-motion')>(), useReducedMotion: () => true }));
 
 describe('assessment accessibility and privacy', () => {
@@ -45,5 +46,33 @@ describe('assessment accessibility and privacy', () => {
     expect(html).toContain('Your next-game focus');
     expect(html).toContain('No clear relative weakness stood out');
     expect(html).toContain('Count a success when:');
+  });
+  it('separates the level, confidence and unmeasured situations in the report', () => {
+    const responses: Responses = Object.fromEntries(QUESTION_BANK_V2.map(i => [i.itemKey, i.dimension === 'pressure' ? 'not_sure' : 'usually']));
+    const snapshot = scoreAssessment(QUESTION_BANK_V2, responses);
+    const html = renderToStaticMarkup(<SkillFingerprint snapshot={snapshot} />);
+    expect(html).toContain('Assessment scale 1.5–4.5');
+    expect(html).toContain('Under pressure: not enough evidence');
+    expect(html).toContain('unmeasured');
+    expect(html).toContain('not your percentile');
+    expect(html).toContain('65%');
+    expect(html).toContain('20%');
+    expect(html).toContain('15%');
+    expect(html).toContain('Foundation ceiling');
+    expect(html).toContain('Self-report can contribute at most 60');
+    // A reduced-motion report must be visible immediately, without a reveal.
+    expect(html).not.toContain('opacity:0');
+  });
+  it('does not present a domain as fully supported when a whole skill is unanswered', () => {
+    const items = QUESTION_BANK_V2.filter(i => i.subskill === 'serve');
+    const snapshot = scoreAssessment(QUESTION_BANK_V2, Object.fromEntries(items.map(i => [i.itemKey, 'usually'])));
+    const html = renderToStaticMarkup(<SkillFingerprint snapshot={snapshot} />);
+    expect(html).toContain('Serve &amp; return: not enough information');
+  });
+  it('keeps legacy reports readable without attributing the new formula to them', () => {
+    const snapshot = scoreAssessment(QUESTION_BANK_V1, Object.fromEntries(QUESTION_BANK_V1.map(i => [i.itemKey, 'usually'])));
+    const html = renderToStaticMarkup(<SkillFingerprint snapshot={snapshot} />);
+    expect(html).toContain('Scoring model v1');
+    expect(html).not.toContain('How your level comes together');
   });
 });

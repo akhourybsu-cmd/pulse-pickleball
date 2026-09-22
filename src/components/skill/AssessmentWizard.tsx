@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { AssessmentQuestion } from './AssessmentQuestion';
 import { SUBSKILL_LABELS, RESPONSE_MASTERY, RESPONSE_LABELS, clamp } from '@/lib/skill/model';
 import type { useSkillAssessment } from '@/hooks/useSkillAssessment';
+import { PulseTrace } from './PulseTrace';
+import './assessment-brand.css';
 
 export type AssessmentWizardState = Pick<ReturnType<typeof useSkillAssessment>,
   'bank' | 'responses' | 'nextItemKey' | 'answeredCount' | 'complete' | 'canFinalize' |
@@ -31,21 +33,22 @@ export function AssessmentWizard({ a, onExit }: { a: AssessmentWizardState; onEx
       </button>;
     })}
   </div>;
-  return <div className="space-y-4">
-    <div className="flex items-center justify-between gap-3 text-xs">
+  return <div className="skill-studio mx-auto max-w-2xl space-y-4">
+    <div className="skill-wizard-progress flex items-center justify-between gap-3 text-xs">
       <span className="font-semibold">{answered} saved · up to {a.maxItems}</span>
       <button type="button" disabled={a.saving} onClick={onExit} className="min-h-11 rounded-lg px-2 text-muted-foreground">Exit</button>
     </div>
     <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} saved answers, maximum ${a.maxItems}`}>
-      <div className="h-full bg-primary motion-safe:transition-[width]" style={{ width: `${pct}%` }} />
+      <div className="h-full bg-gradient-to-r from-primary to-emerald-300 motion-safe:transition-[width]" style={{ width: `${pct}%` }} />
     </div>
     {a.assessmentVersion === 1 && <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">You’re finishing an earlier assessment with its original questions and scoring. Your next assessment will use the updated format.</p>}
     {reviewing ? review : editingKey || !a.complete ? item && <AssessmentQuestion key={item.itemKey} item={item} initialValue={a.responses[item.itemKey]} saving={a.saving} editing={!!editingKey}
       onConfirm={async value => { const saved = await a.answer(item.itemKey, value); if (saved && editingKey) { setEditingKey(null); setReviewing(true); } }} /> : <section className="space-y-4 rounded-2xl border bg-card p-5 text-center">
         <Check className="mx-auto h-9 w-9 text-primary" />
+        <PulseTrace />
         <h2 className="text-xl font-semibold">{a.canFinalize ? 'Your skill picture is ready' : 'A little more game evidence is needed'}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">{a.canFinalize ? 'Review your answers or generate your provisional level and skill breakdown.' : 'Review uncertain answers if you now have enough experience to answer. Otherwise, save this assessment and return after more games. We won’t turn missing experience into a low skill rating.'}</p>
-        <Button disabled={!a.canFinalize || a.saving} onClick={a.finalize} className="h-12 w-full rounded-xl">See my results <ChevronRight className="ml-2 h-4 w-4" /></Button>
+        <Button disabled={!a.canFinalize || a.saving} onClick={a.finalize} className="skill-primary-button h-12 w-full rounded-xl">See my results <ChevronRight className="ml-2 h-4 w-4" /></Button>
       </section>}
     {answered > 0 && <Button variant="outline" disabled={a.saving} className="min-h-11 w-full rounded-xl"
       onClick={() => { setEditingKey(null); setReviewing(v => !v); }}>{editingKey ? 'Cancel edit' : reviewing ? 'Back to assessment' : `Review ${answered} saved answers`}</Button>}

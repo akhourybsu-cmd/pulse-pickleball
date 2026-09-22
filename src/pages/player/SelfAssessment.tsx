@@ -62,7 +62,7 @@ export default function SelfAssessment() {
     hasResult && (a.phase === "result" || mode === "view");
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-5 pb-24">
+    <div className="skill-studio skill-account container mx-auto max-w-4xl px-4 py-5 pb-24">
       {/* In-page top row (global header/bottom nav are untouched). */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <Button variant="ghost" size="sm" className="-ml-2 group" onClick={() => navigate(-1)}>

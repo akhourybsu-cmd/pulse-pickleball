@@ -6,6 +6,7 @@ import { CourtScenario } from './CourtScenario';
 import { RESPONSE_KEYS, RESPONSE_MASTERY, SUBSKILL_LABELS, type AssessmentItem, type ResponseKey } from '@/lib/skill/model';
 import { MEASURE_LABELS } from '@/lib/skill/questionBankV2';
 import { cn } from '@/lib/utils';
+import './assessment-brand.css';
 
 export function AssessmentQuestion({ item, initialValue, saving, editing, onConfirm }: {
   item: AssessmentItem; initialValue?: ResponseKey; saving: boolean; editing?: boolean;
@@ -17,12 +18,12 @@ export function AssessmentQuestion({ item, initialValue, saving, editing, onConf
   const scale = RESPONSE_KEYS.filter(k => k !== 'not_sure');
   const count = selected && selected !== 'not_sure' ? RESPONSE_MASTERY[selected]! * 10 : null;
   return (
-    <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
+    <section className="skill-studio skill-question-card space-y-5 rounded-2xl p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
         <span>{SUBSKILL_LABELS[item.subskill]}</span>
         {item.version === 2 && item.dimension && <span className="rounded-full bg-primary/10 px-2.5 py-1.5">{MEASURE_LABELS[item.dimension]}</span>}
       </div>
-      <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold leading-snug outline-none">{item.situation ?? item.text}</h2>
+      <h2 ref={heading} tabIndex={-1} className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight outline-none">{item.situation ?? item.text}</h2>
       {item.version === 2 && <>
         <CourtScenario item={item} />
         <div className="flex gap-2.5 rounded-xl bg-muted/50 p-3">
@@ -50,7 +51,7 @@ export function AssessmentQuestion({ item, initialValue, saving, editing, onConf
           <HelpCircle size={15} /> Not enough game experience
         </button>
       </fieldset>}
-      <Button className="h-12 w-full gap-2 rounded-xl" disabled={selected === null || saving}
+      <Button className="skill-primary-button h-12 w-full gap-2 rounded-xl" disabled={selected === null || saving}
         onClick={() => selected && onConfirm(selected)}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <>{editing ? 'Save change' : 'Save & continue'}<ArrowRight className="h-4 w-4" /></>}</Button>
       <p className="text-center text-[11px] text-muted-foreground">Your answer saves when you continue. You can review it later.</p>
     </section>

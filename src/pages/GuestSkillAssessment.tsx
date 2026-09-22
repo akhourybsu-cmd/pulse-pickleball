@@ -3,6 +3,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, BookmarkPlus, CheckCircle2, Loader2, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
+import { PulseTrace } from '@/components/skill/PulseTrace';
+import '@/components/skill/assessment-brand.css';
 import { PageSEO } from '@/components/seo/PageSEO';
 import { AssessmentWizard } from '@/components/skill/AssessmentWizard';
 import { SkillIntro } from '@/components/skill/SkillIntro';
@@ -82,19 +85,19 @@ export default function GuestSkillAssessment() {
     catch { toast.info('Copy the assessment link shown below.'); }
   };
 
-  return <div className="min-h-screen bg-background text-foreground">
+  return <div className="skill-studio skill-public">
     <PageSEO title="Free Pickleball Self-Assessment | PULSE" description="Explore your pickleball skills with visual game situations. Get your full self-assessment analysis before signup; create a free account to save it." path={ASSESSMENT_PATH} />
-    <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4">
-        <Link to="/" className="font-display text-xl font-bold tracking-wider" aria-label="PULSE home">PULSE<span className="text-primary"> / </span><span className="text-sm font-medium tracking-normal">Know your game</span></Link>
+    <header className="skill-public-nav">
+      <div className="skill-public-nav-inner">
+        <Link to="/" className="skill-brand-link" aria-label="PULSE home"><Logo compact /><span className="skill-brand-caption">Know your game.<br />Find your next level.</span></Link>
         {auth.user ? <Link className="text-sm text-muted-foreground underline underline-offset-4" to="/player/self-assessment?mode=view">My assessments</Link>
           : a.phase === 'result' ? <button type="button" disabled={auth.loading || saving} className="min-h-11 text-sm underline underline-offset-4" onClick={() => save('login')}>Sign in to save</button>
           : <span className="text-xs text-muted-foreground">Free assessment</span>}
       </div>
     </header>
-    <main className="mx-auto max-w-xl space-y-5 px-4 py-6 pb-12">
+    <main className={`skill-public-main space-y-6 ${a.phase === 'in_progress' ? 'is-question' : ''}`}>
       {a.phase === 'intro' ? <>
-        <p className="rounded-xl bg-primary/10 p-3 text-center text-sm font-medium">Take it free. Read the full analysis. Create an account only when you want to save it.</p>
+        <p className="skill-notice">Take it free. Read the full analysis. Create an account only when you want to save it.</p>
         <SkillIntro guest onStart={() => { setSaved(null); setSaveError(false); void a.start(); }} hasDraft={!!a.draft && !a.draft.completedAt} minItems={a.minItems} maxItems={a.maxItems} />
         {a.draft?.completedAt && !saved && <p className="text-sm text-muted-foreground">Starting again replaces your temporary browser copy. Return to your analysis first if you want to save it to an account.</p>}
         {a.draft?.completedAt && <Button variant="ghost" className="w-full" onClick={a.showResult}>Back to my analysis</Button>}
@@ -103,12 +106,14 @@ export default function GuestSkillAssessment() {
         <p className="text-xs text-muted-foreground">Your answers stay in this browser until you choose to save them to an account.</p>
         <AssessmentWizard a={a} onExit={a.showIntro} />
       </> : <>
-        <div className="space-y-2">
-          <h1 ref={heading} tabIndex={-1} className="font-display text-2xl font-semibold outline-none">Your full self-assessment analysis</h1>
+        <div className="skill-report-heading">
+          <div className="skill-overline">The PULSE Skill Fingerprint</div>
+          <h1 ref={heading} tabIndex={-1} className="outline-none">Your full self-assessment analysis</h1>
           <p className="text-sm text-muted-foreground">Explore your level, strengths and next steps below. <a className="text-primary underline underline-offset-4" href="#save-analysis">{saved ? 'Your analysis is saved.' : 'Keep this analysis with a free account.'}</a></p>
         </div>
         <SkillFingerprint snapshot={saved ?? a.runningSnapshot} completedAt={a.draft?.completedAt ? new Date(a.draft.completedAt).toISOString() : null} />
-        <section id="save-analysis" className="scroll-mt-6 space-y-4 rounded-2xl border border-primary/30 bg-primary/5 p-5" aria-labelledby="save-heading">
+        <div className="skill-conversion-grid">
+        <section id="save-analysis" className="skill-save-card scroll-mt-6 space-y-4" aria-labelledby="save-heading">
           {saved ? <>
             <CheckCircle2 className="h-7 w-7 text-primary" aria-hidden="true" />
             <h2 id="save-heading" className="text-xl font-semibold">Your analysis is saved</h2>
@@ -122,19 +127,23 @@ export default function GuestSkillAssessment() {
             <p className="text-sm text-muted-foreground">Save your analysis to a free PULSE account. Come back to your strengths and practice priorities, then build a history as your game develops.</p>
             <ul className="space-y-1 text-sm"><li>• Keep your full skill breakdown</li><li>• Access it on your phone or computer</li><li>• Revisit past assessments after more games</li></ul>
             {saveError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Your analysis hasn’t been saved to your account yet. It’s still here. Check your connection and retry; you won’t create a duplicate.</p>}
-            <Button disabled={saving || auth.loading} className="min-h-12 w-full whitespace-normal" onClick={() => save()}>
+            <Button disabled={saving || auth.loading} className="skill-primary-button min-h-12 w-full whitespace-normal" onClick={() => save()}>
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving your analysis…</> : saveError ? 'Retry saving my analysis' : auth.user ? 'Save my analysis to my account' : 'Create free account & save my analysis'}
             </Button>
             {!auth.user && <button type="button" disabled={saving || auth.loading} className="min-h-11 w-full text-sm underline underline-offset-4" onClick={() => save('login')}>Already a member? Sign in to save</button>}
             <p className="text-xs leading-relaxed text-muted-foreground">Your full analysis is already unlocked. Without an account, answers are kept temporarily in this browser for up to 7 days and can be lost if you clear site data. Finish sign-in in this browser to transfer them.</p>
           </>}
         </section>
-        <section className="space-y-3 rounded-2xl border p-5">
-          <h2 className="font-semibold">Give your playing partner a starting point, too</h2>
+        <section className="skill-surface space-y-5">
+          <Share2 className="text-primary h-7 w-7" aria-hidden="true" />
+          <div className="skill-overline">Better together</div>
+          <h2 className="text-2xl font-semibold leading-tight tracking-tight">Give your playing partner a starting point, too</h2>
           <p className="text-sm text-muted-foreground">Invite them to take their own assessment. This link contains none of your answers or results.</p>
           <Button variant="outline" className="w-full gap-2" onClick={copyInvite}><Share2 className="h-4 w-4" /> Copy assessment invitation</Button>
           <input aria-label="Assessment invitation link" readOnly value={inviteUrl} className="w-full rounded border bg-muted p-2 text-xs" onFocus={e => e.target.select()} />
+          <PulseTrace />
         </section>
+        </div>
         <Button variant="ghost" className="w-full gap-2" disabled={saving} onClick={a.showIntro}><ArrowLeft className="h-4 w-4" /> Assessment introduction</Button>
       </>}
       {!a.durable && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">This browser isn’t retaining your answers. You can still read your analysis here. Allow site storage before refreshing or leaving for signup.</p>}

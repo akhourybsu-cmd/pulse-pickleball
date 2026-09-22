@@ -68,3 +68,13 @@ Suggested measurements:
 - Real Supabase JWT handling, email/OAuth provider configuration, concurrent network requests and production deployment remain staging checks. The local preview is not evidence that those external services are configured.
 
 The skill model remains a provisional, unvalidated self-report estimate. This release improves access, interpretation and retention; it does not establish empirical predictive accuracy. The prior assessment review describes the calibration work required before making stronger rating claims.
+
+## Visual refinement before publication
+
+The assessment now uses a scoped dark ink theme with gold, teal, blue and violet accents. The existing vector PULSE artwork has an opt-in compact viewBox for readable navigation and report placement; other logo consumers retain their existing dimensions. The introduction, question cards, progress, report and save invitation share this treatment.
+
+The report separates the self-assessed level from evidence confidence, shows four measures with answer counts, and explains the actual 65% skill-average / 20% essential-foundation / 15% strategy blend and foundation ceiling. Missing domain skills stay visibly unsupported. Per-skill details and actionable practice criteria remain available. Legacy reports do not show the version 2 calculation. Display formatting does not alter stored scores.
+
+Decorative ECG traces run twice (4.4 seconds total), with a brief gauge reveal, halo and evidence-bar entrance. CSS honors reduced-motion preferences; React entrances and court animation also use the existing reduced-motion handling. Court animation remains opt-in with a pause control. No additional image downloads or animation dependency is required.
+
+Validation after this refinement: 125 focused assessment/homepage tests passed, 26 opt-in tests skipped; focused lint and production build passed. Formula explanation parity covers varied profiles, missing answers, weak foundations and completed adaptive runs. Whole-app TypeScript still reports the same 14 errors in unrelated code. Browser review covered desktop and a 390px viewport, readable vector logos, intro/report/question layouts, keyboard slider interaction, play/pause, expandable skill groups, guest save navigation and the account report. No horizontal overflow was observed. Reduced-motion React rendering is covered by tests and CSS handling was reviewed; browser OS preference emulation was not available. The preview uses simulated account data. Publication and real authentication staging checks remain outstanding.
