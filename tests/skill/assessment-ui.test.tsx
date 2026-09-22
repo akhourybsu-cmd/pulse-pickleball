@@ -6,6 +6,9 @@ import { CourtScenario } from '../../src/components/skill/CourtScenario';
 import { QUESTION_BANK_V2 } from '../../src/lib/skill/questionBankV2';
 import { scoreAssessment } from '../../src/lib/skill/scoring';
 import { sanitizeForOrganizer } from '../../src/lib/skill/organizerCard';
+import { SkillFingerprint } from '../../src/components/skill/SkillFingerprint';
+import { selectNextV2 } from '../../src/lib/skill/adaptiveV2';
+import type { Responses } from '../../src/lib/skill/scoring';
 vi.mock('framer-motion', async importOriginal => ({ ...await importOriginal<typeof import('framer-motion')>(), useReducedMotion: () => true }));
 
 describe('assessment accessibility and privacy', () => {
@@ -32,5 +35,15 @@ describe('assessment accessibility and privacy', () => {
     expect(card).not.toHaveProperty('meta');
     expect(card).not.toHaveProperty('evidence');
     expect(card).not.toHaveProperty('contradictions');
+  });
+  it('gives a balanced profile actionable guidance without inventing a weakness', () => {
+    const responses: Responses = {};
+    for (let n = 0; n < 64; n++) { const key = selectNextV2(QUESTION_BANK_V2, responses); if (!key) break; responses[key] = 'usually'; }
+    const snapshot = scoreAssessment(QUESTION_BANK_V2, responses);
+    expect(snapshot.developmentPriorities).toHaveLength(0);
+    const html = renderToStaticMarkup(<SkillFingerprint snapshot={snapshot} />);
+    expect(html).toContain('Your next-game focus');
+    expect(html).toContain('No clear relative weakness stood out');
+    expect(html).toContain('Count a success when:');
   });
 });

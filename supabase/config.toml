@@ -94,3 +94,7 @@ verify_jwt = false
 
 [functions.verify-league-slot-purchase]
 verify_jwt = false
+
+[functions.skill-claim]
+# The handler validates the current account with auth.getUser before any write.
+verify_jwt = false

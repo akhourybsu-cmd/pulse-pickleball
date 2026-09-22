@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowDown, ArrowRight, Check, CalendarDays, MessageCircle, Activity } from "lucide-react";
 import { SIGNUP_URL } from "./marketingContent";
+import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 
 export const HeroSection = () => (
   <section className="mkt-hero" aria-labelledby="hero-heading">
@@ -11,7 +12,9 @@ export const HeroSection = () => (
         <p className="mkt-hero-description">Find your next game, bring your crew together, and make every match part of your story. PULSE connects the playing, planning, and people behind your pickleball life.</p>
         <div className="mkt-actions">
           <Link className="mkt-button mkt-button-gold" to={SIGNUP_URL}>Create your free account <ArrowRight aria-hidden="true" /></Link>
-          <a className="mkt-hero-explore" href="#features">Explore PULSE <ArrowDown aria-hidden="true" /></a>
+          {isSkillAssessmentEnabled()
+            ? <Link className="mkt-hero-explore" to="/skill-assessment?source=hero">Try the free skill assessment <ArrowRight aria-hidden="true" /></Link>
+            : <a className="mkt-hero-explore" href="#features">Explore PULSE <ArrowDown aria-hidden="true" /></a>}
         </div>
         <ul className="mkt-hero-notes" aria-label="Getting started">
           <li><Check aria-hidden="true" /> Free to start</li>

@@ -102,6 +102,11 @@
 .mkt-hero-foot p span { color: #91a184; }
 .mkt-section { padding-block: 96px; }
 .mkt-section-heading { margin-bottom: 45px; }
+.mkt-assessment { background: #f5f3ed; }
+.mkt-assessment-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.mkt-assessment .mkt-actions { margin-top: 28px; flex-wrap: wrap; }
+.mkt-assessment-note { font-size: 13px; line-height: 1.7; color: var(--mkt-muted); }
+@media (max-width: 760px) { .mkt-assessment-steps { grid-template-columns: 1fr; gap: 16px; } }
 .mkt-section-heading .mkt-eyebrow { color: var(--mkt-muted); margin-bottom: 16px; }
 .mkt-section-heading h2, .mkt-closing h2 { font-size: clamp(30px, 3.3vw, 43px); line-height: 1.22; letter-spacing: -.04em; }
 .mkt-section-heading > p:last-child, .mkt-heading-split > p { font-size: 16px; line-height: 1.8; color: var(--mkt-muted); max-width: 610px; margin-top: 20px; }

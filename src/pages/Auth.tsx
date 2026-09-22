@@ -20,6 +20,7 @@ import {
   peekPostAuthRedirect,
   sanitizeRedirectPath,
   stashPostAuthRedirect,
+  isAssessmentSaveRedirect,
 } from "@/lib/authRedirect";
 
 const GoogleIcon = () => (
@@ -80,6 +81,8 @@ const Auth = () => {
   // back to /auth (or directly to origin).
   const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
+  const assessmentReturn = isAssessmentSaveRedirect(redirectPath);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
@@ -140,10 +143,10 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
-      clearPostAuthRedirect();
+      if (!assessmentReturn) clearPostAuthRedirect();
       navigate(redirectPath, { replace: true });
     }
-  }, [alreadyAuthed, redirectPath, navigate]);
+  }, [alreadyAuthed, redirectPath, assessmentReturn, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,10 +227,13 @@ const Auth = () => {
         toast.success("Logged in successfully!");
         navigate(redirectPath, { replace: true });
       } else {
+        // Email verification, like OAuth, may return through the public root.
+        if (assessmentReturn) stashPostAuthRedirect(redirectPath);
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            ...(assessmentReturn ? { emailRedirectTo: window.location.origin } : {}),
             data: {
               first_name: firstName,
               last_name: lastName,
@@ -244,6 +250,7 @@ const Auth = () => {
           toast.success("Account created! Welcome to PULSE!");
           navigate(redirectPath, { replace: true });
         } else if (authData.user) {
+          setAwaitingConfirmation(true);
           toast.success("Account created! Check your email to finish signing in.");
         }
       }
@@ -413,17 +420,24 @@ const Auth = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              {isForgotPassword ? "Reset Password" : isLogin ? "Welcome Back" : "Create Account"}
+              {isForgotPassword ? "Reset Password" : assessmentReturn ? isLogin ? "Sign in to save your analysis" : "Keep your skill analysis" : isLogin ? "Welcome Back" : "Create Account"}
             </CardTitle>
             <CardDescription>
               {isForgotPassword
                 ? "Enter your email to receive a password reset link"
+                : assessmentReturn
+                ? "Your full analysis is ready. Save it to a free account to revisit your skills and build an assessment history."
                 : isLogin
                 ? "Sign in to track your pickleball matches"
                 : "Join PULSE to start tracking your rating"}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {assessmentReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
+              <p>{awaitingConfirmation ? 'Check your email, then finish verification in this browser. If the link opens somewhere else, return here and sign in to save your answers.' : 'Finish signing in on this browser to bring your guest answers with you.'}</p>
+              {awaitingConfirmation && <p role="status" className="font-medium">Your analysis is still waiting here; it has not been saved to an account yet.</p>}
+              <Link className="inline-block min-h-9 text-primary underline underline-offset-4" to="/skill-assessment">Back to my full analysis</Link>
+            </div>}
             {isForgotPassword ? (
               <form onSubmit={handlePasswordReset} className="space-y-4">
                 <div className="space-y-2">
@@ -710,7 +724,7 @@ const Auth = () => {
                 )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
+                  {loading ? "Please wait..." : assessmentReturn ? isLogin ? "Sign in & save analysis" : "Create free account" : isLogin ? "Sign In" : "Sign Up"}
                 </Button>
 
                 <div className="text-center text-sm">

@@ -13,6 +13,7 @@ import {
 import type { ScoringSnapshot } from "@/lib/skill/scoring";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { MEASURE_LABELS } from '@/lib/skill/questionBankV2';
+import { QUESTION_BANK_V2 } from '@/lib/skill/questionBankV2';
 
 /**
  * PULSE Skill Fingerprint result screen. Hierarchy follows the product
@@ -40,6 +41,11 @@ export function SkillFingerprint({
     ? {}
     : { variants: staggerContainer, initial: "hidden" as const, animate: "show" as const };
   const itemProps = reduced ? {} : { variants: staggerItem };
+  // A balanced profile may have no skill sufficiently below the overall level
+  // to label a weakness. Still offer a practical focus without inventing one.
+  const practiceFocus = snapshot.developmentPriorities.length
+    ? snapshot.developmentPriorities.slice(0, 3)
+    : snapshot.subskills.filter(s => !s.insufficientEvidence).sort((a, b) => a.rawLevel - b.rawLevel).slice(0, 3);
 
   return (
     <motion.div className="space-y-5" {...motionProps}>
@@ -126,6 +132,20 @@ export function SkillFingerprint({
       )}
 
       {/* 6. Broad domains */}
+      {snapshot.scoringModelVersion === 2 && practiceFocus.length > 0 && <motion.section {...itemProps} className="space-y-3 rounded-2xl border bg-card p-4">
+        <h2 className="text-sm font-semibold">Your next-game focus</h2>
+        <p className="text-xs leading-relaxed text-muted-foreground">{snapshot.developmentPriorities.length ? 'Choose one of these priorities for your next few games.' : 'No clear relative weakness stood out. These are useful starting points among your lower supported skill estimates.'} Count successes across 10 relevant opportunities using the criterion below, then compare your observations with a coach or experienced partner.</p>
+        {practiceFocus.map(priority => {
+          const scenario = QUESTION_BANK_V2.find(i => i.subskill === priority.subskill && i.dimension === (priority.displayLevel < 3 ? 'execution' : 'consistency'));
+          return <div key={priority.subskill} className="space-y-1 rounded-xl bg-muted/40 p-3">
+            <h3 className="text-sm font-semibold">{SUBSKILL_LABELS[priority.subskill]}</h3>
+            <p className="text-xs text-muted-foreground">{scenario?.situation}</p>
+            <p className="text-xs leading-relaxed"><strong>Count a success when:</strong> {scenario?.success}</p>
+          </div>;
+        })}
+        <p className="text-xs text-muted-foreground">Retake after you have new game evidence. A change in self-assessment is a change in reported play; match results and observation help confirm improvement.</p>
+      </motion.section>}
+
       <motion.section {...itemProps} className="rounded-2xl border border-border/70 bg-card p-4">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Broad domains

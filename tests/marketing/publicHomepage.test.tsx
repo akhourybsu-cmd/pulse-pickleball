@@ -17,9 +17,12 @@ describe("public homepage", () => {
     expect(html).toContain('id="main-content" tabindex="-1"');
     expect(html).toContain('href="#main-content"');
   });
-  it("gives each public navigation item a real section", () => {
+  it("gives each public navigation item a real section or public assessment destination", () => {
     const html = render(<PublicHomepage />);
-    for (const link of marketingLinks) expect(html).toContain(`id="${link.href.split("#")[1]}"`);
+    for (const link of marketingLinks) {
+      if (link.href.startsWith('/skill-assessment')) expect(html).toContain(`href="${link.href}"`);
+      else expect(html).toContain(`id="${link.href.split("#")[1]}"`);
+    }
     expect(new Set(marketingLinks.map(link => link.href)).size).toBe(marketingLinks.length);
   });
   it("opens account creation in signup mode, not the default sign-in form", () => {

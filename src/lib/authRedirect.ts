@@ -28,6 +28,9 @@ const safeStorageRemove = (storage: Storage, key: string) => {
 
 export const isAuthEntryPath = (path: string) => path === "/" || path === "/auth";
 
+export const isAssessmentSaveRedirect = (path: string | null | undefined) =>
+  !!path && /^\/skill-assessment\?save=[0-9a-f-]{36}$/i.test(path);
+
 export const sanitizeRedirectPath = (path: string | null | undefined) => {
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
     return DEFAULT_AUTH_DESTINATION;
@@ -63,7 +66,10 @@ export const peekPostAuthRedirect = () => {
 
 export const consumePostAuthRedirect = () => {
   const redirect = peekPostAuthRedirect();
-  clearPostAuthRedirect();
+  // App's callback listener, Index and Auth can all resolve the same login.
+  // Keep an assessment handoff until its destination acknowledges arrival;
+  // otherwise a second resolver can replace it with the default dashboard.
+  if (!isAssessmentSaveRedirect(redirect)) clearPostAuthRedirect();
   return redirect || DEFAULT_AUTH_DESTINATION;
 };
 

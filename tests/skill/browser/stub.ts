@@ -4,13 +4,36 @@ import { selectNextV2 } from '../../../src/lib/skill/adaptiveV2';
 import { computeAuthoritativeResult } from '../../../supabase/functions/_shared/skill/complete';
 import type { Responses } from '../../../src/lib/skill/scoring';
 import type { ResponseKey } from '../../../src/lib/skill/model';
+import { createGuestAssessment, writeGuestAssessment, GUEST_ASSESSMENT_KEY } from '../../../src/lib/skill/guestAssessment';
+import { computeGuestClaim } from '../../../supabase/functions/_shared/skill/claim';
+import { useEffect, useState } from 'react';
 type Row = Record<string, unknown>;
 const storageKey = 'pulse-assessment-v2-preview';
 const read = (): Record<string, Row[]> => JSON.parse(localStorage.getItem(storageKey) ?? '{"skill_assessment_attempts":[],"skill_assessment_responses":[]}');
 const write = (data: Record<string, Row[]>) => localStorage.setItem(storageKey, JSON.stringify(data));
 let failSave = false;
+const authListeners = new Set<(event: string, session: unknown) => void>();
+const currentUser = () => localStorage.getItem('skill-preview-user') === 'yes' ? { id: 'preview-player' } : null;
+export function signInPreview() {
+  localStorage.setItem('skill-preview-user', 'yes');
+  for (const fn of authListeners) fn('SIGNED_IN', { user: currentUser() });
+  window.dispatchEvent(new Event('preview-auth'));
+}
+export function signOutPreview() { localStorage.removeItem('skill-preview-user'); window.dispatchEvent(new Event('preview-auth')); }
+export function useAuthState() {
+  const [user, setUser] = useState(currentUser);
+  useEffect(() => { const changed = () => setUser(currentUser()); window.addEventListener('preview-auth', changed); return () => window.removeEventListener('preview-auth', changed); }, []);
+  return { user, loading: false, isAuthenticated: !!user };
+}
 export function failNextSave() { failSave = true; }
-export function resetPreview() { localStorage.removeItem(storageKey); location.reload(); }
+export function resetPreview() { localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
+export function seedGuest() {
+  const draft = createGuestAssessment();
+  while (Object.keys(draft.responses).length < 64) { const key = selectNextV2(QUESTION_BANK_V2, draft.responses); if (!key) break; draft.responses[key] = 'usually'; }
+  writeGuestAssessment(localStorage, draft);
+  localStorage.setItem('skill-preview-route', '/skill-assessment');
+  location.reload();
+}
 export function seedReady() { seedResponses('usually'); }
 export function seedUnknown() { seedResponses('not_sure'); }
 function seedResponses(answer: ResponseKey) {
@@ -25,7 +48,10 @@ function seedResponses(answer: ResponseKey) {
   location.reload();
 }
 export const supabase = {
-  auth: { getUser: async () => ({ data: { user: { id: 'preview-player' } }, error: null }) },
+  auth: {
+    getUser: async () => ({ data: { user: currentUser() }, error: null }),
+    onAuthStateChange: (fn: (event: string, session: unknown) => void) => { authListeners.add(fn); return { data: { subscription: { unsubscribe: () => authListeners.delete(fn) } } }; },
+  },
   from(table: string) {
     const filters: [string, unknown][] = [];
     let operation = 'select'; let payload: Row | Row[] = {}; let single = false;
@@ -60,8 +86,19 @@ export const supabase = {
     };
     return query;
   },
-  functions: { async invoke(_name: string, options: { body: { attemptId: string } }) {
+  functions: { async invoke(_name: string, options: { body: { attemptId: string; assessmentVersion?: number; responses?: Responses } }) {
     const data = read();
+    if (_name === 'skill-claim') {
+      if (!currentUser() || failSave) { failSave = false; return { data: null, error: new Error('Preview save failure') }; }
+      const existing = data.skill_assessment_attempts.find(r => r.id === options.body.attemptId);
+      if (existing) return { data: { authoritative: true, attemptId: existing.id, snapshot: existing.scoring_snapshot }, error: null };
+      const claim = computeGuestClaim(options.body);
+      if (!claim.ok) return { data: claim, error: new Error('Invalid claim') };
+      data.skill_assessment_attempts.unshift({ id: claim.attemptId, player_id: 'preview-player', assessment_version: 2, status: 'completed', scoring_snapshot: claim.snapshot, completed_at: new Date().toISOString(), estimated_level_display: claim.snapshot.estimatedLevelDisplay, display_band: claim.snapshot.displayBand });
+      data.skill_assessment_responses.push(...Object.entries(claim.responses).map(([item_key, response_key]) => ({ attempt_id: claim.attemptId, item_key, response_key })));
+      write(data);
+      return { data: { authoritative: true, attemptId: claim.attemptId, snapshot: claim.snapshot }, error: null };
+    }
     const rows = data.skill_assessment_responses.filter(r => r.attempt_id === options.body.attemptId);
     const result = computeAuthoritativeResult({ assessmentVersion: 2, responses: rows.map(r => ({ item_key: String(r.item_key), response_key: String(r.response_key) })) });
     if (!result.ok) return { data: result, error: new Error('Insufficient evidence') };

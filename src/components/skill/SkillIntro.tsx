@@ -15,12 +15,14 @@ export function SkillIntro({
   hasDraft,
   minItems,
   maxItems,
+  guest = false,
 }: {
   onStart: () => void;
   starting?: boolean;
   hasDraft?: boolean;
   minItems: number;
   maxItems: number;
+  guest?: boolean;
 }) {
   const reduced = useReducedMotion();
   const container = reduced ? {} : { variants: staggerContainer, initial: "hidden" as const, animate: "show" as const };
@@ -78,7 +80,7 @@ export function SkillIntro({
           Up to <strong>{maxItems}</strong> questions, with an aim of about <strong>{minItems}</strong> when there is enough evidence. Confirm each slider answer to save it. Review and change answers before finishing.
         </Point>
         <Point icon={<ShieldCheck className="h-4 w-4" />}>
-          “Not enough game experience” is a valid answer. Your estimate includes its evidence limits; games and coach observation are needed to validate it. You control your skill-profile visibility in your profile settings.
+          “Not enough game experience” is a valid answer. We only estimate a level when there is enough evidence. Games and coach observation are needed to validate it. {guest ? 'Your full analysis is available before signup. Answers are stored temporarily in this browser for up to 7 days.' : 'You control your skill-profile visibility in your profile settings.'}
         </Point>
       </motion.section>
 
