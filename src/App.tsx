@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { isVenueCommunitiesEnabled } from "@/lib/venues/featureFlag";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -28,8 +28,9 @@ import { supabase } from "@/integrations/supabase/client";
 // import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollManager } from "@/components/ScrollManager";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import { clearPostAuthRedirect, consumePostAuthRedirect, isAuthEntryPath } from "@/lib/authRedirect";
+import { Button } from "@/components/ui/button";
+import { completeAuthCallback, hasPendingAuthCallback } from "@/lib/authCallback";
+import { consumePostAuthRedirect } from "@/lib/authRedirect";
 
 /**
  * Forward the current location's `search` (and `hash`) when redirecting from a
@@ -100,28 +101,6 @@ function DeferredPWAInstallPrompt() {
       <PWAInstallPrompt />
     </Suspense>
   ) : null;
-}
-
-function hasPendingAuthCallback(): boolean {
-  const url = new URL(window.location.href);
-  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
-  const queryParams = url.searchParams;
-  const errorMessage =
-    hashParams.get("error_description") ||
-    queryParams.get("error_description") ||
-    hashParams.get("error") ||
-    queryParams.get("error");
-  const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
-  const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
-  const code = queryParams.get("code") || hashParams.get("code");
-  const canUseCode = Boolean(
-    code &&
-    (queryParams.has("state") ||
-      isAuthEntryPath(url.pathname) ||
-      url.pathname.startsWith("/profile") ||
-      url.pathname.startsWith("/player/profile")),
-  );
-  return Boolean(errorMessage || (accessToken && refreshToken) || canUseCode);
 }
 
 // Lazy load all page components
@@ -260,7 +239,11 @@ const AppContent = () => {
   // Ordinary refreshes have no auth payload to exchange, so render routes on
   // the first pass. Previously every page showed a full-screen loader for an
   // extra render before its lazy route chunk was even requested.
-  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(() => !hasPendingAuthCallback());
+  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(() => !hasPendingAuthCallback(window.location.href));
+
+  const callbackCheck = useRef<ReturnType<typeof completeAuthCallback> | null>(null);
+  const callbackHandled = useRef(false);
+  const [callbackError, setCallbackError] = useState<string | null>(null);
 
   // Route a tapped native push notification through the router.
   useEffect(() => {
@@ -268,93 +251,26 @@ const AppContent = () => {
   }, [navigate]);
 
   useEffect(() => {
+    if (callbackHandled.current) return;
     let cancelled = false;
-
-    const finish = () => {
-      if (!cancelled) setAuthRecoveryChecked(true);
-    };
-
-    const recoverOAuthReturn = async () => {
-      const url = new URL(window.location.href);
-      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
-      const queryParams = url.searchParams;
-      const authType = hashParams.get("type") || queryParams.get("type");
-
-      if (authType === "recovery" || url.pathname === "/reset-password") {
-        finish();
-        return;
-      }
-
-      const errorMessage =
-        hashParams.get("error_description") ||
-        queryParams.get("error_description") ||
-        hashParams.get("error") ||
-        queryParams.get("error");
-      const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
-      const code = queryParams.get("code") || hashParams.get("code");
-      const canUseCode = Boolean(
-        code &&
-        (queryParams.has("state") ||
-          isAuthEntryPath(url.pathname) ||
-          url.pathname.startsWith("/profile") ||
-          url.pathname.startsWith("/player/profile")),
-      );
-
-      if (!errorMessage && !accessToken && !refreshToken && !canUseCode) {
-        finish();
-        return;
-      }
-
-      try {
-        if (errorMessage) {
-          clearPostAuthRedirect();
-          toast.error(errorMessage);
-        } else if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) throw error;
-        } else if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-        }
-
-        [
-          "code",
-          "state",
-          "type",
-          "error",
-          "error_code",
-          "error_description",
-          "access_token",
-          "refresh_token",
-          "expires_in",
-          "expires_at",
-          "token_type",
-        ].forEach((key) => url.searchParams.delete(key));
-        const remainingSearch = url.searchParams.toString();
-        window.history.replaceState({}, document.title, `${url.pathname}${remainingSearch ? `?${remainingSearch}` : ""}`);
-
-        if (!errorMessage && isAuthEntryPath(url.pathname)) {
-          navigate(consumePostAuthRedirect(), { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error("OAuth return handling failed:", error);
-        clearPostAuthRedirect();
-        toast.error(error instanceof Error ? error.message : "Sign-in could not be completed");
-      } finally {
-        finish();
-      }
-    };
-
-    recoverOAuthReturn();
-
-    return () => {
-      cancelled = true;
-    };
+    // StrictMode may run the effect twice; both subscribers observe one check.
+    callbackCheck.current ??= completeAuthCallback(
+      supabase.auth,
+      () => window.location.href,
+      path => window.history.replaceState(window.history.state, '', path),
+    );
+    callbackCheck.current.then(result => {
+      if (cancelled || callbackHandled.current) return;
+      callbackHandled.current = true;
+      if (result.handled && result.entryPath) navigate(consumePostAuthRedirect(), { replace: true });
+      setAuthRecoveryChecked(true);
+    }, error => {
+      if (cancelled || callbackHandled.current) return;
+      callbackHandled.current = true;
+      setCallbackError(error instanceof Error ? error.message : 'Sign-in could not be completed. Please sign in again.');
+      setAuthRecoveryChecked(true);
+    });
+    return () => { cancelled = true; };
   }, [navigate]);
 
   useEffect(() => {
@@ -364,10 +280,8 @@ const AppContent = () => {
         // device token is saved to device_tokens — the token upsert is a no-op
         // without an authed user, so registering only at cold startup can miss it.
         void initNativePush();
-        const currentPath = window.location.pathname;
-        if (isAuthEntryPath(currentPath)) {
-          navigate(consumePostAuthRedirect(), { replace: true });
-        }
+        // The callback, Index, and Auth pages own navigation after their
+        // checks finish. Auth events must not race that work or consume its link.
       }
       if (event === 'SIGNED_OUT') {
         // Drop both the live and the persisted cache so the next account on
@@ -379,6 +293,16 @@ const AppContent = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  if (callbackError) {
+    return <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+      <div role="alert" className="max-w-sm text-center space-y-4">
+        <h1 className="text-xl font-semibold">Let’s reconnect your account</h1>
+        <p className="text-sm text-muted-foreground">{callbackError}</p>
+        <Button onClick={() => { setCallbackError(null); navigate('/auth', { replace: true }); }}>Sign in again</Button>
+      </div>
+    </div>;
+  }
 
   if (!authRecoveryChecked) {
     return <PageLoader />;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { withAuthDeadline } from '@/lib/authDeadline';
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { sendAuthEmail } from "@/lib/authEmail";
@@ -116,13 +117,13 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    withAuthDeadline(() => supabase.auth.getUser()).then(({ data: { user } }) => {
       if (cancelled) return;
       if (user) {
         setAlreadyAuthed(true);
       }
       setSessionChecked(true);
-    });
+    }).catch(() => { if (!cancelled) setSessionChecked(true); });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled && session?.user) {
