@@ -10,7 +10,7 @@ export function KnowledgeLinks({ sources }: { sources: KnowledgeSource[] }) {
 
 export function QuestionSkillHelp({ skill }: { skill: Subskill }) {
   const guide = SKILL_KNOWLEDGE[skill];
-  return <details className="skill-question-help"><summary><BookOpen size={15} aria-hidden="true" /> Understand {SUBSKILL_LABELS[skill].toLowerCase()}</summary><div className="space-y-3"><p>{guide.definition}</p><p>{guide.misconception}</p><Link to={`${GUIDE_PATH}#skill-${skill}`} className="skill-quiet-link">Read the skill guide</Link></div></details>;
+  return <details className="skill-question-help"><summary><BookOpen size={15} aria-hidden="true" /> About {SUBSKILL_LABELS[skill].toLowerCase()}</summary><div className="space-y-3"><p>{guide.definition}</p><p>{guide.misconception}</p><Link to={`${GUIDE_PATH}#skill-${skill}`} className="skill-quiet-link">Read the skill guide</Link></div></details>;
 }
 
 export function ScoreMeaning({ snapshot }: { snapshot: ScoringSnapshot }) {

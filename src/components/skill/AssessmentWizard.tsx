@@ -46,12 +46,11 @@ export function AssessmentWizard({ a, onExit }: { a: AssessmentWizardState; onEx
       onConfirm={async value => { const saved = await a.answer(item.itemKey, value); if (saved && editingKey) { setEditingKey(null); setReviewing(true); } }} /> : <section className="space-y-4 rounded-2xl border bg-card p-5 text-center">
         <Check className="mx-auto h-9 w-9 text-primary" />
         <PulseTrace />
-        <h2 className="text-xl font-semibold">{a.canFinalize ? 'Your skill picture is ready' : 'A little more game evidence is needed'}</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">{a.canFinalize ? 'Review your answers or generate your provisional level and skill breakdown.' : 'Review uncertain answers if you now have enough experience to answer. Otherwise, save this assessment and return after more games. We won’t turn missing experience into a low skill rating.'}</p>
+        <h2 className="text-xl font-semibold">{a.canFinalize ? 'Ready for your results' : 'More game experience needed'}</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">{a.canFinalize ? 'See your estimated level, strengths and next steps.' : 'Review any unsure answers, or return after more games. Missing experience won’t lower your rating.'}</p>
         <Button disabled={!a.canFinalize || a.saving} onClick={a.finalize} className="skill-primary-button h-12 w-full rounded-xl">See my results <ChevronRight className="ml-2 h-4 w-4" /></Button>
       </section>}
     {answered > 0 && <Button variant="outline" disabled={a.saving} className="min-h-11 w-full rounded-xl"
       onClick={() => { setEditingKey(null); setReviewing(v => !v); }}>{editingKey ? 'Cancel edit' : reviewing ? 'Back to assessment' : `Review ${answered} saved answers`}</Button>}
-    {!reviewing && !editingKey && !a.complete && <p className="text-center text-[11px] text-muted-foreground">Question count adapts to the evidence in your answers.</p>}
   </div>;
 }

@@ -29,7 +29,24 @@ describe('assessment accessibility and privacy', () => {
       expect(html).toContain('<title');
       expect(html).toContain('Still diagram');
       expect(html).not.toContain('class="assessment-moving-ball"');
+      expect(html).not.toContain('court animation');
+      expect(html).not.toMatch(/<(video|iframe)\b/);
+      expect(html).toContain('Partner');
+      expect(html).toContain('KITCHEN');
     }
+  });
+  it('labels an incoming return honestly and makes holding still explicit', () => {
+    const bounce = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_positioning_0')!;
+    const hold = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_transition_play_2')!;
+    expect(renderToStaticMarkup(<CourtScenario item={bounce} />)).toContain('Their return');
+    expect(renderToStaticMarkup(<CourtScenario item={bounce} />)).not.toContain('Your shot');
+    expect(renderToStaticMarkup(<CourtScenario item={hold} />)).toContain('STOP');
+  });
+  it('counts a three-shot sequence as one successful rally', () => {
+    const item = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_forehand_1')!;
+    const html = renderToStaticMarkup(<AssessmentQuestion item={item} saving={false} onConfirm={() => undefined} />);
+    expect(html).toContain('Count the full three-shot sequence as one success.');
+    expect(html).toContain('three consecutive forehands');
   });
   it('keeps the new private evidence out of organizer cards', () => {
     const snapshot = scoreAssessment(QUESTION_BANK_V2, {});

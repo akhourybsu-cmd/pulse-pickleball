@@ -27,7 +27,7 @@ const scenarios: Record<Subskill, [Prompt, Prompt, Prompt, Prompt]> = {
   ],
   backhand: [
     [2.5, 'A routine ball bounces to your backhand at the baseline.', 'You return it in court with a backhand, without running around it.'],
-    [3.5, 'An opponent repeatedly plays medium-paced balls to your backhand.', 'You land three consecutive backhands in court during the exchange.'],
+    [3.5, 'An opponent keeps hitting medium-paced balls to your backhand.', 'You land three consecutive backhands in court during the exchange.'],
     [4, 'A gap opens crosscourt on a ball to your backhand.', 'You direct a backhand into that gap.'],
     [4.5, 'An opponent targets your backhand on an important point.', 'Your backhand reaches the back third of their court.'],
   ],
@@ -38,21 +38,21 @@ const scenarios: Record<Subskill, [Prompt, Prompt, Prompt, Prompt]> = {
     [4.5, 'Your opponent blocks your drive back quickly.', 'You control the next shot in court while staying balanced.'],
   ],
   third_shot_drop: [
-    [3, 'After your serve is returned, you try a soft third shot from the baseline.', 'The ball clears the net and lands in the kitchen.'],
+    [3, 'Your serve is returned. You try a soft third shot from the baseline.', 'The ball clears the net and lands in the kitchen.'],
     [3.5, 'You play a third-shot drop while opponents wait at the kitchen.', 'The ball drops below net height before they can volley it.'],
     [4, 'An opponent leaves a crosscourt opening near the kitchen.', 'Your third-shot drop lands in that opening.'],
     [4.5, 'At 9–9, a deep return reaches your backhand.', 'Your backhand drop forces the opponents to contact below net height.'],
   ],
   dinking: [
-    [3, 'Both teams are at the kitchen exchanging soft, bouncing shots.', 'You land three consecutive dinks in the kitchen during the rally.'],
+    [3, 'Both teams exchange soft, bouncing shots at the kitchen.', 'You land three consecutive dinks in the kitchen during the rally.'],
     [3.5, 'You receive a neutral dink while balanced at the kitchen line.', 'Your reply stays low enough to prevent a downward attack.'],
-    [4, 'A crosscourt dink pulls you toward the sideline.', 'You return a low dink into the kitchen and recover your position.'],
+    [4, 'A crosscourt dink pulls you wide.', 'You return a low dink into the kitchen and recover your position.'],
     [4.5, 'A close point becomes a long dink rally to your backhand.', 'You keep three consecutive backhand dinks low during the rally.'],
   ],
   dink_strategy: [
     [3, 'A dink reaches you below the height of the net.', 'You choose a soft reply instead of forcing a fast attack.'],
     [3.5, 'Several low dinks arrive in the same rally.', 'You wait for a ball above net height before attempting a downward attack.'],
-    [4, 'Your opponent has recovered toward the middle after a wide dink.', 'You place the next dink into the space they left open.'],
+    [4, 'After a wide dink, your opponent moves back toward the middle.', 'You place the next dink into the space they left open.'],
     [4.5, 'At 9–9, your opponent keeps giving you low, unattackable dinks.', 'You keep the ball soft until an attackable ball arrives.'],
   ],
   speedups: [
@@ -68,9 +68,9 @@ const scenarios: Record<Subskill, [Prompt, Prompt, Prompt, Prompt]> = {
     [4.5, 'A close point turns into a fast volley exchange.', 'You control three consecutive replies in court during the exchange.'],
   ],
   volleys: [
-    [2.5, 'A comfortable ball comes to you before bouncing at the kitchen line.', 'You volley it in court without touching the kitchen.'],
+    [2.5, 'At the kitchen line, a comfortable ball reaches you before bouncing.', 'You volley it in court without touching the kitchen.'],
     [3.5, 'You exchange medium-paced volleys at the net.', 'You land three consecutive volleys in court during the exchange.'],
-    [4, 'An opponent is moving through midcourt as you receive a high volley.', 'You place the volley toward their feet.'],
+    [4, 'You receive a high volley. An opponent is moving through midcourt.', 'You place the volley toward their feet.'],
     [4.5, 'A hard, low ball comes to your backhand on an important point.', 'You volley it in court without giving up a high, easy attack.'],
   ],
   resets_defense: [
@@ -83,24 +83,24 @@ const scenarios: Record<Subskill, [Prompt, Prompt, Prompt, Prompt]> = {
     [3, 'Your deep return gives you time to approach the kitchen.', 'You reach the kitchen line and get balanced before the next shot arrives.'],
     [3.5, 'You move forward after a low drop.', 'You stop balanced as the opponent hits, instead of hitting while running.'],
     [4, 'Your drop floats high enough for an opponent to attack.', 'You stop advancing and prepare to defend the next ball.'],
-    [4.5, 'Your team is under pressure while moving through midcourt.', 'You advance together behind a low reset without leaving one partner behind.'],
+    [4.5, 'Your team is moving through midcourt under pressure.', 'You advance together behind a low reset without leaving one partner behind.'],
   ],
   overheads_lobs: [
     [3, 'A high ball is within comfortable overhead reach.', 'Your overhead lands inside the court.'],
     [3.5, 'An opponent sends you a reachable lob.', 'You contact the overhead while balanced and keep it in court.'],
-    [4, 'Both opponents crowd the kitchen and you are balanced on a soft ball.', 'Your chosen lob clears their reach and lands inside the baseline.'],
+    [4, 'Both opponents crowd the kitchen. You are balanced on a soft ball.', 'Your chosen lob clears their reach and lands inside the baseline.'],
     [4.5, 'A lob passes over you on a close point.', 'You call a switch and your team returns the ball without colliding.'],
   ],
   positioning: [
     [2.5, 'You are the serving team and the return is coming back.', 'You let the return bounce before playing your team’s next shot.'],
     [3.5, 'Your partner is pulled toward a sideline at the kitchen.', 'You shift with them to cover the middle gap.'],
     [4, 'A ball travels between you and your partner.', 'You communicate who takes it and cover the space they leave.'],
-    [4.5, 'Your partner is forced out of position during a fast rally.', 'You cover the open court until your team recovers its positions.'],
+    [4.5, 'Your partner is out of position during a fast rally.', 'You cover the open court until your team recovers its positions.'],
   ],
   strategy: [
-    [2.5, 'You must hit from below net height while off balance.', 'You choose a controlled reply instead of attempting a winner.'],
+    [2.5, 'Off balance, you must hit from below net height.', 'You choose a controlled reply instead of attempting a winner.'],
     [3.5, 'You have missed the same risky attack twice in a game.', 'You use a safer option the next time that situation occurs.'],
-    [4, 'Your opponents repeatedly win points using the same pattern.', 'You change your placement or pace to stop giving them that pattern.'],
+    [4, 'Your opponents keep winning points with the same pattern.', 'You change your placement or pace to stop giving them that pattern.'],
     [4.5, 'At 9–9, a rally offers both a risky attack and a controlled option.', 'You use the option that fits the ball’s height and your court position.'],
   ],
 };

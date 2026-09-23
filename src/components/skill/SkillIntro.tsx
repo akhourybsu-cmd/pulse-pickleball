@@ -48,7 +48,7 @@ export function SkillIntro({
           <div className="skill-overline">The visual skill assessment</div>
           <h1>Know your game.<br /><em>Find your next focus.</em></h1>
           <p>
-            Picture the play. Slide to your answer. Discover the skills that support your game and the ones to practise next.
+            See your strengths, your skill level, and what to practise next.
           </p>
           <PulseTrace className="mt-5" />
         </div>
@@ -71,30 +71,30 @@ export function SkillIntro({
         ))}
       </motion.div>
 
-      {/* Expectations */}
-      <p className="text-center text-sm"><Link className="skill-quiet-link" to={GUIDE_PATH}>New to the terms? Explore the pickleball fundamentals guide</Link></p>
-      <motion.section {...item} className="skill-intro-grid">
-        <Point icon={<Gauge className="h-4 w-4" />}>
-          Gives your <strong>PULSE Self-Assessed Level</strong> — separate from your match-based
-          <strong> PULSE Performance Rating</strong>. It isn't an official tournament rating.
-        </Point>
-        <Point icon={<ListChecks className="h-4 w-4" />}>
-          Think about your <strong>last 10 doubles games</strong> against similar players. Estimate successful opportunities out of 10. Shot execution, repeatability, decisions and pressure are measured separately.
-        </Point>
-        <Point icon={<Clock className="h-4 w-4" />}>
-          Up to <strong>{maxItems}</strong> questions, with an aim of about <strong>{minItems}</strong> when there is enough evidence. Confirm each slider answer to save it. Review and change answers before finishing.
-        </Point>
-        <Point icon={<ShieldCheck className="h-4 w-4" />}>
-          “Not enough game experience” is a valid answer. We only estimate a level when there is enough evidence. Games and coach observation are needed to validate it. {guest ? 'Your full analysis is available before signup. Answers are stored temporarily in this browser for up to 7 days.' : 'You control your skill-profile visibility in your profile settings.'}
-        </Point>
-      </motion.section>
-
       <motion.div {...item}>
+        <p className="mb-3 text-center text-sm text-muted-foreground">{minItems}–{maxItems} questions · {guest ? 'Full results before signup' : 'Answers save as you go'}</p>
         <Button onClick={onStart} disabled={starting} className="skill-primary-button h-14 w-full gap-2 rounded-xl text-[15px]">
           <PlayCircle className="h-5 w-5" />
           {starting ? "Starting…" : hasDraft ? "Resume assessment" : "Start assessment"}
         </Button>
       </motion.div>
+
+      <motion.section {...item} className="skill-intro-grid">
+        <Point icon={<ListChecks className="h-4 w-4" />}>
+          Think of your <strong>last 10 doubles games</strong> against similar players. For each situation, estimate how often you succeed out of 10 chances.
+        </Point>
+        <Point icon={<Clock className="h-4 w-4" />}>
+          <strong>Slide or tap, then continue.</strong> You can review answers before finishing. Questions cover shots, consistency, decisions and pressure.
+        </Point>
+        <Point icon={<ShieldCheck className="h-4 w-4" />}>
+          <strong>Haven’t tried it in games?</strong> Choose “Not enough game experience”. Missing experience never counts as zero skill.
+        </Point>
+        <Point icon={<Gauge className="h-4 w-4" />}>
+          Your <strong>PULSE Self-Assessed Level</strong> is an estimate. It is separate from your PULSE Performance Rating and is not a DUPR rating.
+        </Point>
+      </motion.section>
+      <p className="text-center text-xs leading-relaxed text-muted-foreground">{guest ? 'Keep your full analysis with a free account. Guest answers stay in this browser for up to 7 days.' : 'Manage who can see your skill profile in profile settings.'} Verify your estimated level through games or a coach.</p>
+      <p className="text-center text-sm"><Link className="skill-quiet-link" to={GUIDE_PATH}>Pickleball terms & fundamentals</Link></p>
     </motion.div>
   );
 }

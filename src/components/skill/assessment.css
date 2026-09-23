@@ -1,7 +1,16 @@
 .assessment-court { overflow: hidden; border-radius: 16px; background: #103f39; color: #eef8f1; }
-.assessment-moving-ball { animation: assessment-ball 2.8s ease-in-out infinite; offset-anchor: center; }
-@keyframes assessment-ball { 0%, 15% { offset-distance: 0%; opacity: 0; } 20% { opacity: 1; } 80%, 100% { offset-distance: 100%; opacity: 1; } }
+.assessment-court-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 12px; font-size: 12px; }
+.assessment-court-toolbar button { display: flex; align-items: center; gap: 5px; min-height: 44px; min-width: 70px; justify-content: center; border-radius: 8px; font-weight: 600; }
+.assessment-court-toolbar button:hover { background: #ffffff12; }
+.assessment-still { display: flex; align-items: center; min-height: 44px; opacity: .75; }
+.assessment-court > svg { display: block; width: 100%; }
+.assessment-court svg text { fill: #eef8f1; font-size: 12px; font-weight: 600; }
+.assessment-court-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; padding: 0 10px 8px; font-size: 12px; }
+.assessment-court-key span { display: inline-flex; align-items: center; gap: 5px; }
+.assessment-gold-key { color: #ffe08a; }
+.assessment-ball-key { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: white; }
+.assessment-target-key { width: 14px; height: 10px; border: 1px dashed #ffe08a; background: #ffe08a29; }
+.assessment-court figcaption { border-top: 1px solid #ffffff1f; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
 .assessment-slider { width: 100%; height: 44px; cursor: pointer; accent-color: hsl(var(--primary)); }
 .assessment-slider:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; border-radius: 12px; }
 .assessment-slider:disabled { cursor: wait; opacity: .5; }
-@media (prefers-reduced-motion: reduce) { .assessment-moving-ball { animation: none; offset-distance: 100%; } }
