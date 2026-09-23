@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { MfaAccessError } from '../_shared/mfa.ts';
 import {
   billingMode,
   MODULE_AMOUNT_CENTS,
@@ -667,7 +668,7 @@ serve(async (req) => {
       ? error.message
       : "Payments are unavailable. Please try again.";
     return new Response(JSON.stringify({ error: message }), {
-      status: 400,
+      status: error instanceof MfaAccessError ? error.status : 400,
       headers: cors,
     });
   }

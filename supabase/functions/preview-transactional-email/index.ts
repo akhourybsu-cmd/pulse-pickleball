@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -32,6 +33,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
   })
+  const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
   const { data: authData, error: authError } = await admin.auth.getUser(token)
   if (authError || !authData.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

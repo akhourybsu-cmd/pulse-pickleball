@@ -18,8 +18,18 @@ permissions:
   checks: write
 
 jobs:
+  backend:
+    name: Prepare and verify backend
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_FRONTEND_DEPLOY == 'true' }}
+    uses: ./.github/workflows/supabase-deploy.yml
+    with:
+      migration_mode: apply
+      deploy_functions: true
+    secrets:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
   deploy:
     name: Build and deploy frontend
+    needs: backend
     # AUTO_FRONTEND_DEPLOY is enabled only after a successful manual production deploy.
     if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_FRONTEND_DEPLOY == 'true' }}
     runs-on: ubuntu-latest

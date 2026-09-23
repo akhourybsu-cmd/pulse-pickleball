@@ -15,16 +15,16 @@
  * each item's response_key. Everything derived is computed here.
  */
 import {
-  ASSESSMENT_VERSION,
   RESPONSE_KEYS,
-  SCORING_MODEL_VERSION,
   type ResponseKey,
 } from "./model.ts";
 import { QUESTION_BANK_V1 } from "./questionBank.ts";
+import { QUESTION_BANK_V2 } from './questionBankV2.ts';
+import { selectNextV2 } from './adaptiveV2.ts';
 import { scoreAssessment, type ScoringSnapshot } from "./scoring.ts";
 
-export const SUPPORTED_ASSESSMENT_VERSIONS = [ASSESSMENT_VERSION] as const;
-export const SUPPORTED_SCORING_MODEL_VERSIONS = [SCORING_MODEL_VERSION] as const;
+export const SUPPORTED_ASSESSMENT_VERSIONS = [1, 2] as const;
+export const SUPPORTED_SCORING_MODEL_VERSIONS = [1, 2] as const;
 
 /** Minimum scored answers before a completion is accepted. */
 export const MIN_RESPONSES_TO_COMPLETE = 20;
@@ -62,13 +62,14 @@ export function computeAuthoritativeResult(input: {
   if (!SUPPORTED_ASSESSMENT_VERSIONS.includes(assessmentVersion as never)) {
     return { ok: false, code: "unsupported_assessment_version", message: `Assessment version ${assessmentVersion} is not supported.` };
   }
-  const targetModel = input.scoringModelVersion ?? SCORING_MODEL_VERSION;
-  if (!SUPPORTED_SCORING_MODEL_VERSIONS.includes(targetModel as never)) {
+  const targetModel = input.scoringModelVersion ?? assessmentVersion;
+  if (!SUPPORTED_SCORING_MODEL_VERSIONS.includes(targetModel as never) || targetModel !== assessmentVersion) {
     return { ok: false, code: "unsupported_scoring_model_version", message: `Scoring model version ${targetModel} is not supported.` };
   }
 
   // Active bank for this assessment version.
-  const active = QUESTION_BANK_V1.filter((it) => it.active && it.version === assessmentVersion);
+  const bank = assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1;
+  const active = bank.filter((it) => it.active && it.version === assessmentVersion);
   const activeKeys = new Set(active.map((it) => it.itemKey));
 
   const resolved: Record<string, ResponseKey> = {};
@@ -89,5 +90,11 @@ export function computeAuthoritativeResult(input: {
   }
 
   const snapshot = scoreAssessment(active, resolved);
-  return { ok: true, snapshot, scoringModelVersion: SCORING_MODEL_VERSION };
+  if (assessmentVersion === 2 && (
+    active.some(i => i.phase === 'foundation' && resolved[i.itemKey] === undefined) ||
+    selectNextV2(active, resolved) !== null || !snapshot.meta.evidence?.sufficient
+  )) {
+    return { ok: false, code: 'insufficient_responses', message: 'Finish the assessment and review uncertain answers. We need evidence across essential skills and different game situations before estimating a level.' };
+  }
+  return { ok: true, snapshot, scoringModelVersion: snapshot.scoringModelVersion };
 }

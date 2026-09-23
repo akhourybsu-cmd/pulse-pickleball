@@ -45,7 +45,8 @@ project_id = "rqfqwavhtfwwtmfjnxkx"
   [functions.send-event-reminders]
     verify_jwt = false
   [functions.send-mfa-code]
-    verify_jwt = true
+    # Handler validates the caller JWT and live session with pulse_mfa_status.
+    verify_jwt = false
   [functions.send-password-reset]
     verify_jwt = false
   [functions.send-tournament-notification]
@@ -57,6 +58,7 @@ project_id = "rqfqwavhtfwwtmfjnxkx"
   [functions.verify-biometric-auth]
     verify_jwt = false
   [functions.verify-mfa-code]
+    # Never anonymous: caller/session validation happens inside the handler.
     verify_jwt = false
 
 [functions.send-transactional-email]
@@ -93,4 +95,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.verify-league-slot-purchase]
+verify_jwt = false
+
+[functions.skill-claim]
+# The handler validates the current account with auth.getUser before any write.
 verify_jwt = false

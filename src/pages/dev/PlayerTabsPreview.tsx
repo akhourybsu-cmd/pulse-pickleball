@@ -72,7 +72,7 @@ function MatchesPreview() {
           <div className="grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-card/80 py-3 text-center shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.45)]">
             {[["47", "Matches"], ["29", "Wins"], ["62%", "Win rate"]].map(([value, label]) => <div key={label}><p className="text-lg font-bold tabular-nums">{value}</p><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p></div>)}
           </div>
-          <PlayerSegmentedControl value={view} onValueChange={setView} options={[{ value: "all", label: "All", count: 47 }, { value: "pending", label: "Pending", count: 2, accentCount: true }, { value: "verified", label: "Verified", count: 45 }]} ariaLabel="Match filters" layoutId="preview-match-filter" />
+          <PlayerSegmentedControl<typeof view> value={view} onValueChange={setView} options={[{ value: "all", label: "All", count: 47 }, { value: "pending", label: "Pending", count: 2, accentCount: true }, { value: "verified", label: "Verified", count: 45 }]} ariaLabel="Match filters" layoutId="preview-match-filter" />
           <div className="hidden rounded-2xl border border-border/60 bg-card/65 p-4 lg:block"><p className="text-sm font-semibold">Your match workspace</p><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Confirm pending scores first, then review verified results and rating movement.</p><Button variant="outline" className="mt-4 h-10 w-full rounded-xl">Find your next game</Button></div>
         </aside>
         <section className="min-w-0 lg:order-1"><SectionHeader label="Recent matches" /><div className="space-y-3"><MatchRow /><MatchRow /><MatchRow /></div></section>
@@ -120,7 +120,7 @@ function SocialPreview() {
   return (
     <>
       <SocialHero eyebrow="Connect" title="Social">
-        <PlayerSegmentedControl value={view} onValueChange={setView} options={[{ value: "chats", label: "Chats", icon: MessageCircle }, { value: "friends", label: "Friends", icon: Users }]} ariaLabel="Social views" layoutId="preview-social-view" className="mt-3 max-w-sm" />
+        <PlayerSegmentedControl<typeof view> value={view} onValueChange={setView} options={[{ value: "chats", label: "Chats", icon: MessageCircle }, { value: "friends", label: "Friends", icon: Users }]} ariaLabel="Social views" layoutId="preview-social-view" className="mt-3 max-w-sm" />
       </SocialHero>
       <main className="mx-auto grid max-w-[1400px] gap-8 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:px-8 lg:pt-6 xl:grid-cols-[minmax(0,820px)_minmax(280px,1fr)]">
         <div className="min-w-0 lg:rounded-[24px] lg:border lg:border-border/60 lg:bg-card/55 lg:p-5">
@@ -145,7 +145,7 @@ function CommunityPreview() {
     <>
       <SocialHero eyebrow="Groups" title="Community">
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <PlayerSegmentedControl value={view} onValueChange={setView} options={[{ value: "mine", label: "Mine", icon: Users, count: 3 }, { value: "explore", label: "Explore", icon: Compass, count: 8, accentCount: true }]} ariaLabel="Community views" layoutId="preview-community-view" className="min-w-[190px] flex-1 lg:max-w-sm lg:flex-none" />
+          <PlayerSegmentedControl<typeof view> value={view} onValueChange={setView} options={[{ value: "mine", label: "Mine", icon: Users, count: 3 }, { value: "explore", label: "Explore", icon: Compass, count: 8, accentCount: true }]} ariaLabel="Community views" layoutId="preview-community-view" className="min-w-[190px] flex-1 lg:max-w-sm lg:flex-none" />
           <div className="flex w-full gap-2 sm:ml-auto sm:w-auto sm:gap-1.5"><Button variant="outline" size="icon" className="h-11 w-11 rounded-xl bg-card/80" aria-label="Join with code"><QrCode className="h-[18px] w-[18px]" /></Button><Button size="sm" className="h-11 flex-1 rounded-xl px-4 sm:flex-none"><Plus className="mr-1.5 h-4 w-4" />Create</Button></div>
         </div>
       </SocialHero>

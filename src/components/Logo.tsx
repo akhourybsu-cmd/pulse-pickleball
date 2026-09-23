@@ -2,6 +2,8 @@ import { cn } from "@/lib/utils";
 
 interface LogoProps {
   className?: string;
+  /** Trim the asset's presentation margins for compact navigation / report use. */
+  compact?: boolean;
   /** Accessible label — defaults to "PULSE Pickleball". */
   alt?: string;
   /**
@@ -46,12 +48,15 @@ export function Logo({
   className,
   alt = "PULSE Pickleball",
   showSubtitle = false,
+  compact = false,
 }: LogoProps) {
   // Two viewBoxes so the wordmark fills the available vertical space
   // when the subtitle is hidden. With subtitle: 2:1 (1000x500). Without:
   // ~2.6:1 (1000x380) so the wordmark + ECG line crops tight to the
   // bottom of the line.
-  const viewBox = showSubtitle ? "0 0 1000 500" : "0 0 1000 380";
+  const viewBox = compact
+    ? showSubtitle ? '170 112 660 324' : '170 112 660 248'
+    : showSubtitle ? "0 0 1000 500" : "0 0 1000 380";
 
   return (
     <svg

@@ -16,6 +16,7 @@
  * It calls the pure scoring engine for the running estimate but never
  * touches the DB or the match-based PULSE Performance Rating.
  */
+import { selectNextV2, ADAPTIVE_CONFIG_V2 } from './adaptiveV2.ts';
 import {
   ESSENTIAL_SUBSKILLS,
   type AssessmentItem,
@@ -138,6 +139,7 @@ export function selectNextItemKey(
   responses: Responses,
   cfg: AdaptiveConfig = DEFAULT_ADAPTIVE_CONFIG,
 ): string | null {
+  if (bank.some(i => i.version === 2)) return selectNextV2(bank, responses, cfg === DEFAULT_ADAPTIVE_CONFIG ? ADAPTIVE_CONFIG_V2 : cfg);
   const items = activeBank(bank);
   const answered = answeredCount(items, responses);
   if (answered >= cfg.maxItems) return null;

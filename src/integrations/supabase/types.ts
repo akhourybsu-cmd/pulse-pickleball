@@ -6811,6 +6811,8 @@ export type Database = {
       }
       tournaments_divisions: {
         Row: {
+          advancers_per_pool: number | null
+          pool_count: number | null
           age_group: string | null
           age_max: number | null
           age_min: number | null
@@ -6837,6 +6839,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advancers_per_pool?: number | null
+          pool_count?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -6863,6 +6867,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advancers_per_pool?: number | null
+          pool_count?: number | null
           age_group?: string | null
           age_max?: number | null
           age_min?: number | null
@@ -7008,6 +7014,7 @@ export type Database = {
       }
       tournaments_matches: {
         Row: {
+          pool: string | null
           actual_duration_minutes: number | null
           auto_confirmed: boolean | null
           bracket: string | null
@@ -7041,6 +7048,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          pool?: string | null
           actual_duration_minutes?: number | null
           auto_confirmed?: boolean | null
           bracket?: string | null
@@ -7074,6 +7082,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          pool?: string | null
           actual_duration_minutes?: number | null
           auto_confirmed?: boolean | null
           bracket?: string | null
@@ -7176,6 +7185,7 @@ export type Database = {
       }
       tournaments_teams: {
         Row: {
+          pool: string | null
           created_at: string
           division_id: string
           id: string
@@ -7188,6 +7198,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          pool?: string | null
           created_at?: string
           division_id: string
           id?: string
@@ -7200,6 +7211,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          pool?: string | null
           created_at?: string
           division_id?: string
           id?: string
@@ -9242,6 +9254,12 @@ export type Database = {
       }
     }
     Functions: {
+      edit_group_message: { Args: { p_message_id: string; p_content: string }; Returns: undefined }
+      pulse_mfa_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      pulse_has_required_mfa: { Args: Record<PropertyKey, never>; Returns: boolean }
+      pulse_issue_mfa_email: { Args: { p_user_id: string; p_session_id: string; p_challenge_id: string; p_code_hash: string; p_purpose: string }; Returns: Json }
+      pulse_verify_mfa_email: { Args: { p_user_id: string; p_session_id: string; p_challenge_id: string; p_code_hash: string }; Returns: Json }
+      pulse_cancel_mfa_email: { Args: { p_challenge_id: string }; Returns: undefined }
       admin_score_ladder_batch: {
         Args: { p_batch_id: string; p_scores: Json }
         Returns: number

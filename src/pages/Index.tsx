@@ -8,7 +8,7 @@ import { consumePostAuthRedirect, peekPostAuthRedirect, DEFAULT_AUTH_DESTINATION
 /** Share the bounded app-wide session check instead of starting another
  * unbounded getSession request every time the home route mounts. */
 const Index = () => {
-  const { loading, isAuthenticated, profile, sessionError, refresh } = useAuthState();
+  const { loading, user, isAuthenticated, profile, sessionError, refresh } = useAuthState();
   // Read without consuming during render: StrictMode and rerenders must keep
   // the same destination until Navigate commits.
   const [destination] = useState(() => peekPostAuthRedirect() || DEFAULT_AUTH_DESTINATION);
@@ -28,6 +28,7 @@ const Index = () => {
   </div>;
 
   if (isAuthenticated) return <Navigate to={destination} replace />;
+  if (user) return <Navigate to="/auth" replace />;
   return <PublicHomepage />;
 };
 

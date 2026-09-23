@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -32,6 +33,7 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {

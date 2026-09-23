@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { completeAuthCallback, hasPendingAuthCallback } from "@/lib/authCallback";
 import { consumePostAuthRedirect } from "@/lib/authRedirect";
+const PickleballGuide = lazy(() => import('./pages/PickleballGuide'));
 
 /**
  * Forward the current location's `search` (and `hash`) when redirecting from a
@@ -179,6 +180,7 @@ const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const SelfAssessment = lazy(() => import("./pages/player/SelfAssessment"));
+const GuestSkillAssessment = lazy(() => import("./pages/GuestSkillAssessment"));
 const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
 const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
@@ -329,6 +331,8 @@ const AppContent = () => {
           {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          {isSkillAssessmentEnabled() && <Route path="/skill-assessment" element={<GuestSkillAssessment />} />}
+          <Route path="/pickleball-guide" element={<PickleballGuide />} />
           <Route path="/reset-password" element={<ResetPassword />} />
          <Route path="/unsubscribe" element={<Unsubscribe />} />
          <Route path="/claim-guest/:token" element={<ClaimGuest />} />

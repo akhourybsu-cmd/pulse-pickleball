@@ -259,10 +259,15 @@ export function useGroupRealtime(groupId: string | undefined) {
         if (!cached) return; // sheet not open
         if (payload.eventType === 'INSERT') {
           if (row.user_id === currentUserId) return; // optimistic handled it
-          const profile = await hydrateProfile(row.user_id);
+          const { id, post_id, user_id, content, created_at, updated_at, parent_comment_id } = row;
+          if (typeof id !== 'string' || typeof post_id !== 'string' || typeof user_id !== 'string' || typeof content !== 'string' || typeof created_at !== 'string' || typeof updated_at !== 'string') {
+            void queryClient.invalidateQueries({ queryKey: commentsKey });
+            return;
+          }
+          const profile = await hydrateProfile(user_id);
           queryClient.setQueryData<PostComment[]>(commentsKey, (prev = []) => {
             if (prev.some((c) => c.id === row.id)) return prev;
-            const newC: PostComment = { ...row, profile, replies: [] };
+            const newC: PostComment = { id, post_id, user_id, content, created_at, updated_at, parent_comment_id: parent_comment_id ?? null, profile, replies: [] };
             if (row.parent_comment_id) {
               return prev.map((c) =>
                 c.id === row.parent_comment_id

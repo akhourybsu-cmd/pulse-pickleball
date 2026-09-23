@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // =====================================================================
 // simulate-league — one-click, admin-only league simulation.
 //
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       user = { id: authUser.user.id }
     } else {
       if (!bearerToken) return json({ error: 'Unauthorized' }, 401)
+      const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
       const { data: { user: u } } = await admin.auth.getUser(bearerToken)
       if (!u) return json({ error: 'Unauthorized' }, 401)
       user = { id: u.id }

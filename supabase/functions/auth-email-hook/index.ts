@@ -3,6 +3,7 @@ import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 import { sendViaResend } from '../_shared/resend.ts'
+import { buildAuthActionUrl } from '../_shared/auth-email-links.ts'
 import { SignupEmail } from '../_shared/email-templates/signup.tsx'
 import { InviteEmail } from '../_shared/email-templates/invite.tsx'
 import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
@@ -81,18 +82,6 @@ function jsonResponse(data: Record<string, unknown>, status = 200): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-}
-
-function buildActionUrl(emailData: AuthHookEmailData, tokenHash: string): string {
-  if (!tokenHash) return emailData.redirect_to || `https://${ROOT_DOMAIN}/`
-
-  const actionUrl = new URL('/auth/v1/verify', emailData.site_url)
-  actionUrl.searchParams.set('token', tokenHash)
-  actionUrl.searchParams.set('type', emailData.email_action_type)
-  if (emailData.redirect_to) {
-    actionUrl.searchParams.set('redirect_to', emailData.redirect_to)
-  }
-  return actionUrl.toString()
 }
 
 function getDeliveries(payload: AuthEmailHookPayload): Delivery[] {
@@ -183,7 +172,7 @@ Deno.serve(async (req) => {
 
   try {
     for (const delivery of deliveries) {
-      const confirmationUrl = buildActionUrl(payload.email_data, delivery.tokenHash)
+      const confirmationUrl = buildAuthActionUrl(supabaseUrl, emailType, delivery.tokenHash, payload.email_data.redirect_to)
       const templateProps = {
         siteName: SITE_NAME,
         siteUrl: `https://${ROOT_DOMAIN}`,

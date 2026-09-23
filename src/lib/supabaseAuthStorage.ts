@@ -19,3 +19,46 @@ export function getSupabaseAuthStorageKey(projectId: string | undefined, project
 
   return 'pulse-auth:default';
 }
+
+type AuthStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+/** Blocked storage must not crash a public guest page at module import. The
+ * fallback lasts only for this page; redirects still require durable storage.
+ */
+export function createSafeAuthStorage(
+  stores = { local: () => localStorage, session: () => sessionStorage },
+): AuthStorage {
+  const memory = new Map<string, string>();
+  let memoryOnly = false;
+  const preferred = () => stores.local().getItem('pulse_persist_session') === 'false' ? stores.session() : stores.local();
+  const removeEverywhere = (key: string) => {
+    memory.delete(key);
+    for (const getStore of [stores.local, stores.session]) {
+      try { getStore().removeItem(key); } catch { /* Storage can be unavailable. */ }
+    }
+  };
+  return {
+    getItem(key) {
+      if (!memoryOnly) {
+        try { return preferred().getItem(key); } catch { memoryOnly = true; }
+      }
+      return memory.get(key) ?? null;
+    },
+    setItem(key, value) {
+      if (!memoryOnly) {
+        try {
+          const chosen = preferred();
+          chosen.setItem(key, value);
+          // A changed stay-signed-in preference must not leave an older token
+          // in the other store to reappear after the current session ends.
+          for (const getStore of [stores.local, stores.session]) {
+            try { const store = getStore(); if (store !== chosen) store.removeItem(key); } catch { /* Best effort. */ }
+          }
+          return;
+        } catch { memoryOnly = true; }
+      }
+      removeEverywhere(key);
+      memory.set(key, value);
+    },
+    removeItem: removeEverywhere,
+  };
+}

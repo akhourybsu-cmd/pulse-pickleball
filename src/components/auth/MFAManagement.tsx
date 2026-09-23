@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { MFAEnrollment } from "./MFAEnrollment";
 import { MFAMethodSelector } from "./MFAMethodSelector";
+import { EmailMFAChallenge } from './EmailMFAChallenge';
+import { confirmMfaSession, getMfaStatus } from '@/lib/mfa';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +26,9 @@ export const MFAManagement = () => {
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [showMethodSelector, setShowMethodSelector] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
-  const [factorId, setFactorId] = useState<string | null>(null);
+  const [showEmailEnrollment, setShowEmailEnrollment] = useState(false);
+  const [accountEmail, setAccountEmail] = useState('');
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
     checkMFAStatus();
@@ -32,31 +36,18 @@ export const MFAManagement = () => {
 
   const checkMFAStatus = async () => {
     setLoading(true);
+    setStatusError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      // Check profile for MFA method
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("mfa_method")
-        .eq("id", user.id)
-        .single();
-
-      const method = profile?.mfa_method || "none";
+      setAccountEmail(user.email ?? '');
+      const status = await getMfaStatus();
+      const method = status.method;
       setMfaMethod(method as "authenticator" | "email" | "sms" | "none");
       setMfaEnabled(method !== "none");
 
-      // If using authenticator, check for TOTP factors
-      if (method === "authenticator") {
-        const { data } = await supabase.auth.mfa.listFactors();
-        const hasActiveFactor = data?.totp?.some((factor) => factor.status === "verified");
-        if (hasActiveFactor) {
-          setFactorId(data.totp[0].id);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error checking MFA status:", error);
+    } catch (error) {
+      setStatusError(error instanceof Error ? error.message : 'Could not load security settings.');
     } finally {
       setLoading(false);
     }
@@ -66,25 +57,28 @@ export const MFAManagement = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      // Disable in profile
-      await supabase
-        .from("profiles")
-        .update({ mfa_method: "none" })
-        .eq("id", user.id);
-
-      // If authenticator, unenroll TOTP factor
-      if (mfaMethod === "authenticator" && factorId) {
-        await supabase.auth.mfa.unenroll({ factorId });
+      await confirmMfaSession();
+      // Supabase requires aal2 for removing verified factors. Handle all of
+      // them, and never announce a downgrade when an API operation failed.
+      if (mfaMethod === "authenticator") {
+        const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+        if (listError) throw listError;
+        for (const factor of factors.all.filter(f => f.status === 'verified')) {
+          const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          if (error) throw error;
+        }
       }
+      const { error: settingError } = await supabase.from('profiles').update({ mfa_method: 'none' }).eq('id', user.id);
+      if (settingError) throw settingError;
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) throw refreshError;
 
       toast.success("MFA has been disabled");
       setMfaEnabled(false);
       setMfaMethod("none");
-      setFactorId(null);
       setShowDisableDialog(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to disable MFA");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disable MFA");
     }
   };
 
@@ -93,26 +87,9 @@ export const MFAManagement = () => {
     if (method === "authenticator") {
       setShowEnrollment(true);
     } else if (method === "email") {
-      handleEnableEmailMFA();
+      setShowEmailEnrollment(true);
     } else {
       toast.info("SMS MFA coming soon!");
-    }
-  };
-
-  const handleEnableEmailMFA = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase
-        .from("profiles")
-        .update({ mfa_method: "email" })
-        .eq("id", user.id);
-
-      toast.success("Email MFA enabled!");
-      checkMFAStatus();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to enable email MFA");
     }
   };
 
@@ -122,7 +99,7 @@ export const MFAManagement = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Two-Factor Authentication
+            Sign-in protection
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -134,6 +111,7 @@ export const MFAManagement = () => {
 
   return (
     <>
+      {statusError && <p role="alert" className="p-4 text-sm text-destructive">{statusError} <Button variant="outline" onClick={() => void checkMFAStatus()}>Retry</Button></p>}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -142,11 +120,11 @@ export const MFAManagement = () => {
             ) : (
               <ShieldAlert className="h-5 w-5 text-yellow-600" />
             )}
-            Two-Factor Authentication
+            Sign-in protection
           </CardTitle>
           <CardDescription>
             {mfaEnabled
-              ? "Your account is protected with two-factor authentication"
+              ? "Verification is enabled for your PULSE data"
               : "Add an extra layer of security to your account"}
           </CardDescription>
         </CardHeader>
@@ -158,7 +136,7 @@ export const MFAManagement = () => {
                 MFA is enabled ({mfaMethod === "authenticator" ? "Authenticator App" : "Email Code"})
               </div>
               <p className="text-sm text-muted-foreground">
-                You'll be asked for a verification code from your authenticator app when signing in.
+                {mfaMethod === 'email' ? 'Verify each new sign-in session using your account email. Verification is renewed after 12 hours.' : "You'll be asked for a verification code from your authenticator app when signing in."}
               </p>
               <Button
                 variant="destructive"
@@ -176,7 +154,7 @@ export const MFAManagement = () => {
               <p className="text-sm text-muted-foreground">
                 Protect your account by requiring a verification code from your authenticator app in addition to your password.
               </p>
-              <Button onClick={() => setShowMethodSelector(true)}>
+              <Button disabled={!!statusError} onClick={() => setShowMethodSelector(true)}>
                 Enable MFA
               </Button>
             </>
@@ -197,6 +175,9 @@ export const MFAManagement = () => {
         onOpenChange={setShowEnrollment}
         onEnrollmentComplete={checkMFAStatus}
       />
+      <EmailMFAChallenge open={showEmailEnrollment} email={accountEmail} purpose="enroll"
+        onCancel={() => setShowEmailEnrollment(false)}
+        onSuccess={() => { setShowEmailEnrollment(false); toast.success('Email verification enabled for your account.'); void checkMFAStatus(); }} />
 
       <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
         <AlertDialogContent>

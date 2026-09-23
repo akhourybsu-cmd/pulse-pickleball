@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import {
   QUESTION_BANK_V1,
 } from "@/lib/skill/questionBank";
+import { QUESTION_BANK_V2 } from '@/lib/skill/questionBankV2';
+import { ADAPTIVE_CONFIG_V2 } from '@/lib/skill/adaptiveV2';
 import {
   ASSESSMENT_VERSION,
   RESPONSE_MASTERY,
@@ -11,6 +13,7 @@ import {
 } from "@/lib/skill/model";
 import { scoreAssessment, type Responses, type ScoringSnapshot } from "@/lib/skill/scoring";
 import { haptic } from "@/lib/haptics";
+import { withAuthDeadline } from '@/lib/authDeadline';
 import {
   selectNextItemKey,
   isComplete,
@@ -44,7 +47,7 @@ export interface CompletedAttempt {
   scoring_snapshot: ScoringSnapshot | null;
 }
 
-export type Phase = "loading" | "intro" | "in_progress" | "finalizing" | "result" | "signed_out";
+export type Phase = "loading" | "intro" | "in_progress" | "finalizing" | "result" | "signed_out" | "error";
 
 interface State {
   phase: Phase;
@@ -55,9 +58,10 @@ interface State {
   latest: CompletedAttempt | null;
   history: CompletedAttempt[];
   saving: boolean;
+  starting: boolean;
+  assessmentVersion: number;
 }
 
-const cfg = DEFAULT_ADAPTIVE_CONFIG;
 
 export function useSkillAssessment() {
   const [state, setState] = useState<State>({
@@ -68,96 +72,141 @@ export function useSkillAssessment() {
     latest: null,
     history: [],
     saving: false,
+    starting: false,
+    assessmentVersion: ASSESSMENT_VERSION,
   });
   const inFlight = useRef(false);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setState((s) => ({ ...s, phase: "signed_out" }));
-      return;
-    }
-    // Completed history (newest first) + any open draft.
-    const [{ data: completed }, { data: draft }] = await Promise.all([
-      supabase.from("skill_assessment_attempts" as never)
-        .select("*").eq("player_id", user.id).eq("status", "completed")
-        .order("completed_at", { ascending: false }),
-      supabase.from("skill_assessment_attempts" as never)
-        .select("id").eq("player_id", user.id).eq("status", "in_progress")
-        .maybeSingle(),
-    ]);
-    const history = ((completed ?? []) as unknown as CompletedAttempt[]);
-    const draftId = (draft as unknown as { id: string } | null)?.id ?? null;
+    const generation = ++loadGeneration.current;
+    setState(s => ({ ...s, phase: 'loading' }));
+    try {
+      const loaded = await withAuthDeadline(async signal => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        signal.throwIfAborted();
+        if (userError) throw userError;
+        if (!user) return null;
+        // Completed history (newest first) + any open draft.
+        const [{ data: completed, error: completedError }, { data: draft, error: draftError }] = await Promise.all([
+          supabase.from("skill_assessment_attempts" as never)
+            .select("*").eq("player_id", user.id).eq("status", "completed")
+            .order("completed_at", { ascending: false }).abortSignal(signal),
+          supabase.from("skill_assessment_attempts" as never)
+            .select("id, assessment_version").eq("player_id", user.id).eq("status", "in_progress")
+            .abortSignal(signal).maybeSingle(),
+        ]);
+        if (completedError || draftError) throw completedError || draftError;
+        const history = ((completed ?? []) as unknown as CompletedAttempt[]);
+        const draftId = (draft as unknown as { id: string } | null)?.id ?? null;
+        const assessmentVersion = (draft as unknown as { assessment_version: number } | null)?.assessment_version ?? ASSESSMENT_VERSION;
+        if (![1, 2].includes(assessmentVersion)) throw new Error('This assessment version needs a newer app.');
 
-    let responses: Responses = {};
-    if (draftId) {
-      const { data: rows } = await supabase.from("skill_assessment_responses" as never)
-        .select("item_key, response_key").eq("attempt_id", draftId);
-      responses = Object.fromEntries(
-        ((rows ?? []) as unknown as Array<{ item_key: string; response_key: ResponseKey }>)
-          .map((r) => [r.item_key, r.response_key]),
-      );
-    }
+        let responses: Responses = {};
+        if (draftId) {
+          const { data: rows, error: responsesError } = await supabase.from("skill_assessment_responses" as never)
+            .select("item_key, response_key").eq("attempt_id", draftId).abortSignal(signal);
+          if (responsesError) throw responsesError;
+          responses = Object.fromEntries(
+            ((rows ?? []) as unknown as Array<{ item_key: string; response_key: ResponseKey }>)
+              .map((r) => [r.item_key, r.response_key]),
+          );
+        }
 
-    setState((s) => ({
-      ...s,
-      userId: user.id,
-      attemptId: draftId,
-      responses,
-      latest: history[0] ?? null,
-      history,
-      // Resume straight into an open draft; otherwise the intro.
-      phase: draftId ? "in_progress" : (history[0] ? "result" : "intro"),
-    }));
+        return {
+          userId: user.id,
+          attemptId: draftId,
+          responses,
+          latest: history[0] ?? null,
+          history,
+          assessmentVersion,
+          // Resume straight into an open draft; otherwise the intro.
+          phase: (draftId ? "in_progress" : (history[0] ? "result" : "intro")) as Phase,
+        };
+      });
+      // Ignore older StrictMode/retry loads and responses after leaving the page.
+      if (generation !== loadGeneration.current) return false;
+      setState(s => loaded ? { ...s, ...loaded } : {
+        ...s, phase: 'signed_out', userId: null, attemptId: null, responses: {}, latest: null, history: [],
+      });
+      return true;
+    } catch {
+      if (generation !== loadGeneration.current) return false;
+      setState(s => ({ ...s, phase: 'error' }));
+      toast.error('Could not load your assessment. Please retry.');
+      return false;
+    }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const requests = loadGeneration;
+    void load();
+    return () => { requests.current++; };
+  }, [load]);
 
   /** Create a fresh draft (or resume the existing one) and enter the wizard. */
   const start = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    setState(s => ({ ...s, starting: true }));
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await withAuthDeadline(() => supabase.auth.getUser());
+      if (userError) throw userError;
       if (!user) { setState((s) => ({ ...s, phase: "signed_out" })); return; }
       // Resume if a draft already exists (the unique index guarantees ≤1).
-      const { data: existing } = await supabase.from("skill_assessment_attempts" as never)
-        .select("id").eq("player_id", user.id).eq("status", "in_progress").maybeSingle();
-      let attemptId = (existing as unknown as { id: string } | null)?.id ?? null;
+      const { data: existing, error: existingError } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+        .select("id").eq("player_id", user.id).eq("status", "in_progress").abortSignal(signal).maybeSingle());
+      if (existingError) throw existingError;
+      const attemptId = (existing as unknown as { id: string } | null)?.id ?? null;
       if (!attemptId) {
-        const { data: created, error } = await supabase.from("skill_assessment_attempts" as never)
+        const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
           .insert({ player_id: user.id, assessment_version: ASSESSMENT_VERSION, assessment_type: "full", status: "in_progress" } as never)
-          .select("id").single();
-        if (error) throw error;
-        attemptId = (created as unknown as { id: string }).id;
+          .select("id").abortSignal(signal).single());
+        // Another tab may have created the one permitted draft after our read.
+        if (error && error.code !== '23505') throw error;
       }
-      setState((s) => ({ ...s, attemptId, phase: "in_progress" }));
+      // Reload persisted answers even when another tab created the draft.
+      await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't start the assessment");
     } finally {
       inFlight.current = false;
+      setState(s => ({ ...s, starting: false }));
     }
-  }, []);
+  }, [load]);
 
-  /** Persist one answer, then advance. Optimistic + durable. */
+  /** Persist one answer, then advance; failed writes leave the question open. */
   const answer = useCallback(async (itemKey: string, responseKey: ResponseKey) => {
     const attemptId = state.attemptId;
-    if (!attemptId) return;
-    setState((s) => ({ ...s, responses: { ...s.responses, [itemKey]: responseKey }, saving: true }));
+    if (!attemptId || inFlight.current) return false;
+    inFlight.current = true;
+    setState((s) => ({ ...s, saving: true }));
+    try {
     const value = RESPONSE_MASTERY[responseKey];
-    const { error } = await supabase.from("skill_assessment_responses" as never)
+    const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_responses" as never)
       .upsert({
         attempt_id: attemptId,
         item_key: itemKey,
         response_key: responseKey,
         response_value: value,
         was_skipped: false,
-      } as never, { onConflict: "attempt_id,item_key" } as never);
-    // Keep last-activity fresh for save-and-resume ordering.
-    await supabase.from("skill_assessment_attempts" as never)
-      .update({ last_activity_at: new Date().toISOString() } as never).eq("id", attemptId);
-    setState((s) => ({ ...s, saving: false }));
-    if (error) toast.error("That answer didn't save — check your connection and try again.");
+      } as never, { onConflict: "attempt_id,item_key" } as never).abortSignal(signal));
+    if (error) throw error;
+    // Advance only after persistence succeeds. A failed write keeps the same
+    // question and selection visible so it can be retried without data loss.
+    // The answer is already durable. Metadata must never hold up progression.
+    void withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+      .update({ last_activity_at: new Date().toISOString() } as never).eq("id", attemptId).abortSignal(signal))
+      .catch(() => { /* Best effort; do not retry a write automatically. */ });
+    setState((s) => ({ ...s, responses: { ...s.responses, [itemKey]: responseKey } }));
+    return true;
+    } catch {
+      toast.error("That answer didn't save — check your connection and try again.");
+      return false;
+    } finally {
+      inFlight.current = false;
+      setState((s) => ({ ...s, saving: false }));
+    }
   }, [state.attemptId]);
 
   /**
@@ -169,13 +218,15 @@ export function useSkillAssessment() {
    * duplicating or recalculating.
    */
   const finalize = useCallback(async () => {
-    if (!state.attemptId) return;
+    if (!state.attemptId || inFlight.current) return;
+    inFlight.current = true;
     setState((s) => ({ ...s, phase: "finalizing" }));
-    const provisional = scoreAssessment(QUESTION_BANK_V1, state.responses);
+    const provisional = scoreAssessment(state.assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1, state.responses);
     try {
-      const { data, error } = await supabase.functions.invoke("skill-complete", {
+      const { data, error } = await withAuthDeadline(signal => supabase.functions.invoke("skill-complete", {
         body: { attemptId: state.attemptId, finalResponses: state.responses },
-      });
+        signal,
+      }), 25_000);
       if (error) throw error;
       const payload = (data ?? {}) as { snapshot?: ScoringSnapshot; error?: string; message?: string };
       if (payload.error) throw new Error(payload.message || payload.error);
@@ -186,26 +237,38 @@ export function useSkillAssessment() {
           client: provisional.estimatedLevelRaw,
         });
       }
-      await load(); // pull the authoritative snapshot the server stored
-      haptic("success"); // a meaningful confirmation — results are ready
-      setState((s) => ({ ...s, phase: "result" }));
+      if (await load()) haptic("success"); // Only confirm after loading the stored result.
     } catch (e) {
       // Never lose a completed assessment to a failed result request — a
       // retry is safe (the edge function is idempotent), and if it already
       // completed server-side, reload() surfaces the stored result.
       toast.error(e instanceof Error ? `Couldn't save your results: ${e.message}` : "Couldn't save your results");
       await load();
-      setState((s) => ({ ...s, phase: s.latest ? "result" : "in_progress" }));
+      // load() keeps an unfinished retake open even if an older result exists.
+    } finally {
+      inFlight.current = false;
     }
-  }, [state.attemptId, state.responses, load]);
+  }, [state.attemptId, state.responses, state.assessmentVersion, load]);
 
   /** Abandon the current draft and begin a new one. */
   const restart = useCallback(async () => {
-    if (state.attemptId) {
-      await supabase.from("skill_assessment_attempts" as never)
-        .delete().eq("id", state.attemptId).eq("status", "in_progress");
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setState(s => ({ ...s, starting: true }));
+    try {
+      if (state.attemptId) {
+        const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+          .delete().eq("id", state.attemptId).eq("status", "in_progress").abortSignal(signal));
+        if (error) throw error;
+      }
+      setState((s) => ({ ...s, attemptId: null, responses: {} }));
+    } catch {
+      toast.error('Could not restart your assessment. Please retry.');
+      return;
+    } finally {
+      inFlight.current = false;
+      setState(s => ({ ...s, starting: false }));
     }
-    setState((s) => ({ ...s, attemptId: null, responses: {} }));
     await start();
   }, [state.attemptId, start]);
 
@@ -213,15 +276,19 @@ export function useSkillAssessment() {
   const showResult = useCallback(() => setState((s) => ({ ...s, phase: "result" })), []);
 
   // Derived (pure) values for the wizard.
+  const bank = state.assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1;
+  const cfg = state.assessmentVersion === 2 ? ADAPTIVE_CONFIG_V2 : DEFAULT_ADAPTIVE_CONFIG;
   const nextItemKey = state.phase === "in_progress"
-    ? selectNextItemKey(QUESTION_BANK_V1, state.responses, cfg)
+    ? selectNextItemKey(bank, state.responses, cfg)
     : null;
   const answeredCount = Object.keys(state.responses).length;
-  const complete = isComplete(QUESTION_BANK_V1, state.responses, cfg);
-  const runningSnapshot = answeredCount > 0 ? scoreAssessment(QUESTION_BANK_V1, state.responses) : null;
+  const complete = isComplete(bank, state.responses, cfg);
+  const runningSnapshot = answeredCount > 0 ? scoreAssessment(bank, state.responses) : null;
 
   return {
     ...state,
+    bank,
+    canFinalize: complete && (state.assessmentVersion === 2 ? !!runningSnapshot?.meta.evidence?.sufficient : (runningSnapshot?.meta.scoredCount ?? 0) >= 20),
     nextItemKey,
     answeredCount,
     complete,

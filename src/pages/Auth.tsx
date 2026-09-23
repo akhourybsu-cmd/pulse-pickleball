@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { confirmMfaSession, getMfaStatus } from '@/lib/mfa';
 import { withAuthDeadline } from '@/lib/authDeadline';
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ import {
   peekPostAuthRedirect,
   sanitizeRedirectPath,
   stashPostAuthRedirect,
+  isAssessmentSaveRedirect,
 } from "@/lib/authRedirect";
 
 const GoogleIcon = () => (
@@ -81,12 +83,19 @@ const Auth = () => {
   // back to /auth (or directly to origin).
   const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
+  const assessmentReturn = isAssessmentSaveRedirect(redirectPath);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
   // instead of showing the sign-in form. QoL pass — no form-flash.
   const [sessionChecked, setSessionChecked] = useState(false);
   const [alreadyAuthed, setAlreadyAuthed] = useState(false);
+  // A password session arrives before the MFA check. This form owns that
+  // transition until the challenge finishes; background listeners must wait.
+  const authFlowActive = useRef(false);
+  const [sessionCheckError, setSessionCheckError] = useState(false);
+  const [sessionCheckAttempt, setSessionCheckAttempt] = useState(0);
 
   const [isLogin, setIsLogin] = useState(() => searchParams.get('mode') !== 'signup');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -106,8 +115,10 @@ const Auth = () => {
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [staySignedIn, setStaySignedIn] = useState(() => {
     // Check localStorage for persisted preference (default to true)
-    const saved = localStorage.getItem('pulse_persist_session');
-    return saved === null ? true : saved === 'true';
+    try {
+      const saved = localStorage.getItem('pulse_persist_session');
+      return saved === null ? true : saved === 'true';
+    } catch { return true; }
   });
   const [tosAccepted, setTosAccepted] = useState(false);
   const navigate = useNavigate();
@@ -117,18 +128,35 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    withAuthDeadline(() => supabase.auth.getUser()).then(({ data: { user } }) => {
-      if (cancelled) return;
+    let checkId = 0;
+    const resolveSession = async (userId: string) => {
+      const generation = ++checkId;
+      const security = await getMfaStatus();
+      if (cancelled || generation !== checkId || authFlowActive.current) return;
+      if (security.userId !== userId) throw new Error('Session changed during verification.');
+      if (security.verified) setAlreadyAuthed(true);
+      else if (security.method === 'email' || security.method === 'authenticator') {
+        authFlowActive.current = true;
+        setShowEmailMFA(security.method === 'email');
+        setShowMFAChallenge(security.method === 'authenticator');
+      } else throw new Error('This verification method needs account support.');
+      setSessionChecked(true);
+    };
+    const failed = () => { if (!cancelled && !authFlowActive.current) { setSessionCheckError(true); setSessionChecked(true); } };
+    withAuthDeadline(() => supabase.auth.getUser()).then(async ({ data: { user }, error }) => {
+      if (cancelled || authFlowActive.current) return;
+      if (error && error.name !== 'AuthSessionMissingError' && error.status !== 401 && error.status !== 403) throw error;
       if (user) {
-        setAlreadyAuthed(true);
+        await resolveSession(user.id);
+        return;
       }
       setSessionChecked(true);
-    }).catch(() => { if (!cancelled) setSessionChecked(true); });
+    }).catch(failed);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled && session?.user) {
-        setAlreadyAuthed(true);
-        setSessionChecked(true);
+      if (!cancelled && !authFlowActive.current && session?.user) {
+        // Defer Supabase calls until its auth event callback has released its lock.
+        setTimeout(() => { if (!cancelled) void resolveSession(session.user.id).catch(failed); }, 0);
       }
     });
 
@@ -136,19 +164,21 @@ const Auth = () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [sessionCheckAttempt]);
 
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
-      clearPostAuthRedirect();
+      if (!assessmentReturn) clearPostAuthRedirect();
       navigate(redirectPath, { replace: true });
     }
-  }, [alreadyAuthed, redirectPath, navigate]);
+  }, [alreadyAuthed, redirectPath, assessmentReturn, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    authFlowActive.current = true;
     setLoading(true);
+    let awaitingMfa = false;
 
     try {
       // Validate based on mode
@@ -193,7 +223,8 @@ const Auth = () => {
       }
 
       // Save "stay signed in" preference
-      localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      try { localStorage.setItem('pulse_persist_session', staySignedIn.toString()); } catch { /* Optional preference. */ }
+      if (assessmentReturn && !stashPostAuthRedirect(redirectPath)) throw new Error('Allow browser storage before signing in so your assessment can return here.');
 
       if (isLogin) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -203,32 +234,34 @@ const Auth = () => {
 
         if (authError) throw authError;
 
-        // Check if MFA is enabled for this user
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('mfa_method')
-          .eq('id', authData.user?.id)
-          .maybeSingle();
+        const security = await getMfaStatus();
+        if (security.userId !== authData.user?.id) throw new Error('Your account changed. Please sign in again.');
 
-        if (profile?.mfa_method === 'authenticator') {
+        if (!security.verified && security.method === 'authenticator') {
+          awaitingMfa = true;
           // Need to complete MFA challenge
           setShowMFAChallenge(true);
           setMfaMethod('authenticator');
           return;
-        } else if (profile?.mfa_method === 'email') {
+        } else if (!security.verified && security.method === 'email') {
+          awaitingMfa = true;
           setShowEmailMFA(true);
           setMfaMethod('email');
           return;
         }
+        if (!security.verified) throw new Error('This verification method needs account support.');
 
         await waitForAuthenticatedUser();
         toast.success("Logged in successfully!");
         navigate(redirectPath, { replace: true });
       } else {
+        // Email verification, like OAuth, may return through the public root.
+        if (assessmentReturn) stashPostAuthRedirect(redirectPath);
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            ...(assessmentReturn ? { emailRedirectTo: window.location.origin } : {}),
             data: {
               first_name: firstName,
               last_name: lastName,
@@ -245,6 +278,7 @@ const Auth = () => {
           toast.success("Account created! Welcome to PULSE!");
           navigate(redirectPath, { replace: true });
         } else if (authData.user) {
+          setAwaitingConfirmation(true);
           toast.success("Account created! Check your email to finish signing in.");
         }
       }
@@ -253,6 +287,9 @@ const Auth = () => {
       toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
+      // Keep ownership through MFA. Success/cancel explicitly releases it.
+      // A failed sign-in can be retried without a background redirect.
+      authFlowActive.current = awaitingMfa;
     }
   };
 
@@ -286,20 +323,29 @@ const Auth = () => {
     }
   };
 
-  const handleMFASuccess = () => {
-    setShowMFAChallenge(false);
-    setShowEmailMFA(false);
-    toast.success("Logged in successfully!");
-    setTimeout(() => {
+  const handleMFASuccess = async () => {
+    try {
+      await confirmMfaSession();
+      authFlowActive.current = false;
+      setShowMFAChallenge(false);
+      setShowEmailMFA(false);
+      toast.success("Logged in successfully!");
       navigate(redirectPath, { replace: true });
-    }, 100);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not confirm verification.'); }
   };
 
   const handleMFACancel = async () => {
-    setShowMFAChallenge(false);
-    setShowEmailMFA(false);
-    await supabase.auth.signOut();
-    toast.info("Login cancelled");
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+      setShowMFAChallenge(false);
+      setShowEmailMFA(false);
+      authFlowActive.current = false;
+      setAlreadyAuthed(false);
+      setSessionCheckError(false);
+      setSessionChecked(true);
+      toast.info("Signed out on this device. Your assessment is still here.");
+    } catch { toast.error('Could not sign out. Check your connection and retry.'); }
   };
 
   const handleBiometricSuccess = () => {
@@ -313,7 +359,7 @@ const Auth = () => {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
       // Stash the intended deep link — OAuth strips React Router location.state
       // when the browser bounces back from the provider.
-      stashPostAuthRedirect(redirectPath);
+      if (!stashPostAuthRedirect(redirectPath) && assessmentReturn) throw new Error('Allow browser storage before signing in so your assessment can return here.');
       // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
       // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
       // the provider to bounce the user back to /auth without a session.
@@ -335,53 +381,32 @@ const Auth = () => {
     }
   };
 
-  const checkBiometricAvailability = async () => {
-    if (!email || !isLogin) {
+  useEffect(() => {
+    let cancelled = false;
+    if (!isLogin || !email.includes('@')) {
       setShowBiometric(false);
       setBiometricAvailable(false);
       return;
     }
-
-    try {
-      // Use the edge function to check biometric availability (bypasses RLS)
-      const { data, error } = await supabase.functions.invoke('get-biometric-credentials', {
-        body: { email },
-      });
-
-      if (error) {
-        console.error('Error checking biometric:', error);
-        setBiometricAvailable(false);
-        setShowBiometric(false);
-        return;
+    const debounce = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-biometric-credentials', { body: { email } });
+        if (cancelled) return;
+        const available = !error && !!data?.biometric_enabled && data?.credentials?.length > 0 && window.PublicKeyCredential !== undefined;
+        setBiometricAvailable(available);
+        setShowBiometric(available && !showPasswordLogin);
+      } catch {
+        if (!cancelled) { setShowBiometric(false); setBiometricAvailable(false); }
       }
-
-      const hasBiometric = data?.biometric_enabled && data?.credentials?.length > 0;
-      const isSupported = window.PublicKeyCredential !== undefined;
-      
-      setBiometricAvailable(hasBiometric && isSupported);
-      setShowBiometric(hasBiometric && isSupported && !showPasswordLogin);
-    } catch (error) {
-      console.error('Error checking biometric:', error);
-      setBiometricAvailable(false);
-      setShowBiometric(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isLogin && email && email.includes('@')) {
-      const debounce = setTimeout(() => {
-        checkBiometricAvailability();
-      }, 500);
-      return () => clearTimeout(debounce);
-    } else {
-      setShowBiometric(false);
-      setBiometricAvailable(false);
-    }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(debounce); };
   }, [email, isLogin, showPasswordLogin]);
-
   // Short-circuit while we check the session, or while we're bouncing
   // an already-authed user. Avoids the sign-in form flashing on screen
   // for returning users.
+  if (sessionCheckError && !alreadyAuthed) {
+    return <div className="min-h-screen flex items-center justify-center p-6"><div role="alert" className="max-w-sm space-y-4 text-center"><h1 className="text-xl font-semibold">Couldn’t check your session</h1><p>Check your connection and try again, or sign out on this device to start a fresh sign-in. Your assessment stays in this browser.</p><Button onClick={() => { setSessionCheckError(false); setSessionChecked(false); setSessionCheckAttempt(n => n + 1); }}>Retry session check</Button><Button variant="outline" onClick={() => void handleMFACancel()}>Sign out on this device</Button></div></div>;
+  }
   if (!sessionChecked || alreadyAuthed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary">
@@ -414,17 +439,24 @@ const Auth = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              {isForgotPassword ? "Reset Password" : isLogin ? "Welcome Back" : "Create Account"}
+              {isForgotPassword ? "Reset Password" : assessmentReturn ? isLogin ? "Sign in to save your analysis" : "Keep your skill analysis" : isLogin ? "Welcome Back" : "Create Account"}
             </CardTitle>
             <CardDescription>
               {isForgotPassword
                 ? "Enter your email to receive a password reset link"
+                : assessmentReturn
+                ? "Your full analysis is ready. Save it to a free account to revisit your skills and build an assessment history."
                 : isLogin
                 ? "Sign in to track your pickleball matches"
                 : "Join PULSE to start tracking your rating"}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {assessmentReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
+              <p>{awaitingConfirmation ? 'Check your email, then finish verification in this browser. If the link opens somewhere else, return here and sign in to save your answers.' : 'Finish signing in on this browser to bring your guest answers with you.'}</p>
+              {awaitingConfirmation && <p role="status" className="font-medium">Your analysis is still waiting here; it has not been saved to an account yet.</p>}
+              <Link className="inline-block min-h-9 text-primary underline underline-offset-4" to="/skill-assessment">Back to my full analysis</Link>
+            </div>}
             {isForgotPassword ? (
               <form onSubmit={handlePasswordReset} className="space-y-4">
                 <div className="space-y-2">
@@ -711,7 +743,7 @@ const Auth = () => {
                 )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
+                  {loading ? "Please wait..." : assessmentReturn ? isLogin ? "Sign in & save analysis" : "Create free account" : isLogin ? "Sign In" : "Sign Up"}
                 </Button>
 
                 <div className="text-center text-sm">

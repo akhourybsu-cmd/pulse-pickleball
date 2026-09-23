@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, Loader2, History, ChevronRight, Gauge, Check, PlayCircle } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Loader2, History, Gauge, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ResponseScalePicker } from "@/components/skill/ResponseScalePicker";
+import { AssessmentWizard } from "@/components/skill/AssessmentWizard";
 import { SkillIntro } from "@/components/skill/SkillIntro";
 import { SkillFingerprint } from "@/components/skill/SkillFingerprint";
 import { useSkillAssessment, type CompletedAttempt } from "@/hooks/useSkillAssessment";
-import { itemByKey } from "@/lib/skill/questionBank";
-import { SUBSKILL_LABELS, clamp, type ResponseKey } from "@/lib/skill/model";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,9 +24,17 @@ export default function SelfAssessment() {
   const a = useSkillAssessment();
   const reduced = useReducedMotion();
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedHistory, setSelectedHistory] = useState<CompletedAttempt | null>(null);
   const [params] = useSearchParams();
   const initialMode = params.get("mode") === "retake" ? "retake" : params.get("mode") === "view" ? "view" : null;
   const [mode, setMode] = useState<"view" | "retake" | null>(initialMode);
+  const intentApplied = useRef(false);
+  const { phase: assessmentPhase, showIntro } = a;
+  useEffect(() => {
+    if (intentApplied.current || assessmentPhase === 'loading' || assessmentPhase === 'error') return;
+    intentApplied.current = true;
+    if (initialMode === 'retake' && assessmentPhase === 'result') showIntro();
+  }, [assessmentPhase, showIntro, initialMode]);
 
   if (a.phase === "loading") {
     return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
@@ -40,6 +46,9 @@ export default function SelfAssessment() {
         <Button className="mt-4" onClick={() => navigate("/auth")}>Sign in</Button>
       </Centered>
     );
+  }
+  if (a.phase === 'error') {
+    return <Centered><p>We couldn’t load your assessment.</p><Button className="mt-4" onClick={a.reload}>Retry</Button></Centered>;
   }
 
   const hasResult = !!a.latest?.scoring_snapshot;
@@ -53,22 +62,25 @@ export default function SelfAssessment() {
     hasResult && (a.phase === "result" || mode === "view");
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-5 pb-24">
+    <div className="skill-studio skill-account container mx-auto max-w-4xl px-4 py-5 pb-24">
       {/* In-page top row (global header/bottom nav are untouched). */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <Button variant="ghost" size="sm" className="-ml-2 group" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
           Back
         </Button>
-        {a.history.length > 0 && a.phase !== "in_progress" && (
-          <Button variant="ghost" size="sm" onClick={() => setShowHistory((v) => !v)}>
+        {a.history.length > 0 && (a.phase !== "in_progress" || mode === 'view') && (
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedHistory(null); setShowHistory((v) => !v); }}>
             <History className="w-4 h-4 mr-1.5" /> {showHistory ? "Hide history" : "History"}
           </Button>
         )}
       </div>
 
-      {showHistory && a.phase !== "in_progress" ? (
-        <AssessmentHistory history={a.history} />
+      {showHistory && (a.phase !== "in_progress" || mode === 'view') ? (
+        selectedHistory?.scoring_snapshot ? <div className="space-y-4">
+          <Button variant="outline" onClick={() => setSelectedHistory(null)}><ArrowLeft className="mr-2 h-4 w-4" /> Back to history</Button>
+          <SkillFingerprint snapshot={selectedHistory.scoring_snapshot} completedAt={selectedHistory.completed_at} />
+        </div> : <AssessmentHistory history={a.history} onSelect={setSelectedHistory} />
       ) : a.phase === "finalizing" ? (
         <Centered>
           <div className="relative flex h-20 w-20 items-center justify-center">
@@ -92,7 +104,7 @@ export default function SelfAssessment() {
           {a.attemptId && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/35 bg-primary/10 p-3">
               <p className="text-xs text-muted-foreground">You have an assessment in progress.</p>
-              <Button size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => setMode("retake")}>
+              <Button size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => { setMode("retake"); void a.start(); }}>
                 <PlayCircle className="h-3.5 w-3.5" /> Resume
               </Button>
             </div>
@@ -104,12 +116,13 @@ export default function SelfAssessment() {
             canRetake
           />
         </div>
-      ) : a.phase === "in_progress" && (mode === "retake" || !hasResult) ? (
-        <WizardStep a={a} onExit={() => navigate("/player/profile")} />
+      ) : a.phase === "in_progress" && mode !== 'view' ? (
+        <AssessmentWizard a={a} onExit={() => navigate("/player/profile")} />
       ) : (
         <div className="space-y-3">
           <SkillIntro
-            onStart={a.start}
+            onStart={() => { setMode('retake'); void a.start(); }}
+            starting={a.starting}
             hasDraft={!!a.attemptId}
             minItems={a.minItems}
             maxItems={a.maxItems}
@@ -128,104 +141,9 @@ export default function SelfAssessment() {
 
 /* ---------------- adaptive wizard step ---------------- */
 
-function WizardStep({
-  a,
-  onExit,
-}: {
-  a: ReturnType<typeof useSkillAssessment>;
-  onExit: () => void;
-}) {
-  const reduced = useReducedMotion();
-  const item = a.nextItemKey ? itemByKey(a.nextItemKey) : null;
-  const answered = a.answeredCount;
-  const softTotal = Math.max(a.minItems, answered + 1);
-  const pct = a.complete ? 100 : Math.round(clamp((answered / softTotal) * 100, 4, 96));
-
-  // Complete (or no eligible item left) → offer results.
-  if (!item || a.complete) {
-    return (
-      <div className="space-y-5 pt-6 text-center">
-        <motion.div
-          initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-          animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-          transition={reduced ? { duration: 0.15 } : { type: "spring", stiffness: 380, damping: 18 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/25 shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.5)]"
-        >
-          <Check className="h-8 w-8" strokeWidth={2.5} />
-        </motion.div>
-        <div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight">You're all set</h2>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
-            You answered {answered} questions. Generate your PULSE Self-Assessed Level and Skill Fingerprint.
-          </p>
-        </div>
-        <Button onClick={a.finalize} className="h-12 w-full gap-2 rounded-xl font-semibold shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.6)]">
-          See my results <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" onClick={onExit} className="w-full text-muted-foreground">
-          Save &amp; finish later
-        </Button>
-      </div>
-    );
-  }
-
-  // Dense, single-viewport layout: slim progress + inline exit, then a compact
-  // card whose question + all response options fit without scrolling.
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-foreground">Question {answered + 1}</span>
-          <div className="flex items-center gap-3">
-            {a.saving && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground" aria-live="polite">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={onExit}
-              className="font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Save &amp; exit
-            </button>
-          </div>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} answered`}>
-          <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={item.itemKey}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, x: 28 }}
-          animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
-          exit={reduced ? { opacity: 0 } : { opacity: 0, x: -28 }}
-          transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.7 }}
-          className="rounded-2xl border border-border/60 p-4 shadow-[0_4px_20px_-6px_hsl(var(--foreground)/0.07)]"
-          style={{
-            background:
-              "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)) 62%, hsl(var(--primary) / 0.045) 100%)",
-          }}
-        >
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-            {SUBSKILL_LABELS[item.subskill]}
-          </div>
-          <p className="mb-3.5 text-[15px] font-semibold leading-snug text-balance">{item.text}</p>
-          <ResponseScalePicker
-            value={(a.responses[item.itemKey] as ResponseKey | undefined) ?? null}
-            onSelect={(key) => void a.answer(item.itemKey, key)}
-          />
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
-
 /* ---------------- history ---------------- */
 
-function AssessmentHistory({ history }: { history: CompletedAttempt[] }) {
+function AssessmentHistory({ history, onSelect }: { history: CompletedAttempt[]; onSelect: (attempt: CompletedAttempt) => void }) {
   if (history.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-8">No completed assessments yet.</p>;
   }
@@ -233,7 +151,7 @@ function AssessmentHistory({ history }: { history: CompletedAttempt[] }) {
     <div className="space-y-2">
       <h2 className="font-display text-lg font-semibold mb-1">Assessment history</h2>
       {history.map((h) => (
-        <div key={h.id} className={cn("rounded-xl border border-border/70 bg-card p-3 flex items-center justify-between gap-3")}>
+        <button type="button" key={h.id} disabled={!h.scoring_snapshot} onClick={() => onSelect(h)} className={cn("w-full text-left rounded-xl border border-border/70 bg-card p-3 flex items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary")}>
           <div className="min-w-0">
             <div className="text-sm font-semibold">
               {h.estimated_level_display?.toFixed(1) ?? "—"} · {h.display_band ?? "—"}
@@ -243,11 +161,12 @@ function AssessmentHistory({ history }: { history: CompletedAttempt[] }) {
               {h.confidence_label ? ` · ${h.confidence_label}` : ""}
               {` · v${h.assessment_version}`}
             </div>
+            {h.scoring_snapshot && <span className="text-xs text-primary underline underline-offset-4">View full analysis</span>}
           </div>
           {h.primary_style && (
             <span className="text-xs font-medium text-primary shrink-0">{h.primary_style}</span>
           )}
-        </div>
+        </button>
       ))}
     </div>
   );

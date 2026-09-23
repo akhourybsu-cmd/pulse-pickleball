@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // Account deletion — lets a signed-in user permanently delete their own PULSE
 // account and data. Required by Google Play / App Store policy.
 //
@@ -36,6 +37,7 @@ serve(async (req) => {
     const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
       global: { headers: { Authorization: authHeader } },
     });
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) return json({ error: "not_authenticated" }, 401);
 

@@ -1014,6 +1014,7 @@ export function planScheduleAdjustment(
   )
     reasons.push("no_effective_capacity_change");
 
+  const unusedCourts = Math.max(0, Math.floor(input.numCourts) - capacityShape.usableCourts);
   const delta = recommendedTotalRounds - input.currentTotalRounds;
   const summary =
     delta < 0
@@ -1024,9 +1025,9 @@ export function planScheduleAdjustment(
       ? `The schedule adds ${delta} ${
           delta === 1 ? "round" : "rounds"
         } so the updated roster can receive a fair share of games.`
-      : capacityShape.unusedCourts > 0
+      : unusedCourts > 0
       ? `The schedule is rebalanced, but the extra ${
-          capacityShape.unusedCourts === 1 ? "court does" : "courts do"
+          unusedCourts === 1 ? "court does" : "courts do"
         } not reduce rounds because the roster cannot fill ${Math.floor(
           input.numCourts
         )} courts.`

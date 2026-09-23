@@ -68,7 +68,7 @@ export function SkillAssessmentCTA({ userId }: { userId?: string }) {
             </>
           ) : (
             <p className="mt-1 text-sm font-semibold leading-snug">
-              Rate your game in 2 minutes — add your Skill Level to your profile.
+              Explore your game with visual situations and build your Skill Fingerprint.
             </p>
           )}
         </div>

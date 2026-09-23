@@ -3,10 +3,8 @@ name: CI
 # Build gate for pull requests. This is the status check that branch
 # protection / auto-merge waits on before a PR can merge into main.
 #
-# Vite transpiles TypeScript; it does not typecheck. Lint is NOT gated here
-# because the project currently has a large backlog of pre-existing lint
-# errors that would block every merge — add a separate lint job once that
-# backlog is cleared.
+# Vite transpiles TypeScript; type checking and regression tests are separate
+# gates. Lint still has an existing backlog outside these checks.
 
 on:
   pull_request:
@@ -39,8 +37,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Unit and database regression tests
-        run: npm test -- --maxWorkers=2
+      - name: TypeScript check
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Unit and database tests
+        run: npm run test -- --maxWorkers=2
 
       - name: Production build
         run: npm run build

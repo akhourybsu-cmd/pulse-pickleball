@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // admin-test-push: fire a native (FCM) test push to an admin's own devices, or
 // to a target user, and return diagnostics (device-token count + FCM sent count).
 // Admin-only. Purpose: verify the native push pipeline end-to-end from the app.
@@ -34,6 +35,7 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) return json({ error: "unauthorized" }, 401);
     const callerId = userData.user.id;

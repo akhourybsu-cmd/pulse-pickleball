@@ -21,4 +21,4 @@ Session restoration and profile hydration previously had no deadline. Both now s
 
 ## Release
 
-The user explicitly requested publication. Publish this frontend-only fix through the existing GitHub/Firebase release pipeline after CI succeeds. No database migration or new credential is needed. Keep the assessment release gated on its separate hosted staging acceptance checks.
+Published through [PR #143](https://github.com/akhourybsu-cmd/pulse-pickleball/pull/143), production commit `8cd8f27500b9fefb8e8c15f2b37956db47714c23`. Both [PR CI](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/35811927495) and [Firebase deployment](https://github.com/akhourybsu-cmd/pulse-pickleball/actions/runs/35812055249) passed all 1,306 tests, with 32 skipped and 10 todo, and built successfully. The live site loaded the matching `index-D7B5bpY8.js` asset and displayed its email/Google sign-in form. No live user login was performed. No database migration or new credential was needed. The assessment release remains gated on its separate hosted staging acceptance checks.

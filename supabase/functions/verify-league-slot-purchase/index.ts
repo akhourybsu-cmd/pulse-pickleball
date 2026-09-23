@@ -1,3 +1,4 @@
+import { requireCallerMfa } from '../_shared/mfa.ts';
 // Idempotent fulfillment of a league-slot purchase.
 //
 // Called by the client after Stripe redirects back to
@@ -53,6 +54,7 @@ serve(async (req) => {
     );
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
+    const mfaDenial = await requireCallerMfa(req); if (mfaDenial) return mfaDenial;
     const { data: userData } = await anonClient.auth.getUser(
       authHeader.replace("Bearer ", ""),
     );
