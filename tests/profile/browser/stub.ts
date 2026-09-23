@@ -9,6 +9,9 @@ if (params.has('short-name')) {
   profile.display_name = 'Alex Player';
   profile.town = 'Boston';
 }
+if (params.has('marketing')) {
+  profile.total_matches = 47; profile.wins = 29; profile.losses = 18;
+}
 const assessment = params.has('completed') ? { self_assessed_level: 4.25, self_assessed_band: 'Intermediate' } : null;
 export const isPlatformAdmin = async () => !params.has('member');
 export const isSkillAssessmentEnabled = () => !params.has('no-assessment');

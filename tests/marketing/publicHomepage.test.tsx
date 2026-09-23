@@ -6,6 +6,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PublicHomepage } from "@/components/homepage/PublicHomepage";
 import { HomepageNav } from "@/components/homepage/HomepageNav";
+import { productScreens } from "@/components/homepage/productScreens";
 import { MARKETING_DESCRIPTION, MARKETING_TITLE, marketingFAQs, marketingLinks, SIGNUP_URL } from "@/components/homepage/marketingContent";
 
 const render = (element: React.ReactElement) => renderToStaticMarkup(<HelmetProvider><StaticRouter location="/">{element}</StaticRouter></HelmetProvider>);
@@ -55,11 +56,36 @@ describe("public homepage", () => {
     const html = render(<PublicHomepage />);
     expect(html).not.toMatch(/href="\/(?:play|events\/browse|player\/community)"/);
   });
-  it("clearly labels all product illustrations as examples", () => {
+  it("uses real, local screenshots with clear demo labels and accessible controls", () => {
+    vi.stubEnv('VITE_SKILL_ASSESSMENT', 'on');
     const html = render(<PublicHomepage />);
     const figures = html.match(/<figure[\s\S]*?<\/figure>/g) ?? [];
-    expect(figures).toHaveLength(3);
-    for (const figure of figures) expect(figure).toMatch(/<figcaption>Illustrative[\s\S]*Sample/i);
+    expect(figures).toHaveLength(productScreens.length);
+    for (const figure of figures) expect(figure).toContain('<figcaption>Actual PULSE screen · Demo data</figcaption>');
+    expect(html).toContain('aria-roledescription="carousel"');
+    expect(html).toContain('aria-label="Previous feature" disabled=""');
+    expect(html).toContain('aria-label="Next feature"');
+    expect(html).toContain('aria-label="Choose a feature"');
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(figures.filter(figure => figure.includes('tabindex="0"'))).toHaveLength(1);
+    expect(figures.filter(figure => figure.includes('tabindex="-1"'))).toHaveLength(productScreens.length - 1);
+    expect(figures[0]).toContain('loading="eager"');
+    expect(figures.slice(1).every(figure => figure.includes('loading="lazy"'))).toBe(true);
+    for (const screen of productScreens) {
+      expect(html).toContain(`src="${screen.src}"`);
+      expect(screen.alt.length).toBeGreaterThan(30);
+      const jpeg = readFileSync(new URL(`../../public${screen.src}`, import.meta.url));
+      expect(jpeg.subarray(0, 3).toString('hex')).toBe('ffd8ff');
+      expect(jpeg.subarray(-2).toString('hex')).toBe('ffd9');
+      expect(jpeg.byteLength).toBeLessThan(150_000);
+    }
+  });
+  it("removes the assessment screenshot from the tour when the assessment is disabled", () => {
+    vi.stubEnv('VITE_SKILL_ASSESSMENT', 'off');
+    const html = render(<PublicHomepage />);
+    expect(html).not.toContain('src="/images/product/assessment.jpg"');
+    expect(html).toContain('src="/images/product/profile.jpg"');
+    expect(html).toContain('1 of 3: Your PULSE');
   });
   it("explains pricing, devices, ratings, and existing groups with native accessible disclosures", () => {
     const html = render(<PublicHomepage />);
