@@ -86,6 +86,7 @@ export const supabase = {
       return { data: single ? result[0] ?? null : result, error: null };
     };
     const query = {
+      abortSignal() { return query; },
       select() { return query; }, eq(key: string, value: unknown) { filters.push([key, value]); return query; },
       order() { return query; }, maybeSingle() { single = true; return query; }, single() { single = true; return query; },
       insert(row: Row) { operation = 'insert'; payload = row; return query; },

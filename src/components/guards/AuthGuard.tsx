@@ -49,18 +49,19 @@ export function AuthGuard({
   // ?invite=… deep links on /player/play, which otherwise get dropped on
   // the auth bounce and leave the player on the dashboard wondering why
   // their share link "didn't work". (Audit-flagged.)
-  if (!isAuthenticated) {
-    if (sessionError) {
+  if (sessionError && !profile) {
       return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-background">
           <div role="alert" className="max-w-sm text-center space-y-4">
             <h1 className="text-xl font-semibold">Connection interrupted</h1>
             <p className="text-sm text-muted-foreground">{sessionError}</p>
             <Button onClick={() => void refresh()}>Retry connection</Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>Reload PULSE</Button>
           </div>
         </div>
       );
-    }
+  }
+  if (!isAuthenticated) {
     const returnTo = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate

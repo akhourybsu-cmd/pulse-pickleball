@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { withAuthDeadline } from '@/lib/authDeadline';
 
 export interface MfaStatus {
   method: 'none' | 'email' | 'authenticator' | 'sms';
@@ -10,7 +11,7 @@ export interface MfaStatus {
 export const MFA_VERIFIED_EVENT = 'pulse:mfa-verified';
 
 export async function getMfaStatus(): Promise<MfaStatus> {
-  const { data, error } = await supabase.rpc('pulse_mfa_status').abortSignal(AbortSignal.timeout(12_000));
+  const { data, error } = await withAuthDeadline(signal => supabase.rpc('pulse_mfa_status').abortSignal(signal), 12_000);
   if (error) throw new Error('Could not verify your sign-in security. Check your connection and retry.');
   const status = data as unknown as MfaStatus & { error?: string };
   if (status?.error === 'sign_in_required') throw new Error('Your session has ended. Sign out and sign in again.');

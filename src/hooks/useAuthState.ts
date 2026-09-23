@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { isTransientAuthError } from '@/lib/authErrors';
 import { getMfaStatus, MFA_VERIFIED_EVENT } from '@/lib/mfa';
+import { withAuthDeadline } from '@/lib/authDeadline';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type AuthProfile = Pick<
@@ -215,11 +216,11 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       // The profile request itself is authenticated and RLS-protected, so an
       // additional network getUser() validation adds latency without adding a
       // security boundary. Server policies remain authoritative.
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await withAuthDeadline(signal => supabase
         .from('profiles')
         .select(AUTH_PROFILE_COLUMNS)
         .eq('id', user.id)
-        .single();
+        .abortSignal(signal).single());
 
       if (error) throw error;
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
@@ -238,6 +239,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching auth state:', error);
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
       if (cachedProfile) return;
+      setSessionError('Could not load your player information. Check your connection and retry.');
       setState({
         user,
         profile: null,
@@ -251,8 +253,12 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async (showLoader = true) => {
     const generation = requestIdRef.current;
+    if (mountedRef.current) {
+      setSessionError(null);
+      setState(current => ({ ...current, loading: !current.profile }));
+    }
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await withAuthDeadline(() => supabase.auth.getSession());
       if (!mountedRef.current || generation !== requestIdRef.current) return;
       if (error) throw error;
       await loadSession(session, showLoader);

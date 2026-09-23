@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { confirmMfaSession, getMfaStatus } from '@/lib/mfa';
+import { withAuthDeadline } from '@/lib/authDeadline';
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { sendAuthEmail } from "@/lib/authEmail";
@@ -142,7 +143,7 @@ const Auth = () => {
       setSessionChecked(true);
     };
     const failed = () => { if (!cancelled && !authFlowActive.current) { setSessionCheckError(true); setSessionChecked(true); } };
-    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
+    withAuthDeadline(() => supabase.auth.getUser()).then(async ({ data: { user }, error }) => {
       if (cancelled || authFlowActive.current) return;
       if (error && error.name !== 'AuthSessionMissingError' && error.status !== 401 && error.status !== 403) throw error;
       if (user) {
