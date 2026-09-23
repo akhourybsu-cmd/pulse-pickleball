@@ -18,27 +18,28 @@ export function AssessmentQuestion({ item, initialValue, saving, editing, onConf
   useEffect(() => { heading.current?.focus(); }, []);
   const scale = RESPONSE_KEYS.filter(k => k !== 'not_sure');
   const count = selected && selected !== 'not_sure' ? RESPONSE_MASTERY[selected]! * 10 : null;
+  // A three-shot sequence counts once per rally, not once for each shot.
+  const countsRallies = item.success?.includes('three consecutive');
   return (
-    <section className="skill-studio skill-question-card space-y-5 rounded-2xl p-5 sm:p-7">
+    <section className="skill-studio skill-question-card space-y-4 rounded-2xl p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
         <span>{SUBSKILL_LABELS[item.subskill]}</span>
         {item.version === 2 && item.dimension && <span className="rounded-full bg-primary/10 px-2.5 py-1.5">{MEASURE_LABELS[item.dimension]}</span>}
       </div>
       <h2 ref={heading} tabIndex={-1} className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight outline-none">{item.situation ?? item.text}</h2>
-      {item.version === 2 && <QuestionSkillHelp skill={item.subskill} />}
       {item.version === 2 && <>
         <CourtScenario item={item} />
         <div className="flex gap-2.5 rounded-xl bg-muted/50 p-3">
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Count it as a success when</p><p className="mt-1 text-sm leading-relaxed">{item.success}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Success means</p><p className="mt-1 text-sm leading-relaxed">{item.success}</p></div>
         </div>
       </>}
       {item.version === 1 ? <fieldset disabled={saving}><ResponseScalePicker value={selected} onSelect={setSelected} /></fieldset> : <fieldset disabled={saving} className="space-y-2">
-        <legend className="mb-2 text-sm font-semibold">Out of 10 opportunities like this, how many succeed?</legend>
-        <p className="text-xs leading-relaxed text-muted-foreground">Your last 10 games · similar opponents · successful opportunities, not points won. Drills only? Choose “Not enough game experience”.</p>
+        <legend className="mb-1 text-sm font-semibold">How often do you do this successfully?</legend>
+        <p className="text-xs leading-relaxed text-muted-foreground">{countsRallies ? 'Out of 10 rallies like this. Count the full three-shot sequence as one success.' : 'Out of 10 chances in recent games — not points won.'}</p>
         <div className="pt-2 text-center" aria-live="polite">
           <span className="text-3xl font-bold tabular-nums text-primary">{count ?? '—'}</span><span className="ml-1.5 text-sm text-muted-foreground">/ 10</span>
-          <p className="mt-1 text-xs text-muted-foreground">{selected === 'not_sure' ? 'More game experience needed' : count === null ? 'Slide or tap a number to choose' : count === 0 ? 'Not yet in games' : count === 10 ? 'Nearly every opportunity' : `About ${count} successful opportunities`}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{selected === 'not_sure' ? 'Not scored as zero' : count === null ? 'Slide or tap a number' : count === 0 ? 'Not yet' : count === 10 ? 'Every time' : `About ${count} out of 10`}</p>
         </div>
         <input type="range" className={cn('assessment-slider', count === null && 'opacity-40')} min={0} max={10} step={2} value={count ?? 4}
           aria-label="Successful opportunities out of ten" aria-valuetext={count === null ? 'No frequency selected' : `${count} of 10 opportunities`}
@@ -55,7 +56,7 @@ export function AssessmentQuestion({ item, initialValue, saving, editing, onConf
       </fieldset>}
       <Button className="skill-primary-button h-12 w-full gap-2 rounded-xl" disabled={selected === null || saving}
         onClick={() => selected && onConfirm(selected)}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <>{editing ? 'Save change' : 'Save & continue'}<ArrowRight className="h-4 w-4" /></>}</Button>
-      <p className="text-center text-[11px] text-muted-foreground">Your answer saves when you continue. You can review it later.</p>
+      {item.version === 2 && <QuestionSkillHelp skill={item.subskill} />}
     </section>
   );
 }
