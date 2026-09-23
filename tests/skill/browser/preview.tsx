@@ -16,10 +16,11 @@ import '../../../src/index.css';
 import '../../../src/components/homepage/marketing.css';
 function RememberRoute() { const loc = useLocation(); useEffect(() => { localStorage.setItem('skill-preview-route', loc.pathname + loc.search); }, [loc]); return null; }
 export default function Preview() {
+  const capture = new URLSearchParams(window.location.search).has('capture');
   const [width, setWidth] = useState('100%');
   const [scene, setScene] = useState('flow');
-  return <HelmetProvider><MemoryRouter initialEntries={[localStorage.getItem('skill-preview-route') ?? '/skill-assessment']}><RememberRoute /><div className="min-h-screen bg-background text-foreground">
-    <header className="flex flex-wrap items-center gap-2 border-b bg-card p-3 text-xs">
+  return <HelmetProvider><MemoryRouter initialEntries={[capture ? '/skill-assessment' : localStorage.getItem('skill-preview-route') ?? '/skill-assessment']}><RememberRoute /><div className="min-h-screen bg-background text-foreground">
+    <header hidden={capture} className={capture ? 'hidden' : 'flex flex-wrap items-center gap-2 border-b bg-card p-3 text-xs'}>
       <strong className="mr-2">PULSE · Local preview</strong>
       <Link className="min-h-10 rounded border p-3" to="/skill-assessment">Guest flow</Link>
       <Link className="min-h-10 rounded border p-3" to="/player/self-assessment">Account flow</Link>

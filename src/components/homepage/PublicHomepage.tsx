@@ -28,7 +28,7 @@ export const PublicHomepage = () => {
     <a className="mkt-skip-link" href="#main-content">Skip to content</a>
     <HomepageNav isLoggedIn={false} userMode="player" />
     <main id="main-content" tabIndex={-1}>
-      <HeroSection /><AssessmentSection /><PlayerFeaturesSection /><FeatureSpotlights /><HowItWorksSection /><FAQSection /><SplitCTASection />
+      <HeroSection /><PlayerFeaturesSection /><AssessmentSection /><FeatureSpotlights /><HowItWorksSection /><FAQSection /><SplitCTASection />
     </main>
     <HomepageFooter />
   </div>;

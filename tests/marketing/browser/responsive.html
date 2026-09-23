@@ -5,7 +5,7 @@
 body{margin:0;background:#353a35;color:white;font:13px system-ui}header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px}label{display:flex;gap:6px;align-items:center}select,button{padding:8px}output{display:block;padding:0 12px 12px}iframe{display:block;border:0;margin:0 12px 20px;background:#f4f1e9;width:390px;height:610px}
 </style></head>
 <body>
-<header><strong>Local public-page QA</strong><label>Viewport <select id="width"><option>320</option><option selected>390</option><option>600</option><option>768</option><option>1024</option><option>1440</option><option>1920</option></select></label><label>Section <select id="section"><option value="">Hero</option><option value="features">Features</option><option value="organizers">Organizers</option><option value="how-it-works">Getting started</option><option value="questions">FAQs</option><option value="closing-heading">Final CTA</option><option value=".mkt-rr-preview">Round-robin preview</option><option value=".mkt-league-preview">League preview</option></select></label><button id="refresh">Reload</button></header>
+<header><strong>Local public-page QA</strong><label>Viewport <select id="width"><option>320</option><option selected>390</option><option>600</option><option>768</option><option>1024</option><option>1440</option><option>1920</option></select></label><label>Section <select id="section"><option value="">Hero</option><option value="features">Features</option><option value="organizers">Organizers</option><option value="how-it-works">Getting started</option><option value="questions">FAQs</option><option value="closing-heading">Final CTA</option><option value="product-tour">Feature tour</option></select></label><button id="refresh">Reload</button></header>
 <output id="report" aria-live="polite">Loading the actual app in a separate, logged-out local origin.</output>
 <output id="history"></output>
 <iframe title="Responsive public landing page" src="/"></iframe>
@@ -25,7 +25,7 @@ setInterval(() => {
   const width=doc.documentElement.clientWidth;
   const viewport=frame.contentWindow.innerWidth;
   const overflow=[...doc.querySelectorAll('.mkt-page *')].filter(el => {
-    const box=el.getBoundingClientRect();return box.width>0 && (box.left < -1 || box.right > width+1);
+    if(el.closest('.mkt-tour-track'))return false;const box=el.getBoundingClientRect();return box.width>0 && (box.left < -1 || box.right > width+1);
   }).slice(0,8).map(el => el.className?.baseVal ?? el.className);
   const headings=doc.querySelectorAll('h1').length;
   const nav=doc.querySelector('.mkt-desktop-nav')?.getBoundingClientRect();
