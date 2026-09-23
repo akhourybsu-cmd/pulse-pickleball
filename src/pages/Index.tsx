@@ -1,61 +1,33 @@
-import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { PublicHomepage } from "@/components/homepage/PublicHomepage";
-import { consumePostAuthRedirect } from "@/lib/authRedirect";
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { PublicHomepage } from '@/components/homepage/PublicHomepage';
+import { Button } from '@/components/ui/button';
+import { useAuthState } from '@/hooks/useAuthState';
+import { consumePostAuthRedirect, peekPostAuthRedirect, DEFAULT_AUTH_DESTINATION } from '@/lib/authRedirect';
 
-/**
- * Public landing page.
- *
- * QoL pass — if the user is already authenticated when they hit /, we
- * bounce them straight to the player dashboard instead of showing the
- * marketing page. The previous behavior dropped returning users on a
- * "Get Started" CTA they didn't need; now opening the app behaves like
- * a native app — straight into your hub.
- *
- * Venue/tournament surfaces have also been hidden from the landing
- * page composition — the platform is player-only for the public
- * beta. Routes still resolve directly so admins can reach them.
- */
+/** Share the bounded app-wide session check instead of starting another
+ * unbounded getSession request every time the home route mounts. */
 const Index = () => {
-  const [authState, setAuthState] = useState<"checking" | "anonymous" | "authenticated">("checking");
+  const { loading, isAuthenticated, profile, sessionError, refresh } = useAuthState();
+  // Read without consuming during render: StrictMode and rerenders must keep
+  // the same destination until Navigate commits.
+  const [destination] = useState(() => peekPostAuthRedirect() || DEFAULT_AUTH_DESTINATION);
+  useEffect(() => { if (isAuthenticated && !sessionError) consumePostAuthRedirect(); }, [isAuthenticated, sessionError]);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setAuthState(session ? "authenticated" : "anonymous");
-      } catch (error) {
-        console.error("Auth check error:", error);
-        setAuthState("anonymous");
-      }
-    };
+  if (loading) return <div role="status" aria-label="Connecting to PULSE" className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>;
 
-    checkAuth();
+  if (sessionError && !profile) return <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div role="alert" className="max-w-sm text-center space-y-4">
+      <h1 className="text-xl font-semibold">Connection interrupted</h1>
+      <p className="text-sm text-muted-foreground">{sessionError}</p>
+      <Button onClick={() => void refresh()}>Retry connection</Button>
+      <Button variant="outline" onClick={() => window.location.reload()}>Reload PULSE</Button>
+    </div>
+  </div>;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setAuthState(session ? "authenticated" : "anonymous");
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (authState === "checking") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Authenticated users → straight into the player hub, or the deep link
-  // they were trying to reach before the OAuth round-trip.
-  if (authState === "authenticated") {
-    return <Navigate to={consumePostAuthRedirect()} replace />;
-  }
-
+  if (isAuthenticated) return <Navigate to={destination} replace />;
   return <PublicHomepage />;
 };
 
