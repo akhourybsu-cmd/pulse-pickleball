@@ -7,6 +7,17 @@ name: Deploy Supabase
 # available even while automatic deployment is disabled.
 
 on:
+  workflow_call:
+    inputs:
+      migration_mode:
+        type: string
+        default: apply
+      deploy_functions:
+        type: boolean
+        default: true
+    secrets:
+      SUPABASE_ACCESS_TOKEN:
+        required: true
   schedule:
     # Weekly production drift and credential health check (Monday, 13:17 UTC).
     - cron: "17 13 * * 1"
@@ -43,7 +54,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy production backend
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || vars.AUTO_DB_PUSH == 'true' }}
+    if: ${{ inputs.migration_mode != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || vars.AUTO_DB_PUSH == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -71,7 +82,7 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           DEPLOY_FUNCTIONS_INPUT: ${{ inputs.deploy_functions }}
         run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ -n "$DEPLOY_FUNCTIONS_INPUT" ]]; then
             echo "deploy_functions=$DEPLOY_FUNCTIONS_INPUT" >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_NAME" == "schedule" ]]; then
             echo "deploy_functions=false" >> "$GITHUB_OUTPUT"
@@ -84,6 +95,9 @@ jobs:
       - name: Audit pending migrations
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.migration_mode == 'plan') }}
         run: node scripts/deploy-supabase-migrations.mjs --dry-run
+
+      - name: Check assessment release compatibility
+        run: node scripts/check-assessment-release.mjs --preflight
 
       - name: Apply pending migrations
         if: ${{ github.event_name == 'push' || inputs.migration_mode == 'apply' }}
@@ -98,3 +112,7 @@ jobs:
       - name: Deploy Edge Functions
         if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Verify deployed assessment backend
+        if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
+        run: node scripts/check-assessment-release.mjs
