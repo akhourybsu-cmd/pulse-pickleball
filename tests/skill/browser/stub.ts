@@ -11,6 +11,11 @@ const storageKey = 'pulse-assessment-v2-preview';
 const read = (): Record<string, Row[]> => JSON.parse(localStorage.getItem(storageKey) ?? '{"skill_assessment_attempts":[],"skill_assessment_responses":[]}');
 const write = (data: Record<string, Row[]>) => localStorage.setItem(storageKey, JSON.stringify(data));
 let failSave = false;
+// Deliberately ignore abort to exercise the deadline's pre-fetch/lock fallback.
+export type PreviewStall = 'none' | 'load' | 'answer' | 'activity' | 'finalize';
+export function setPreviewStall(value: PreviewStall) { sessionStorage.setItem('skill-preview-stall', value); }
+const stalled = (value: PreviewStall) => sessionStorage.getItem('skill-preview-stall') === value;
+const neverRespond = () => new Promise<never>(() => {});
 const authListeners = new Set<(event: string, session: unknown) => void>();
 const currentUser = () => localStorage.getItem('skill-preview-user') === 'yes' ? { id: 'preview-player', email: 'player@example.test' } : null;
 const currentSession = () => currentUser() ? { access_token: 'local-preview-only', user: currentUser() } : null;
@@ -26,7 +31,7 @@ export function signInPreview() {
 }
 export function signOutPreview() { localStorage.removeItem('skill-preview-user'); sessionStorage.removeItem('skill-preview-verified'); previewChallenge = null; for (const fn of authListeners) fn('SIGNED_OUT', null); window.dispatchEvent(new Event('preview-auth')); }
 export function failNextSave() { failSave = true; }
-export function resetPreview() { localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.removeItem('skill-preview-mfa'); sessionStorage.removeItem('skill-preview-verified'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
+export function resetPreview() { setPreviewStall('none'); localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.removeItem('skill-preview-mfa'); sessionStorage.removeItem('skill-preview-verified'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
 export function seedGuest() {
   const draft = createGuestAssessment();
   while (Object.keys(draft.responses).length < 64) { const key = selectNextV2(QUESTION_BANK_V2, draft.responses); if (!key) break; draft.responses[key] = 'usually'; }
@@ -65,6 +70,8 @@ export const supabase = {
     let operation = 'select'; let payload: Row | Row[] = {}; let single = false;
     const execute = async () => {
       if (table === 'profiles') return { data: { id: 'preview-player', player_state: 'active', tutorial_completed: true, full_name: 'Preview Player', display_name: 'Preview Player', mfa_method: mfaRequired() ? 'email' : 'none' }, error: null };
+      if ((table === 'skill_assessment_attempts' && operation === 'select' && stalled('load')) ||
+        (operation === 'upsert' && stalled('answer')) || (operation === 'update' && stalled('activity'))) return neverRespond();
       const data = read();
       const rows = data[table] ?? [];
       const matches = (r: Row) => filters.every(([key, value]) => r[key] === value);
@@ -97,6 +104,7 @@ export const supabase = {
     return query;
   },
   functions: { async invoke(_name: string, options: { body: { attemptId: string; assessmentVersion?: number; responses?: Responses; code?: string; challengeId?: string } }) {
+    if (_name === 'skill-complete' && stalled('finalize')) return neverRespond();
     if (_name === 'get-biometric-credentials') return { data: { biometric_enabled: false }, error: null };
     if (_name === 'send-mfa-code') { previewChallenge = crypto.randomUUID(); return { data: { success: true, challengeId: previewChallenge }, error: null }; }
     if (_name === 'verify-mfa-code') {

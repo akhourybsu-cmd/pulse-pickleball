@@ -11,7 +11,7 @@ import { PublicHomepage } from '../../../src/components/homepage/PublicHomepage'
 import { AssessmentQuestion } from '../../../src/components/skill/AssessmentQuestion';
 import { QUESTION_BANK_V2 } from '../../../src/lib/skill/questionBankV2';
 import { AuthStateProvider } from '../../../src/hooks/useAuthState';
-import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa } from './stub';
+import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa, setPreviewStall, type PreviewStall } from './stub';
 import '../../../src/index.css';
 import '../../../src/components/homepage/marketing.css';
 function RememberRoute() { const loc = useLocation(); useEffect(() => { localStorage.setItem('skill-preview-route', loc.pathname + loc.search); }, [loc]); return null; }
@@ -30,6 +30,9 @@ export default function Preview() {
       <button className="min-h-10 rounded border px-3" onClick={() => setWidth('390px')}>Phone width</button>
       <button className="min-h-10 rounded border px-3" onClick={() => setWidth('100%')}>Full width</button>
       <button className="min-h-10 rounded border px-3" onClick={failNextSave}>Fail next save</button>
+      <label>Stall request <select aria-label="Stall request" className="min-h-10 border bg-background" defaultValue={sessionStorage.getItem('skill-preview-stall') ?? 'none'} onChange={e => setPreviewStall(e.target.value as PreviewStall)}>
+        <option value="none">None</option><option value="load">Report load</option><option value="answer">Answer save</option><option value="activity">Activity metadata</option><option value="finalize">Result save</option>
+      </select></label>
       <button className="min-h-10 rounded border px-3" onClick={seedReady}>Seed completed questions</button>
       <button className="min-h-10 rounded border px-3" onClick={seedGuest}>Seed guest questions</button>
       <button className="min-h-10 rounded border px-3" onClick={seedUnknown}>Seed unsure questions</button>

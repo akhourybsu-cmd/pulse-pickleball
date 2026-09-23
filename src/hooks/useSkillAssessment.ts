@@ -13,6 +13,7 @@ import {
 } from "@/lib/skill/model";
 import { scoreAssessment, type Responses, type ScoringSnapshot } from "@/lib/skill/scoring";
 import { haptic } from "@/lib/haptics";
+import { withAuthDeadline } from '@/lib/authDeadline';
 import {
   selectNextItemKey,
   isComplete,
@@ -75,58 +76,73 @@ export function useSkillAssessment() {
     assessmentVersion: ASSESSMENT_VERSION,
   });
   const inFlight = useRef(false);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
+    setState(s => ({ ...s, phase: 'loading' }));
     try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setState((s) => ({ ...s, phase: "signed_out" }));
-      return;
-    }
-    // Completed history (newest first) + any open draft.
-    const [{ data: completed, error: completedError }, { data: draft, error: draftError }] = await Promise.all([
-      supabase.from("skill_assessment_attempts" as never)
-        .select("*").eq("player_id", user.id).eq("status", "completed")
-        .order("completed_at", { ascending: false }),
-      supabase.from("skill_assessment_attempts" as never)
-        .select("id, assessment_version").eq("player_id", user.id).eq("status", "in_progress")
-        .maybeSingle(),
-    ]);
-    if (completedError || draftError) throw completedError || draftError;
-    const history = ((completed ?? []) as unknown as CompletedAttempt[]);
-    const draftId = (draft as unknown as { id: string } | null)?.id ?? null;
-    const assessmentVersion = (draft as unknown as { assessment_version: number } | null)?.assessment_version ?? ASSESSMENT_VERSION;
-    if (![1, 2].includes(assessmentVersion)) throw new Error('This assessment version needs a newer app.');
+      const loaded = await withAuthDeadline(async signal => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        signal.throwIfAborted();
+        if (userError) throw userError;
+        if (!user) return null;
+        // Completed history (newest first) + any open draft.
+        const [{ data: completed, error: completedError }, { data: draft, error: draftError }] = await Promise.all([
+          supabase.from("skill_assessment_attempts" as never)
+            .select("*").eq("player_id", user.id).eq("status", "completed")
+            .order("completed_at", { ascending: false }).abortSignal(signal),
+          supabase.from("skill_assessment_attempts" as never)
+            .select("id, assessment_version").eq("player_id", user.id).eq("status", "in_progress")
+            .abortSignal(signal).maybeSingle(),
+        ]);
+        if (completedError || draftError) throw completedError || draftError;
+        const history = ((completed ?? []) as unknown as CompletedAttempt[]);
+        const draftId = (draft as unknown as { id: string } | null)?.id ?? null;
+        const assessmentVersion = (draft as unknown as { assessment_version: number } | null)?.assessment_version ?? ASSESSMENT_VERSION;
+        if (![1, 2].includes(assessmentVersion)) throw new Error('This assessment version needs a newer app.');
 
-    let responses: Responses = {};
-    if (draftId) {
-      const { data: rows, error: responsesError } = await supabase.from("skill_assessment_responses" as never)
-        .select("item_key, response_key").eq("attempt_id", draftId);
-      if (responsesError) throw responsesError;
-      responses = Object.fromEntries(
-        ((rows ?? []) as unknown as Array<{ item_key: string; response_key: ResponseKey }>)
-          .map((r) => [r.item_key, r.response_key]),
-      );
-    }
+        let responses: Responses = {};
+        if (draftId) {
+          const { data: rows, error: responsesError } = await supabase.from("skill_assessment_responses" as never)
+            .select("item_key, response_key").eq("attempt_id", draftId).abortSignal(signal);
+          if (responsesError) throw responsesError;
+          responses = Object.fromEntries(
+            ((rows ?? []) as unknown as Array<{ item_key: string; response_key: ResponseKey }>)
+              .map((r) => [r.item_key, r.response_key]),
+          );
+        }
 
-    setState((s) => ({
-      ...s,
-      userId: user.id,
-      attemptId: draftId,
-      responses,
-      latest: history[0] ?? null,
-      history,
-      assessmentVersion,
-      // Resume straight into an open draft; otherwise the intro.
-      phase: draftId ? "in_progress" : (history[0] ? "result" : "intro"),
-    }));
+        return {
+          userId: user.id,
+          attemptId: draftId,
+          responses,
+          latest: history[0] ?? null,
+          history,
+          assessmentVersion,
+          // Resume straight into an open draft; otherwise the intro.
+          phase: (draftId ? "in_progress" : (history[0] ? "result" : "intro")) as Phase,
+        };
+      });
+      // Ignore older StrictMode/retry loads and responses after leaving the page.
+      if (generation !== loadGeneration.current) return false;
+      setState(s => loaded ? { ...s, ...loaded } : {
+        ...s, phase: 'signed_out', userId: null, attemptId: null, responses: {}, latest: null, history: [],
+      });
+      return true;
     } catch {
+      if (generation !== loadGeneration.current) return false;
       setState(s => ({ ...s, phase: 'error' }));
       toast.error('Could not load your assessment. Please retry.');
+      return false;
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const requests = loadGeneration;
+    void load();
+    return () => { requests.current++; };
+  }, [load]);
 
   /** Create a fresh draft (or resume the existing one) and enter the wizard. */
   const start = useCallback(async () => {
@@ -134,19 +150,20 @@ export function useSkillAssessment() {
     inFlight.current = true;
     setState(s => ({ ...s, starting: true }));
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await withAuthDeadline(() => supabase.auth.getUser());
+      if (userError) throw userError;
       if (!user) { setState((s) => ({ ...s, phase: "signed_out" })); return; }
       // Resume if a draft already exists (the unique index guarantees ≤1).
-      const { data: existing, error: existingError } = await supabase.from("skill_assessment_attempts" as never)
-        .select("id").eq("player_id", user.id).eq("status", "in_progress").maybeSingle();
+      const { data: existing, error: existingError } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+        .select("id").eq("player_id", user.id).eq("status", "in_progress").abortSignal(signal).maybeSingle());
       if (existingError) throw existingError;
-      let attemptId = (existing as unknown as { id: string } | null)?.id ?? null;
+      const attemptId = (existing as unknown as { id: string } | null)?.id ?? null;
       if (!attemptId) {
-        const { data: created, error } = await supabase.from("skill_assessment_attempts" as never)
+        const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
           .insert({ player_id: user.id, assessment_version: ASSESSMENT_VERSION, assessment_type: "full", status: "in_progress" } as never)
-          .select("id").single();
-        if (error) throw error;
-        attemptId = (created as unknown as { id: string }).id;
+          .select("id").abortSignal(signal).single());
+        // Another tab may have created the one permitted draft after our read.
+        if (error && error.code !== '23505') throw error;
       }
       // Reload persisted answers even when another tab created the draft.
       await load();
@@ -166,21 +183,21 @@ export function useSkillAssessment() {
     setState((s) => ({ ...s, saving: true }));
     try {
     const value = RESPONSE_MASTERY[responseKey];
-    const { error } = await supabase.from("skill_assessment_responses" as never)
+    const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_responses" as never)
       .upsert({
         attempt_id: attemptId,
         item_key: itemKey,
         response_key: responseKey,
         response_value: value,
         was_skipped: false,
-      } as never, { onConflict: "attempt_id,item_key" } as never);
+      } as never, { onConflict: "attempt_id,item_key" } as never).abortSignal(signal));
     if (error) throw error;
     // Advance only after persistence succeeds. A failed write keeps the same
     // question and selection visible so it can be retried without data loss.
-    try {
-      await supabase.from("skill_assessment_attempts" as never)
-        .update({ last_activity_at: new Date().toISOString() } as never).eq("id", attemptId);
-    } catch { /* The answer is durable; last-activity refresh is best effort. */ }
+    // The answer is already durable. Metadata must never hold up progression.
+    void withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+      .update({ last_activity_at: new Date().toISOString() } as never).eq("id", attemptId).abortSignal(signal))
+      .catch(() => { /* Best effort; do not retry a write automatically. */ });
     setState((s) => ({ ...s, responses: { ...s.responses, [itemKey]: responseKey } }));
     return true;
     } catch {
@@ -206,9 +223,10 @@ export function useSkillAssessment() {
     setState((s) => ({ ...s, phase: "finalizing" }));
     const provisional = scoreAssessment(state.assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1, state.responses);
     try {
-      const { data, error } = await supabase.functions.invoke("skill-complete", {
+      const { data, error } = await withAuthDeadline(signal => supabase.functions.invoke("skill-complete", {
         body: { attemptId: state.attemptId, finalResponses: state.responses },
-      });
+        signal,
+      }), 25_000);
       if (error) throw error;
       const payload = (data ?? {}) as { snapshot?: ScoringSnapshot; error?: string; message?: string };
       if (payload.error) throw new Error(payload.message || payload.error);
@@ -219,8 +237,7 @@ export function useSkillAssessment() {
           client: provisional.estimatedLevelRaw,
         });
       }
-      await load(); // pull the authoritative snapshot the server stored
-      haptic("success"); // a meaningful confirmation — results are ready
+      if (await load()) haptic("success"); // Only confirm after loading the stored result.
     } catch (e) {
       // Never lose a completed assessment to a failed result request — a
       // retry is safe (the edge function is idempotent), and if it already
@@ -236,12 +253,22 @@ export function useSkillAssessment() {
   /** Abandon the current draft and begin a new one. */
   const restart = useCallback(async () => {
     if (inFlight.current) return;
-    if (state.attemptId) {
-      const { error } = await supabase.from("skill_assessment_attempts" as never)
-        .delete().eq("id", state.attemptId).eq("status", "in_progress");
-      if (error) { toast.error('Could not restart your assessment.'); return; }
+    inFlight.current = true;
+    setState(s => ({ ...s, starting: true }));
+    try {
+      if (state.attemptId) {
+        const { error } = await withAuthDeadline(signal => supabase.from("skill_assessment_attempts" as never)
+          .delete().eq("id", state.attemptId).eq("status", "in_progress").abortSignal(signal));
+        if (error) throw error;
+      }
+      setState((s) => ({ ...s, attemptId: null, responses: {} }));
+    } catch {
+      toast.error('Could not restart your assessment. Please retry.');
+      return;
+    } finally {
+      inFlight.current = false;
+      setState(s => ({ ...s, starting: false }));
     }
-    setState((s) => ({ ...s, attemptId: null, responses: {} }));
     await start();
   }, [state.attemptId, start]);
 
