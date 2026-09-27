@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar,
-  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell,
+  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, Bell,
   Lock, Globe, Eye, BadgeCheck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { Group, GroupMember } from '@/hooks/useGroups';
+import { CommunityJoinAction } from '@/components/community/CommunityJoinAction';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupSchedule } from '@/components/community/GroupSchedule';
 import { GroupFiles } from '@/components/community/GroupFiles';
@@ -49,7 +48,6 @@ export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Honor a ?tab= deep link (e.g. from the Social hub's group-chats list) so
   // a shared/tapped link can open straight to Chat, Events, etc.
@@ -67,8 +65,6 @@ export default function GroupDetail() {
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   
   
-  // Join-gate state for non-members landing on a public group URL
-  const [joining, setJoining] = useState(false);
 
   // Modal states
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -138,38 +134,6 @@ export default function GroupDetail() {
         .eq('id', membership.id);
     }
   }, [membership?.id]);
-
-  // Join directly from the gate (public groups only). Mirrors
-  // useGroups.joinPublicGroup: respects request_to_join and treats a
-  // 23505 race (already inserted from another tab) as success.
-  const handleJoinFromGate = async () => {
-    if (!groupId || !currentUserId || !group || joining) return;
-    setJoining(true);
-    try {
-      const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
-      const { error } = await supabase
-        .from('group_members')
-        .insert({ group_id: groupId, user_id: currentUserId, role: 'member', status });
-
-      if (error && error.code !== '23505') throw error;
-
-      if (status === 'pending') {
-        toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
-      } else {
-        toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
-      }
-      queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
-    } catch (error: unknown) {
-      console.error('Error joining group:', error);
-      toast({
-        title: 'Error',
-        description: error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Failed to join group',
-        variant: 'destructive',
-      });
-    } finally {
-      setJoining(false);
-    }
-  };
 
   const openQuickPost = useCallback((type: PostType) => {
     setQuickPostType(type);
@@ -255,9 +219,9 @@ export default function GroupDetail() {
   // public group saw the full tab UI with empty, broken-looking content
   // and no way to join. Pending members see their request status.
   if (!membership || membership.status !== 'active') {
-    const isPendingRequest = membership?.status === 'pending';
+
     return (
-      <div className="px-4 py-10 max-w-md mx-auto">
+      <div className="w-full px-3 py-6 max-w-2xl mx-auto font-sans">
         <Button
           variant="ghost"
           size="sm"
@@ -268,32 +232,15 @@ export default function GroupDetail() {
           Community
         </Button>
         <div className="rounded-2xl border border-border/60 bg-card p-6 text-center space-y-3">
-          <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-            <Users className="h-7 w-7" />
-          </div>
+          <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} logoBackgroundColor={group.venue?.logo_background_color} secondaryColor={group.venue?.secondary_color} className="mx-auto h-20 w-20 bg-secondary text-[80px]" />
           <div>
-            <h1 className="text-lg font-semibold">{group.name}</h1>
+            <h1 className="font-sans text-2xl font-semibold [overflow-wrap:anywhere]">{group.name}</h1>
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           </div>
           {group.description && (
             <p className="text-sm text-muted-foreground leading-relaxed">{group.description}</p>
           )}
-          {isPendingRequest ? (
-            <p className="text-sm font-medium text-muted-foreground pt-1">
-              Your join request is pending approval.
-            </p>
-          ) : group.visibility === 'public' ? (
-            <Button className="w-full mt-2" onClick={handleJoinFromGate} disabled={joining}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              {joining
-                ? 'Joining…'
-                : group.join_method === 'request_to_join' ? 'Request to Join' : 'Join Group'}
-            </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground pt-1">
-              This group is invite-only. Ask a member for an invite link to join.
-            </p>
-          )}
+          <CommunityJoinAction key={group.id + ":" + currentUserId} group={group} membership={membership} />
         </div>
       </div>
     );
