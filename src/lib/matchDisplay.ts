@@ -111,9 +111,15 @@ export function didTeamWin(team: 1 | 2, team1Score: number, team2Score: number):
   return team2Score > team1Score;
 }
 
-/** Format a rating delta as "+0.12" / "−0.08", or null when effectively zero. */
+/** Profile destinations must use account IDs, never an unclaimed guest ID. */
+export function participantProfileId(participant: ParticipantLike | null | undefined): string {
+  return participant?.player_id || participant?.guest?.linked_user_id || "";
+}
+
+/** Keep display precision consistent without changing stored rating values. */
 export function formatRatingChange(delta: number | null | undefined): string | null {
-  if (delta === null || delta === undefined) return null;
-  if (Math.abs(delta) <= 0.0001) return null;
-  return `${delta > 0 ? "+" : ""}${delta.toFixed(2)}`;
+  if (delta == null || !Number.isFinite(delta)) return null;
+  const rounded = Number(Math.abs(delta).toFixed(3));
+  if (rounded === 0) return null;
+  return `${delta > 0 ? "+" : "−"}${rounded}`;
 }
