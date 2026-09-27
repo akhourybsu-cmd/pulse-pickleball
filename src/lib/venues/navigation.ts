@@ -38,7 +38,7 @@ export function venueTabParams(params: URLSearchParams, tab: VenueCommunityTab):
 
 export function resolveVenueAdminTab(requested: string | null, facility: boolean, community: boolean, modules: boolean): string {
   const allowed = [
-    ...(facility ? ['overview', 'profile', 'modules', 'staff', ...(modules ? ['facility'] : [])] : []),
+    ...(facility ? ['overview', 'profile', 'integrations', 'modules', 'staff', ...(modules ? ['facility'] : [])] : []),
     ...(community ? ['general', 'permissions', 'privacy', 'roles', 'danger'] : []),
   ];
   return requested && allowed.includes(requested) ? requested : allowed[0] ?? 'general';

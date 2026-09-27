@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Lock,
   Palette,
+  Plug,
   Save,
   Settings,
   Shield,
@@ -42,6 +43,7 @@ import { VenueModulesPanel } from '@/components/venue/VenueModulesPanel';
 import { usePrivateVenueSandbox } from '@/hooks/usePrivateVenueSandbox';
 import { PrivateVenueNotice } from '@/components/venue/PrivateVenueNotice';
 import { resolveVenueAdminTab } from '@/lib/venues/navigation';
+import { VenueIntegrationsPanel } from '@/components/venue/VenueIntegrationsPanel';
 
 export default function GroupManage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -398,6 +400,7 @@ export default function GroupManage() {
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
+          { value: 'integrations', label: 'Integrations', description: 'Your PULSE address and connected services', icon: Plug, section: 'venue' as const },
           { value: 'modules', label: privateSample ? 'Included features' : 'Plan & upgrades', shortLabel: privateSample ? 'Features' : 'Upgrades', description: privateSample ? 'Sample access · no subscription' : 'Free plan, ownership and $10/month features', icon: ShieldCheck, section: 'venue' as const },
           ...((modules.booking || modules.facility) ? [{ value: 'facility', label: 'Courts & hours', shortLabel: 'Facility', description: 'Booking inventory and availability', icon: LayoutGrid, section: 'venue' as const }] : []),
           { value: 'staff', label: 'Staff access', shortLabel: 'Staff', description: 'Venue roles and operations access', icon: ShieldCheck, section: 'venue' as const },
@@ -456,6 +459,7 @@ export default function GroupManage() {
             />
           </TabsContent>
           <TabsContent value="modules" className="mt-0"><VenueModulesPanel venueId={group.venue_id} venueName={group.venue?.name ?? group.name} verified={venueVerified} canVerify={isVenueOwner} privateSample={privateSample} /></TabsContent>
+          <TabsContent value="integrations" className="mt-0"><VenueIntegrationsPanel venueId={group.venue_id} groupId={groupId!} canManageCommunity={canManageCommunity} /></TabsContent>
           <TabsContent value="profile" className="mt-0">
             <AdminVenueTab
               groupId={groupId!}

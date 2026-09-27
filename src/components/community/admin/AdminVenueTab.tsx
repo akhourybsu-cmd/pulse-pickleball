@@ -26,6 +26,7 @@ import { VenueHoursSection } from './VenueHoursSection';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
 import { VenueLoadingScreen } from '@/components/venue/VenueEntrance';
 import { VenueImagePreview } from '@/components/venue/VenueImagePreview';
+import { VenuePublicLink } from '@/components/venue/VenuePublicLink';
 
 /**
  * Venue identity for a venue community.
@@ -112,6 +113,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<VenueForm>(EMPTY);
+  const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -135,7 +137,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
+          .select('slug, name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
           .eq('id', venueId)
           .single();
 
@@ -149,6 +151,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             variant: 'destructive',
           });
         } else if (data) {
+          setPublicSlug(data.slug);
           setForm({
             ...EMPTY,
             ...data,
@@ -320,6 +323,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
 
   return (
     <div className="space-y-5">
+      {showProfile && publicSlug && <VenuePublicLink slug={publicSlug} groupId={groupId} />}
       {showProfile && (
         <>
       <Card className="border-border/60">
