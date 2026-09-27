@@ -1,11 +1,11 @@
-import { ArrowUpRight, CalendarDays, ChevronRight, LayoutGrid, MessageCircle, Users } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, ChevronRight, LayoutGrid, Users } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VenueLoadState } from './VenueLoadState';
 import type { ClubPlayer } from '@/hooks/useVenueCommunityPreview';
 import { clubDate, clubTime, clubHoursStatus, clubSkill } from '@/lib/venues/clubPresentation';
 import { programPhase, venueWebsiteLink } from '@/lib/venues/programExperience';
-import { DAY_NAMES, describeDay, parseTime } from '@/lib/venues/hours';
+import { groupedVenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from './VenueHome';
 
 export interface ClubSession extends VenueHomeSession { end_time?: string | null; capacity?: number | null; skill_level_min?: number | null; skill_level_max?: number | null; going?: number | null }
@@ -14,23 +14,22 @@ export interface VenueClubHomeProps {
   loading?: boolean; error?: boolean; onRetry: () => void;
   players: ClubPlayer[]; memberCount: number; onlineCount: number;
   welcomeHeadline?: string | null; welcomeMessage?: string | null;
-  onBook: () => void; onPlay: () => void; onSchedule: () => void; onCommunity: () => void; onMembers: () => void; onAbout: () => void; onPick: (id: string) => void;
+  onBook: () => void; onPlay: () => void; onSchedule: () => void; onEvents?: () => void; onCommunity: () => void; onMembers: () => void; onAbout: () => void; onPick: (id: string) => void;
 }
 
-export function VenueClubHome({ name, hasBooking, sessions, timeZone, loading, error, onRetry, players, memberCount, onlineCount, welcomeHeadline, welcomeMessage, onBook, onPlay, onSchedule, onCommunity, onMembers, onAbout, onPick }: VenueClubHomeProps) {
+export function VenueClubHome({ name, hasBooking, sessions, timeZone, loading, error, onRetry, players, memberCount, onlineCount, welcomeHeadline, welcomeMessage, onBook, onPlay, onSchedule, onEvents, onCommunity, onMembers, onAbout, onPick }: VenueClubHomeProps) {
   const relevant = sessions.filter(s => (s.end_time ? programPhase(s) !== 'ended' : Date.parse(s.start_time) >= Date.now())).slice(0, 3);
-  const today = relevant.length > 0 && clubDate(relevant[0].start_time, timeZone) === 'Today';
   return <div className="space-y-7 pb-5" data-testid="club-mobile-home">
     <section className="space-y-3" aria-label="Upcoming venue sessions">
-      <ClubSectionTitle title={`${today ? 'Today' : 'Coming up'} at ${name}`} onClick={onSchedule} label="View full schedule" />
-      {error ? <VenueLoadState title="Schedule unavailable" description="We couldn’t confirm the latest sessions. Your bookings are unchanged." onRetry={onRetry} /> : loading ? <div role="status" aria-label="Loading sessions"><Skeleton className="h-28 rounded-2xl" /></div> : relevant.length ? <div className="space-y-2.5">{relevant.map(session => <ClubSessionCard key={session.id} session={session} timeZone={timeZone} onPick={onPick} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-4"><p className="text-sm font-medium">More play is on the way</p><p className="mt-1 text-xs leading-5 text-muted-foreground">No upcoming sessions are listed. Check the schedule for another day.</p><button type="button" className="club-text-action mt-1 justify-start px-0" onClick={onSchedule}>View schedule<ChevronRight className="h-3.5 w-3.5" /></button></div>}
+      <ClubSectionTitle title="Coming up" onClick={onSchedule} label="View full schedule" showLabel />
+      {error ? <VenueLoadState title="Schedule unavailable" description="We couldn’t confirm the latest sessions. Your bookings are unchanged." onRetry={onRetry} /> : loading ? <div role="status" aria-label="Loading sessions"><Skeleton className="h-28 rounded-2xl" /></div> : relevant.length ? <div className="space-y-2.5">{relevant.map(session => <ClubSessionCard key={session.id} session={session} timeZone={timeZone} onPick={onPick} />)}</div> : <div className="flex min-h-[128px] flex-col justify-center rounded-2xl bg-card p-4"><p className="text-sm font-medium">Nothing scheduled yet</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Check another day or see the full schedule.</p><button type="button" className="club-text-action mt-1 justify-start px-0" onClick={onSchedule}>View schedule<ChevronRight className="h-3.5 w-3.5" /></button></div>}
     </section>
     <section className="space-y-3" aria-label="Ways to play">
       <h2 className="break-words text-[15px] font-semibold tracking-tight">Play at {name}</h2>
       <div className="grid grid-cols-2 gap-2.5">
         {hasBooking && <ClubPlayCard icon={LayoutGrid} title="Book a Court" detail="Private court time" action="View availability" onClick={onBook} />}
         <ClubPlayCard icon={Users} title="Open Play" detail="Find your next game" action="Browse sessions" onClick={onPlay} />
-        <ClubPlayCard icon={CalendarDays} title="Events & competition" detail="See what’s on the calendar" action="Browse events" onClick={onSchedule} wide={hasBooking} />
+        <ClubPlayCard icon={CalendarDays} title="Events & competition" detail="See what’s on the calendar" action="Browse events" onClick={onEvents ?? onSchedule} wide={hasBooking} />
       </div>
     </section>
     <section className="space-y-3" aria-label="Venue community">
@@ -52,8 +51,8 @@ export function VenueClubHome({ name, hasBooking, sessions, timeZone, loading, e
   </div>;
 }
 
-function ClubSectionTitle({ title, onClick, label }: { title: string; onClick: () => void; label: string }) {
-  return <div className="flex min-w-0 items-center justify-between gap-2"><h2 className="min-w-0 break-words text-[15px] font-semibold tracking-tight">{title}</h2><button type="button" onClick={onClick} aria-label={label} className="club-icon-button shrink-0"><ChevronRight className="h-4 w-4" /></button></div>;
+function ClubSectionTitle({ title, onClick, label, showLabel }: { title: string; onClick: () => void; label: string; showLabel?: boolean }) {
+  return <div className="flex min-w-0 items-center justify-between gap-2"><h2 className="min-w-0 break-words text-[15px] font-semibold tracking-tight">{title}</h2><button type="button" onClick={onClick} aria-label={label} className="club-text-action shrink-0">{showLabel && label}<ChevronRight className="h-4 w-4" /></button></div>;
 }
 
 function ClubPlayCard({ icon: Icon, title, detail, action, onClick, wide }: { icon: typeof Users; title: string; detail: string; action: string; onClick: () => void; wide?: boolean }) {
@@ -74,26 +73,30 @@ export function ClubSessionCard({ session, timeZone, onPick }: { session: ClubSe
   </button>;
 }
 
-export function VenueClubCommunityNav({ section, onPosts, onMembers, onChat }: { section: 'posts' | 'members'; onPosts: () => void; onMembers: () => void; onChat?: () => void }) {
-  return <div className="mb-4 flex flex-wrap gap-2" aria-label="Community sections">
-    <button type="button" aria-pressed={section === 'posts'} className="club-community-button" onClick={onPosts}>Updates</button>
-    <button type="button" aria-pressed={section === 'members'} className="club-community-button" onClick={onMembers}><Users className="h-4 w-4" />Players</button>
-    {onChat && <button type="button" className="club-community-button" onClick={onChat}><MessageCircle className="h-4 w-4" />Chat</button>}
+export function VenueClubCommunityNav({ section, onPosts, onMembers, onChat }: { section: 'posts' | 'members' | 'chat'; onPosts: () => void; onMembers: () => void; onChat?: () => void }) {
+  return <div className="mb-4 flex gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Community sections">
+    <button type="button" aria-pressed={section === 'posts'} className="club-community-button" onClick={onPosts}>Feed</button>
+    <button type="button" aria-pressed={section === 'members'} className="club-community-button" onClick={onMembers}>Players</button>
+    {onChat && <button type="button" aria-pressed={section === 'chat'} className="club-community-button" onClick={onChat}>Chat</button>}
   </div>;
 }
 
-export function VenueClubAbout({ name, description, city, state, hoursRaw, timeZone, phone, email, websiteUrl }: { name: string; description?: string | null; city?: string | null; state?: string | null; hoursRaw?: unknown; timeZone?: string | null; phone?: string | null; email?: string | null; websiteUrl?: string | null }) {
+export function VenueClubAbout({ name, description, city, state, hoursRaw, timeZone, phone, email, websiteUrl, amenities = [] }: { name: string; description?: string | null; city?: string | null; state?: string | null; hoursRaw?: unknown; timeZone?: string | null; phone?: string | null; email?: string | null; websiteUrl?: string | null; amenities?: string[] | null }) {
   const website = venueWebsiteLink(websiteUrl ?? null);
-  const days = (hoursRaw as { days?: Record<string, { open?: string; close?: string } | null> } | null)?.days;
-  return <section className="space-y-5" aria-label={`About ${name}`}>
-    <div><h2 className="break-words text-xl font-semibold">About {name}</h2>{(city || state) && <p className="mt-1 text-sm text-muted-foreground">{[city, state].filter(Boolean).join(', ')}</p>}{description && <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">{description}</p>}</div>
-    <div className="rounded-2xl border border-border/70 bg-card p-4"><h3 className="text-sm font-semibold">Opening hours</h3><p className="mt-1 break-words text-xs text-muted-foreground">{clubHoursStatus(hoursRaw, timeZone)}{timeZone ? ` · ${timeZone.replace(/_/g, ' ')}` : ''}</p>
-      {days && <dl className="mt-3 space-y-2 text-xs">{DAY_NAMES.map((label, index) => { const day = days[index]; const open = parseTime(day?.open), close = parseTime(day?.close); return <div key={label} className="flex justify-between gap-3"><dt>{label}</dt><dd className="text-muted-foreground">{day === null ? 'Closed' : open !== null && close !== null && close > open ? describeDay({ openMinutes: open, closeMinutes: close }) : 'Not listed'}</dd></div>; })}</dl>}
+  const hours = groupedVenueHours(hoursRaw);
+  return <section className="space-y-7" aria-label={'About ' + name}>
+    <div><h2 className="text-xl font-semibold">Venue info</h2><p className="mt-4 break-words text-lg font-semibold">{name}</p>{(city || state) && <p className="mt-1 text-sm text-muted-foreground">{[city, state].filter(Boolean).join(', ')}</p>}
+      <div className="mt-2 flex flex-wrap gap-x-4 text-sm">
+        {website && <a className="club-text-action justify-start" href={website} target="_blank" rel="noopener noreferrer">Website<ArrowUpRight className="h-4 w-4" /></a>}
+        {phone && <a className="club-text-action justify-start break-all" href={'tel:' + phone.replace(/[^\d+]/g, '')}>Call {phone}</a>}
+        {email && <a className="club-text-action justify-start break-all" href={'mailto:' + email}>Email venue</a>}
+      </div>
     </div>
-    {(phone || email || website) && <div className="grid gap-1 text-sm">
-      {phone && <a className="club-text-action justify-start break-all" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>{phone}</a>}
-      {email && <a className="club-text-action justify-start break-all" href={`mailto:${email}`}>{email}</a>}
-      {website && <a className="club-text-action justify-start" href={website} target="_blank" rel="noopener noreferrer">Visit venue website<ArrowUpRight className="h-4 w-4" /></a>}
-    </div>}
+    {description && <div><h3 className="text-sm font-semibold">About</h3><p className="mt-2 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">{description}</p></div>}
+    <div className="border-b border-border pb-6"><h3 className="text-sm font-semibold">Hours</h3><p className="mt-1 text-xs text-muted-foreground">{clubHoursStatus(hoursRaw, timeZone)}</p>
+      {hours.length > 0 && <dl className="mt-4 space-y-3 text-sm">{hours.map(row => <div key={row.days} className="flex flex-wrap justify-between gap-2"><dt>{row.days}</dt><dd className="text-muted-foreground">{row.hours}</dd></div>)}</dl>}
+      {timeZone && <p className="mt-3 text-xs text-muted-foreground">Times in {timeZone.replace(/_/g, ' ')}</p>}
+    </div>
+    {!!amenities?.length && <div className="border-b border-border pb-6"><h3 className="text-sm font-semibold">Venue amenities</h3><ul className="mt-3 grid grid-cols-2 gap-3 text-sm text-muted-foreground">{amenities.filter(Boolean).map(amenity => <li key={amenity}>{amenity.replace(/_/g, ' ')}</li>)}</ul></div>}
   </section>;
 }

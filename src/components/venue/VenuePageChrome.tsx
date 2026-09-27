@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { venueTabService } from '@/lib/venues/servicePresentation';
 import {
   ArrowLeft,
@@ -49,6 +49,8 @@ interface VenueMastheadProps {
   venueName: string;
   tagline?: string | null;
   logoUrl?: string | null;
+  logoBackgroundColor?: string | null;
+  secondaryColor?: string | null;
   coverImageUrl?: string | null;
   logoImageFit?: 'cover' | 'contain' | null;
   coverImageFit?: 'cover' | 'contain' | null;
@@ -75,6 +77,8 @@ export function VenueMasthead({
   venueName,
   tagline,
   logoUrl,
+  logoBackgroundColor,
+  secondaryColor,
   coverImageUrl,
   logoImageFit = 'contain',
   coverImageFit = 'cover',
@@ -98,7 +102,7 @@ export function VenueMasthead({
   const fullPhoto = !!coverImageUrl && coverImageFit === 'contain';
   const identity = (
           <div className="relative flex min-w-0 items-center gap-3 bg-card px-4 py-3 sm:px-6" data-testid="venue-desktop-identity">
-            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/70" />
+            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} logoBackgroundColor={logoBackgroundColor} secondaryColor={secondaryColor} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/70" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -128,7 +132,7 @@ export function VenueMasthead({
                 'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 100%)',
             // A deliberate dark matte keeps `contain` covers looking finished
             // instead of exposing the page background around the image.
-            backgroundColor: '#171a1f',
+            backgroundColor: 'var(--venue-header, #171a1f)',
           }}
         >
           <VenueCoverImage src={coverImageUrl} fit={coverImageFit} focalPoint={coverFocalPoint} alt={`${venueName} banner`} />
@@ -219,7 +223,7 @@ export function VenueMasthead({
 }
 
 /** Stable venue sections; chat keeps Community selected and booking retains a return path. */
-export function VenueMobileTabs({ activeTab, hasCourts = false, onOpenCommunity }: { hasCourts?: boolean; chatEnabled?: boolean; activeTab?: VenuePageTab; onOpenCommunity?: () => void }) {
+export function VenueMobileTabs({ activeTab, onOpenCommunity, onOpenPlay }: { hasCourts?: boolean; chatEnabled?: boolean; activeTab?: VenuePageTab; onOpenCommunity?: () => void; onOpenPlay?: () => void }) {
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const strip = scroll.current;
@@ -230,13 +234,13 @@ export function VenueMobileTabs({ activeTab, hasCourts = false, onOpenCommunity 
     else if (item.left < frame.left) strip.scrollLeft -= frame.left - item.left + 16;
   }, [activeTab]);
   const sections = [
-    ['home', 'Overview'], ...(hasCourts ? [['book', 'Book']] : []), ['play', 'Play'],
+    ['home', 'Overview'], [activeTab === 'book' ? 'book' : 'play', 'Play'],
     [activeTab === 'chat' ? 'chat' : 'feed', 'Community'], ['events', 'Events'], ['more', 'About'],
   ];
   return <div className="shrink-0 border-b border-border/70 bg-background lg:hidden" data-testid="venue-mobile-nav">
-    <div ref={scroll} className="club-mobile-tabs px-4">
-      <TabsList aria-label="Venue sections" className="flex h-auto w-max min-w-full justify-between gap-4 rounded-none bg-transparent p-0">
-        {sections.map(([value,label]) => <TabsTrigger key={label} value={value} className="club-tab" onClick={value === 'chat' ? onOpenCommunity : undefined}>{label}</TabsTrigger>)}
+    <div ref={scroll} className="club-mobile-tabs px-5">
+      <TabsList aria-label="Venue sections" className="flex h-auto w-max min-w-full justify-between gap-3 rounded-none bg-transparent p-0">
+        {sections.map(([value,label]) => <TabsTrigger key={label} value={value} className="club-tab" onClick={value === 'chat' ? onOpenCommunity : value === 'book' ? onOpenPlay : undefined}>{label}</TabsTrigger>)}
       </TabsList>
     </div>
   </div>;
@@ -244,13 +248,13 @@ export function VenueMobileTabs({ activeTab, hasCourts = false, onOpenCommunity 
 
 /** Desktop navigation uses the left edge for orientation instead of another top bar. */
 export function VenueDesktopNavigation({
-  hasCourts,
-  chatEnabled = true,
+  activeTab,
   isOperator,
   isAdmin,
   onOperations,
   onSettings,
 }: {
+  activeTab?: VenuePageTab;
   hasCourts: boolean;
   chatEnabled?: boolean;
   isOperator: boolean;
@@ -266,11 +270,9 @@ export function VenueDesktopNavigation({
             Plan your visit
           </p>
           <TabsList aria-label="Venue sections" className="flex h-auto w-full flex-col items-stretch gap-1 rounded-none bg-transparent p-0">
-            {NAV_ITEMS.filter(
-              (item) => (!item.needsCourts || hasCourts) && (!item.needsChat || chatEnabled),
-            ).map((item) => (
-              <Fragment key={item.value}>{item.value === 'feed' && <span className="mb-1 mt-3 border-t border-border/60 px-2.5 pt-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Community</span>}<DesktopTab {...item} /></Fragment>
-            ))}
+            {NAV_ITEMS.filter(item => item.value !== 'book' && item.value !== 'chat').sort((a,b) => ['home','play','feed','events','more'].indexOf(a.value)-['home','play','feed','events','more'].indexOf(b.value)).map(item =>
+              <DesktopTab key={item.value} {...item} value={item.value === 'play' && activeTab === 'book' ? 'book' : item.value === 'feed' && activeTab === 'chat' ? 'chat' : item.value} label={item.value === 'home' ? 'Overview' : item.value === 'play' ? 'Play' : item.value === 'feed' ? 'Community' : item.value === 'events' ? 'Events' : 'About'} />
+            )}
           </TabsList>
         </div>
 
@@ -398,7 +400,7 @@ export function VenueDesktopRail({
               onClick={() => onPickProgram ? onPickProgram(next.id) : onOpenTab('play')}
               className="flex w-full items-center gap-3 border-t border-border/70 bg-muted/25 px-5 py-3.5 text-left transition-colors hover:bg-muted/45"
             >
-              <CalendarClock className="h-4 w-4 shrink-0 text-primary" style={accent ? { color: accent } : undefined} />
+              <CalendarClock className="venue-service-label h-4 w-4 shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Next up</span>
                 <span className="mt-0.5 block line-clamp-2 break-words text-sm font-semibold">{next.title}</span>
@@ -458,7 +460,7 @@ function MastheadStat({
 }) {
   return (
     <div className="flex min-w-0 items-center justify-center gap-1.5 border-l border-border/70 px-2 first:border-l-0 lg:shrink-0 lg:justify-start lg:gap-2 lg:px-5 lg:first:pl-0">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" style={accent ? { color: accent } : undefined} />
+      <Icon className="venue-service-label h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 truncate text-[10px] font-semibold text-foreground/80 sm:text-xs lg:hidden" title={label}>
         {mobileLabel ?? label}
       </span>

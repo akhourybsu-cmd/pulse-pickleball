@@ -1,12 +1,9 @@
 /**
  * Venue chrome.
  *
- * A venue community should look like the venue and still read as Pulse. The
- * community header is a fixed piece of art — an ink gradient, a gold hairline,
- * an ambient bloom and a court watermark — so branding replaces the two colours
- * that carry identity (the band and the accent) and leaves the composition
- * alone. That keeps every venue recognisably the same product rather than
- * handing each one a blank canvas.
+ * Header artwork uses secondary for its band and accent for its highlights.
+ * Existing venues without an accent keep their primary-color highlights.
+ * The wider semantic palette for pages, controls and logos lives in palette.ts.
  *
  * Colours arrive from a free-text column an organizer typed into, so nothing
  * here trusts its input: an unparseable colour yields no chrome and the caller
@@ -16,6 +13,11 @@
 export interface VenueBrand {
   primary_color?: string | null;
   secondary_color?: string | null;
+  accent_color?: string | null;
+  background_color?: string | null;
+  surface_color?: string | null;
+  text_color?: string | null;
+  logo_background_color?: string | null;
 }
 
 export interface VenueChrome {
@@ -74,7 +76,7 @@ export function withAlpha(hex: string, alpha: number): string {
 export function venueChrome(venue: VenueBrand | null | undefined): VenueChrome | null {
   if (!venue) return null;
 
-  const primary = normalizeHex(venue.primary_color);
+  const primary = normalizeHex(venue.accent_color) ?? normalizeHex(venue.primary_color);
   const secondary = normalizeHex(venue.secondary_color);
 
   // The band comes from the secondary colour and the accent from the primary.

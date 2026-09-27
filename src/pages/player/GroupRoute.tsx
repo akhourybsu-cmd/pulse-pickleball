@@ -1,3 +1,4 @@
+import { VenueTheme } from '@/components/venue/VenueTheme';
 import { lazy, Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,16 +50,17 @@ export default function GroupRoute() {
   const facilityShell = isVenue && (modules.booking || modules.facility) && !communityView;
   const page = facilityShell ? <VenueCommunity key={groupId} /> : <VenueStaffProvider venueId={isVenue ? group?.venue_id : null} venueName={group?.venue?.name} accent={group?.venue?.primary_color}><GroupDetail key={groupId} /></VenueStaffProvider>;
 
-  if (isVenue) return <VenueEntrance key={groupId} identity={{
+  if (isVenue) return <VenueTheme brand={group?.venue}><VenueEntrance key={groupId} identity={{
     name: group?.venue?.name || group?.name || 'Your venue',
     logoUrl: group?.venue?.logo_url || group?.icon_url,
     logoShape: group?.venue?.logo_shape,
     logoImageFit: group?.venue?.logo_image_fit,
     primaryColor: group?.venue?.primary_color,
     secondaryColor: group?.venue?.secondary_color,
+    logoBackgroundColor: group?.venue?.logo_background_color,
   }} pending={modules.loading && !communityView} bypass={moduleError}>
     {moduleError ? moduleFailure : page}
-  </VenueEntrance>;
+  </VenueEntrance></VenueTheme>;
 
   return (
     <Suspense fallback={<div className="p-4"><Skeleton className="h-64 w-full rounded-xl" /></div>}>

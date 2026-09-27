@@ -6,6 +6,7 @@ import { dayBounds, useVenueDay } from '@/hooks/useVenueDay';
 import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
 import { fetchVenueCourts, refreshVenueSettings, removeVenueCourt, saveVenueHours, updateVenueCourt } from '@/lib/venues/settings';
 import { defaultVenueHours } from '@/lib/venues/hours';
+import { fetchVenueOccasions, useVenueEvents } from '@/hooks/useVenueEvents';
 import { fetchUpcomingVenuePrograms, fetchVenueProgram, useVenuePrograms } from '@/hooks/useVenuePrograms';
 import { fetchVenueAdminCounts } from '@/lib/venues/adminOverview';
 import { listVenueApplications } from '@/lib/venues/venueApplications';
@@ -293,5 +294,33 @@ describe('venue settings persistence', () => {
     for (const queryKey of [['venue-day', 'venue-one'], ['venue-courts-settings', 'venue-one'], ['venue-admin-counts', 'venue-one'], ['group-detail']]) {
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey });
     }
+  });
+});
+
+describe('venue occasion loading', () => {
+  it('queries future or live occasions at this venue and active leagues linked to this community', async () => {
+    state.responses.group_events = { data: [{ id: 'social', title: 'Social', description: null, event_format: 'social', start_time: '2099-10-10T18:00Z', end_time: null }], error: null };
+    state.responses.leagues = { data: [{ id: 'league', name: 'Doubles', description: null }], error: null };
+    const rows = await fetchVenueOccasions('venue-one', 'group-one');
+    expect(rows).toMatchObject([{ kind: 'social', programId: 'social' }, { kind: 'leagues', leagueId: 'league', start: null }]);
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'eq', args: ['venue_id', 'venue-one'] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'is', args: ['parent_event_id', null] });
+    expect(state.calls).toContainEqual({ table: 'group_events', method: 'in', args: ['event_format', ['round_robin', 'social', 'other']] });
+    expect(state.calls).toContainEqual({ table: 'leagues', method: 'eq', args: ['community_id', 'group-one'] });
+    expect(state.calls).toContainEqual({ table: 'leagues', method: 'eq', args: ['status', 'active'] });
+    expect(state.calls.some(call => call.table === 'tournaments_events')).toBe(false);
+  });
+  it.each(['group_events', 'leagues'])('surfaces a %s read failure instead of showing a false empty list', async table => {
+    state.responses[table] = { data: null, error: { message: 'Unavailable' } };
+    await expect(fetchVenueOccasions('venue-one', 'group-one')).rejects.toMatchObject({ message: 'Unavailable' });
+  });
+  it('loads only while Events is active and keeps viewer caches separate', () => {
+    const capture = (enabled: boolean) => {
+      renderToStaticMarkup(createElement(() => { useVenueEvents('venue-one', 'group-one', enabled); return null; }));
+      return state.queries.at(-1)!;
+    };
+    expect(capture(true)).toMatchObject({ enabled: true, queryKey: ['venue-occasions', 'venue-one', 'group-one', 'viewer-one'] });
+    expect(capture(false).enabled).toBe(false);
+    state.user = null; expect(capture(true).enabled).toBe(false);
   });
 });

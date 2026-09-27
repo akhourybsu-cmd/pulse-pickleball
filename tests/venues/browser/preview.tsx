@@ -1,3 +1,5 @@
+import { VenueMemoryPreview } from './memory-preview';
+import { VenueTheme } from '../../../src/components/venue/VenueTheme';
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
@@ -40,4 +42,4 @@ function ModulesPreview() {
     {activeTab === 'modules' ? <VenueModulesPanel venueId="local-sample" venueName="Pickleball Palace" verified canVerify /> : <div className="space-y-4">{Array.from({length:12},(_,index)=><p key={index} className="rounded-xl border p-4">Local management preview · Task {index+1}</p>)}</div>}
   </VenueAdminShell>;
 }
-createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}>{params.has('images') ? <ImagesPreview /> : params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</QueryClientProvider></MemoryRouter>);
+createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={query}><VenueTheme dark={params.has('dark')} brand={params.has('palette') ? {primary_color:'#166f63',secondary_color:'#143c37',accent_color:'#a86d28',background_color:'#edf5f1',surface_color:'#ffffff',text_color:'#193b34',logo_background_color:'#ffffff'} : undefined}>{params.has('memory') ? <VenueMemoryPreview /> : params.has('images') ? <ImagesPreview /> : params.has('modules') ? <ModulesPreview /> : params.has('surface') ? <VenueDesktopPagePreview /> : params.has('entrance') ? <EntrancePreview /> : <Preview />}</VenueTheme></QueryClientProvider></MemoryRouter>);

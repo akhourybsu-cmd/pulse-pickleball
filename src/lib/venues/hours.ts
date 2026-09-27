@@ -211,3 +211,20 @@ export function describeDay(day: DayHours | null): string {
 
   return `${label(day.openMinutes)} – ${label(day.closeMinutes)}`;
 }
+
+/** Group adjacent saved schedules for display without inventing missing hours. */
+export function groupedVenueHours(raw: unknown): Array<{ days: string; hours: string }> {
+  const source = raw && typeof raw === 'object' ? (raw as { days?: Record<string, unknown> }).days : null;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
+  const runs: Array<{ first: string; last: string; hours: string }> = [];
+  for (const index of [1, 2, 3, 4, 5, 6, 0]) {
+    const entry = source[index] as { open?: unknown; close?: unknown } | null | undefined;
+    const open = parseTime(entry?.open), close = parseTime(entry?.close);
+    const hours = entry === null ? 'Closed' : open !== null && close !== null && close > open
+      ? describeDay({ openMinutes: open, closeMinutes: close }) : 'Not listed';
+    const previous = runs.at(-1);
+    if (previous?.hours === hours) previous.last = DAY_NAMES[index];
+    else runs.push({ first: DAY_NAMES[index], last: DAY_NAMES[index], hours });
+  }
+  return runs.map(({ first, last, hours }) => ({ days: first === last ? first : `${first}–${last}`, hours }));
+}

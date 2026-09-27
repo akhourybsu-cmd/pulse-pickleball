@@ -1,3 +1,4 @@
+import { VenueTheme } from '@/components/venue/VenueTheme';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -130,7 +131,7 @@ export default function VenueOps() {
   };
 
   return (
-    <>
+    <VenueTheme brand={venue}>
       <OpsDashboard
         timeZone={venue?.timezone}
         venueName={venue?.name ?? group.name}
@@ -203,6 +204,8 @@ export default function VenueOps() {
           />
 
           <BookCourtDialog
+            identity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, primaryColor: venue?.primary_color, secondaryColor: venue?.secondary_color, logoBackgroundColor: venue?.logo_background_color }}
+            onViewBookings={() => navigate('/player/bookings')}
             timeZone={venue?.timezone}
             open={!!bookCourtId && !!bookStart}
             onOpenChange={(o) => {
@@ -246,6 +249,6 @@ export default function VenueOps() {
         }}
         onChanged={refresh}
       />
-    </>
+    </VenueTheme>
   );
 }

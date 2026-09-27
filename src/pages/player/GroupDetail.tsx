@@ -316,14 +316,15 @@ export default function GroupDetail() {
           staying on-brand. Deliberately dark in both themes (a hero band).
           A faint pickleball-court watermark adds depth without noise. */}
       <div
-        className="venue-community-toolbar relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
+        className={cn("venue-community-toolbar relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]", isVenueGroup && "venue-brand-chrome")}
         style={{
           // PULSE ink band — same ink ramp as the rest of the app chrome
           // (hsl 220 10%), finished with a gold hairline. A venue community
           // swaps the two colours that carry identity — the band and the
           // hairline — and keeps the composition, so every venue still reads
           // as the same product.
-          backgroundImage:
+          backgroundColor: isVenueGroup ? 'var(--venue-header)' : undefined,
+          backgroundImage: isVenueGroup ? undefined :
             chrome?.backgroundImage ??
             'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 60%, hsl(220 12% 8%) 100%)',
           borderBottom: `1px solid ${chrome?.border ?? 'hsl(var(--primary) / 0.28)'}`,
@@ -372,7 +373,7 @@ export default function GroupDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} className="h-8 w-8 text-[32px] ring-1 ring-white/20 lg:h-9 lg:w-9 lg:text-[36px]" />}
+          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} logoBackgroundColor={group.venue?.logo_background_color} className="h-8 w-8 text-[32px] ring-1 ring-white/20 lg:h-9 lg:w-9 lg:text-[36px]" />}
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">

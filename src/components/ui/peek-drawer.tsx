@@ -1,3 +1,4 @@
+import { useScopedTheme } from './scoped-theme';
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -34,36 +35,41 @@ interface PeekDrawerContentProps
 const PeekDrawerContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   PeekDrawerContentProps
->(({ className, children, hideCloseButton = false, ...props }, ref) => (
-  <PeekDrawerPortal>
-    <PeekDrawerOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        // Peek drawer - partial width with rounded left corners
-        "fixed inset-y-0 right-0 z-50 flex h-full w-[88%] max-w-xl flex-col",
-        // Premium shape - rounded left corners only
-        "rounded-l-2xl",
-        // Background and shadow for depth
-        "bg-background shadow-2xl",
-        // Border for definition
-        "border-l border-border/50",
-        // Smooth animations
-        "data-[state=open]:animate-peek-slide-in data-[state=closed]:animate-peek-slide-out",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      {!hideCloseButton && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 bg-background/80 backdrop-blur-sm ring-offset-background transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-10">
-          <X className="h-5 w-5" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
-    </DialogPrimitive.Content>
-  </PeekDrawerPortal>
-));
+>(({ className, children, hideCloseButton = false, ...props }, ref) => {
+  const scopedTheme = useScopedTheme();
+  return (
+    <PeekDrawerPortal>
+      <PeekDrawerOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          scopedTheme?.className,
+          // Peek drawer - partial width with rounded left corners
+          "fixed inset-y-0 right-0 z-50 flex h-full w-[88%] max-w-xl flex-col",
+          // Premium shape - rounded left corners only
+          "rounded-l-2xl",
+          // Background and shadow for depth
+          "bg-background shadow-2xl",
+          // Border for definition
+          "border-l border-border/50",
+          // Smooth animations
+          "data-[state=open]:animate-peek-slide-in data-[state=closed]:animate-peek-slide-out",
+          className
+        )}
+        {...props}
+        style={{ ...scopedTheme?.style, ...props.style }}
+      >
+        {children}
+        {!hideCloseButton && (
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 bg-background/80 backdrop-blur-sm ring-offset-background transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-10">
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </PeekDrawerPortal>
+  );
+});
 PeekDrawerContent.displayName = DialogPrimitive.Content.displayName;
 
 const PeekDrawerHeader = ({

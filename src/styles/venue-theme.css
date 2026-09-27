@@ -1,0 +1,62 @@
+/* A venue owns its palette locally. Safety/status colors keep their meaning. */
+.venue-theme {
+  --venue-link: var(--venue-page-link);
+  --venue-service: var(--venue-page-highlight);
+  color: hsl(var(--foreground));
+}
+.venue-theme :is(.bg-card, .bg-popover) {
+  --foreground: var(--venue-card-ink);
+  --muted-foreground: var(--venue-card-muted);
+  --venue-link: var(--venue-card-link);
+  --venue-service: var(--venue-card-highlight);
+  color: hsl(var(--foreground));
+}
+.venue-theme .bg-background {
+  --foreground: var(--venue-page-ink);
+  --muted-foreground: var(--venue-page-muted);
+  --venue-link: var(--venue-page-link);
+  --venue-service: var(--venue-page-highlight);
+  color: hsl(var(--foreground));
+}
+.venue-theme .text-primary { color: hsl(var(--venue-link)); }
+.venue-theme [data-venue-service] {
+  --venue-service: var(--venue-page-highlight);
+  --venue-service-contrast: var(--venue-on-action);
+}
+.venue-theme .bg-card [data-venue-service], .venue-theme .bg-card[data-venue-service] {
+  --venue-service: var(--venue-card-highlight);
+}
+.venue-theme .venue-service-solid:is(button, a), .venue-theme .venue-service-solid:is(button, a):hover {
+  background: hsl(var(--venue-action)); color: hsl(var(--venue-on-action));
+}
+.venue-theme .club-tab::after { background: hsl(var(--venue-highlight)); }
+.venue-theme .club-community-button[aria-pressed="true"] {
+  background: hsl(var(--card)); color: hsl(var(--card-foreground)); border-color: transparent;
+}
+.venue-theme .venue-app-bar,
+.venue-theme .venue-brand-chrome,
+.venue-theme .venue-palette-preview-header,
+.venue-theme .venue-mobile-shell [data-testid="venue-mobile-nav"],
+.venue-theme .venue-ops-toolbar {
+  background: var(--venue-header); color: var(--venue-on-header); border-color: color-mix(in srgb, var(--venue-on-header) 18%, transparent);
+}
+.venue-theme .venue-brand-chrome [class*="text-white"] { color: var(--venue-on-header); }
+.venue-theme .venue-brand-chrome [class*="border-white"] { border-color: color-mix(in srgb, var(--venue-on-header) 18%, transparent); }
+.venue-theme .venue-mobile-shell .club-mobile-tabs .club-tab { color: var(--venue-on-header); opacity: .72; }
+.venue-theme .venue-mobile-shell .club-mobile-tabs .club-tab[data-state="active"] { color: var(--venue-on-header); opacity: 1; }
+.venue-theme .venue-mobile-shell .club-tab::after { background: var(--venue-header-highlight); }
+.venue-theme .venue-app-icon:focus-visible, .venue-theme .venue-mobile-shell .club-tab:focus-visible { outline-color: var(--venue-on-header); }
+.venue-theme .venue-app-icon:hover { background: color-mix(in srgb, var(--venue-on-header) 10%, transparent); }
+.venue-theme .venue-ops-toolbar .text-muted-foreground { color: var(--venue-on-header); opacity: .75; }
+@media (max-width:1023px) {
+  .venue-theme .venue-community-frame .venue-community-toolbar { background: var(--venue-header) !important; color: var(--venue-on-header); }
+  .venue-theme .venue-community-frame .venue-community-nav { background: var(--venue-header); color: var(--venue-on-header); }
+  .venue-theme .venue-community-frame .venue-community-nav > .grid button { color: var(--venue-on-header); opacity: .72; }
+  .venue-theme .venue-community-frame .venue-community-nav > .grid button[aria-current="page"] { color: var(--venue-on-header) !important; opacity: 1; }
+}
+
+.venue-theme .venue-page-main :is(.bg-card, .venue-interactive) { box-shadow: none; }
+.venue-theme .venue-page-main .venue-interactive:hover { transform: none; }
+.venue-theme button.border-2, .venue-theme button.bg-secondary { border: 1px solid hsl(var(--border)); }
+
+.venue-theme .venue-page-main button { min-height: 44px; min-width: 44px; }
