@@ -65,6 +65,7 @@ beforeAll(async () => {
   await db.query("INSERT INTO venue_courts VALUES($1,$2,'Center court',1,'indoor','hard',true,'PRIVATE_NOTE'),($3,$2,'Retired court',2,'outdoor','hard',false,NULL)", [id(10), id(1), id(11)]);
   await db.exec(readFileSync('supabase/migrations/20260928100000_public_community_pages.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260928110000_venue_address_integrations.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260928120000_venue_address_mfa_policy.sql', 'utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
@@ -104,6 +105,24 @@ describe('anonymous community projection', () => {
 });
 
 describe('venue integration permissions and lifecycle', () => {
+  it('retains the required restrictive MFA policy and closed client grants', async () => {
+    const { rows } = await db.query(`
+      SELECT c.relrowsecurity, p.polpermissive, p.polcmd,
+        p.polroles = ARRAY[(SELECT oid FROM pg_roles WHERE rolname = 'authenticated')] AS authenticated_only,
+        pg_get_expr(p.polqual, p.polrelid) AS using_expression,
+        pg_get_expr(p.polwithcheck, p.polrelid) AS check_expression
+      FROM pg_class c JOIN pg_policy p ON p.polrelid = c.oid
+      WHERE c.oid = 'public.venue_address_connections'::regclass
+        AND p.polname = 'pulse_required_mfa'
+    `);
+    expect(rows).toEqual([expect.objectContaining({
+      relrowsecurity: true, polpermissive: false, polcmd: '*', authenticated_only: true,
+      using_expression: expect.stringContaining('pulse_has_required_mfa()'),
+      check_expression: expect.stringContaining('pulse_has_required_mfa()'),
+    })]);
+    await expect(guest('SELECT * FROM venue_address_connections')).rejects.toThrow(/permission denied/);
+    await expect(manager(1, 'SELECT * FROM venue_address_connections')).rejects.toThrow(/permission denied/);
+  });
   it('rejects guests, another venue owner, unverified MFA and anonymous accounts', async () => {
     await expect(guest('SELECT get_venue_address_setup($1)', [id(1)])).rejects.toThrow(/permission denied/);
     await expect(manager(2,'SELECT get_venue_address_setup($1)',[id(1)])).rejects.toThrow(/manager access/);
