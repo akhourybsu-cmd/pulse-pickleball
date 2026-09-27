@@ -19,6 +19,11 @@ export const community = {
 };
 export const supabase = {
   rpc: (name: string, args?: Record<string, unknown>) => {
+    if (name === 'find_group_by_invite_code' || name === 'join_group_by_code') {
+      const data = name === 'find_group_by_invite_code' ? [{ ...community, name: 'Rally House Sports', is_expired: args?.p_code === 'EXPIRED' }] : { status: args?.p_code === 'PENDING' ? 'pending' : 'joined', group_id: community.id };
+      const result = { data: args?.p_code === 'REVOKED' ? [] : data, error: null };
+      return Object.assign(Promise.resolve(result), { abortSignal: () => Promise.resolve(result) });
+    }
     if (['get_venue_address_setup','check_venue_address','request_venue_address','list_venue_address_requests'].includes(name)) {
       const setup=JSON.parse(sessionStorage.getItem('venue-address-preview') || '{"venue_slug":"pickleball-palace","verified":true,"active":true,"public_ready":true,"private_sample":false,"connection":null}');
       let data=setup;

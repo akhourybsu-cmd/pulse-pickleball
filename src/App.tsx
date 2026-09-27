@@ -394,9 +394,8 @@ const AppContent = () => {
               granted to anon. Path is kept identical so existing
               shared invite links keep working. Must be declared
               BEFORE the /player block so it wins the URL match. */}
-          <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
-
           <Route element={<PublicCommunityLayout />}>
+            <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
             <Route path="/player/community" element={<CommunityDirectoryRoute />} />
             <Route path="/player/community/group/:groupId" element={<CommunityDetailRoute />} />
             <Route path="/venues/:slug" element={<PublicVenueRoute />} />

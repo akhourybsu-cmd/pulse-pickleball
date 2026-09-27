@@ -9501,7 +9501,7 @@ export type Database = {
           description: string
           icon_url: string
           id: string
-          invite_code_expires_at: string
+            is_expired: boolean
           join_method: string
           member_count: number
           name: string

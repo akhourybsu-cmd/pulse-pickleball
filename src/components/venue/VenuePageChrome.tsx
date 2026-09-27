@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MessageSquare,
   Settings,
+  Share2,
   Ticket,
   Users,
 } from 'lucide-react';
@@ -70,6 +71,7 @@ interface VenueMastheadProps {
   onBack: () => void;
   onOperations: () => void;
   onSettings: () => void;
+  onShare?: () => void;
 }
 
 /** A shallow club cover and separate identity keep desktop activity above the fold. */
@@ -98,6 +100,7 @@ export function VenueMasthead({
   onBack,
   onOperations,
   onSettings,
+  onShare,
 }: VenueMastheadProps) {
   const fullPhoto = !!coverImageUrl && coverImageFit === 'contain';
   const identity = (
@@ -165,6 +168,7 @@ export function VenueMasthead({
             </Button>
 
             <div className="ml-auto flex items-center gap-2">
+              {onShare && <Button variant="ghost" className="h-11 gap-2 rounded-full border border-white/20 bg-[#081322]/70 text-white hover:bg-[#081322]/90 hover:text-white" aria-label={`Share ${venueName}`} onClick={onShare}><Share2 className="h-4 w-4" />Share</Button>}
               {isOperator && (
                 <Button
                   variant="ghost"

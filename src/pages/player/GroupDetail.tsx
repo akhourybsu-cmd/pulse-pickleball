@@ -27,6 +27,7 @@ import { GroupFiles } from '@/components/community/GroupFiles';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
 import { InviteModal } from '@/components/community/InviteModal';
+import { communityUrl } from '@/lib/communityShare';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
@@ -158,11 +159,11 @@ export default function GroupDetail() {
         toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
       }
       queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error joining group:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to join group',
+        description: error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Failed to join group',
         variant: 'destructive',
       });
     } finally {
@@ -175,7 +176,7 @@ export default function GroupDetail() {
     setQuickPostOpen(true);
   }, []);
 
-  const handleQuickPost = useCallback(async (data: any) => {
+  const handleQuickPost = useCallback(async (data: Parameters<typeof createPost>[0]) => {
     const result = await createPost(data);
     return !!result;
   }, [createPost]);
@@ -392,15 +393,15 @@ export default function GroupDetail() {
 
           {/* Right-side action cluster — white on the dark band. */}
           <div className="flex items-center gap-0.5 shrink-0 text-white/85">
-            {group.invite_code && (
+            {(group.invite_code || group.visibility === 'public') && (
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn('h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10', isVenueGroup && 'hidden lg:inline-flex')}
+                className="h-11 w-11 rounded-full text-white/85 hover:text-white hover:bg-white/10"
                 onClick={() => setInviteModalOpen(true)}
-                aria-label="Invite"
+                aria-label={`Share ${group.name}`}
               >
-                <UserPlus className="h-[18px] w-[18px]" />
+                <Share2 className="h-[18px] w-[18px]" />
               </Button>
             )}
 
@@ -438,7 +439,7 @@ export default function GroupDetail() {
                   <DropdownMenuItem className="min-h-11 lg:hidden" onClick={() => handleTabChange('schedule')}><Calendar className="mr-2 h-4 w-4" />Create event</DropdownMenuItem>
                   <DropdownMenuItem className="min-h-11 lg:hidden" onClick={() => openQuickPost('poll')}><MessageSquare className="mr-2 h-4 w-4" />Create poll</DropdownMenuItem>
                 </>}
-                {group.invite_code && (
+                {(group.invite_code || group.visibility === 'public') && (
                   <DropdownMenuItem onClick={() => setInviteModalOpen(true)}>
                     <Share2 className="h-4 w-4 mr-2" />
                     Share invite
@@ -683,7 +684,7 @@ export default function GroupDetail() {
                     Community
                   </div>
                   <div className="rounded-xl border border-border/40 bg-card divide-y divide-border/30 overflow-hidden">
-                    {group.invite_code && (
+                    {(group.invite_code || group.visibility === 'public') && (
                       <button
                         onClick={() => setInviteModalOpen(true)}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
@@ -714,6 +715,7 @@ export default function GroupDetail() {
         open={inviteModalOpen}
         onOpenChange={setInviteModalOpen}
         inviteCode={group.invite_code}
+        shareUrl={group.visibility === 'public' ? communityUrl(group.id) : undefined}
         groupName={group.name}
       />
 
