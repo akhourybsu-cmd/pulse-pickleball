@@ -1,13 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { configureVenueHosting } from './configure-venue-hosting.mjs';
+import { configureVenueHosting, HostingConfigurationError, hostingConfigurationFailure } from './configure-venue-hosting.mjs';
 
 const projectRef='rqfqwavhtfwwtmfjnxkx';
 const accessToken='sbp_fixture';
 const { privateKey }=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
 const account={type:'service_account',project_id:'pulse-pickleball-c60e1',client_email:'fixture@example.test',private_key:privateKey};
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status});
+test('reports actionable curated configuration failures without logging raw errors',()=>{
+  assert.equal(hostingConfigurationFailure(new HostingConfigurationError('Safe HTTP 403 message')),'Safe HTTP 403 message');
+  assert.ok(!hostingConfigurationFailure(new SyntaxError('private-key-response')).includes('private-key-response'));
+});
 test('preserves an existing integration secret without needing or overwriting the deployment key',async()=>{
   let calls=0;
   const result=await configureVenueHosting({accessToken,projectRef,fetchImpl:async()=>{calls++;return response([{name:'FIREBASE_HOSTING_SERVICE_ACCOUNT_JSON'}]);}});

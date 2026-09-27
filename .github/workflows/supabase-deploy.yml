@@ -124,12 +124,22 @@ jobs:
           supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Configure venue hosting integration
+        id: venue_hosting
+        # Address requests can be queued before provider setup. A missing
+        # optional provider credential must not block public pages or the app.
+        continue-on-error: true
         if: ${{ steps.changes.outputs.deploy_functions == 'true' && (github.event_name == 'push' || inputs.migration_mode == 'apply') }}
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1 }}
         run: |
           node scripts/check-production-release.mjs
           node scripts/configure-venue-hosting.mjs
+
+      - name: Report pending venue hosting setup
+        if: ${{ steps.venue_hosting.outcome == 'failure' }}
+        run: |
+          echo "::warning::Venue address requests are available, but automatic hosting setup still needs platform credential configuration. Addresses remain pending until verified."
+          echo "Venue hosting credential setup needs attention. Check the Configure venue hosting integration step; no address has been marked connected by this deployment." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify deployed assessment backend
         if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
