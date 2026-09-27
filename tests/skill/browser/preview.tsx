@@ -14,6 +14,8 @@ import { AuthStateProvider } from '../../../src/hooks/useAuthState';
 import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa, setPreviewStall, type PreviewStall } from './stub';
 import '../../../src/index.css';
 import '../../../src/components/homepage/marketing.css';
+import '../../marketing/browser/capture.css';
+if (new URLSearchParams(window.location.search).has('capture')) document.documentElement.classList.add('product-capture');
 function RememberRoute() { const loc = useLocation(); useEffect(() => { localStorage.setItem('skill-preview-route', loc.pathname + loc.search); }, [loc]); return null; }
 export default function Preview() {
   const capture = new URLSearchParams(window.location.search).has('capture');

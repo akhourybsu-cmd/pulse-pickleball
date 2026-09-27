@@ -85,7 +85,7 @@ describe("public homepage", () => {
     const html = render(<PublicHomepage />);
     expect(html).not.toContain('src="/images/product/assessment.jpg"');
     expect(html).toContain('src="/images/product/profile.jpg"');
-    expect(html).toContain('1 of 3: Your PULSE');
+    expect(html).toContain('1 of 7: App home');
   });
   it("explains pricing, devices, ratings, and existing groups with native accessible disclosures", () => {
     const html = render(<PublicHomepage />);

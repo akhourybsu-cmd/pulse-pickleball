@@ -64,9 +64,9 @@
 .mkt-tour-copy { min-height: 76px; }
 .mkt-tour-copy h2 { color: #fff5de; font-size: clamp(19px, 2vw, 25px); line-height: 1.3; letter-spacing: -.025em; }
 .mkt-tour-copy p { color: #bdcdd2; font-size: 12px; line-height: 1.6; margin-top: 7px; }
-.mkt-screen-window { display: block; position: relative; width: 100%; max-width: 390px; margin-inline: auto; height: 392px; padding: 0; overflow: hidden; border-radius: 15px; border: 1px solid #ffffff30; background: #101a24; cursor: zoom-in; }
-.mkt-screen-window img { width: 100%; height: 100%; object-fit: cover; }
-.mkt-screen-expand { position: absolute; right: 10px; top: 10px; display: flex; align-items: center; gap: 6px; padding: 9px 11px; border: 1px solid #ffffff55; border-radius: 30px; background: #111c28ed; color: #fff6df; font-size: 10px; font-weight: 600; }
+.mkt-screen-window { display: block; position: relative; width: 100%; max-width: 260px; margin-inline: auto; height: auto; padding: 0; overflow: hidden; border-radius: 15px; border: 1px solid #ffffff30; background: #101a24; cursor: zoom-in; }
+.mkt-screen-window img { display: block; width: 100%; height: auto; aspect-ratio: 390 / 844; object-fit: contain; }
+.mkt-screen-expand { display: flex; align-items: center; justify-content: center; min-height: 40px; gap: 6px; padding: 9px 11px; border-top: 1px solid #ffffff30; background: #111c28ed; color: #fff6df; font-size: 10px; font-weight: 600; }
 .mkt-tour figcaption { margin-top: 9px; text-align: center; color: #a9bfc5; font-size: 10px; }
 .mkt-tour-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .mkt-tour-arrow { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border: 1px solid #ffffff30; border-radius: 50%; color: #fff3d6; }
@@ -74,7 +74,7 @@
 .mkt-tour-arrow:disabled { opacity: .3; cursor: default; }
 .mkt-tour-controls p { display: flex; align-items: center; gap: 12px; font-size: 12px; }
 .mkt-tour-controls p span { color: #a9bfc5; font-variant-numeric: tabular-nums; font-size: 10px; }
-.mkt-tour-pills { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; margin-top: 12px; }
+.mkt-tour-pills { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; margin-block: 0 16px; }
 .mkt-tour-pills button { min-height: 44px; padding: 7px 3px; border-radius: 8px; border: 1px solid #ffffff1c; font-size: 10px; color: #bfcfd2; line-height: 1.3; }
 .mkt-tour-pills button[aria-pressed=true] { color: #111c28; background: #8de6ce; border-color: #8de6ce; font-weight: 700; }
 .mkt-screen-dialog[role="dialog"] { width: min(calc(100% - 24px), 460px); max-width: 460px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; padding: 22px 16px 16px; border-radius: 18px; background: #16232e; color: #fff5df; }
@@ -144,10 +144,10 @@
   .mkt-nav-inner { min-height: 68px; }
   .mkt-hero-grid { gap: 30px; } .mkt-hero h1 { font-size: 50px; }
   .mkt-hero-description { font-size: 16px; }
-  .mkt-tour { padding: 14px; } .mkt-screen-window { height: 340px; }
+  .mkt-tour { padding: 14px; } .mkt-screen-window { max-width: 240px; }
   .mkt-tour-copy { min-height: 85px; } .mkt-tour-copy h2 { font-size: 20px; }
   .mkt-tour-hint { font-size: 9px; }
-  .mkt-tour-pills { grid-template-columns: repeat(2,minmax(0,1fr)); }
+
   .mkt-assessment-inner { grid-template-columns: auto 1fr; } .mkt-assessment-inner > .mkt-button { grid-column: 2; justify-self: start; }
   .mkt-organizer-grid { gap: 28px; } .mkt-faq-grid { grid-template-columns: 1fr; gap: 0; }
   .mkt-closing-grid { grid-template-columns: 1fr; gap: 28px; } .mkt-closing-actions { justify-self: start; }
@@ -167,8 +167,8 @@
   .mkt-tour { padding: 14px; border-radius: 20px; }
   .mkt-tour-top { margin-bottom: 12px; } .mkt-tour-copy { min-height: 73px; } .mkt-tour-copy h2 { font-size: 20px; }
   .mkt-tour-copy p { font-size: 11px; }
-  .mkt-screen-window { height: 310px; }
-  .mkt-tour-pills { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; margin-top: 8px; }
+  .mkt-screen-window { max-width: 260px; }
+  .mkt-tour-pills { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; margin-block: 0 14px; }
   .mkt-tour-pills button { font-size: 9px; }
   .mkt-tour-controls { margin-top: 7px; } .mkt-tour-controls p { font-size: 11px; }
   .mkt-section { padding-block: 42px; } .mkt-section-heading { margin-bottom: 22px; }
