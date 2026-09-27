@@ -106,7 +106,7 @@ const PendingMatches = () => {
         // row is a guest. Pre-fix, guests came through as "Removed
         // player" on the pending-matches list.
         const toParticipant = (row: any): Participant => ({
-          id: row.profiles?.id || row.player_id || row.guest_player_id,
+          id: row.player_id || row.guest?.linked_user_id || '',
           name: resolveParticipantName(row),
           avatar_url: row.profiles?.avatar_url || null,
           team: row.team,
@@ -268,6 +268,7 @@ const PendingMatches = () => {
                   team2Score={match.team2_score}
                   myTeam={match.my_team}
                   won={didTeamWin(match.my_team, match.team1_score, match.team2_score)}
+                  playerId={currentUserId}
                   playerName={match.me.name}
                   playerAvatarUrl={match.me.avatar_url}
                   partnerName={match.partner?.name || ""}

@@ -162,7 +162,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
           // The joined column here is aliased `player` (not `profiles`)
           // so shape it up before the shared resolver looks at it.
           const toParticipant = (row: ParticipantQueryRow): Participant => ({
-            id: row.player?.id || row.player_id || row.guest_player_id || '',
+            id: row.player_id || row.guest?.linked_user_id || '',
             name: resolveParticipantName({
               player_id: row.player_id,
               guest_player_id: row.guest_player_id,
@@ -280,6 +280,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
                       team2Score={match.team2_score}
                       myTeam={match.myTeam}
                       won={didTeamWin(match.myTeam, match.team1_score, match.team2_score)}
+                      playerId={userId}
                       playerName={me.name}
                       playerAvatarUrl={me.avatarUrl}
                       partnerName={match.partner?.name || ""}

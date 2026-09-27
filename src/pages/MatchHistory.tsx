@@ -1,14 +1,28 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
-import { getErrorMessage } from "@/lib/getErrorMessage";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History, Plus, Clock } from "lucide-react";
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  AlertTriangle,
+  Clock,
+  Flag,
+  History,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
+import { useMatchHistory } from "@/hooks/useMatchHistory";
+import { confirmMatchScore as saveMatchConfirmation } from "@/lib/confirmMatchScore";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import {
+  groupMatchHistory,
+  verificationStatus,
+  type HistoryMatch,
+} from "@/lib/matchHistory";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,1199 +40,699 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
-import { z } from "zod";
-import { toLocaleDateStringEST } from "@/lib/utils";
-import { Footer } from "@/components/Footer";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedControl";
 import { SocialHero } from "@/components/social/_shared";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
-import { RoundRobinMatchGroup, type RoundRobinGroup } from "@/components/matches/RoundRobinMatchGroup";
+import { RoundRobinMatchGroup } from "@/components/matches/RoundRobinMatchGroup";
 import { cn } from "@/lib/utils";
-import { resolvePlayerName, resolveParticipantName, didTeamWin } from "@/lib/matchDisplay";
 
+const issues = [
+  { value: "contest_result", label: "Incorrect score" },
+  { value: "wrong_court", label: "Incorrect location" },
+  { value: "wrong_opponent", label: "Incorrect players" },
+  { value: "didnt_play", label: "I did not play this match" },
+] as const;
 const issueSchema = z.object({
-  details: z.string().trim().max(500, "Details too long").optional(),
-  matchId: z.string().uuid("Invalid match ID"),
-  issueType: z.enum(['contest_result', 'wrong_court', 'wrong_opponent', 'didnt_play']),
+  matchId: z.string().uuid(),
+  issueType: z.enum([
+    "contest_result",
+    "wrong_court",
+    "wrong_opponent",
+    "didnt_play",
+  ]),
+  details: z
+    .string()
+    .trim()
+    .max(500, "Keep details to 500 characters or fewer."),
 });
+const emptyMatches: HistoryMatch[] = [];
 
-interface Match {
-  match_id: string;
-  match_date: string;
-  created_at: string;
-  team1_score: number;
-  team2_score: number;
-  my_team: number;
-  partner_name: string;
-  partner_id: string;
-  partner_avatar_url?: string | null;
-  opponent1_name: string;
-  opponent1_id: string;
-  opponent1_avatar_url?: string | null;
-  opponent2_name: string;
-  opponent2_id: string;
-  opponent2_avatar_url?: string | null;
-  rating_change: number;
-  rating_after: number;
-  court_name: string;
-  other_location: string | null;
-  won: boolean;
-  /** Ranked = counts toward PULSE (default true; false only when excluded).
-   *  Set on approved rows; undefined on pending (which aren't rated yet). */
-  is_ranked?: boolean;
-  verified_by: string[];
-  source?: string;
-  round_no?: number;
-  court_no?: number;
-  rr_event_id?: string | null;
-  rr_event_name?: string | null;
-  rr_event_date?: string | null;
-}
-
-const MatchHistory = () => {
-  const [loading, setLoading] = useState(true);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [pendingMatches, setPendingMatches] = useState<Match[]>([]);
-  const [playerName, setPlayerName] = useState("");
-  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+export default function MatchHistory() {
+  const auth = useAuthState();
+  const viewerId = auth.user?.id || null;
+  const [params, setParams] = useSearchParams();
+  const subjectId = params.get("player") || viewerId;
+  const ownHistory = !!viewerId && subjectId === viewerId;
   const navigate = useNavigate();
-  const playerId = searchParams.get("player");
-  const tabParam = searchParams.get("tab");
-  const activeTab: "all" | "pending" | "verified" =
-    tabParam === "pending" || tabParam === "verified" ? tabParam : "all";
-  const setActiveTab = (next: "all" | "pending" | "verified") => {
-    const params = new URLSearchParams(searchParams);
-    if (next === "all") {
-      params.delete("tab");
-    } else {
-      params.set("tab", next);
-    }
-    setSearchParams(params, { replace: true });
-  };
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  // Ranked/All filter over the approved list. Only surfaced when the player
-  // actually has non-ranked games (otherwise it would do nothing).
+  const history = useMatchHistory(subjectId, viewerId);
+  const matches = history.data?.matches || emptyMatches;
+  const pending = ownHistory
+    ? history.data?.pendingMatches || emptyMatches
+    : emptyMatches;
+  const playerName = history.data?.playerName || "Player";
+  const playerAvatarUrl = history.data?.playerAvatarUrl;
+  const tab = params.get("tab");
+  const activeTab =
+    ownHistory && (tab === "pending" || tab === "verified") ? tab : "all";
   const [rankedOnly, setRankedOnly] = useState(false);
-  const hasUnranked = matches.some((m) => m.is_ranked === false);
-  const [reportSheetOpen, setReportSheetOpen] = useState(false);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [issueDetails, setIssueDetails] = useState("");
-  const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null);
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [matchToVerify, setMatchToVerify] = useState<string | null>(null);
-  // Window the (heavy) history list so a long record doesn't mount every card
-  // at once; "Load more" reveals the next batch. Data is already fetched.
-  const [historyShown, setHistoryShown] = useState(15);
-
+  const [shown, setShown] = useState(15);
+  const [verify, setVerify] = useState<{ id: string; pending: boolean } | null>(
+    null
+  );
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [issueType, setIssueType] = useState<string>("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const actionLock = useRef(false);
+  const identity = `${viewerId}:${subjectId}`;
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
   useEffect(() => {
-    fetchMatchHistory();
-
-    console.log('👀 Setting up realtime subscription for match verifications');
-    
-    // Subscribe to realtime updates for match verifications
-    const channel = supabase
-      .channel('match-verifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'matches'
-        },
-        (payload: RealtimePostgresChangesPayload<{ id: string; verified_by: string[] | null }>) => {
-          console.log('🔔 Realtime verification update received:', payload);
-          const row = payload.new as { id?: string; verified_by?: string[] | null };
-          console.log('🔔 Updated match ID:', row.id);
-          console.log('🔔 New verified_by:', row.verified_by);
-
-          // Update local state when a match is verified
-          if (row && 'verified_by' in row) {
-            const newVerifiedBy = row.verified_by || [];
-            const matchId = row.id;
-            console.log('🔄 Updating local state for match', matchId, 'with verified_by:', newVerifiedBy);
-            
-            setMatches(prevMatches => {
-              const updated = prevMatches.map(m => {
-                if (m.match_id === matchId) {
-                  console.log('✅ Found match to update:', m.match_id);
-                  return { ...m, verified_by: newVerifiedBy };
-                }
-                return m;
-              });
-              console.log('📊 Updated matches state');
-              return updated;
-            });
-          }
-        }
+    if (!auth.loading && !viewerId) navigate("/auth", { replace: true });
+  }, [auth.loading, viewerId, navigate]);
+  useEffect(() => {
+    setVerify(null);
+    setReportId(null);
+    setIssueType("");
+    setDetails("");
+    setRankedOnly(false);
+    setShown(15);
+  }, [identity]);
+  useEffect(() => {
+    setShown(15);
+  }, [activeTab, rankedOnly]);
+  const items = useMemo(
+    () => groupMatchHistory(matches, rankedOnly),
+    [matches, rankedOnly]
+  );
+  const ranked = matches.filter((m) => m.is_ranked);
+  const wins = matches.filter((m) => m.won).length;
+  const rankedWins = ranked.filter((m) => m.won).length;
+  const needsConfirmation = pending.filter(
+    (m) => !m.verified_by.includes(viewerId || "")
+  );
+  const waiting = pending.filter((m) => m.verified_by.includes(viewerId || ""));
+  const verificationMatch = verify
+    ? (verify.pending ? pending : matches).find(
+        (match) => match.match_id === verify.id
       )
-      .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status);
-      });
-
-    return () => {
-      console.log('🔌 Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [playerId]);
-
-  const fetchMatchHistory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const playerIdToUse = playerId || user?.id;
-    
-    console.log('Fetching match history for player:', playerIdToUse);
-    console.log('Current user ID:', user?.id);
-    
-    if (!playerIdToUse) {
-      navigate("/auth");
-      return;
-    }
-
-    setCurrentUserId(user?.id || null);
-
-    // Fetch pending matches for current user
-    if (user?.id && !playerId) {
-      await fetchPendingMatches(user.id);
-    }
-
-    // Get player name
-    const { data: profile } = await supabase
-      .from("profiles_public")
-      .select("full_name, display_name, avatar_url")
-      .eq("id", playerIdToUse)
-      .single();
-
-    setPlayerName(resolvePlayerName(profile));
-    setPlayerAvatarUrl(profile?.avatar_url || null);
-
-    // Get all approved matches for this player.
-    // - Includes `source`, `round_no`, `court_no` so the RR badge can
-    //   render with "Round Robin · R{n} Court {n}". (Audit-flagged: the
-    //   pending-matches query selected these but the approved one didn't.)
-    // - Filters out voided matches so the host's cancelled events don't
-    //   pollute the verified history list.
-    const { data: participantsData, error: fetchError } = await supabase
-      .from("match_participants")
-      .select(`
-        match_id,
-        team,
-        rating_change,
-        rating_after,
-        matches!inner(
-          id,
-          match_date,
-          created_at,
-          team1_score,
-          team2_score,
-          status,
-          court_id,
-          other_location,
-          verified_by,
-          source,
-          round_no,
-          court_no,
-          voided,
-          count_for_rating,
-          courts(name)
-        )
-      `)
-      .eq("player_id", playerIdToUse)
-      .eq("matches.status", "approved")
-      .not("matches.voided", "is", true);
-
-    console.log('Fetched participants data:', participantsData);
-    console.log('Fetch error:', fetchError);
-
-    if (!participantsData) {
-      setLoading(false);
-      return;
-    }
-
-    // Get details for each match
-    const matchesWithDetails = await Promise.all(
-      participantsData.map(async (p: any): Promise<Match> => {
-        // Select guest_player_id + join guest_players alongside the
-        // profile join. Without this, guest rows had no name to
-        // display and got resolved as "Removed player" — the visible
-        // symptom the user hit ("guest doesn't register on the match
-        // card").
-        const { data: allParticipants } = await supabase
-          .from("match_participants")
-          .select(`
-            player_id,
-            guest_player_id,
-            team,
-            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url),
-            guest:guest_players!match_participants_guest_player_id_fkey(display_name, linked_user_id)
-          `)
-          .eq("match_id", p.match_id);
-
-        const myTeam = p.team;
-        // "!== playerIdToUse" only filters real players; guests can't
-        // BE the viewer, so guest rows naturally stay in teammates.
-        const teammates = allParticipants?.filter(
-          part => part.team === myTeam && part.player_id !== playerIdToUse
-        );
-        const opponents = allParticipants?.filter(part => part.team !== myTeam);
-
-        // Score-based win (rating_change can be null/0 on edge cases).
-        const won = didTeamWin(
-          myTeam as 1 | 2,
-          p.matches.team1_score,
-          p.matches.team2_score,
-        );
-
-        // Determine court name
-        let courtName = "Unknown Location";
-        let otherLocation = null;
-        
-        if (p.matches.other_location) {
-          courtName = p.matches.other_location;
-          otherLocation = p.matches.other_location;
-        } else if (p.matches.courts?.name) {
-          courtName = p.matches.courts.name;
-        }
-
-        const matchData = {
-          match_id: p.match_id,
-          match_date: p.matches.match_date,
-          created_at: p.matches.created_at,
-          team1_score: p.matches.team1_score,
-          team2_score: p.matches.team2_score,
-          my_team: myTeam,
-          // resolveParticipantName handles both real profiles and
-          // guests (with "(G)" suffix), so guest rows now surface
-          // by their display_name instead of being labelled "Removed
-          // player" which was the visible bug.
-          partner_name: resolveParticipantName(teammates?.[0] as any),
-          partner_id: teammates?.[0]?.player_id || "",
-          partner_avatar_url: (teammates?.[0]?.profiles as any)?.avatar_url || null,
-          opponent1_name: resolveParticipantName(opponents?.[0] as any),
-          opponent1_id: opponents?.[0]?.player_id || "",
-          opponent1_avatar_url: (opponents?.[0]?.profiles as any)?.avatar_url || null,
-          opponent2_name: opponents?.[1] ? resolveParticipantName(opponents[1] as any) : "",
-          opponent2_id: opponents?.[1]?.player_id || "",
-          opponent2_avatar_url: (opponents?.[1]?.profiles as any)?.avatar_url || null,
-          rating_change: p.rating_change ?? null,
-          rating_after: p.rating_after ?? null,
-          court_name: courtName,
-          other_location: otherLocation,
-          won,
-          // Approved + non-voided is already guaranteed by the query; ranked
-          // hinges on count_for_rating (default true when unset).
-          is_ranked: (p.matches as { count_for_rating?: boolean | null }).count_for_rating !== false,
-          verified_by: p.matches.verified_by || [],
-          source: p.matches.source,
-          round_no: p.matches.round_no,
-          court_no: p.matches.court_no,
-        };
-        
-        console.log('Match data for', p.match_id, ':', matchData);
-        console.log('Verified by array:', p.matches.verified_by);
-        
-        return matchData;
-      })
-    );
-
-    // Look up RR event linkage. matches.event_id is unreliable for RR
-    // matches; the authoritative link is round_robin_schedule.match_id.
-    const rrCandidateIds = matchesWithDetails
-      .filter(m => m.source === 'round_robin')
-      .map(m => m.match_id);
-
-    if (rrCandidateIds.length > 0) {
-      const { data: rrLinks, error: rrLinksError } = await supabase
-        .from('round_robin_schedule')
-        .select('match_id, event_id')
-        .in('match_id', rrCandidateIds);
-
-      console.log('[RR group] schedule links:', rrLinks, 'error:', rrLinksError);
-
-      const eventIds = Array.from(
-        new Set((rrLinks || []).map(l => l.event_id).filter(Boolean))
-      );
-
-      const eventsById = new Map<string, { id: string; name: string; date: string }>();
-      if (eventIds.length > 0) {
-        const { data: rrEvents, error: rrEventsError } = await supabase
-          .from('round_robin_events')
-          .select('id, name, date')
-          .in('id', eventIds);
-        console.log('[RR group] events:', rrEvents, 'error:', rrEventsError);
-        (rrEvents || []).forEach(e => {
-          eventsById.set(e.id, { id: e.id, name: e.name, date: e.date });
-        });
-      }
-
-      const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
-      (rrLinks || []).forEach(link => {
-        const ev = link.event_id ? eventsById.get(link.event_id) : null;
-        if (link.match_id && link.event_id) {
-          matchToEvent.set(link.match_id, {
-            id: link.event_id,
-            name: ev?.name || 'Round Robin',
-            date: ev?.date || '',
-          });
-        }
-      });
-
-      matchesWithDetails.forEach(m => {
-        const ev = matchToEvent.get(m.match_id);
-        if (ev) {
-          m.rr_event_id = ev.id;
-          m.rr_event_name = ev.name;
-          m.rr_event_date = ev.date || m.match_date;
-        }
-      });
-      console.log('[RR group] matchToEvent size:', matchToEvent.size);
-    }
-
-    // Sort by match_date DESC, then created_at DESC, then match_id DESC
-    matchesWithDetails.sort((a, b) => {
-      if (a.match_date !== b.match_date) {
-        return b.match_date.localeCompare(a.match_date);
-      }
-      if (a.created_at !== b.created_at) {
-        return b.created_at.localeCompare(a.created_at);
-      }
-      return b.match_id.localeCompare(a.match_id);
-    });
-
-    setMatches(matchesWithDetails);
-    setLoading(false);
+    : undefined;
+  const canAct = (match: HistoryMatch | undefined) =>
+    ownHistory &&
+    !history.isError &&
+    !!viewerId &&
+    !!match?.registered_player_ids.includes(viewerId);
+  const openReport = (id: string) => {
+    setIssueType("");
+    setDetails("");
+    setReportId(id);
+  };
+  const changeTab = (next: string) => {
+    const updated = new URLSearchParams(params);
+    if (next === "all") updated.delete("tab");
+    else updated.set("tab", next);
+    setParams(updated, { replace: true });
   };
 
-  const fetchPendingMatches = async (userId: string) => {
-    const { data: participantsData } = await supabase
-      .from("match_participants")
-      .select(`
-        match_id,
-        team,
-        matches!inner(
-          id,
-          match_date,
-          created_at,
-          team1_score,
-          team2_score,
-          status,
-          court_id,
-          courts(name),
-          other_location,
-          source,
-          court_no,
-          round_no
-        )
-      `)
-      .eq("player_id", userId)
-      .eq("matches.status", "pending");
-
-    if (!participantsData) {
-      setPendingMatches([]);
-      return;
-    }
-
-    const pendingMatchesWithDetails = await Promise.all(
-      participantsData.map(async (p: any): Promise<Match> => {
-        // Pending-matches query — same guest fix as the verified path above.
-        const { data: allParticipants } = await supabase
-          .from("match_participants")
-          .select(`
-            player_id,
-            guest_player_id,
-            team,
-            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url),
-            guest:guest_players!match_participants_guest_player_id_fkey(display_name, linked_user_id)
-          `)
-          .eq("match_id", p.match_id);
-
-        const { data: approvals } = await supabase
-          .from("match_approvals")
-          .select("player_id, approved")
-          .eq("match_id", p.match_id);
-
-        const myTeam = p.team;
-        const teammates = allParticipants?.filter(
-          part => part.team === myTeam && part.player_id !== userId
-        );
-        const opponents = allParticipants?.filter(part => part.team !== myTeam);
-        const verifiedBy = approvals?.filter(a => a.approved === true).map(a => a.player_id) || [];
-        
-        let courtName = "Unknown Location";
-        let otherLocation = null;
-        if (p.matches.other_location) {
-          courtName = p.matches.other_location;
-          otherLocation = p.matches.other_location;
-        } else if (p.matches.courts?.name) {
-          courtName = p.matches.courts.name;
-        }
-
-        return {
-          match_id: p.match_id,
-          match_date: p.matches.match_date,
-          created_at: p.matches.created_at,
-          team1_score: p.matches.team1_score,
-          team2_score: p.matches.team2_score,
-          my_team: myTeam,
-          // resolveParticipantName handles both real profiles and
-          // guests (with "(G)" suffix), so guest rows now surface
-          // by their display_name instead of being labelled "Removed
-          // player" which was the visible bug.
-          partner_name: resolveParticipantName(teammates?.[0] as any),
-          partner_id: teammates?.[0]?.player_id || "",
-          partner_avatar_url: (teammates?.[0]?.profiles as any)?.avatar_url || null,
-          opponent1_name: resolveParticipantName(opponents?.[0] as any),
-          opponent1_id: opponents?.[0]?.player_id || "",
-          opponent1_avatar_url: (opponents?.[0]?.profiles as any)?.avatar_url || null,
-          opponent2_name: opponents?.[1] ? resolveParticipantName(opponents[1] as any) : "",
-          opponent2_id: opponents?.[1]?.player_id || "",
-          opponent2_avatar_url: (opponents?.[1]?.profiles as any)?.avatar_url || null,
-          rating_change: 0,
-          rating_after: 0,
-          court_name: courtName,
-          other_location: otherLocation,
-          won: p.team === 1 ? p.matches.team1_score > p.matches.team2_score : p.matches.team2_score > p.matches.team1_score,
-          verified_by: verifiedBy,
-          source: p.matches.source,
-          round_no: p.matches.round_no,
-          court_no: p.matches.court_no,
-        };
-      })
-    );
-
-    pendingMatchesWithDetails.sort((a, b) => {
-      if (a.match_date !== b.match_date) {
-        return b.match_date.localeCompare(a.match_date);
-      }
-      return b.created_at.localeCompare(a.created_at);
-    });
-
-    setPendingMatches(pendingMatchesWithDetails);
-  };
-
-  const handleVerifyPendingMatch = async (matchId: string) => {
-    if (!currentUserId) return;
-
+  async function runAction(action: () => Promise<void>) {
+    if (actionLock.current || !ownHistory || !viewerId) return;
+    actionLock.current = true;
+    setBusy(true);
     try {
-      const { error } = await supabase
-        .from("match_approvals")
-        .update({
-          approved: true,
-          approved_at: new Date().toISOString()
-        })
-        .eq("match_id", matchId)
-        .eq("player_id", currentUserId);
-
-      if (error) throw error;
-
-      toast.success("Match verified! Will auto-approve when 2+ players verify.");
-      
-      // Refresh both lists
-      fetchMatchHistory();
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to verify match"));
-    }
-  };
-
-  const handleNudgeOpponents = async (matchId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('nudge_match_opponents', {
-        p_match_id: matchId,
-      });
-      if (error) throw error;
-      const count = Array.isArray(data) ? data.length : 0;
-      if (count === 0) {
-        toast.info("Already reminded recently — try again later.");
-      } else {
-        toast.success(`Reminded ${count} player${count === 1 ? '' : 's'}.`);
-      }
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e, "Could not send reminder"));
-    }
-  };
-
-  const handleReportIssue = async (issueType: string) => {
-    if (!selectedMatchId || !currentUserId) return;
-
-    try {
-      const validationResult = issueSchema.safeParse({
-        details: issueDetails,
-        matchId: selectedMatchId,
-        issueType,
-      });
-
-      if (!validationResult.success) {
-        const firstError = validationResult.error.errors[0];
-        toast.error(firstError.message);
-        return;
-      }
-
-      const { error } = await supabase
-        .from("match_issues")
-        .insert({
-          match_id: selectedMatchId,
-          reported_by: currentUserId,
-          issue_type: issueType,
-          details: issueDetails || null,
-        });
-
-      if (error) throw error;
-
-      toast.success("Issue reported successfully. Admins have been notified.");
-      setReportSheetOpen(false);
-      setIssueDetails("");
-      setSelectedMatchId(null);
-      setSelectedIssueType(null);
+      await action();
     } catch (error) {
-      console.error("Error reporting issue:", error);
-      toast.error("Failed to report issue");
+      if (currentIdentity.current === identity)
+        toast.error(
+          getErrorMessage(
+            error,
+            "Could not save your change. Please try again."
+          )
+        );
+    } finally {
+      actionLock.current = false;
+      setBusy(false);
     }
-  };
-
-  const handleVerifyMatch = async () => {
-    if (!currentUserId || !matchToVerify) {
-      console.error('Missing currentUserId or matchToVerify', { currentUserId, matchToVerify });
+  }
+  async function confirmScore() {
+    if (!verify) return;
+    const match = (verify.pending ? pending : matches).find(
+      (m) => m.match_id === verify.id
+    );
+    if (!canAct(match)) {
+      toast.info("This match has changed. Refreshing your history.");
+      setVerify(null);
+      void history.refetch();
       return;
     }
-
-    const match = matches.find(m => m.match_id === matchToVerify);
-    if (!match) {
-      console.error('Match not found:', matchToVerify);
-      return;
-    }
-
-    console.log('Current match verified_by:', match.verified_by);
-    console.log('Current user ID:', currentUserId);
-
-    // Don't add if already verified
-    if (match.verified_by.includes(currentUserId)) {
-      toast.info("You have already verified this match");
-      setVerifyDialogOpen(false);
-      setMatchToVerify(null);
-      return;
-    }
-
-    try {
-      // Use RPC function to safely append and dedupe
-      const { data, error } = await supabase.rpc('verify_match', { 
-        p_match_id: matchToVerify 
-      });
-
-      console.log('RPC response:', { data, error });
-
-      if (error) throw error;
-
-      // Update local state with server response
-      if (data?.verified_by) {
-        setMatches(prevMatches => prevMatches.map(m => 
-          m.match_id === matchToVerify 
-            ? { ...m, verified_by: data.verified_by }
-            : m
-        ));
+    await runAction(async () => {
+      if (verify.pending && !match!.approval_player_ids.includes(viewerId!)) {
+        throw new Error(
+          "This score is not awaiting your confirmation. Refresh your matches."
+        );
       }
-
-      console.log('✅ Match verified successfully');
-      toast.success("Match verified");
-      setVerifyDialogOpen(false);
-      setMatchToVerify(null);
-    } catch (error: unknown) {
-      console.error("❌ Error verifying match:", error);
-      toast.error(getErrorMessage(error, "Failed to verify match"));
+      await saveMatchConfirmation(verify.id, viewerId!, verify.pending);
+      if (currentIdentity.current !== identity) return;
+      toast.success(
+        "Score confirmed. Your match history will update when the required players confirm."
+      );
+      setVerify(null);
+      await history.refetch();
+    });
+  }
+  async function reportIssue() {
+    const match = [...matches, ...pending].find((m) => m.match_id === reportId);
+    if (!canAct(match)) return;
+    const validated = issueSchema.safeParse({
+      matchId: reportId,
+      issueType,
+      details,
+    });
+    if (!validated.success) {
+      toast.error(validated.error.errors[0].message);
+      return;
     }
-  };
-
-  const getVerificationStatus = (match: Match) => {
-    const allPlayerIds = [
-      playerId || currentUserId,
-      match.partner_id,
-      match.opponent1_id,
-      match.opponent2_id,
-    ].filter(id => id && id.trim() !== "");
-
-    const verifiedCount = match.verified_by.length;
-    const totalPlayers = allPlayerIds.length;
-    const isCurrentUserVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
-
-    return { verifiedCount, totalPlayers, isCurrentUserVerified };
-  };
-
-  if (loading) {
-    // Card-shaped skeleton matches the verified-card layout so the page doesn't
-    // visually jump when matches arrive.
+    await runAction(async () => {
+      const { error } = await supabase.from("match_issues").insert({
+        match_id: validated.data.matchId,
+        reported_by: viewerId!,
+        issue_type: validated.data.issueType,
+        details: validated.data.details || null,
+      });
+      if (error) throw error;
+      if (currentIdentity.current !== identity) return;
+      toast.success("Report submitted for review.");
+      setReportId(null);
+    });
+  }
+  async function remindPlayers(match: HistoryMatch) {
+    if (!canAct(match)) return;
+    await runAction(async () => {
+      const { data, error } = await supabase.rpc("nudge_match_opponents", {
+        p_match_id: match.match_id,
+      });
+      if (error) throw error;
+      if (currentIdentity.current !== identity) return;
+      const count = Array.isArray(data) ? data.length : 0;
+      if (count)
+        toast.success(`Reminded ${count} player${count === 1 ? "" : "s"}.`);
+      else toast.info("Already reminded recently. Try again later.");
+    });
+  }
+  const renderMatch = (match: HistoryMatch, isPending = false) => {
+    const status = verificationStatus(match, viewerId, isPending);
     return (
-      <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-        <div className="border-b border-border/50 bg-card/35">
-          <div className="container mx-auto flex max-w-[1400px] items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-            <div className="min-w-0 space-y-2">
-              <Skeleton className="h-7 w-32" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-            <Skeleton className="h-10 w-24 flex-shrink-0 rounded-xl" />
-          </div>
-        </div>
-        <div className="container mx-auto grid max-w-[1400px] gap-5 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8 lg:pt-6">
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-44 w-full rounded-2xl" />
-            ))}
-          </div>
-          <Skeleton className="h-52 w-full rounded-2xl" />
-        </div>
+      <PremiumMatchCard
+        key={match.match_id}
+        matchId={match.match_id}
+        matchDate={match.match_date}
+        team1Score={match.team1_score}
+        team2Score={match.team2_score}
+        myTeam={match.my_team}
+        won={match.won}
+        playerId={subjectId}
+        playerName={playerName}
+        playerAvatarUrl={playerAvatarUrl}
+        partnerName={match.partner_name}
+        partnerId={match.partner_id}
+        partnerAvatarUrl={match.partner_avatar_url}
+        opponent1Name={match.opponent1_name}
+        opponent1Id={match.opponent1_id}
+        opponent1AvatarUrl={match.opponent1_avatar_url}
+        opponent2Name={match.opponent2_name}
+        opponent2Id={match.opponent2_id}
+        opponent2AvatarUrl={match.opponent2_avatar_url}
+        ratingChange={match.rating_change}
+        courtName={match.court_name}
+        source={match.source}
+        roundNo={match.round_no}
+        courtNo={match.court_no}
+        isRanked={match.is_ranked}
+        {...status}
+        showVerifyActions={canAct(match)}
+        onVerify={() => setVerify({ id: match.match_id, pending: false })}
+        onReport={() => openReport(match.match_id)}
+        pending={isPending}
+        pendingConfirmedByMe={status.isCurrentUserVerified}
+        onConfirm={
+          canAct(match) && match.approval_player_ids.includes(viewerId!)
+            ? () => setVerify({ id: match.match_id, pending: true })
+            : undefined
+        }
+        busy={busy}
+        perspective={ownHistory ? "self" : "other"}
+      />
+    );
+  };
+
+  if (auth.loading || history.isPending)
+    return (
+      <div
+        className="mx-auto max-w-6xl space-y-5 px-4 py-6"
+        role="status"
+        aria-label="Loading matches"
+      >
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-56 w-full rounded-2xl" />
+        ))}
+        <span className="sr-only">Loading matches</span>
       </div>
     );
-  }
-
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      {/* Other-player history keeps its contextual header; the primary Matches
-          destination uses the same title band as the rest of the mobile tabs. */}
-      {playerId && (
-        <PlayerPageHeader
-          icon={History}
-          title={`${playerName}'s Matches`}
-          background="gradient"
-        />
-      )}
-
-      {!playerId && (
-        <SocialHero
-          eyebrow="Performance"
-          title="Matches"
-          action={
+      <SocialHero
+        className="[&>div:last-child]:max-w-6xl [&>div:last-child]:lg:px-6"
+        eyebrow="Performance"
+        title={ownHistory ? "Matches" : `${playerName}’s matches`}
+        action={
+          ownHistory ? (
             <Button
               onClick={() => navigate("/player/matches/new")}
               size="sm"
-              className="h-10 rounded-xl px-3.5 btn-premium active:scale-[0.98]"
+              className="h-11 rounded-xl px-3"
             >
               <Plus className="mr-1.5 h-4 w-4" />
               Record
             </Button>
-          }
-        >
-          <p className="mt-2 max-w-sm text-sm leading-snug text-muted-foreground">
-            Track results, confirm scores, and follow your PULSE record.
-          </p>
-        </SocialHero>
-      )}
-
-      <div className="container mx-auto grid max-w-[1400px] gap-6 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:px-8 lg:pt-6 xl:gap-8">
-        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-[96px]">
-        {/* Ranked-vs-all record. Only splits into two columns when the player
-            actually has non-ranked games — otherwise a single record, no
-            clutter. "won" is score-based so it's correct for every match. */}
-        {matches.length > 0 && (() => {
-          const allWins = matches.filter((m) => m.won).length;
-          const ranked = matches.filter((m) => m.is_ranked);
-          const rankedWins = ranked.filter((m) => m.won).length;
-          const hasUnranked = ranked.length < matches.length;
-          return (
-            <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 px-4 py-3.5 shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.45)]">
-              <div>
-                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {hasUnranked ? "PULSE ranked" : "Record"}
-                </div>
-                <div className="text-lg font-bold tabular-nums">
-                  {rankedWins}–{ranked.length - rankedWins}
-                </div>
-              </div>
-              {hasUnranked && (
-                <>
-                  <div className="h-9 w-px bg-border/60" />
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      All games
-                    </div>
-                    <div className="text-lg font-bold tabular-nums text-muted-foreground">
-                      {allWins}–{matches.length - allWins}
-                    </div>
-                  </div>
-                </>
-              )}
-              <p className="ml-auto max-w-[46%] text-right text-xs text-muted-foreground">
-                {hasUnranked
-                  ? "Only ranked matches move your PULSE rating."
-                  : "Every match counts toward your PULSE rating."}
+          ) : undefined
+        }
+      >
+        <p className="mt-2 text-sm text-muted-foreground">
+          {ownHistory
+            ? "Your results, round robins and PULSE progress."
+            : "Match results and PULSE progress."}
+        </p>
+        {!ownHistory && subjectId && (
+          <Link
+            className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline"
+            to={`/player/profile/${encodeURIComponent(subjectId)}`}
+          >
+            Back to profile
+          </Link>
+        )}
+      </SocialHero>
+      <div className="mx-auto max-w-6xl space-y-5 px-4 pb-10 pt-5 sm:px-6">
+        {history.isError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4"
+          >
+            <div className="min-w-0">
+              <p className="font-semibold">Could not load matches</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {history.data
+                  ? "Showing the last loaded results. Refresh before confirming a score."
+                  : "Please try again. Your match history has not been changed."}
               </p>
             </div>
-          );
-        })()}
-
-        {!playerId && (
-          <PlayerSegmentedControl
-            value={activeTab}
-            onValueChange={setActiveTab}
-            options={[
-              { value: "all", label: "All" },
-              { value: "pending", label: "Pending", count: pendingMatches.length, accentCount: true },
-              { value: "verified", label: "Verified", count: matches.length },
-            ]}
-            ariaLabel="Match views"
-            layoutId="matches-seg-active"
-          />
-        )}
-        {!playerId && (
-          <div className="hidden rounded-2xl border border-border/60 bg-card/65 p-4 lg:block">
-            <p className="text-sm font-semibold">Your match workspace</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Confirm pending scores first, then review verified results and rating movement without losing your place.
-            </p>
-            <Button variant="outline" className="mt-4 h-10 w-full rounded-xl" onClick={() => navigate('/player/play')}>
-              Find your next game
+            <Button
+              variant="outline"
+              disabled={history.isFetching}
+              onClick={() => void history.refetch()}
+            >
+              <RefreshCw
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  history.isFetching && "animate-spin"
+                )}
+              />
+              Try again
             </Button>
           </div>
         )}
-        </aside>
-
-        {/* Per-tab body — keyed so tab switches retrigger the fade-up animation
-            (the new content slides up + fades in for a satisfying transition
-            instead of swapping abruptly). */}
-        <div key={activeTab} className="min-w-0 space-y-6 animate-fade-up lg:order-1">
-
-        {/* Empty state for the Pending tab when there's nothing pending */}
-        {!playerId && activeTab === "pending" && pendingMatches.length === 0 && (
-          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
-            <CardContent className="p-8 text-center">
-              <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-green-500" />
-              <p className="font-semibold text-lg mb-1">All caught up</p>
-              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
-                No matches awaiting your verification. Recorded another game?
-              </p>
-              <Button size="sm" onClick={() => navigate('/player/matches/new')}>
-                <Plus className="w-4 h-4 mr-1.5" />
-                Record another match
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Pending Matches Section — grouped so the player knows exactly who
-            is blocking what. Order is intentional: "Needs your confirmation"
-            first because that's the only group the player can act on. */}
-        {!playerId && pendingMatches.length > 0 && (activeTab === "all" || activeTab === "pending") && (() => {
-          // Split pending into two intent-driven buckets using existing
-          // verified_by data (sourced from match_approvals at fetch time).
-          const needsMyConfirmation = pendingMatches.filter(
-            (m) => !(currentUserId && m.verified_by.includes(currentUserId))
-          );
-          const waitingOnOthers = pendingMatches.filter(
-            (m) => currentUserId && m.verified_by.includes(currentUserId)
-          );
-
-          const renderPendingCard = (match: Match, index: number, sectionKey: string) => {
-            const verificationCount = match.verified_by.length;
-            const hasVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
-            const totalApprovers = [
-              currentUserId,
-              match.partner_id,
-              match.opponent1_id,
-              match.opponent2_id,
-            ].filter((id) => id && id.trim() !== '').length;
-
-            return (
-              <motion.div
-                key={`${sectionKey}-${match.match_id}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <PremiumMatchCard
-                  perspective={playerId ? 'other' : 'self'}
-                  pending
-                  pendingConfirmedByMe={hasVerified}
-                  onConfirm={() => handleVerifyPendingMatch(match.match_id)}
-                  matchId={match.match_id}
-                  matchDate={match.match_date}
-                  team1Score={match.team1_score}
-                  team2Score={match.team2_score}
-                  myTeam={match.my_team as 1 | 2}
-                  won={match.won}
-                  playerName={playerName}
-                  playerAvatarUrl={playerAvatarUrl}
-                  partnerName={match.partner_name}
-                  partnerId={match.partner_id}
-                  partnerAvatarUrl={match.partner_avatar_url}
-                  opponent1Name={match.opponent1_name}
-                  opponent1Id={match.opponent1_id}
-                  opponent1AvatarUrl={match.opponent1_avatar_url}
-                  opponent2Name={match.opponent2_name}
-                  opponent2Id={match.opponent2_id}
-                  opponent2AvatarUrl={match.opponent2_avatar_url}
-                  ratingChange={null}
-                  courtName={match.court_name}
-                  source={match.source}
-                  roundNo={match.round_no}
-                  courtNo={match.court_no}
-                  verifiedCount={verificationCount}
-                  totalPlayers={totalApprovers || 4}
-                  isCurrentUserVerified={hasVerified}
-                  showVerifyActions={false}
-                />
-              </motion.div>
-            );
-          };
-
-          return (
-            <div className="space-y-6">
-              {/* Section 1: action required — primary CTA group */}
-              {needsMyConfirmation.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                        Needs your confirmation
-                      </h2>
-                    </div>
-                    <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 tabular-nums">
-                      {needsMyConfirmation.length}
-                    </span>
-                  </div>
-                  {needsMyConfirmation.map((match, i) => renderPendingCard(match, i, 'needs'))}
-                </div>
-              )}
-
-              {/* Section 2: already confirmed by me — secondary group */}
-              {waitingOnOthers.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Waiting on other players
-                      </h2>
-                    </div>
-                    <span className="text-[11px] font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5 tabular-nums">
-                      {waitingOnOthers.length}
-                    </span>
-                  </div>
-                  {waitingOnOthers.map((match, i) => (
-                    <div key={`waiting-wrap-${match.match_id}`} className="space-y-2">
-                      {renderPendingCard(match, i, 'waiting')}
-                      <div className="flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleNudgeOpponents(match.match_id)}
-                        >
-                          Remind opponents
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Subtle separator between pending block and verified block on the
-            "all" tab. The grouped pending sections already have their own
-            headers; verified rows speak for themselves so they need no label —
-            just breathing room. */}
-        {!playerId && pendingMatches.length > 0 && matches.length > 0 && activeTab === "all" && (
-          <div className="h-px bg-border/50 my-2" />
-        )}
-
-        {/* Per-tab empty states (only when viewing your own matches).
-            Each tab gets honest copy + a useful CTA — no blank screens. */}
-        {!playerId && activeTab === "all" && matches.length === 0 && pendingMatches.length === 0 && (
-          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
-            <CardContent className="p-8 text-center">
-              <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="font-semibold text-lg mb-1">No matches yet</p>
-              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
-                Record your first match to start building your PULSE history.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
-                <Button size="sm" onClick={() => navigate('/player/matches/new')}>
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Record your first match
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => navigate('/player/play')}>
-                  Find play
-                </Button>
+        {history.data && (
+          <>
+            <div className="grid grid-cols-3 divide-x divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card px-1 py-4 sm:py-5">
+              <div className="px-2 text-center">
+                <p className="text-2xl font-bold tabular-nums">
+                  {matches.length}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+                  Completed
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!playerId && activeTab === "verified" && matches.length === 0 && (
-          <Card className="rounded-[20px] border border-border/60 shadow-[0_12px_30px_-26px_hsl(var(--foreground)/0.45)]">
-            <CardContent className="p-8 text-center">
-              <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="font-semibold text-lg mb-1">No verified matches yet</p>
-              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
-                Verified matches will appear here once players confirm results.
-              </p>
-              <Button size="sm" onClick={() => navigate('/player/matches/new')}>
-                <Plus className="w-4 h-4 mr-1.5" />
-                Record Match
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Approved Matches Section — RR matches bundled by event */}
-        {/* Ranked / All filter — only when the player has non-ranked games,
-            so it never appears as a no-op control. */}
-        {hasUnranked && activeTab !== "pending" && matches.length > 0 && (
-          <div className="flex items-center justify-end gap-2">
-            <span className="text-xs text-muted-foreground">Show</span>
-            <div className="inline-flex rounded-full border border-border/60 bg-card p-0.5">
-              {([
-                { v: false, label: "All games" },
-                { v: true, label: "Ranked" },
-              ] as const).map((o) => (
-                <button
-                  key={String(o.v)}
-                  type="button"
-                  onClick={() => setRankedOnly(o.v)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    rankedOnly === o.v
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {o.label}
-                </button>
-              ))}
+              <div className="px-2 text-center">
+                <p className="text-2xl font-bold tabular-nums">
+                  {wins}
+                  <span className="font-normal text-muted-foreground">–</span>
+                  {matches.length - wins}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+                  Wins – losses
+                </p>
+              </div>
+              <div className="px-2 text-center">
+                <p className="text-2xl font-bold tabular-nums">
+                  {matches.length
+                    ? Math.round((wins / matches.length) * 100)
+                    : 0}
+                  <span className="text-base text-muted-foreground">%</span>
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+                  Win rate
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {!playerId && activeTab === "pending" ? null : matches.length === 0 ? null : (() => {
-          type Item =
-            | { kind: 'single'; match: Match; sortKey: string }
-            | { kind: 'group'; group: RoundRobinGroup; sortKey: string };
-
-          const source = rankedOnly ? matches.filter((m) => m.is_ranked) : matches;
-          if (source.length === 0) {
-            return (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No ranked matches yet — ranked matches are the ones that move your PULSE.
-              </p>
-            );
-          }
-
-          const groups = new Map<string, RoundRobinGroup & { sortKey: string }>();
-          const items: Item[] = [];
-
-          for (const m of source) {
-            if (m.rr_event_id) {
-              const existing = groups.get(m.rr_event_id);
-              if (existing) {
-                existing.matches.push(m);
-                if (m.won) existing.wins += 1; else existing.losses += 1;
-                existing.netRating += m.rating_change || 0;
-                if (m.match_date > existing.sortKey) existing.sortKey = m.match_date;
-              } else {
-                const g = {
-                  eventId: m.rr_event_id,
-                  name: m.rr_event_name || 'Round Robin',
-                  date: m.rr_event_date || m.match_date,
-                  matches: [m],
-                  wins: m.won ? 1 : 0,
-                  losses: m.won ? 0 : 1,
-                  netRating: m.rating_change || 0,
-                  sortKey: m.match_date,
-                };
-                groups.set(m.rr_event_id, g);
-                items.push({ kind: 'group', group: g, sortKey: m.match_date });
-              }
-            } else {
-              items.push({ kind: 'single', match: m, sortKey: m.match_date });
-            }
-          }
-
-          // Sort each group's matches by round/court, then sort top-level by date DESC
-          groups.forEach((g) => {
-            g.matches.sort((a, b) => {
-              if ((a.round_no || 0) !== (b.round_no || 0)) return (a.round_no || 0) - (b.round_no || 0);
-              return (a.court_no || 0) - (b.court_no || 0);
-            });
-          });
-          items.sort((a, b) => {
-            return b.sortKey.localeCompare(a.sortKey);
-          });
-
-          return (
-            <div className="space-y-4">
-              {items.slice(0, historyShown).map((item, index) => (
-                <motion.div
-                  key={item.kind === 'group' ? `g-${item.group.eventId}` : `m-${item.match.match_id}`}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: Math.min(index, 10) * 0.04 }}
-                >
-                  {item.kind === 'group' ? (
-                    <RoundRobinMatchGroup
-                      group={item.group}
-                      playerName={playerName}
-                      playerAvatarUrl={playerAvatarUrl}
-                      showVerifyActions={!playerId}
-                      perspective={playerId ? 'other' : 'self'}
-                      getVerificationStatus={(m) => getVerificationStatus(m)}
-                      onVerify={(matchId) => {
-                        setMatchToVerify(matchId);
-                        setVerifyDialogOpen(true);
-                      }}
-                      onReport={(matchId) => {
-                        setSelectedMatchId(matchId);
-                        setReportSheetOpen(true);
-                      }}
-                    />
-                  ) : (() => {
-                    const match = item.match;
-                    const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);
-                    return (
-                      <PremiumMatchCard
-                        perspective={playerId ? 'other' : 'self'}
-                        matchId={match.match_id}
-                        matchDate={match.match_date}
-                        team1Score={match.team1_score}
-                        team2Score={match.team2_score}
-                        myTeam={match.my_team as 1 | 2}
-                        won={match.won}
-                        playerName={playerName}
-                        playerAvatarUrl={playerAvatarUrl}
-                        partnerName={match.partner_name}
-                        partnerId={match.partner_id}
-                        partnerAvatarUrl={match.partner_avatar_url}
-                        opponent1Name={match.opponent1_name}
-                        opponent1Id={match.opponent1_id}
-                        opponent1AvatarUrl={match.opponent1_avatar_url}
-                        opponent2Name={match.opponent2_name}
-                        opponent2Id={match.opponent2_id}
-                        opponent2AvatarUrl={match.opponent2_avatar_url}
-                        ratingChange={match.rating_change}
-                        courtName={match.court_name}
-                        source={match.source}
-                        roundNo={match.round_no}
-                        courtNo={match.court_no}
-                        isRanked={match.is_ranked}
-                        verifiedCount={verifiedCount}
-                        totalPlayers={totalPlayers}
-                        isCurrentUserVerified={isCurrentUserVerified}
-                        showVerifyActions={!playerId}
-                        onVerify={() => {
-                          setMatchToVerify(match.match_id);
-                          setVerifyDialogOpen(true);
-                        }}
-                        onReport={() => {
-                          setSelectedMatchId(match.match_id);
-                          setReportSheetOpen(true);
-                        }}
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="min-w-0 space-y-5">
+                {ownHistory && (
+                  <PlayerSegmentedControl
+                    value={activeTab}
+                    onValueChange={changeTab}
+                    options={[
+                      { value: "all", label: "All" },
+                      {
+                        value: "pending",
+                        label: "Pending",
+                        count: pending.length,
+                        accentCount: needsConfirmation.length > 0,
+                      },
+                      {
+                        value: "verified",
+                        label: "Results",
+                        count: matches.length,
+                      },
+                    ]}
+                    ariaLabel="Match views"
+                    layoutId="matches-seg-active"
+                  />
+                )}
+                {activeTab !== "verified" && ownHistory && (
+                  <>
+                    {needsConfirmation.length > 0 && (
+                      <section
+                        aria-label="Needs your confirmation"
+                        className="space-y-3"
+                      >
+                        <h2 className="flex items-center gap-2 text-sm font-semibold">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          Needs your confirmation{" "}
+                          <span className="text-muted-foreground">
+                            ({needsConfirmation.length})
+                          </span>
+                        </h2>
+                        {needsConfirmation.map((match) =>
+                          renderMatch(match, true)
+                        )}
+                      </section>
+                    )}
+                    {waiting.length > 0 && (
+                      <section
+                        aria-label="Waiting on players"
+                        className="space-y-3"
+                      >
+                        <h2 className="flex items-center gap-2 text-sm font-semibold">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          Waiting on players{" "}
+                          <span className="text-muted-foreground">
+                            ({waiting.length})
+                          </span>
+                        </h2>
+                        {waiting.map((match) => (
+                          <div key={match.match_id} className="space-y-1">
+                            {renderMatch(match, true)}
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                disabled={busy}
+                                className="min-h-11 text-xs"
+                                onClick={() => void remindPlayers(match)}
+                              >
+                                Remind players
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </section>
+                    )}
+                    {activeTab === "pending" && pending.length === 0 && (
+                      <EmptyState
+                        title="All caught up"
+                        description="No scores are waiting for confirmation."
                       />
-                    );
-                  })()}
-                </motion.div>
-              ))}
-              {items.length > historyShown && (
-                <div className="flex justify-center pt-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-full text-xs text-muted-foreground"
-                    onClick={() => setHistoryShown((c) => c + 15)}
-                  >
-                    Load more
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-        </div>{/* /per-tab body keyed wrapper */}
-      </div>
-
-      <Sheet open={reportSheetOpen} onOpenChange={setReportSheetOpen}>
-        <SheetContent side="bottom" className="h-auto">
-          <SheetHeader>
-            <SheetTitle>Report a Problem</SheetTitle>
-            <SheetDescription>
-              Select the issue type and provide details
-            </SheetDescription>
-          </SheetHeader>
-          
-          {!selectedIssueType ? (
-            <div className="space-y-2 mt-4">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setSelectedIssueType('wrong_court')}
-              >
-                <Flag className="w-4 h-4 mr-2" />
-                Wrong Court Entered
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setSelectedIssueType('wrong_opponent')}
-              >
-                <Flag className="w-4 h-4 mr-2" />
-                Wrong Opponent Entered
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setSelectedIssueType('didnt_play')}
-              >
-                <Flag className="w-4 h-4 mr-2" />
-                I didn't play this match
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4 mt-4">
-              <Textarea
-                placeholder="Add details... (optional)"
-                value={issueDetails}
-                onChange={(e) => setIssueDetails(e.target.value)}
-                className="min-h-[100px]"
-              />
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setSelectedIssueType(null);
-                    setIssueDetails("");
-                  }}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={() => selectedIssueType && handleReportIssue(selectedIssueType)}
-                  className="flex-1"
-                >
-                  Submit
-                </Button>
+                    )}
+                  </>
+                )}
+                {activeTab !== "pending" && (
+                  <section aria-label="Completed matches" className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h2 className="text-sm font-semibold">
+                        Completed matches
+                      </h2>
+                      {ranked.length < matches.length && (
+                        <div
+                          className="inline-flex rounded-xl border border-border/60 bg-card p-1"
+                          role="group"
+                          aria-label="Rating filter"
+                        >
+                          {[
+                            { value: false, label: "All games" },
+                            { value: true, label: "Ranked" },
+                          ].map((option) => (
+                            <button
+                              type="button"
+                              key={option.label}
+                              aria-pressed={rankedOnly === option.value}
+                              onClick={() => setRankedOnly(option.value)}
+                              className={cn(
+                                "min-h-10 rounded-lg px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                                rankedOnly === option.value
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-muted-foreground hover:bg-muted"
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {items.length === 0 ? (
+                      <EmptyState
+                        title={
+                          rankedOnly
+                            ? "No ranked matches yet"
+                            : "No completed matches yet"
+                        }
+                        description={
+                          rankedOnly
+                            ? "Ranked games will appear here once confirmed."
+                            : ownHistory
+                            ? "Record a game to start building your match history."
+                            : "Completed results will appear here."
+                        }
+                        action={
+                          ownHistory && !rankedOnly ? (
+                            <Button
+                              onClick={() => navigate("/player/matches/new")}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Record a match
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ) : (
+                      items
+                        .slice(0, shown)
+                        .map((item) =>
+                          item.kind === "single" ? (
+                            renderMatch(item.match)
+                          ) : (
+                            <RoundRobinMatchGroup
+                              key={item.group.eventId}
+                              group={item.group}
+                              playerId={subjectId}
+                              playerName={playerName}
+                              playerAvatarUrl={playerAvatarUrl}
+                              showVerifyActions={ownHistory && !history.isError}
+                              perspective={ownHistory ? "self" : "other"}
+                              getVerificationStatus={(match) =>
+                                verificationStatus(match, viewerId)
+                              }
+                              onVerify={(id) =>
+                                setVerify({ id, pending: false })
+                              }
+                              onReport={openReport}
+                              busy={busy}
+                            />
+                          )
+                        )
+                    )}
+                    {items.length > shown && (
+                      <Button
+                        variant="outline"
+                        className="min-h-11 w-full rounded-xl"
+                        onClick={() => setShown((count) => count + 15)}
+                      >
+                        Show more history ({items.length - shown} remaining)
+                      </Button>
+                    )}
+                  </section>
+                )}
               </div>
+              <aside className="space-y-4 lg:sticky lg:top-24">
+                <div className="rounded-2xl border border-border/60 bg-card p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    PULSE ranked record
+                  </p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums">
+                    {rankedWins}–{ranked.length - rankedWins}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Only ranked, completed matches affect the PULSE rating.
+                    Unranked games stay in your history.
+                  </p>
+                  {ownHistory && (
+                    <Link
+                      to="/player/pulse"
+                      className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
+                    >
+                      View your PULSE progress
+                    </Link>
+                  )}
+                </div>
+                {ownHistory && (
+                  <Button
+                    variant="outline"
+                    className="min-h-11 w-full rounded-xl"
+                    onClick={() => navigate("/player/play")}
+                  >
+                    Find your next game
+                  </Button>
+                )}
+              </aside>
             </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      <AlertDialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+          </>
+        )}
+      </div>
+      <AlertDialog
+        open={!!verify}
+        onOpenChange={(open) => {
+          if (!busy && !open) setVerify(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Verify this match?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm this score?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to verify this score? This cannot be undone.
+              Confirm that the players and final score are correct. Report a
+              problem if something needs fixing.
             </AlertDialogDescription>
+            {verificationMatch && (
+              <p className="rounded-xl bg-muted px-4 py-3 text-sm font-medium">
+                Your {verificationMatch.partner_name ? "team" : "score"}:{" "}
+                {verificationMatch.my_team === 1
+                  ? verificationMatch.team1_score
+                  : verificationMatch.team2_score}
+                {" · "}Opponents:{" "}
+                {verificationMatch.my_team === 1
+                  ? verificationMatch.team2_score
+                  : verificationMatch.team1_score}
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  {verificationMatch.match_date} ·{" "}
+                  {verificationMatch.court_name}
+                </span>
+              </p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleVerifyMatch}>Verify</AlertDialogAction>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmScore();
+              }}
+            >
+              {busy ? "Saving…" : "Confirm score"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Footer />
+      <Sheet
+        open={!!reportId}
+        onOpenChange={(open) => {
+          if (!busy && !open) setReportId(null);
+        }}
+      >
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto">
+          <div className="mx-auto max-w-lg">
+            <SheetHeader>
+              <SheetTitle>Report a match problem</SheetTitle>
+              <SheetDescription>
+                Tell us what needs to be corrected.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-3">
+              <label
+                htmlFor="match-issue"
+                className="block text-sm font-medium"
+              >
+                Issue
+              </label>
+              <select
+                id="match-issue"
+                value={issueType}
+                onChange={(event) => setIssueType(event.target.value)}
+                disabled={busy}
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                <option value="" disabled>
+                  Select an issue
+                </option>
+                {issues.map((issue) => (
+                  <option key={issue.value} value={issue.value}>
+                    {issue.label}
+                  </option>
+                ))}
+              </select>
+              <label
+                htmlFor="match-issue-details"
+                className="block text-sm font-medium"
+              >
+                Details{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
+              <Textarea
+                id="match-issue-details"
+                maxLength={500}
+                value={details}
+                onChange={(event) => setDetails(event.target.value)}
+                disabled={busy}
+                placeholder="What should we know?"
+              />
+              <p className="text-right text-xs text-muted-foreground">
+                {details.length}/500
+              </p>
+              <Button
+                disabled={busy || !issueType}
+                onClick={() => void reportIssue()}
+                className="min-h-11 w-full"
+              >
+                <Flag className="mr-2 h-4 w-4" />
+                {busy ? "Submitting…" : "Submit report"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
-};
-
-export default MatchHistory;
+}
+function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card/50 px-5 py-9 text-center">
+      <History
+        className="mx-auto mb-3 h-7 w-7 text-muted-foreground/60"
+        aria-hidden="true"
+      />
+      <h3 className="font-semibold">{title}</h3>
+      <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+        {description}
+      </p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}

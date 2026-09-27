@@ -138,7 +138,7 @@ const ViewProfile = () => {
           team2_score: m.team2_score,
           my_team: m.my_team,
           won,
-          partner_name: resolvePlayerName(teammate?.profile),
+          partner_name: teammate ? resolvePlayerName(teammate.profile) : '',
           partner_id: teammate?.player_id || "",
           partner_avatar_url: teammate?.profile?.avatar_url || null,
           opponent1_name: resolvePlayerName(opps[0]?.profile),
@@ -637,6 +637,7 @@ const ViewProfile = () => {
                     team2Score={m.team2_score}
                     myTeam={m.my_team}
                     won={m.won}
+                    playerId={userId}
                     playerName={displayName}
                     playerAvatarUrl={profile.avatar_url}
                     partnerName={m.partner_name}
