@@ -312,7 +312,7 @@ export default function VenueCommunity() {
           onShare={onShare}
           onSettings={canManageSettings ? () => navigate(`/player/community/group/${groupId}/manage`) : undefined}
           onOperations={isOperator ? () => navigate(`/player/community/group/${groupId}/ops`) : undefined}
-          footer={!isMember && !canManageSettings && !isOperator ? <div className="border-t bg-background px-4 py-3"><div className="mx-auto max-w-xl"><CommunityJoinAction key={group.id + ':' + profile?.id} group={group} membership={membership} /></div></div> : activeTab === 'feed' && canCreatePosts && communitySection === 'posts' ? <CollapsedComposerBar embedded onExpand={() => openQuickPost('post')} onPhotoClick={() => openQuickPost('photo')} avatarUrl={profile?.avatar_url} displayName={profile?.display_name || profile?.full_name} contextName={identity.name} venueMode /> : undefined}
+          footer={!isMember && !canManageSettings && !isOperator ? <div className="shrink-0 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><div className="mx-auto max-w-xl"><CommunityJoinAction key={group.id + ':' + profile?.id} group={group} membership={membership} /></div></div> : activeTab === 'feed' && canCreatePosts && communitySection === 'posts' ? <CollapsedComposerBar embedded onExpand={() => openQuickPost('post')} onPhotoClick={() => openQuickPost('photo')} avatarUrl={profile?.avatar_url} displayName={profile?.display_name || profile?.full_name} contextName={identity.name} venueMode /> : undefined}
         >
         <div className="venue-page-body min-w-0 flex-1">
           <div className="venue-page-container mx-auto max-w-[1480px] px-5 py-5 sm:px-6 sm:py-6 lg:py-8">

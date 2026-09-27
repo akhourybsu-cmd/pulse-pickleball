@@ -71,8 +71,8 @@ export function CommunityJoinAction({
             .select("status")
             .eq("group_id", group.id)
             .eq("user_id", user.id)
-            .maybeSingle()
             .abortSignal(signal)
+            .maybeSingle()
         );
         if (
           existing.error ||

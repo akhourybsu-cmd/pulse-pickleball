@@ -14,8 +14,8 @@ vi.mock("@/integrations/supabase/client", () => ({
       select: () => {
         const query = {
           eq: () => query,
-          maybeSingle: () => query,
-          abortSignal: () => mocks.read(),
+            maybeSingle: () => mocks.read(),
+            abortSignal: () => query,
         };
         return query;
       },
