@@ -1,0 +1,4 @@
+/* Match mobile scrollbar presentation when capturing on a desktop browser.
+   No application content, layout, typography or controls are changed. */
+html.product-capture, .product-capture * { scrollbar-width: none !important; }
+.product-capture::-webkit-scrollbar, .product-capture *::-webkit-scrollbar { display: none; }

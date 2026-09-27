@@ -6,8 +6,10 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import RoundRobinDetail from '../../../src/pages/RoundRobinDetail';
 import '../../../src/index.css';
+import '../../marketing/browser/capture.css';
 import { advancePreviewRound } from './stub';
 const params = new URLSearchParams(window.location.search);
+if (params.has('capture')) document.documentElement.classList.add('product-capture');
 const query = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider attribute="class" forcedTheme={params.has('dark') ? 'dark' : 'light'}>

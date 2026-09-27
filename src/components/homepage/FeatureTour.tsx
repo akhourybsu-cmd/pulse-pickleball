@@ -37,13 +37,14 @@ export function FeatureTour() {
 
   return <div ref={region} className="mkt-tour" id="product-tour" role="region" aria-roledescription="carousel" aria-label="Explore PULSE features" tabIndex={0} onKeyDown={keyboard}>
     <div className="mkt-tour-top"><span><i aria-hidden="true" /> INSIDE PULSE</span><span className="mkt-tour-hint">Swipe or choose a feature</span></div>
+    <div className="mkt-tour-pills" role="group" aria-label="Choose a feature">{screens.map((screen, index) => <button key={screen.key} type="button" aria-pressed={index === selected} onClick={() => api?.scrollTo(index)}>{screen.label}</button>)}</div>
     <div className="mkt-tour-viewport" ref={viewport}>
       <div className="mkt-tour-track">
-        {screens.map((screen, index) => <div className={`mkt-tour-slide mkt-tour-${screen.accent}`} key={screen.key} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${screens.length}: ${screen.label}`} aria-hidden={index !== selected}>
+        {screens.map((screen, index) => <div className="mkt-tour-slide" key={screen.key} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${screens.length}: ${screen.label}`} aria-hidden={index !== selected}>
           <div className="mkt-tour-copy"><h2>{screen.title}</h2><p>{screen.description}</p></div>
           <figure>
             <button type="button" className="mkt-screen-window" onClick={event => { opener.current = event.currentTarget; setExpanded(index); }} tabIndex={index === selected ? 0 : -1} aria-label={`Enlarge ${screen.label.toLowerCase()} screenshot`}>
-              <img src={screen.src} alt={screen.alt} width={390} height={844} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" style={{ objectPosition: screen.position }} />
+              <img src={screen.src} alt={screen.alt} width={390} height={844} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" />
               <span className="mkt-screen-expand"><Expand aria-hidden="true" size={14} /> View screen</span>
             </button>
             <figcaption>Actual PULSE screen · Demo data</figcaption>
@@ -56,7 +57,6 @@ export function FeatureTour() {
       <p aria-live="polite" aria-atomic="true"><strong>{screens[selected].label}</strong><span>{selected + 1} / {screens.length}</span></p>
       <button type="button" className="mkt-tour-arrow" aria-label="Next feature" disabled={selected === screens.length - 1} onClick={() => api?.scrollNext()}><ArrowRight aria-hidden="true" size={18} /></button>
     </div>
-    <div className="mkt-tour-pills" role="group" aria-label="Choose a feature">{screens.map((screen, index) => <button key={screen.key} type="button" aria-pressed={index === selected} onClick={() => api?.scrollTo(index)}>{screen.label}</button>)}</div>
     <Dialog open={expanded !== null} onOpenChange={open => { if (!open) setExpanded(null); }}>
       <DialogContent className="mkt-screen-dialog" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogTitle>{expanded !== null ? screens[expanded].label : 'PULSE screen'}</DialogTitle>
