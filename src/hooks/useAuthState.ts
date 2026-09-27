@@ -14,6 +14,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { isTransientAuthError } from '@/lib/authErrors';
 import { getMfaStatus, MFA_VERIFIED_EVENT } from '@/lib/mfa';
 import { withAuthDeadline } from '@/lib/authDeadline';
+import { canPreserveAuthView } from '@/lib/authContinuity';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type AuthProfile = Pick<
@@ -150,7 +151,7 @@ const SIGNED_OUT_STATE: AuthState = {
  */
 export function AuthStateProvider({ children }: { children: ReactNode }) {
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [state, setState] = useState<AuthState>({
+  const [state, renderState] = useState<AuthState>({
     user: null,
     profile: null,
     loading: true,
@@ -158,10 +159,16 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     isOnboarding: false,
     isActive: false,
   });
+  const stateRef = useRef(state);
+  const setState = useCallback((next: AuthState | ((current: AuthState) => AuthState)) => {
+    const value = typeof next === 'function' ? next(stateRef.current) : next;
+    stateRef.current = value;
+    renderState(value);
+  }, []);
   const mountedRef = useRef(false);
   const requestIdRef = useRef(0);
 
-  const loadSession = useCallback(async (session: Session | null, showLoader: boolean) => {
+  const loadSession = useCallback(async (session: Session | null, refreshProfile: boolean) => {
     const requestId = ++requestIdRef.current;
     if (mountedRef.current) setSessionError(null);
 
@@ -171,10 +178,14 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const user = session.user;
+    const current = stateRef.current;
+    const preserveView = canPreserveAuthView(current, session.user.id);
+    // SDK SIGNED_IN can mean "this tab became visible", not a new login.
+    // Keep both object identities stable so form-hydration effects do not rerun.
+    const user = preserveView && !refreshProfile ? current.user! : session.user;
     // Cached profile data is never evidence that the current session completed
     // MFA. Recheck before rendering it, including OAuth, reloads and refreshes.
-    if (mountedRef.current && showLoader) setState({ ...SIGNED_OUT_STATE, user, loading: true });
+    if (mountedRef.current && !preserveView) setState({ ...SIGNED_OUT_STATE, user, loading: true });
     try {
       const security = await getMfaStatus();
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
@@ -185,13 +196,22 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (preserveView && isTransientAuthError(error)) {
+        // Keep the draft during a reconnect. Server RLS/MFA still authorizes
+        // every request; this does not turn an unavailable check into approval.
+        setSessionError('Unable to reconnect. Your open page has been kept. Check your connection before saving.');
+        return;
+      }
       clearCachedProfile();
       setSessionError(error instanceof Error ? error.message : 'Could not verify your sign-in security.');
       setState({ ...SIGNED_OUT_STATE, user });
       return;
     }
-    const cachedProfile = readCachedProfile(user.id);
-    if (cachedProfile && mountedRef.current) {
+    // Focus, periodic checks, and token renewal verify security only. Profile
+    // hydration is for a new account or an explicit refresh after an edit.
+    if (preserveView && !refreshProfile) return;
+    const cachedProfile = preserveView ? current.profile : readCachedProfile(user.id);
+    if (!preserveView && cachedProfile && mountedRef.current) {
       // Returning sessions can paint the shell immediately from a small,
       // user-scoped snapshot while the authoritative RLS-protected row
       // revalidates in the background.
@@ -203,7 +223,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
         isOnboarding: cachedProfile.player_state === 'onboarding' || !cachedProfile.tutorial_completed,
         isActive: cachedProfile.player_state === 'active',
       });
-    } else if (showLoader && mountedRef.current) {
+    } else if (!preserveView && mountedRef.current) {
       setState((current) => ({
         ...current,
         user,
@@ -249,19 +269,21 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
         isActive: false,
       });
     }
-  }, []);
+  }, [setState]);
 
-  const refresh = useCallback(async (showLoader = true) => {
+  const refresh = useCallback(async (refreshProfile = true) => {
     const generation = requestIdRef.current;
     if (mountedRef.current) {
       setSessionError(null);
-      setState(current => ({ ...current, loading: !current.profile }));
+      if (refreshProfile && !stateRef.current.profile) {
+        setState(current => ({ ...current, loading: true }));
+      }
     }
     try {
       const { data: { session }, error } = await withAuthDeadline(() => supabase.auth.getSession());
       if (!mountedRef.current || generation !== requestIdRef.current) return;
       if (error) throw error;
-      await loadSession(session, showLoader);
+      await loadSession(session, refreshProfile);
     } catch (error) {
       if (!mountedRef.current || generation !== requestIdRef.current) return;
       console.error('Error reading auth session:', error);
@@ -274,10 +296,12 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
         await loadSession(null, false);
       }
     }
-  }, [loadSession]);
+  }, [loadSession, setState]);
 
   useEffect(() => {
     mountedRef.current = true;
+    let disposed = false;
+    const pendingEvents = new Set<ReturnType<typeof setTimeout>>();
     void refresh();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -286,12 +310,16 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       if (event === 'INITIAL_SESSION') return;
 
       // Supabase recommends deferring client work from inside this callback.
-      setTimeout(() => {
-        void loadSession(session, event === 'SIGNED_IN' || event === 'SIGNED_OUT');
+      const timer = setTimeout(() => {
+        pendingEvents.delete(timer);
+        if (!disposed) void loadSession(session, event === 'USER_UPDATED');
       }, 0);
+      pendingEvents.add(timer);
     });
 
-    const recheck = () => { if (document.visibilityState === 'visible') void refresh(false); };
+    const recheck = () => {
+      if (document.visibilityState === 'visible' && stateRef.current.user) void refresh(false);
+    };
     const verified = () => { void refresh(); };
     window.addEventListener(MFA_VERIFIED_EVENT, verified);
     document.addEventListener('visibilitychange', recheck);
@@ -299,6 +327,8 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mountedRef.current = false;
+      disposed = true;
+      pendingEvents.forEach(clearTimeout);
       requestIdRef.current += 1;
       subscription.unsubscribe();
       window.removeEventListener(MFA_VERIFIED_EVENT, verified);
