@@ -1,84 +1,45 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { HelmetProvider } from "react-helmet-async";
-import App from "./App.tsx";
 import "./index.css";
-import { preventPinchZoom } from "./lib/preventZoom";
-import { initNativeApp } from "./lib/platform";
-import { initNativePush } from "./lib/push";
+import { validateBackend } from "./lib/backendPolicy.mjs";
 
-// Native-app feel: block browser pinch-zoom gestures (viewport meta covers
-// touch pinch/focus-zoom; this covers desktop trackpad + Safari gestures).
-preventPinchZoom();
+// Validate before importing any module that starts an auth/data client. A bad
+// build shows a recovery screen instead of sending a session to another project.
+function showStartupRecovery() {
+  const root = document.getElementById("root")!;
+  root.replaceChildren();
+  const panel = document.createElement("main");
+  panel.className =
+    "min-h-screen flex flex-col items-center justify-center gap-5 px-6 text-center bg-background text-foreground";
+  const logo = document.createElement("img");
+  logo.src = "/pulse-icon-192.png";
+  logo.alt = "PULSE";
+  logo.width = 80;
+  logo.height = 80;
+  const heading = document.createElement("h1");
+  heading.className = "text-2xl font-bold";
+  heading.textContent = "PULSE needs to refresh";
+  const message = document.createElement("p");
+  message.className = "max-w-sm text-muted-foreground";
+  message.textContent =
+    "Reload to get the latest version. If you installed PULSE from an app store, check for an update there.";
+  const reload = document.createElement("button");
+  reload.className =
+    "rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground";
+  reload.textContent = "Reload PULSE";
+  reload.onclick = () => window.location.reload();
+  const support = document.createElement("a");
+  support.href = "mailto:support@pulsepb.com";
+  support.textContent = "Contact PULSE support";
+  panel.append(logo, heading, message, reload, support);
+  root.append(panel);
+}
 
-// Native (iOS/Android) startup tweaks — no-op on web.
-void initNativeApp();
-// Attach native push listeners + refresh the device token if already granted.
-void initNativePush();
-
-// Register the PWA service worker in standalone production pages. Embedded
-// previews intentionally skip it so they cannot retain a stale app shell.
-let isIframe = false;
 try {
-  isIframe = window.self !== window.top;
+  validateBackend(
+    import.meta.env,
+    import.meta.env.MODE,
+    window.location.hostname
+  );
+  void import("./bootstrap").catch(showStartupRecovery);
 } catch {
-  isIframe = true;
+  showStartupRecovery();
 }
-const shouldRegisterServiceWorker = import.meta.env.PROD && !isIframe;
-
-if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('Service Worker registered');
-
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-        
-        // Check for updates occasionally while the app is visible. Every
-        // minute was needless network churn for a long-running PWA session.
-        setInterval(() => {
-          if (document.visibilityState === 'visible') void registration.update();
-        }, 15 * 60 * 1000);
-
-        // Listen for updates and activate them automatically.
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          }
-        });
-
-        // Do not force-reload on controllerchange. The old implementation did
-        // this while the activating worker also navigated every client, which
-        // could turn one refresh into a visible double refresh. The new worker
-        // takes over quietly and the next natural navigation gets the update.
-      })
-      .catch((error) => {
-        console.log('Service Worker registration failed:', error);
-      });
-  });
-} else if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations()
-    .then((registrations) => {
-      registrations
-        .filter((registration) => registration.active?.scriptURL.endsWith('/sw.js') || registration.scope === `${window.location.origin}/`)
-        .forEach((registration) => registration.unregister());
-    })
-    .catch((error) => {
-      console.log('Service Worker cleanup skipped:', error);
-    });
-}
-
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </React.StrictMode>
-);

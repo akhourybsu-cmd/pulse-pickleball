@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:staging": "vite --mode staging",
-    "build": "vite build",
+    "build": "vite build && npm run backend:verify",
     "build:staging": "vite build --mode staging",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
@@ -14,11 +14,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "payments:check": "node scripts/check-stripe-readiness.mjs",
-    "cap:sync": "vite build && cap sync android",
-    "android:open": "vite build && cap sync android && cap open android",
+    "cap:sync": "npm run build && cap sync android && node scripts/check-backend-artifact.mjs --native",
+    "android:open": "npm run cap:sync && cap open android",
     "android:assets": "capacitor-assets generate --android --iconBackgroundColor '#1B1D21' --iconBackgroundColorDark '#1B1D21' --splashBackgroundColor '#1B1D21' --splashBackgroundColorDark '#1B1D21'",
     "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug",
-    "android:bundle": "npm run cap:sync && cd android && ./gradlew bundleRelease"
+    "android:bundle": "npm run cap:sync && cd android && ./gradlew bundleRelease",
+    "backend:verify": "node scripts/check-backend-artifact.mjs",
+    "backend:health": "node scripts/check-backend-health.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

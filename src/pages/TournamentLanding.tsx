@@ -1,3 +1,4 @@
+import { backendConfig } from '@/integrations/supabase/config';
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,10 +131,10 @@ export default function TournamentLanding() {
     
     try {
       const settingsResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tournament_event_settings?event_id=eq.${slug}`,
+        `${backendConfig.url}/rest/v1/tournament_event_settings?event_id=eq.${slug}`,
         {
           headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            apikey: backendConfig.publishableKey,
             Authorization: `Bearer ${token}`,
           },
         }

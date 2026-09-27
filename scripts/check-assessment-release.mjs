@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { executeSql, readLocalMigrations, unwrapOuterTransaction } from './deploy-supabase-migrations.mjs';
 
-const project = 'rqfqwavhtfwwtmfjnxkx';
+import { PRODUCTION_SUPABASE_PROJECT as project } from '../src/lib/backendPolicy.mjs';
 const releaseVersions = ['20260922180000', '20260922200000'];
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const compatibilitySql = `SELECT

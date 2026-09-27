@@ -1,3 +1,4 @@
+import { backendConfig } from '@/integrations/supabase/config';
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,10 +102,10 @@ export function EmailTemplateEditor({ eventId }: EmailTemplateEditorProps) {
       const token = session.data.session?.access_token;
       
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tournament_email_templates?event_id=eq.${eventId}`,
+        `${backendConfig.url}/rest/v1/tournament_email_templates?event_id=eq.${eventId}`,
         {
           headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            apikey: backendConfig.publishableKey,
             Authorization: `Bearer ${token}`,
           },
         }
@@ -146,12 +147,12 @@ export function EmailTemplateEditor({ eventId }: EmailTemplateEditorProps) {
     try {
       if (existing) {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tournament_email_templates?id=eq.${existing.id}`,
+          `${backendConfig.url}/rest/v1/tournament_email_templates?id=eq.${existing.id}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              apikey: backendConfig.publishableKey,
               Authorization: `Bearer ${token}`,
               Prefer: "return=minimal",
             },
@@ -172,12 +173,12 @@ export function EmailTemplateEditor({ eventId }: EmailTemplateEditorProps) {
         }
       } else {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tournament_email_templates`,
+          `${backendConfig.url}/rest/v1/tournament_email_templates`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              apikey: backendConfig.publishableKey,
               Authorization: `Bearer ${token}`,
               Prefer: "return=minimal",
             },
