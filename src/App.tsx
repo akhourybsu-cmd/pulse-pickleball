@@ -30,7 +30,11 @@ import { ScrollManager } from "@/components/ScrollManager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { completeAuthCallback, hasPendingAuthCallback } from "@/lib/authCallback";
-import { consumePostAuthRedirect } from "@/lib/authRedirect";
+import { consumePostAuthRedirect, isCommunityReturnPath, sanitizeRedirectPath, stashPostAuthRedirect } from "@/lib/authRedirect";
+const PublicCommunityLayout = lazy(() => import('./pages/public/PublicCommunityLayout'));
+const CommunityDirectoryRoute = lazy(() => import('./pages/public/PublicCommunityLayout').then(module => ({ default: module.CommunityDirectoryRoute })));
+const CommunityDetailRoute = lazy(() => import('./pages/public/PublicCommunityLayout').then(module => ({ default: module.CommunityDetailRoute })));
+const PublicVenueRoute = lazy(() => import('./pages/public/PublicCommunity'));
 const PickleballGuide = lazy(() => import('./pages/PickleballGuide'));
 
 /**
@@ -193,8 +197,6 @@ const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
-const Community = lazy(() => import("./pages/player/Community"));
-const GroupRoute = lazy(() => import("./pages/player/GroupRoute"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 // Guarded at the import, not just at the route: a bare lazy() still emits the
@@ -255,6 +257,10 @@ const AppContent = () => {
   useEffect(() => {
     if (callbackHandled.current) return;
     let cancelled = false;
+    // Confirmation links carry their destination across browsers, without
+    // relying on storage left behind in the browser that started signup.
+    const callbackReturn = sanitizeRedirectPath(new URL(window.location.href).searchParams.get('redirect'));
+    if (isCommunityReturnPath(callbackReturn)) stashPostAuthRedirect(callbackReturn);
     // StrictMode may run the effect twice; both subscribers observe one check.
     callbackCheck.current ??= completeAuthCallback(
       supabase.auth,
@@ -264,7 +270,7 @@ const AppContent = () => {
     callbackCheck.current.then(result => {
       if (cancelled || callbackHandled.current) return;
       callbackHandled.current = true;
-      if (result.handled && result.entryPath) navigate(consumePostAuthRedirect(), { replace: true });
+      if (result.handled && result.entryPath) navigate(isCommunityReturnPath(callbackReturn) ? callbackReturn : consumePostAuthRedirect(), { replace: true });
       setAuthRecoveryChecked(true);
     }, error => {
       if (cancelled || callbackHandled.current) return;
@@ -301,7 +307,11 @@ const AppContent = () => {
       <div role="alert" className="max-w-sm text-center space-y-4">
         <h1 className="text-xl font-semibold">Let’s reconnect your account</h1>
         <p className="text-sm text-muted-foreground">{callbackError}</p>
-        <Button onClick={() => { setCallbackError(null); navigate('/auth', { replace: true }); }}>Sign in again</Button>
+        <Button onClick={() => {
+          setCallbackError(null);
+          const destination = sanitizeRedirectPath(new URL(window.location.href).searchParams.get('redirect'));
+          navigate(isCommunityReturnPath(destination) ? `/auth?${new URLSearchParams({ redirect: destination })}` : '/auth', { replace: true });
+        }}>Sign in again</Button>
       </div>
     </div>;
   }
@@ -385,6 +395,12 @@ const AppContent = () => {
               shared invite links keep working. Must be declared
               BEFORE the /player block so it wins the URL match. */}
           <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
+
+          <Route element={<PublicCommunityLayout />}>
+            <Route path="/player/community" element={<CommunityDirectoryRoute />} />
+            <Route path="/player/community/group/:groupId" element={<CommunityDetailRoute />} />
+            <Route path="/venues/:slug" element={<PublicVenueRoute />} />
+          </Route>
 
           {/* League invite-link landing — same rationale as the group
               join route above: mounted OUTSIDE the /player AuthGuard so a
@@ -477,9 +493,7 @@ const AppContent = () => {
                 pathless parent keeps PlayerShell above the transition
                 so the header + bottom nav don't remount. */}
             <Route element={<CommunityTransitionOutlet />}>
-              <Route path="community" element={<Community />} />
               <Route path="venue-requests" element={<VenueRequests />} />
-              <Route path="community/group/:groupId" element={<GroupRoute />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
               <Route path="community/group/:groupId/ops" element={<VenueOps />} />
             </Route>

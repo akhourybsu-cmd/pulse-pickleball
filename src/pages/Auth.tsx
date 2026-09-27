@@ -22,6 +22,7 @@ import {
   peekPostAuthRedirect,
   sanitizeRedirectPath,
   stashPostAuthRedirect,
+  isCommunityReturnPath,
   isAssessmentSaveRedirect,
 } from "@/lib/authRedirect";
 
@@ -84,6 +85,8 @@ const Auth = () => {
   const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
   const assessmentReturn = isAssessmentSaveRedirect(redirectPath);
+  const communityReturn = isCommunityReturnPath(redirectPath);
+  const communityCallback = `${window.location.origin}/auth?${new URLSearchParams({ redirect: redirectPath })}`;
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
@@ -169,10 +172,10 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
-      if (!assessmentReturn) clearPostAuthRedirect();
+      if (!assessmentReturn && !communityReturn) clearPostAuthRedirect();
       navigate(redirectPath, { replace: true });
     }
-  }, [alreadyAuthed, redirectPath, assessmentReturn, navigate]);
+  }, [alreadyAuthed, redirectPath, assessmentReturn, communityReturn, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +228,7 @@ const Auth = () => {
       // Save "stay signed in" preference
       try { localStorage.setItem('pulse_persist_session', staySignedIn.toString()); } catch { /* Optional preference. */ }
       if (assessmentReturn && !stashPostAuthRedirect(redirectPath)) throw new Error('Allow browser storage before signing in so your assessment can return here.');
+      if (communityReturn) stashPostAuthRedirect(redirectPath);
 
       if (isLogin) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -261,7 +265,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            ...(assessmentReturn ? { emailRedirectTo: window.location.origin } : {}),
+            ...(communityReturn ? { emailRedirectTo: communityCallback } : assessmentReturn ? { emailRedirectTo: window.location.origin } : {}),
             data: {
               first_name: firstName,
               last_name: lastName,
@@ -360,13 +364,12 @@ const Auth = () => {
       // Stash the intended deep link — OAuth strips React Router location.state
       // when the browser bounces back from the provider.
       if (!stashPostAuthRedirect(redirectPath) && assessmentReturn) throw new Error('Allow browser storage before signing in so your assessment can return here.');
-      // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
-      // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
-      // the provider to bounce the user back to /auth without a session.
+      // Community returns use the allow-listed /auth callback and an encoded
+      // local destination. Other flows retain their established root callback.
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: communityReturn ? communityCallback : window.location.origin,
         },
       });
       if (error) {
@@ -446,12 +449,18 @@ const Auth = () => {
                 ? "Enter your email to receive a password reset link"
                 : assessmentReturn
                 ? "Your full analysis is ready. Save it to a free account to revisit your skills and build an assessment history."
+                : communityReturn
+                ? 'Create a free PULSE account or sign in to join in. We’ll bring you back to the page you were exploring.'
                 : isLogin
                 ? "Sign in to track your pickleball matches"
                 : "Join PULSE to start tracking your rating"}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {communityReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
+              {awaitingConfirmation && <p role="status">Check your email to finish creating your account. We’ll bring you back here after you sign in. If the link opens in another browser, you may need to sign in there to continue.</p>}
+              <Link className="inline-block min-h-9 text-primary underline underline-offset-4" to={redirectPath}>Back to exploring</Link>
+            </div>}
             {assessmentReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
               <p>{awaitingConfirmation ? 'Check your email, then finish verification in this browser. If the link opens somewhere else, return here and sign in to save your answers.' : 'Finish signing in on this browser to bring your guest answers with you.'}</p>
               {awaitingConfirmation && <p role="status" className="font-medium">Your analysis is still waiting here; it has not been saved to an account yet.</p>}

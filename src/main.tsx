@@ -1,5 +1,6 @@
 import "./index.css";
 import { validateBackend } from "./lib/backendPolicy.mjs";
+import { venueHostDestination } from "./lib/communityAccess";
 
 // Validate before importing any module that starts an auth/data client. A bad
 // build shows a recovery screen instead of sending a session to another project.
@@ -39,7 +40,9 @@ try {
     import.meta.env.MODE,
     window.location.hostname
   );
-  void import("./bootstrap").catch(showStartupRecovery);
+  const venueDestination = venueHostDestination(new URL(window.location.href));
+  if (venueDestination) window.location.replace(venueDestination);
+  else void import("./bootstrap").catch(showStartupRecovery);
 } catch {
   showStartupRecovery();
 }

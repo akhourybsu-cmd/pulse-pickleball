@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertTriangle, Users, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGroups } from '@/hooks/useGroups';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { stashPostAuthRedirect } from '@/lib/authRedirect';
+import { clearPostAuthRedirect, stashPostAuthRedirect } from '@/lib/authRedirect';
+import { communityAuthUrl } from '@/lib/communityAccess';
 
 interface GroupPreview {
   id: string;
@@ -31,7 +32,13 @@ type Phase = 'loading' | 'preview' | 'need_auth' | 'joining' | 'success' | 'erro
 export default function JoinGroupByCode() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
   const { joinGroupByCode, currentUserId } = useGroups();
+
+  useEffect(() => {
+    if (currentUserId) clearPostAuthRedirect(returnTo);
+  }, [currentUserId, returnTo]);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [group, setGroup] = useState<GroupPreview | null>(null);
@@ -103,8 +110,8 @@ export default function JoinGroupByCode() {
   }, [phase, code, currentUserId, joinGroupByCode]);
 
   const goToAuth = (mode: 'signin' | 'signup') => {
-    stashPostAuthRedirect(`/player/community/join/${code}`);
-    navigate(`/auth${mode === 'signup' ? '?tab=signup' : ''}`, { replace: false });
+    stashPostAuthRedirect(returnTo);
+    navigate(communityAuthUrl(returnTo, mode), { replace: false });
   };
 
   // ---------- Render ----------

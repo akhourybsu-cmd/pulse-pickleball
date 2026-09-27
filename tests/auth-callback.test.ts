@@ -22,6 +22,14 @@ function fixture(suffix = '/auth?code=single-use&redirect=%2Fplayer%2Fplay') {
 
 afterEach(() => vi.useRealTimers());
 describe('sign-in callback ownership', () => {
+  it('preserves venue context through email verification without browser storage', async () => {
+    const destination = '/venues/palace?tab=book#court-2';
+    const query = new URLSearchParams({ redirect: destination });
+    const f = fixture(`/auth?${query}#access_token=fixture-access&refresh_token=fixture-refresh&type=signup`);
+    await expect(f.run()).resolves.toEqual({ handled: true, entryPath: true });
+    expect(f.replace).toHaveBeenCalledWith(`/auth?${query}`);
+    expect(new URL(f.replace.mock.calls[0][0], base).searchParams.get('redirect')).toBe(destination);
+  });
   it('waits for SDK exchange without submitting the already-consumed code again', async () => {
     const f = fixture();
     await expect(f.run()).resolves.toEqual({ handled: true, entryPath: true });

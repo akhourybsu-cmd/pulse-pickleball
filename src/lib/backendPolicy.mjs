@@ -15,7 +15,7 @@ export function validateBackend(env, mode = "production", hostname = "") {
     "pulse-pickleball-c60e1.web.app",
     "pulse-pickleball-c60e1.firebaseapp.com",
   ];
-  if (staging && productionHosts.includes(hostname.toLowerCase())) {
+  if (staging && (productionHosts.includes(hostname.toLowerCase()) || hostname.toLowerCase().endsWith('.pulsepb.com'))) {
     throw new Error(
       "A staging build cannot run on the PULSE production website."
     );

@@ -100,3 +100,7 @@ verify_jwt = false
 [functions.skill-claim]
 # The handler validates the current account with auth.getUser before any write.
 verify_jwt = false
+
+[functions.venue-integrations]
+# Current session, MFA and platform-superadmin checks run inside the handler.
+verify_jwt = false

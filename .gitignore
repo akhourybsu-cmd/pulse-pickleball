@@ -30,3 +30,4 @@ supabase/.temp/
 # Isolated non-production build output
 dist-staging
 dist-development
+.qa-cache/

@@ -9269,6 +9269,18 @@ export type Database = {
       }
     }
     Functions: {
+      get_venue_address_setup: { Args: { p_venue_id: string }; Returns: Json }
+      check_venue_address: { Args: { p_venue_id: string; p_slug: string }; Returns: Json }
+      request_venue_address: { Args: { p_venue_id: string; p_slug: string }; Returns: Json }
+      list_venue_address_requests: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      get_public_community: {
+        Args: { p_group_id?: string | null; p_venue_slug?: string | null }
+        Returns: Json
+      }
+      list_public_communities: {
+        Args: { p_search?: string; p_offset?: number }
+        Returns: Json[]
+      }
       edit_group_message: { Args: { p_message_id: string; p_content: string }; Returns: undefined }
       pulse_mfa_status: { Args: Record<PropertyKey, never>; Returns: Json }
       pulse_has_required_mfa: { Args: Record<PropertyKey, never>; Returns: boolean }

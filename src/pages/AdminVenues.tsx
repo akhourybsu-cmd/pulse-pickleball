@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Search, ShieldCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { VenueAddressRequests } from '@/components/admin/VenueAddressRequests';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,6 +70,7 @@ export default function AdminVenues() {
   }
   return <AdminLayout title="Venues & feature access" subtitle="Review ownership and platform entitlements. This directory does not give you venue staff or operating controls.">
     <div className="space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <VenueAddressRequests />
       <section className="rounded-2xl border bg-card p-4 sm:p-5"><div className="flex flex-wrap gap-3"><div className="relative min-w-0 flex-1 basis-64"><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search venues by name, location or owner" className="h-11 pl-10" placeholder="Search venue, location or owner…" value={search} maxLength={200} onChange={e => setSearch(e.target.value)} /></div><Button variant="outline" className="min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>Refresh</Button></div>
         <div className="mt-4 flex flex-wrap gap-2" aria-label="Filter venues">{FILTERS.map(([value, label]) => <Button key={value} variant={filter === value ? 'default' : 'outline'} className="min-h-11 rounded-full px-4 text-xs" aria-pressed={filter === value} onClick={() => { setParams(value === 'all' ? {} : { filter: value }); setPage(0); }}>{label}</Button>)}</div>
       </section>

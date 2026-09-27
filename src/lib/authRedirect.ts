@@ -28,6 +28,9 @@ const safeStorageRemove = (storage: () => Storage, key: string) => {
 
 export const isAuthEntryPath = (path: string) => path === "/" || path === "/auth";
 
+export const isCommunityReturnPath = (path: string | null | undefined): boolean =>
+  !!path && /^\/(?:venues\/[^/?#]+|player\/community(?:\/group\/[^/?#]+|\/join\/[^/?#]+)?)(?:[?#]|$)/.test(path);
+
 export const isAssessmentSaveRedirect = (path: string | null | undefined) =>
   !!path && /^\/skill-assessment\?save=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path);
 
@@ -69,9 +72,9 @@ export const peekPostAuthRedirect = () => {
 export const consumePostAuthRedirect = () => {
   const redirect = peekPostAuthRedirect();
   // App's callback listener, Index and Auth can all resolve the same login.
-  // Keep an assessment handoff until its destination acknowledges arrival;
+  // Keep assessment and community handoffs until the destination acknowledges arrival;
   // otherwise a second resolver can replace it with the default dashboard.
-  if (!isAssessmentSaveRedirect(redirect)) clearPostAuthRedirect();
+  if (!isAssessmentSaveRedirect(redirect) && !isCommunityReturnPath(redirect)) clearPostAuthRedirect();
   return redirect || DEFAULT_AUTH_DESTINATION;
 };
 
