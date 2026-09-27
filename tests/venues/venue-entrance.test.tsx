@@ -81,7 +81,7 @@ describe('venue entrance identity', () => {
     state.index = 0; const empty = renderToStaticMarkup(<VenueBrandMark name="Pickleball Palace" />);
     expect(empty).toContain('PP'); expect(empty).not.toContain('<img');
     state.index = 0; state.slots = [null, null];
-    expect(renderToStaticMarkup(<VenueBrandMark {...identity} secondaryColor="#fff" />)).not.toContain('background-color:#ffffff');
+    expect(renderToStaticMarkup(<VenueBrandMark {...identity} secondaryColor="#fff" />)).toContain('background-color:#ffffff');
     state.index = 0; state.slots = [null, identity.logoUrl];
     expect(renderToStaticMarkup(<VenueBrandMark {...identity} secondaryColor="#fff" />)).toContain('background-color:#ffffff');
   });

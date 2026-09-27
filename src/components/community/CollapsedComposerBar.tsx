@@ -64,7 +64,7 @@ export function CollapsedComposerBar({
         >
           <SquarePen className="h-4 w-4 shrink-0 text-primary" aria-hidden />
           <span className="truncate">
-            {venueMode && contextName ? `Share with ${contextName}…` : 'Share an update…'}
+            {venueMode && contextName ? 'Share something…' : 'Share an update…'}
           </span>
         </button>
 

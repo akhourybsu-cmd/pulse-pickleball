@@ -14,7 +14,7 @@ const home = { name:'ELEVENO',hasBooking:true,sessions:[],players:[],memberCount
 
 describe('club mobile presentation', () => {
   it('has exactly five text sections, with booking and chat outside the primary tab bar', () => {
-    const html=renderToStaticMarkup(<Tabs value="home"><VenueMobileTabs activeTab="home" /></Tabs>);
+    const html=renderToStaticMarkup(<Tabs value="home"><VenueMobileTabs activeTab="home" hasCourts /></Tabs>);
     expect(html.match(/role="tab"/g)).toHaveLength(5);
     for(const label of ['Overview','Play','Community','Events','About']) expect(html).toContain(`>${label}<`);
     expect(html).not.toContain('trigger-book');expect(html).not.toContain('trigger-chat');
@@ -26,7 +26,7 @@ describe('club mobile presentation', () => {
     const html=renderToStaticMarkup(<VenueClubHeader {...header} city="North Attleboro" state="MA" />);
     expect(html).toContain('North Attleboro, MA');expect(html).toContain('3 courts');expect(html).toContain('2 courts free');expect(html).toContain('Hours not listed');
     expect(html).not.toContain('playing now');expect(html).not.toContain('Indoor');expect(html).not.toContain('Manage venue');
-    expect(html).toContain('Book a Court');expect(html).toContain('Join Open Play');expect(html).toContain('View Schedule');
+    expect(html).not.toContain('Book a Court');expect(html).toContain('Join Open Play');expect(html).toContain('View schedule');
   });
   it('omits staff controls and zero-as-unknown availability for players', () => {
     const html=renderToStaticMarkup(<VenueClubHeader {...header} freeNow={null} />);
@@ -49,8 +49,8 @@ describe('club mobile presentation', () => {
   });
   it('uses honest empty/error states and does not fabricate community players', () => {
     const html=renderToStaticMarkup(<VenueClubHome {...home} memberCount={0} onlineCount={0} />);
-    expect(html).toContain('No upcoming sessions are listed');expect(html).toContain('Meet your community');expect(html).not.toContain('Sarah');expect(html).not.toContain('online now');
-    const failed=renderToStaticMarkup(<VenueClubHome {...home} error />);expect(failed).toContain('Schedule unavailable');expect(failed).not.toContain('No upcoming sessions are listed');
+    expect(html).toContain('Nothing scheduled yet');expect(html).toContain('Meet your community');expect(html).not.toContain('Sarah');expect(html).not.toContain('online now');
+    const failed=renderToStaticMarkup(<VenueClubHome {...home} error />);expect(failed).toContain('Schedule unavailable');expect(failed).not.toContain('Nothing scheduled yet');
   });
   it('shows a real roster count when known and avoids fake remaining spots when unknown', () => {
     const session={id:'s',title:'Intermediate Open Play',description:null,start_time:'2099-09-15T20:00:00Z',end_time:'2099-09-15T22:00:00Z',capacity:16,going:8,skill_level_min:3,skill_level_max:3.75};

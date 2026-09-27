@@ -1,3 +1,7 @@
+import { resolveVenuePalette, VENUE_BRAND_COLOR_FIELDS } from '@/lib/venues/palette';
+import { useTheme } from 'next-themes';
+import { normalizeHex, type VenueBrand } from '@/lib/venues/branding';
+import { VenuePalettePreview } from '@/components/venue/VenuePalettePreview';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X, BadgeCheck, ShieldQuestion } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,10 +30,7 @@ import { VenueImagePreview } from '@/components/venue/VenueImagePreview';
 /**
  * Venue identity for a venue community.
  *
- * Every field here already existed on `venues` — the table has carried a full
- * branding kit (logo, cover, colours, tagline, welcome copy, socials) since it
- * was created, with nothing able to write to it. This is the editor for the
- * subset that actually changes how the community looks and reads.
+ * Edits the venue's logo, cover, color roles, welcome copy and contact details.
  *
  * Images go in the venue-logos bucket under the venue id. Its policies grant
  * owners and managers access, whereas the groups bucket is intentionally
@@ -42,6 +43,7 @@ interface AdminVenueTabProps {
   /** Whether an admin has verified this venue — drives the badge, not access. */
   isVerified: boolean;
   mode?: 'profile' | 'facility' | 'all';
+  onBrandSaved?: (brand: VenueBrand & { name: string }) => void;
 }
 
 interface VenueForm {
@@ -51,6 +53,11 @@ interface VenueForm {
   welcome_message: string;
   primary_color: string;
   secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  surface_color: string;
+  text_color: string;
+  logo_background_color: string;
   logo_url: string | null;
   cover_image_url: string | null;
   logo_shape: 'circle' | 'square';
@@ -76,6 +83,11 @@ const EMPTY: VenueForm = {
   welcome_message: '',
   primary_color: DEFAULT_PRIMARY,
   secondary_color: DEFAULT_SECONDARY,
+  accent_color: '',
+  background_color: '',
+  surface_color: '',
+  text_color: '',
+  logo_background_color: '',
   logo_url: null,
   cover_image_url: null,
   logo_shape: 'square',
@@ -96,7 +108,7 @@ function isHex(value: string): boolean {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
-export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: AdminVenueTabProps) {
+export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBrandSaved }: AdminVenueTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<VenueForm>(EMPTY);
@@ -106,6 +118,9 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
   const [entrancePreview, setEntrancePreview] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const palette = resolveVenuePalette(form, resolvedTheme === 'dark');
+  const colorDefaults = { primary_color: palette.primary, secondary_color: palette.secondary, accent_color: palette.accent, background_color: palette.background, surface_color: palette.surface, text_color: palette.text, logo_background_color: palette.logoBackground };
 
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
@@ -120,7 +135,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
+          .select('name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
           .eq('id', venueId)
           .single();
 
@@ -137,8 +152,13 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
           setForm({
             ...EMPTY,
             ...data,
-            primary_color: data.primary_color ?? DEFAULT_PRIMARY,
-            secondary_color: data.secondary_color ?? DEFAULT_SECONDARY,
+            primary_color: data.primary_color ?? '',
+            secondary_color: data.secondary_color ?? '',
+            accent_color: data.accent_color ?? '',
+            background_color: data.background_color ?? '',
+            surface_color: data.surface_color ?? '',
+            text_color: data.text_color ?? '',
+            logo_background_color: data.logo_background_color ?? '',
             logo_url: data.logo_url ?? null,
             cover_image_url: data.cover_image_url ?? null,
             logo_shape: data.logo_shape === 'circle' ? 'circle' : 'square',
@@ -224,8 +244,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
       toast({ title: 'Name required', description: 'Give your venue a name.', variant: 'destructive' });
       return;
     }
-    for (const key of ['primary_color', 'secondary_color'] as const) {
-      if (form[key] && !isHex(form[key])) {
+    for (const { key } of VENUE_BRAND_COLOR_FIELDS) {
+      if (form[key].trim() && !isHex(form[key])) {
         toast({
           title: 'Invalid colour',
           description: 'Use a hex value like #C9962F.',
@@ -248,8 +268,10 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
           tagline: blankToNull(form.tagline),
           welcome_headline: blankToNull(form.welcome_headline),
           welcome_message: blankToNull(form.welcome_message),
-          primary_color: blankToNull(form.primary_color),
-          secondary_color: blankToNull(form.secondary_color),
+          primary_color: normalizeHex(form.primary_color),
+          secondary_color: normalizeHex(form.secondary_color),
+          accent_color: normalizeHex(form.accent_color),
+          logo_background_color: normalizeHex(form.logo_background_color),
           website_url: blankToNull(form.website_url),
           phone: blankToNull(form.phone),
           email: blankToNull(form.email),
@@ -271,6 +293,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
         return;
       }
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['groups'] });
+      onBrandSaved?.({ name: form.name.trim(), ...Object.fromEntries(VENUE_BRAND_COLOR_FIELDS.map(({ key }) => [key, normalizeHex(form[key])])) });
       toast({ title: 'Venue updated' });
       void queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] });
     } catch (error) {
@@ -322,7 +346,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="min-w-0 space-y-4">
-            <VenueImagePreview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, secondaryColor: form.secondary_color }} cover={{ src: form.cover_image_url, fit: form.cover_image_fit, focalPoint: form.cover_focal_point }} />
+            <VenueImagePreview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} cover={{ src: form.cover_image_url, fit: form.cover_image_fit, focalPoint: form.cover_focal_point }} />
             <div className="flex flex-wrap gap-2" aria-busy={uploading !== null}>
               <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => coverInput.current?.click()} disabled={uploading !== null || saving}>
                 {uploading === 'cover' ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Camera className="mr-2 h-4 w-4 shrink-0" />}
@@ -404,7 +428,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
                 <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Your venue’s entrance</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Members see a brief welcome animation using your logo, shape and brand colors. Without a logo, we show your venue’s initials. No paid feature is required.</p></div>
                 <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" aria-expanded={entrancePreview} aria-controls="venue-entrance-preview" onClick={() => setEntrancePreview(value => !value)}>{entrancePreview ? 'Hide preview' : 'Preview entrance'}</Button>
               </div>
-              {entrancePreview && <div id="venue-entrance-preview" className="min-w-0"><VenueLoadingScreen preview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, primaryColor: form.primary_color, secondaryColor: form.secondary_color }} /><p className="mt-2 text-xs leading-5 text-muted-foreground">Preview of your current form. Save changes to apply updated colors and display settings.</p></div>}
+              {entrancePreview && <div id="venue-entrance-preview" className="min-w-0"><VenueLoadingScreen preview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, primaryColor: form.primary_color, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} /><p className="mt-2 text-xs leading-5 text-muted-foreground">Preview of your current form. Save changes to apply updated colors and display settings.</p></div>}
             </div>
 
             <input
@@ -452,21 +476,12 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all' }: Ad
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ColorField
-              id="venue-primary"
-              label="Primary colour"
-              hint="Accents, buttons and highlights"
-              value={form.primary_color}
-              onChange={(v) => set('primary_color', v)}
-            />
-            <ColorField
-              id="venue-secondary"
-              label="Secondary colour"
-              hint="Header band behind the logo"
-              value={form.secondary_color}
-              onChange={(v) => set('secondary_color', v)}
-            />
+          <div className="space-y-5">
+            <div><h3 className="text-sm font-semibold">Venue color palette</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Personalize actions, highlights, artwork and the logo tile. PULSE keeps headers, reading colors and surfaces consistent. Leave a field on Auto to use its default.</p></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {VENUE_BRAND_COLOR_FIELDS.map(({ key, label, hint }) => <ColorField key={key} id={'venue-' + key.replace('_color', '').replace(/_/g, '-')} label={label} hint={hint} value={form[key]} fallbackColor={colorDefaults[key]} onChange={value => set(key, value)} />)}
+            </div>
+            <VenuePalettePreview brand={form} identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit }} />
           </div>
         </CardContent>
       </Card>
@@ -611,12 +626,14 @@ function ColorField({
   label,
   hint,
   value,
+  fallbackColor,
   onChange,
 }: {
   id: string;
   label: string;
   hint: string;
   value: string;
+  fallbackColor: string;
   onChange: (v: string) => void;
 }) {
   const valid = isHex(value);
@@ -629,7 +646,7 @@ function ColorField({
           aria-label={`${label} picker`}
           // A colour input only accepts #rrggbb, so a half-typed or invalid
           // value in the text field must not be pushed into it.
-          value={valid ? value : '#000000'}
+          value={normalizeHex(value) ?? fallbackColor}
           onChange={(e) => onChange(e.target.value)}
           className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-input bg-background p-1"
         />
@@ -637,12 +654,15 @@ function ColorField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="#C9962F"
+          placeholder="Auto"
+          aria-invalid={!valid && value.trim() !== ''}
+          aria-describedby={`${id}-hint`}
           maxLength={7}
           className={cn('font-mono', !valid && value.trim() !== '' && 'border-destructive')}
         />
+        <Button type="button" variant="ghost" size="sm" aria-label={`Use automatic ${label.toLowerCase()}`} disabled={!value} onClick={() => onChange('')}>Auto</Button>
       </div>
-      <p className="text-xs text-muted-foreground">{hint}</p>
+      <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }

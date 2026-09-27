@@ -28,7 +28,7 @@ describe('venue service presentation', () => {
     expect(html).toContain('Manage venue'); expect(html).not.toContain('>Operations<');
   });
   it('does not display staff controls to a player', () => {
-    const html=renderToStaticMarkup(<Tabs value="book"><VenueDesktopNavigation hasCourts isAdmin={false} isOperator={false} onOperations={noop} onSettings={noop} /></Tabs>);
+    const html=renderToStaticMarkup(<Tabs value="book"><VenueDesktopNavigation activeTab="book" hasCourts isAdmin={false} isOperator={false} onOperations={noop} onSettings={noop} /></Tabs>);
     expect(html).not.toContain('Manage venue'); expect(html).not.toContain('>Operations<');
     expect(html).toContain('data-venue-service="booking"');
   });

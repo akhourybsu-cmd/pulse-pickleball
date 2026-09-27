@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpRight, BadgeCheck, CalendarDays, ChevronRight, Settings, Gauge } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BadgeCheck, CalendarDays, Settings, Gauge } from 'lucide-react';
 import { VenueBrandMark, type VenueIdentity } from './VenueBrandMark';
 import { VenueCoverImage, type VenueCoverImageProps } from './VenueCoverImage';
 import { clubHoursStatus } from '@/lib/venues/clubPresentation';
@@ -37,8 +37,8 @@ export function VenueClubHeader({ identity, cover, city, state, verified, hoursR
     <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{identity.name}</p><h1 id="club-booking-title" tabIndex={-1} className="text-lg font-semibold outline-none">Book a court</h1></div>
   </header>;
   return <>
-    <header className="bg-card" data-testid="club-mobile-header">
-      <div className={cn('relative isolate overflow-hidden bg-[#111b29]', embedded ? 'h-[6.25rem]' : 'h-[calc(6.25rem+env(safe-area-inset-top))]')}>
+    <header className="bg-background" data-testid="club-mobile-header">
+      <div className={cn('relative isolate overflow-hidden bg-[var(--venue-cover-background,#111b29)]', embedded ? 'h-[6.25rem]' : 'h-[calc(6.25rem+env(safe-area-inset-top))]')}>
         <VenueCoverImage {...cover} alt={`${identity.name} banner`} />
         <div aria-hidden className={cn('pointer-events-none absolute inset-0', cover.fit !== 'contain' && 'bg-gradient-to-b from-[#081322]/45 via-transparent to-[#081322]/20')} />
         {!embedded && <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-[calc(0.375rem+env(safe-area-inset-top))]">
@@ -49,17 +49,17 @@ export function VenueClubHeader({ identity, cover, city, state, verified, hoursR
           </div>
         </div>}
       </div>
-      <div className="px-4 pb-3 pt-3">
+      <div className="relative mx-5 -mt-5 rounded-2xl border border-border/60 bg-card p-4">
         <div className="flex min-w-0 items-center gap-3">
           <VenueBrandMark {...identity} className="h-10 w-10 bg-muted text-[40px] text-foreground ring-1 ring-border/60" />
           <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><Heading className="truncate text-xl font-semibold tracking-tight">{identity.name}</Heading>{verified && <BadgeCheck aria-label="Verified venue" className="h-4 w-4 shrink-0 text-muted-foreground" />}</div>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{location || 'Your venue community'}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{[location, clubHoursStatus(hoursRaw, timeZone)].filter(Boolean).join(' · ')}</p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground" aria-label="Venue status">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground" aria-label="Venue status">
           {courtCount > 0 && <span>{courtCount} {courtCount === 1 ? 'court' : 'courts'}</span>}
           {hasBooking && freeNow !== null && <span>{freeNow} {freeNow === 1 ? 'court free' : 'courts free'}</span>}
-          <span>{clubHoursStatus(hoursRaw, timeZone)}</span>
+
         </div>
       </div>
     </header>
@@ -67,15 +67,11 @@ export function VenueClubHeader({ identity, cover, city, state, verified, hoursR
   </>;
 }
 
-export function VenueClubActions({ hasBooking, onBook, onPlay, onSchedule }: Pick<VenueClubHeaderProps, 'hasBooking' | 'onBook' | 'onPlay' | 'onSchedule'>) {
-  return <section aria-label="Play at this venue" className="space-y-1.5 bg-background px-4 pb-2 pt-3">
-    <button type="button" onClick={hasBooking ? onBook : onPlay} className="club-primary flex min-h-[68px] w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left">
-      <span className="min-w-0"><span className="block text-[15px] font-semibold">{hasBooking ? 'Book a Court' : 'Join Open Play'}</span><span className="mt-0.5 block text-xs opacity-80">{hasBooking ? 'Find an available court' : 'Find your next game'}</span></span>
-      <ArrowUpRight aria-hidden className="h-5 w-5 shrink-0" />
+export function VenueClubActions({ onPlay, onSchedule }: Pick<VenueClubHeaderProps, 'hasBooking' | 'onBook' | 'onPlay' | 'onSchedule'>) {
+  return <section aria-label="Play at this venue" className="grid grid-cols-[1.1fr_1fr] gap-3 bg-background px-5 pt-4">
+    <button type="button" onClick={onPlay} className="club-primary flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold">
+      Join Open Play<ArrowUpRight aria-hidden className="h-4 w-4 shrink-0" />
     </button>
-    <div className="grid grid-cols-2 gap-2">
-      {hasBooking ? <button type="button" onClick={onPlay} className="club-text-action">Join Open Play<ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0" /></button> : <span />}
-      <button type="button" onClick={onSchedule} className="club-text-action"><CalendarDays aria-hidden className="h-3.5 w-3.5 shrink-0" />View Schedule</button>
-    </div>
+    <button type="button" onClick={onSchedule} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border bg-card px-3 py-3 text-sm font-semibold"><CalendarDays aria-hidden className="h-4 w-4 shrink-0" />View schedule</button>
   </section>;
 }

@@ -1,3 +1,4 @@
+import { VenueTheme } from '@/components/venue/VenueTheme';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -98,7 +99,7 @@ export default function GroupManage() {
         supabase
           .from('groups')
           .select(
-            '*, venues:venue_id (id, owner_id, verification_approved_at, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
+            '*, venues:venue_id (id, owner_id, verification_approved_at, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
           )
           .eq('id', groupId)
           .single(),
@@ -461,6 +462,7 @@ export default function GroupManage() {
               venueId={group.venue_id}
               isVerified={!!group.is_venue_verified}
               mode="profile"
+              onBrandSaved={brand => setGroup(current => current?.venue ? { ...current, venue: { ...current.venue, ...brand } } : current)}
             />
           </TabsContent>
           <TabsContent value="facility" className="mt-0">
@@ -560,7 +562,7 @@ export default function GroupManage() {
             ? 'Community moderator'
             : 'Venue staff';
     return (
-      <VenueAdminShell
+      <VenueTheme brand={group.venue}><VenueAdminShell
         venueName={group.venue?.name ?? group.name}
         verified={!!group.is_venue_verified}
         roleLabel={roleLabel}
@@ -575,7 +577,7 @@ export default function GroupManage() {
       >
         {privateSample && <div className="mb-5"><PrivateVenueNotice /></div>}
         {panels}
-      </VenueAdminShell>
+      </VenueAdminShell></VenueTheme>
     );
   }
 

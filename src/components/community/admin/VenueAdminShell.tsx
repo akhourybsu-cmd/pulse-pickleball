@@ -69,7 +69,7 @@ export function VenueAdminShell({
       className="venue-management-frame bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
       style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))', '--venue-pane-height': viewport.height, '--venue-pane-top': viewport.top ?? 0 } as CSSProperties}
     >
-      <header className="shrink-0 border-b border-white/10 bg-[#151b24] text-white">
+      <header className="venue-brand-chrome shrink-0 border-b border-white/10 bg-[#151b24] text-white">
         <div className="venue-management-toolbar mx-auto max-w-[1480px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Button
@@ -86,7 +86,7 @@ export function VenueAdminShell({
               <span
                 className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] sm:flex"
               >
-                <Settings2 className="h-5 w-5" style={accent ? { color: accent } : undefined} />
+                <Settings2 className="h-5 w-5" />
               </span>
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-1.5">

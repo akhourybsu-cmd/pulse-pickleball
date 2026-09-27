@@ -21,10 +21,10 @@ function renderShell(activeTab: VenuePageTab, mobile = true, visited = new Set<s
 }
 
 describe('persistent venue mobile shell', () => {
-  it.each(pages)('keeps the same branded header and six-section navigation in %s', activeTab => {
+  it.each(pages)('keeps the same branded header and five-section navigation in %s', activeTab => {
     const html = renderShell(activeTab);
     expect(html.match(/class="venue-app-bar"/g)).toHaveLength(1);
-    expect(html.match(/role="tab" /g)).toHaveLength(6);
+    expect(html.match(/role="tab" /g)).toHaveLength(5);
     expect(html).toContain('/saved-venue-logo.png');
     expect(html).toContain('Back to PULSE');
     expect(html.indexOf('venue-app-bar')).toBeLessThan(html.indexOf('venue-mobile-nav'));
@@ -45,7 +45,7 @@ describe('persistent venue mobile shell', () => {
     expect(firstVisit).not.toContain('chat-page');
     const desktop = renderShell('home', false);
     expect(desktop).not.toContain('venue-mobile-shell');
-    expect(desktop).not.toContain('composer-footer');
+    expect(desktop).toContain('composer-footer');
     expect(desktop).toContain('home-page');
   });
   it('keeps the overview hero inside content without duplicating header controls', () => {
@@ -54,7 +54,7 @@ describe('persistent venue mobile shell', () => {
     expect(html).not.toContain('<h1');
     expect(html).not.toContain('aria-label="Manage venue"');
     expect(html).not.toContain('aria-label="Back to Community"');
-    expect(html).toContain('Book a Court');
+    expect(html).toContain('Join Open Play');
   });
   it('lays the embedded post composer out below content instead of covering it', () => {
     const html = renderToStaticMarkup(<CollapsedComposerBar embedded onExpand={noop} />);

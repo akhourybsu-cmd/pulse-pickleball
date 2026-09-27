@@ -37,6 +37,11 @@ export interface Group {
     cover_focal_point: 'top' | 'center' | null;
     primary_color: string | null;
     secondary_color: string | null;
+    accent_color?: string | null;
+    background_color?: string | null;
+    surface_color?: string | null;
+    text_color?: string | null;
+    logo_background_color?: string | null;
     tagline: string | null;
     welcome_headline: string | null;
     welcome_message: string | null;
@@ -46,6 +51,7 @@ export interface Group {
     email?: string | null;
     website_url?: string | null;
     hours_of_operation?: unknown;
+    amenities?: string[] | null;
     timezone?: string | null;
   } | null;
 }
@@ -114,7 +120,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
           *,
           groups (
             *,
-            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message)
+            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)
           )
         `)
         .eq('user_id', currentUserId)
@@ -188,7 +194,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
     try {
       const { data, error } = await supabase
         .from('groups')
-        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, tagline, welcome_headline, welcome_message)')
+        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)')
         .eq('visibility', 'public')
         .order('member_count', { ascending: false })
         .limit(20);

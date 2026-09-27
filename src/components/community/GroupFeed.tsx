@@ -58,6 +58,7 @@ interface GroupFeedProps {
   isAdmin: boolean;
   currentUserId: string | null;
   venueMode?: boolean;
+  embeddedVenue?: boolean;
   /** Static data for the DEV design harness; normal app surfaces omit it. */
   previewPosts?: GroupPost[];
   onOpenQuickPost?: (type: 'post' | 'photo' | 'poll' | 'lfg' | 'announcement') => void;
@@ -97,8 +98,8 @@ const VENUE_FEED_FILTERS: Array<{
   icon: typeof LayoutList;
 }> = [
   { value: 'all', label: 'All', icon: LayoutList },
-  { value: 'venue', label: 'Venue updates', icon: Megaphone },
-  { value: 'players', label: 'Find players', icon: UsersRound },
+  { value: 'venue', label: 'Venue', icon: Megaphone },
+  { value: 'players', label: 'Looking to play', icon: UsersRound },
   { value: 'polls', label: 'Polls', icon: BarChart3 },
   { value: 'photos', label: 'Photos', icon: Images },
 ];
@@ -129,6 +130,7 @@ export function GroupFeed({
   isAdmin, 
   currentUserId,
   venueMode = false,
+  embeddedVenue = false,
   previewPosts,
   onOpenQuickPost,
   onSwitchToEvents,
@@ -240,8 +242,8 @@ export function GroupFeed({
   return (
     <div className="space-y-5 pb-20">
       {venueMode ? (
-        <section className="space-y-4" aria-labelledby="venue-feed-heading">
-          <div className="flex items-end justify-between gap-4">
+        <section className="space-y-3" aria-label="Community feed">
+          {!embeddedVenue && <div className="flex items-end justify-between gap-4">
             <div className="min-w-0">
               <h2
                 id="venue-feed-heading"
@@ -258,13 +260,13 @@ export function GroupFeed({
                 {activeTodayCount} new today
               </span>
             )}
-          </div>
+          </div>}
 
           <div
             className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0"
             aria-label="Filter venue posts"
           >
-            {VENUE_FEED_FILTERS.map(({ value, label, icon: Icon }) => {
+            {VENUE_FEED_FILTERS.filter(item => !embeddedVenue || item.value !== 'photos').map(({ value, label, icon: Icon }) => {
               const selected = venueFilter === value;
               return (
                 <button
@@ -276,9 +278,9 @@ export function GroupFeed({
                     setVisibleCount(FEED_PAGE);
                   }}
                   className={cn(
-                    'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors',
+                    'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors',
                     selected
-                      ? 'border-foreground bg-foreground text-background shadow-sm'
+                      ? 'border-foreground bg-foreground text-background'
                       : 'border-border/70 bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
                   )}
                 >
@@ -289,7 +291,7 @@ export function GroupFeed({
             })}
           </div>
 
-          {onOpenQuickPost && (
+          {onOpenQuickPost && !embeddedVenue && (
             <button
               type="button"
               onClick={() => onOpenQuickPost('post')}
@@ -350,9 +352,9 @@ export function GroupFeed({
           {venueMode ? (
             <GroupEmptyState
               icon={MessageSquare}
-              title="Start the venue conversation"
-              description={`Share the first update with the ${groupName} community.`}
-              actions={onOpenQuickPost ? [{ label: 'Create a post', onClick: focusComposer, icon: Plus }] : []}
+              title="Start the conversation"
+              description="Share updates, find players, ask questions or organize a game."
+              actions={onOpenQuickPost ? [{ label: 'Create first post', onClick: focusComposer, icon: Plus }] : []}
               size="sm"
             />
           ) : (
@@ -539,11 +541,10 @@ const PostCard = memo(function PostCard({
       className={cn(
         'relative overflow-hidden bg-card p-4 transition-shadow',
         venueMode
-          ? 'rounded-[18px] border border-border/70 shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_10px_30px_-24px_hsl(var(--foreground)/0.25)] hover:shadow-[0_10px_32px_-20px_hsl(var(--foreground)/0.22)] sm:p-5'
+          ? 'rounded-2xl border border-border/70 sm:p-5'
           : 'rounded-2xl border border-border/70 border-l-[4px] shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.14)] hover:shadow-[0_10px_28px_-16px_hsl(var(--foreground)/0.28)]',
-        post.pinned && 'border-primary/45 bg-primary/[0.035]',
+        !venueMode && post.pinned && 'border-primary/45 bg-primary/[0.035]',
         !venueMode && (post.pinned ? 'border-l-primary' : typeAccent),
-        venueMode && isStaff && 'bg-gradient-to-br from-card via-card to-primary/[0.025]',
       )}
     >
       {venueMode && (post.pinned || isStaff) && (
@@ -579,13 +580,13 @@ const PostCard = memo(function PostCard({
                   variant="outline"
                   className={cn(
                     'h-5 rounded-full px-2 text-[10px] font-bold uppercase tracking-[0.1em]',
-                    typeInfo.className,
+                    venueMode ? 'border-border text-muted-foreground' : typeInfo.className,
                   )}
                 >
                   {venueMode && post.type === 'announcement'
                     ? 'Venue update'
                     : venueMode && post.type === 'lfg'
-                      ? 'Find players'
+                      ? 'Looking for players'
                       : typeInfo.label}
                 </Badge>
               )}

@@ -8600,6 +8600,11 @@ export type Database = {
           platform_fee_percent: number | null
           primary_color: string | null
           secondary_color: string | null
+          accent_color: string | null
+          background_color: string | null
+          surface_color: string | null
+          text_color: string | null
+          logo_background_color: string | null
           show_pulse_branding: boolean | null
           slug: string | null
           social_facebook: string | null
@@ -8668,6 +8673,11 @@ export type Database = {
           platform_fee_percent?: number | null
           primary_color?: string | null
           secondary_color?: string | null
+          accent_color?: string | null
+          background_color?: string | null
+          surface_color?: string | null
+          text_color?: string | null
+          logo_background_color?: string | null
           show_pulse_branding?: boolean | null
           slug?: string | null
           social_facebook?: string | null
@@ -8736,6 +8746,11 @@ export type Database = {
           platform_fee_percent?: number | null
           primary_color?: string | null
           secondary_color?: string | null
+          accent_color?: string | null
+          background_color?: string | null
+          surface_color?: string | null
+          text_color?: string | null
+          logo_background_color?: string | null
           show_pulse_branding?: boolean | null
           slug?: string | null
           social_facebook?: string | null

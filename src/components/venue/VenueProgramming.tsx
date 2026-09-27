@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { formatSlotTime } from '@/lib/venues/availability';
+import { clubSkill, clubTime } from '@/lib/venues/clubPresentation';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import { programFilterState, programPhase } from '@/lib/venues/programExperience';
 import { programService } from '@/lib/venues/servicePresentation';
@@ -64,6 +64,8 @@ const URGENT_AT = 5;
 
 interface VenueProgrammingProps {
   initialFilter?: string;
+  hideFilters?: boolean;
+  timeZone?: string | null;
   sessions: VenueDaySession[];
   /** eventId → confirmed sign-ups. */
   going: Record<string, number>;
@@ -76,6 +78,8 @@ interface VenueProgrammingProps {
 
 export function VenueProgramming({
   initialFilter = 'all',
+  hideFilters = false,
+  timeZone,
   sessions,
   going,
   loading,
@@ -100,10 +104,10 @@ export function VenueProgramming({
 
   if (sessions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
+      <div className="rounded-2xl bg-card px-5 py-8 text-center">
         <p className="text-sm font-semibold">Nothing scheduled</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          No open play, clinics or events on this day.
+          Try another day or a different play category.
         </p>
       </div>
     );
@@ -111,7 +115,7 @@ export function VenueProgramming({
 
   return (
     <div className="space-y-3">
-      {available.length > 1 && (
+      {!hideFilters && available.length > 1 && (
         <div className="scrollbar-hide -mx-1 overflow-x-auto px-1 pb-1 lg:overflow-visible">
           <div className="flex min-w-max gap-1.5 lg:min-w-0 lg:flex-wrap" role="group" aria-label="Filter venue programs">
             {available.map((f) => {
@@ -143,6 +147,7 @@ export function VenueProgramming({
           <SessionRow
             key={session.id}
             session={session}
+            timeZone={timeZone}
             going={going[session.id] ?? 0}
             venueName={venueName}
             accent={accent}
@@ -157,6 +162,7 @@ export function VenueProgramming({
 
 function SessionRow({
   session,
+  timeZone,
   going,
   venueName,
   accent,
@@ -164,6 +170,7 @@ function SessionRow({
   viewerRsvp,
 }: {
   session: VenueDaySession;
+  timeZone?: string | null;
   going: number;
   venueName?: string | null;
   accent?: string | null;
@@ -214,8 +221,8 @@ function SessionRow({
             </span>
             <span className="h-1 w-1 rounded-full bg-border" />
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-foreground/75">
-              {formatSlotTime(start)}
-              {end ? ` – ${formatSlotTime(end)}` : ''}
+              {clubTime(start.toISOString(), timeZone)}
+              {end ? ` – ${clubTime(end.toISOString(), timeZone)}` : ''}
             </span>
           </div>
 
@@ -240,10 +247,10 @@ function SessionRow({
               <span className="inline-flex items-center gap-1 tabular-nums">
                 <Gauge className="h-3 w-3" />
                 {session.skill_level_min != null && session.skill_level_max != null
-                  ? `${session.skill_level_min.toFixed(1)}–${session.skill_level_max.toFixed(1)}`
+                  ? `${clubSkill(session.skill_level_min)}–${clubSkill(session.skill_level_max)}`
                   : session.skill_level_min != null
-                    ? `${session.skill_level_min.toFixed(1)}+`
-                    : `≤ ${session.skill_level_max!.toFixed(1)}`}
+                    ? `${clubSkill(session.skill_level_min)}+`
+                    : `≤ ${clubSkill(session.skill_level_max!)}`}
               </span>
             )}
             {session.rr_courts != null && session.rr_courts > 0 && (
