@@ -43,6 +43,7 @@ self.addEventListener('fetch', (event) => {
   // Never intercept OAuth broker paths or auth callbacks. Caching or replaying
   // them can break sign-in and bounce the user back to /auth without a session.
   if (
+    url.pathname === '/backend-release.json' ||
     url.pathname.startsWith('/~oauth') ||
     url.pathname.startsWith('/auth/v1') ||
     url.pathname.includes('/auth/callback')

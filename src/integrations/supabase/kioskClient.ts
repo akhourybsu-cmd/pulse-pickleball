@@ -1,11 +1,12 @@
+import { backendConfig } from '@/integrations/supabase/config';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // The TV only reads data already made public by the live/completed-event
 // policies. Never attach the host's session or refresh token to kiosk reads.
 export const kioskClient = createClient<Database>(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  backendConfig.url,
+  backendConfig.publishableKey,
   {
     // This disables creation of a second GoTrue auth client entirely. The
     // SDK falls back to the public anon key when no access token is supplied.

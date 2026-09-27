@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetModules(); });
+vi.mock('@/integrations/supabase/config', () => ({ backendConfig: { url: 'https://example.supabase.co', publishableKey: 'public-test-key' } }));
 async function client() {
   vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'public-test-key');

@@ -78,3 +78,9 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 apply plugin: 'com.google.gms.google-services'
+
+tasks.register('verifyPulseBackend', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'node', 'scripts/check-backend-artifact.mjs', '--native'
+}
+tasks.named('preBuild').configure { dependsOn 'verifyPulseBackend' }

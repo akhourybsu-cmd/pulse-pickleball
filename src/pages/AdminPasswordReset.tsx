@@ -1,3 +1,4 @@
+import { backendConfig } from '@/integrations/supabase/config';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -67,7 +68,7 @@ export default function AdminPasswordReset() {
               variant="outline"
               className="w-full gap-2"
               onClick={() => {
-                const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                const projectId = backendConfig.projectId;
                 const url = projectId
                   ? `https://supabase.com/dashboard/project/${projectId}/auth/users`
                   : "https://supabase.com/dashboard/projects";

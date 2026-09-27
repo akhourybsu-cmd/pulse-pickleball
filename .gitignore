@@ -26,3 +26,7 @@ dist-ssr
 .claude/
 supabase/.temp/
 .firebase/
+
+# Isolated non-production build output
+dist-staging
+dist-development

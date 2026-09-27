@@ -38,7 +38,7 @@ describe('auth storage during guest-to-account handoff', () => {
   });
 });
 describe('separate staging configuration', () => {
-  const project = 'abcdefghijklmnopqrst';
+  const project = 'svdpujbstxiaunoeqlee';
   const env = { VITE_SUPABASE_PROJECT_ID: project, VITE_SUPABASE_URL: `https://${project}.supabase.co`, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_testfixture' };
   it('accepts a dedicated project and public key', () => { expect(() => validateStagingSupabase(env)).not.toThrow(); });
   it('blocks accidental production fallback and incomplete setup', () => {

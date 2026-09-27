@@ -2,6 +2,8 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { PRODUCTION_SUPABASE_PROJECT } from '../src/lib/backendPolicy.mjs';
+
 const MIGRATION_PATTERN = /^(\d{14})_(.+)\.sql$/;
 const LEADING_SQL_COMMENTS = String.raw`(?:\s|--[^\r\n]*(?:\r?\n|$)|\/\*[\s\S]*?\*\/)*`;
 const OUTER_BEGIN_PATTERN = new RegExp(`^(${LEADING_SQL_COMMENTS})BEGIN\\s*;`, "i");
@@ -218,6 +220,7 @@ export async function deployMigrations({
 }
 
 async function main() {
+  if (process.env.SUPABASE_PROJECT_REF !== PRODUCTION_SUPABASE_PROJECT) throw new Error('Production migrations must target the approved PULSE Supabase project.');
   const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
   const repositoryRoot = path.resolve(scriptDirectory, "..");
 

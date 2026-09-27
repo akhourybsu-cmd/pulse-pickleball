@@ -44,14 +44,23 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Verify production release target
+        run: node scripts/check-production-release.mjs
+
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
       - name: Run automated tests
         run: npm test
 
+      - name: Verify production backend connectivity
+        run: npm run backend:health
+
       - name: Build production frontend
         run: npm run build
+
+      - name: Recheck release before publishing
+        run: node scripts/check-production-release.mjs
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -60,3 +69,6 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1 }}
           channelId: live
           projectId: pulse-pickleball-c60e1
+
+      - name: Verify live release
+        run: node scripts/verify-live-backend.mjs

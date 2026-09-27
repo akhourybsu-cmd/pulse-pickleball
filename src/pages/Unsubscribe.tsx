@@ -1,3 +1,4 @@
+import { backendConfig } from '@/integrations/supabase/config';
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Mail } from "lucide-react";
@@ -6,8 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Status = "loading" | "ready" | "already" | "invalid" | "submitting" | "success" | "error";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const SUPABASE_URL = backendConfig.url as string;
+const ANON_KEY = backendConfig.publishableKey as string;
 
 export default function Unsubscribe() {
   const [params] = useSearchParams();

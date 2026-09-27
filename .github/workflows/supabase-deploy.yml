@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 30
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -70,6 +70,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 20
+
+      - name: Verify production release target
+        run: node scripts/check-production-release.mjs
 
       - name: Test migration runner
         run: node --test scripts/deploy-supabase-migrations.test.mjs
@@ -101,7 +104,9 @@ jobs:
 
       - name: Apply pending migrations
         if: ${{ github.event_name == 'push' || inputs.migration_mode == 'apply' }}
-        run: node scripts/deploy-supabase-migrations.mjs
+        run: |
+          node scripts/check-production-release.mjs
+          node scripts/deploy-supabase-migrations.mjs
 
       - name: Set up Supabase CLI
         if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
@@ -111,7 +116,9 @@ jobs:
 
       - name: Deploy Edge Functions
         if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
-        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+        run: |
+          node scripts/check-production-release.mjs
+          supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Verify deployed assessment backend
         if: ${{ steps.changes.outputs.deploy_functions == 'true' }}
