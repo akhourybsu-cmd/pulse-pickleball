@@ -204,8 +204,6 @@ export default function VenueOps() {
           />
 
           <BookCourtDialog
-            identity={{ name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, primaryColor: venue?.primary_color, secondaryColor: venue?.secondary_color, logoBackgroundColor: venue?.logo_background_color }}
-            onViewBookings={() => navigate('/player/bookings')}
             timeZone={venue?.timezone}
             open={!!bookCourtId && !!bookStart}
             onOpenChange={(o) => {
