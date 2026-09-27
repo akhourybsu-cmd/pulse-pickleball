@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { ArrowLeft, Gauge, MoreHorizontal, Settings, Ticket, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Gauge, MoreHorizontal, Settings, Ticket, FolderOpen, Share2 } from 'lucide-react';
 import { TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
@@ -12,10 +12,10 @@ const scrollPositions = new Map<string, number>();
 const usePanelLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /** One viewport owner: the venue bar and tabs never participate in page scrolling. */
-export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBooking, onCommunity, onPlay, onExit, onBookings, onTools, onSettings, onOperations, children, footer, memoryKey }: {
+export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBooking, onCommunity, onPlay, onExit, onBookings, onTools, onSettings, onOperations, onShare, children, footer, memoryKey }: {
   mobile: boolean; activeTab: VenuePageTab; visited: Set<string>; identity: VenueIdentity; hasBooking: boolean;
   onPlay?: () => void; onCommunity: () => void; onExit: () => void; onBookings: () => void; onTools: () => void;
-  onSettings?: () => void; onOperations?: () => void; children: ReactNode; footer?: ReactNode; memoryKey?: string;
+  onSettings?: () => void; onOperations?: () => void; onShare?: () => void; children: ReactNode; footer?: ReactNode; memoryKey?: string;
 }) {
   const viewport = useVisualViewportPane();
   return <ShellContext.Provider value={{ mobile, activeTab, visited, memoryKey }}>
@@ -24,6 +24,7 @@ export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBook
         <button type="button" className="venue-app-icon" aria-label="Back to PULSE" onClick={onExit}><ArrowLeft className="h-[18px] w-[18px]" /></button>
         <VenueBrandMark {...identity} className="h-9 w-9 text-[36px] ring-1 ring-white/15" />
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight" title={identity.name}>{identity.name}</h1>
+        {onShare && <button type="button" className="venue-app-icon" aria-label={`Share ${identity.name}`} onClick={onShare}><Share2 className="h-[18px] w-[18px]" /></button>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild><button type="button" className="venue-app-icon" aria-label="Venue menu"><MoreHorizontal className="h-5 w-5" /></button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)]">

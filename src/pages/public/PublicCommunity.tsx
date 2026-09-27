@@ -4,11 +4,9 @@ import { CalendarDays, MapPin, MessageCircle, Users } from 'lucide-react';
 import { useAuthState } from '@/hooks/useAuthState';
 import { usePublicCommunity } from '@/hooks/usePublicCommunity';
 import { GuestAccountPrompt } from '@/components/community/GuestAccountPrompt';
-import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
-import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
+import { CommunityHero } from '@/components/community/CommunityHero';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { venueChrome } from '@/lib/venues/branding';
 import { publicWebsiteUrl } from '@/lib/communityAccess';
 
 export default function PublicCommunity() {
@@ -25,7 +23,6 @@ export default function PublicCommunity() {
   if (isAuthenticated && slug) return <Navigate to={`/player/community/group/${group.id}${location.search}${location.hash}`} replace />;
   const venue = group.venue;
   const name = venue?.name || group.name;
-  const chrome = venueChrome(venue);
   const website = publicWebsiteUrl(venue?.website_url);
   const tab = params.get('tab') || 'home';
   const openTab = (value: string) => { const next = new URLSearchParams(params); next.set('tab', value); setParams(next); };
@@ -33,16 +30,9 @@ export default function PublicCommunity() {
     const next = new URLSearchParams(params); next.set('tab', destinationTab);
     setIntent({ action, returnTo: `${location.pathname}?${next}${location.hash}` });
   };
-  return <div className="space-y-6">
+  return <div className="min-w-0 space-y-5 [overflow-wrap:anywhere]">
     <Link to="/player/community" className="inline-block text-sm text-muted-foreground hover:underline">← Explore communities</Link>
-    <section className="relative isolate overflow-hidden rounded-3xl bg-secondary text-white" style={{ backgroundImage: chrome?.backgroundImage }}>
-      <VenueCoverImage src={venue?.cover_image_url || group.cover_url} fit={venue?.cover_image_fit} focalPoint={venue?.cover_focal_point} />
-      <div className="absolute inset-0 -z-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
-      <div className="relative flex min-h-64 flex-col justify-end gap-5 p-6 sm:min-h-80 sm:p-9">
-        <VenueBrandMark name={name} logoUrl={venue?.logo_url || group.icon_url} logoShape={venue?.logo_shape} logoImageFit={venue?.logo_image_fit} className="h-20 w-20 text-[80px]" />
-        <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">{venue ? 'Your place to play' : 'Your people. Your game.'}{group.is_venue_verified && venue ? ' · Verified venue' : ''}</p><h1 className="mt-2 break-words text-3xl font-bold sm:text-5xl">{name}</h1>{venue?.tagline && <p className="mt-3 max-w-2xl text-base text-white/90">{venue.tagline}</p>}</div>
-      </div>
-    </section>
+    <CommunityHero group={group} />
     <GuestAccountPrompt name={name} action={venue?.booking_enabled ? 'join the community, book courts, and connect with players' : 'join the community, post, and connect with players'} />
     <nav aria-label="Community sections" className="flex gap-2 overflow-x-auto border-b pb-3">
       {[['home', 'About'], ...(venue ? [['book', 'Courts']] : []), ['feed', 'Community']].map(([value, label]) => <Button key={value} variant={tab === value ? 'default' : 'ghost'} aria-current={tab === value ? 'page' : undefined} onClick={() => openTab(value)} className="min-h-11">{label}</Button>)}

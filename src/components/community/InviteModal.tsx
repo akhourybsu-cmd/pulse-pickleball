@@ -1,147 +1,147 @@
-import { useState } from 'react';
-import { Copy, Check, Share2, MessageSquare } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { useState } from "react";
+import { Copy, Share2, MessageSquare } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  communityInviteUrl,
+  communityShareData,
+  copyCommunityText,
+  shareCommunity,
+} from "@/lib/communityShare";
 
 interface InviteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inviteCode: string | null;
   groupName: string;
+  shareUrl?: string;
 }
 
-export function InviteModal({ open, onOpenChange, inviteCode, groupName }: InviteModalProps) {
+export function InviteModal({
+  open,
+  onOpenChange,
+  inviteCode,
+  groupName,
+  shareUrl,
+}: InviteModalProps) {
   const { toast } = useToast();
-  const [codeCopied, setCodeCopied] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  const inviteLink = inviteCode
-    ? `${window.location.origin}/player/community/join/${encodeURIComponent(inviteCode)}`
-    : '';
-
-  const shareMessage = inviteCode
-    ? `Join "${groupName}" on Pulse 🎾\n\nTap to join: ${inviteLink}\n(or enter code ${inviteCode} in the app)`
-    : '';
-
-  const safeCopy = async (text: string, label: string, setFlag: (v: boolean) => void) => {
+  const [busy, setBusy] = useState(false);
+  const url = inviteCode ? communityInviteUrl(inviteCode) : shareUrl;
+  if (!url) return null;
+  const data = communityShareData(groupName, url);
+  const copy = async (text: string, label: string) => {
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // Fallback for older WebViews
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-      setFlag(true);
-      toast({ title: 'Copied', description: `${label} copied to clipboard` });
-      setTimeout(() => setFlag(false), 2000);
+      await copyCommunityText(text);
+      toast({ title: `${label} copied` });
     } catch {
       toast({
-        title: 'Could not copy',
-        description: 'Long-press the text to copy it manually.',
-        variant: 'destructive',
+        title: "Could not copy",
+        description: "Select the link below to copy it.",
+        variant: "destructive",
       });
     }
   };
-
-  const copyCode = () => inviteCode && safeCopy(inviteCode, 'Invite code', setCodeCopied);
-  const copyLink = () => inviteLink && safeCopy(inviteLink, 'Invite link', setLinkCopied);
-
-  const shareLink = async () => {
-    if (!inviteLink) return;
-    if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try {
-        await (navigator as any).share({
-          title: `Join ${groupName}`,
-          text: shareMessage,
-          url: inviteLink,
+  const share = async () => {
+    setBusy(true);
+    try {
+      if ((await shareCommunity(data)) === "copied")
+        toast({
+          title: "Invitation copied",
+          description: "Paste it into a message to invite your friends.",
         });
-        return;
-      } catch (err: any) {
-        // AbortError = user cancelled; don't fallback
-        if (err?.name === 'AbortError') return;
-      }
+    } catch {
+      toast({
+        title: "Could not share",
+        description: "Select the link below to copy it.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
     }
-    copyLink();
   };
-
-  const inviteViaSMS = () => {
-    if (!inviteCode) return;
-    // sms: URIs must be navigated to directly — window.open() is blocked
-    // by iOS Safari. Use location.href so the OS hands off to Messages.
-    const body = encodeURIComponent(shareMessage);
-    window.location.href = `sms:?&body=${body}`;
-  };
-
-  if (!inviteCode) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Invite to {groupName}</DialogTitle>
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl p-5 sm:max-w-md sm:p-6">
+        <DialogHeader className="min-w-0 pr-5 text-left">
+          <DialogTitle className="text-xl leading-tight [overflow-wrap:anywhere]">
+            Join {groupName}
+          </DialogTitle>
           <DialogDescription>
-            Anyone with this code or link can join — even private crews.
+            Send an invitation. Friends can see the community before creating an
+            account.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {/* Invite Code */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Invite Code</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={copyCode}
-                className="flex-1 bg-muted rounded-lg px-4 py-3 text-center hover:bg-muted/80 transition-colors"
-                aria-label="Copy invite code"
-              >
-                <code className="text-2xl font-bold tracking-widest select-all">{inviteCode}</code>
-              </button>
-              <Button variant="outline" size="icon" onClick={copyCode} aria-label="Copy code">
-                {codeCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
+        <div className="min-w-0 space-y-4">
+          <div className="rounded-xl border bg-muted/40 p-4">
+            <p className="text-sm leading-6 [overflow-wrap:anywhere]">
+              {data.text}
+            </p>
+            <a
+              className="mt-2 block break-all text-xs leading-5 text-muted-foreground underline"
+              href={url}
+            >
+              {url}
+            </a>
           </div>
-
-          {/* QR Code */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="bg-white p-4 rounded-xl">
-              <QRCodeSVG value={inviteLink} size={160} level="M" includeMargin={false} />
-            </div>
-            <p className="text-xs text-muted-foreground">Scan to join</p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="gap-2" onClick={copyLink}>
-              {linkCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              Copy Link
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={shareLink}>
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          </div>
-
-          <Button variant="secondary" className="w-full gap-2" onClick={inviteViaSMS}>
-            <MessageSquare className="h-4 w-4" />
-            Invite via Text
+          <Button
+            className="min-h-12 w-full gap-2"
+            onClick={() => void share()}
+            disabled={busy}
+          >
+            <Share2 className="h-4 w-4" />
+            {busy ? "Opening share…" : "Share invitation"}
           </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="min-h-11 gap-2 px-2"
+              onClick={() => void copy(url, "Link")}
+            >
+              <Copy className="h-4 w-4" />
+              Copy link
+            </Button>
+            <Button variant="outline" className="min-h-11 gap-2 px-2" asChild>
+              <a
+                href={`sms:?&body=${encodeURIComponent(
+                  `${data.text}\n${url}`
+                )}`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                Text invite
+              </a>
+            </Button>
+          </div>
+          <div className="flex flex-col items-center gap-3 border-t pt-4">
+            <div className="rounded-xl bg-white p-3">
+              <QRCodeSVG
+                value={url}
+                size={136}
+                level="M"
+                title={`Join ${groupName}`}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Scan to open the community
+            </p>
+            {inviteCode && (
+              <Button
+                variant="ghost"
+                className="h-auto min-h-11 max-w-full gap-2 whitespace-normal text-xs"
+                onClick={() => void copy(inviteCode, "Invite code")}
+              >
+                <Copy className="h-4 w-4 shrink-0" />
+                <span className="break-all">Code: {inviteCode}</span>
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -23,6 +23,9 @@ import { VenueEventsPage, VenuePageHeading, VenuePlayCategories } from '@/compon
 import { useVenueEvents } from '@/hooks/useVenueEvents';
 import type { VenueEventFilter } from '@/lib/venues/events';
 import { GroupFiles } from '@/components/community/GroupFiles';
+import { InviteModal } from '@/components/community/InviteModal';
+import { CommunityJoinAction } from '@/components/community/CommunityJoinAction';
+import { communityUrl } from '@/lib/communityShare';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { GroupFeed } from '@/components/community/GroupFeed';
@@ -74,6 +77,7 @@ export default function VenueCommunity() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [sharing, setSharing] = useState(false);
 
   const { group, membership, loading, isError, refetch: refetchGroup } = useGroupDetail(groupId);
   const { profile } = useAuthState();
@@ -252,6 +256,7 @@ export default function VenueCommunity() {
     activeTab === 'more';
 
   const identity = { name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color, logoBackgroundColor: venue?.logo_background_color };
+  const onShare = !privateSample && (group.invite_code || group.visibility === 'public') ? () => setSharing(true) : undefined;
   const availabilityError = dayError && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>;
 
   return (
@@ -261,6 +266,7 @@ export default function VenueCommunity() {
       accent={chrome?.accentHex}
     >
     <div className="flex min-h-[100dvh] flex-col bg-background lg:bg-muted/[0.16] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
+      <InviteModal open={sharing} onOpenChange={setSharing} inviteCode={group.invite_code} shareUrl={group.visibility === 'public' ? communityUrl(group.id) : undefined} groupName={identity.name} />
       {isDesktopLayout && <VenueMasthead
         venueName={venue?.name ?? group.name}
         tagline={venue?.tagline}
@@ -284,6 +290,7 @@ export default function VenueCommunity() {
         isOperator={isOperator}
         isAdmin={canManageSettings}
         onBack={() => navigate('/player/community')}
+        onShare={onShare}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
       />}
@@ -302,9 +309,10 @@ export default function VenueCommunity() {
           onExit={() => (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox ? navigate(-1) : navigate('/player/community')}
           onBookings={() => navigate('/player/bookings')}
           onTools={() => setFilesOpen(true)}
+          onShare={onShare}
           onSettings={canManageSettings ? () => navigate(`/player/community/group/${groupId}/manage`) : undefined}
           onOperations={isOperator ? () => navigate(`/player/community/group/${groupId}/ops`) : undefined}
-          footer={activeTab === 'feed' && canCreatePosts && communitySection === 'posts' ? <CollapsedComposerBar embedded onExpand={() => openQuickPost('post')} onPhotoClick={() => openQuickPost('photo')} avatarUrl={profile?.avatar_url} displayName={profile?.display_name || profile?.full_name} contextName={identity.name} venueMode /> : undefined}
+          footer={!isMember && !canManageSettings && !isOperator ? <div className="shrink-0 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><div className="mx-auto max-w-xl"><CommunityJoinAction key={group.id + ':' + profile?.id} group={group} membership={membership} /></div></div> : activeTab === 'feed' && canCreatePosts && communitySection === 'posts' ? <CollapsedComposerBar embedded onExpand={() => openQuickPost('post')} onPhotoClick={() => openQuickPost('photo')} avatarUrl={profile?.avatar_url} displayName={profile?.display_name || profile?.full_name} contextName={identity.name} venueMode /> : undefined}
         >
         <div className="venue-page-body min-w-0 flex-1">
           <div className="venue-page-container mx-auto max-w-[1480px] px-5 py-5 sm:px-6 sm:py-6 lg:py-8">

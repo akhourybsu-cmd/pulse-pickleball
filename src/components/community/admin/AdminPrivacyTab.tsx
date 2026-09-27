@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { communityInviteUrl, copyCommunityText } from '@/lib/communityShare';
 
 interface AdminPrivacyTabProps {
   visibility: string;
@@ -78,18 +79,12 @@ export function AdminPrivacyTab({
     }
   };
 
-  const copyInviteCode = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode);
-    toast({ title: 'Copied!', description: 'Invite code copied to clipboard' });
+  const copy = async (value: string, label: string) => {
+    try { await copyCommunityText(value); toast({ title: `${label} copied` }); }
+    catch { toast({ title: 'Could not copy', description: 'Please try again.', variant: 'destructive' }); }
   };
-
-  const copyInviteLink = () => {
-    if (!inviteCode) return;
-    const link = `${window.location.origin}/player/community?join=${inviteCode}`;
-    navigator.clipboard.writeText(link);
-    toast({ title: 'Copied!', description: 'Invite link copied to clipboard' });
-  };
+  const copyInviteCode = () => inviteCode && copy(inviteCode, 'Invite code');
+  const copyInviteLink = () => inviteCode && copy(communityInviteUrl(inviteCode), 'Invite link');
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Group } from './useGroups';
+import { withAuthDeadline } from '@/lib/authDeadline';
 
 export interface PublicCommunity {
   id: string;
@@ -21,8 +22,9 @@ export function usePublicCommunity(groupId?: string, slug?: string) {
     queryKey: ['public-community', groupId, slug],
     enabled: !!(groupId || slug),
     staleTime: 60_000,
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_public_community', { p_group_id: groupId || null, p_venue_slug: slug || null });
+      const { data, error } = await withAuthDeadline(signal => supabase.rpc('get_public_community', { p_group_id: groupId || null, p_venue_slug: slug || null }).abortSignal(signal));
       if (error) throw error;
       return data as unknown as PublicCommunity | null;
     },

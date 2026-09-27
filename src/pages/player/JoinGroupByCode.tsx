@@ -1,227 +1,273 @@
-import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Loader2, CheckCircle2, AlertTriangle, Users, Lock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useGroups } from '@/hooks/useGroups';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { clearPostAuthRedirect, stashPostAuthRedirect } from '@/lib/authRedirect';
-import { communityAuthUrl } from '@/lib/communityAccess';
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarDays, Loader2, MessageCircle, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
+import { usePublicCommunity } from "@/hooks/usePublicCommunity";
+import { CommunityHero } from "@/components/community/CommunityHero";
+import { GuestAccountPrompt } from "@/components/community/GuestAccountPrompt";
+import { Button } from "@/components/ui/button";
+import {
+  clearPostAuthRedirect,
+  stashPostAuthRedirect,
+} from "@/lib/authRedirect";
+import { communityInvitePath, communityPath } from "@/lib/communityShare";
+import { withAuthDeadline } from "@/lib/authDeadline";
 
-interface GroupPreview {
+interface InvitePreview {
   id: string;
   name: string;
   description: string | null;
   visibility: string;
-  member_count: number | null;
+  join_method: string;
+  member_count: number;
   icon_url: string | null;
+  cover_url: string | null;
+  is_expired: boolean;
+}
+interface JoinResult {
+  status: string;
+  group_id?: string;
 }
 
-type Phase = 'loading' | 'preview' | 'need_auth' | 'joining' | 'success' | 'error';
-
-/**
- * Handles invite links of the form /player/community/join/:code.
- *
- * Flow:
- *   1. Look up the group by code (works for logged-out users too — RPC is
- *      SECURITY DEFINER with EXECUTE granted to anon).
- *   2. If logged out, show "You're invited to {name}" + Sign in / Sign up.
- *   3. If logged in, call join_group_by_code, then show an explicit success
- *      state ("You joined {name}") with an Open community button.
- */
 export default function JoinGroupByCode() {
-  const { code } = useParams<{ code: string }>();
+  const { code = "" } = useParams<{ code: string }>();
+  // A second invitation in the same tab must never inherit the first one's join state.
+  return <CommunityInvitation key={code} code={code} />;
+}
+
+export function CommunityInvitation({ code }: { code: string }) {
+  const { isAuthenticated, user } = useAuthState();
   const navigate = useNavigate();
-  const location = useLocation();
-  const returnTo = `${location.pathname}${location.search}${location.hash}`;
-  const { joinGroupByCode, currentUserId } = useGroups();
-
-  useEffect(() => {
-    if (currentUserId) clearPostAuthRedirect(returnTo);
-  }, [currentUserId, returnTo]);
-
-  const [phase, setPhase] = useState<Phase>('loading');
-  const [group, setGroup] = useState<GroupPreview | null>(null);
-  const [resultStatus, setResultStatus] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const joinAttempted = useRef(false);
-
-  // Step 1 — preview the group from the code
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!code) {
-        setPhase('error');
-        setErrorMsg('Missing invite code.');
-        return;
-      }
-      const { data, error } = await supabase.rpc(
-        'find_group_by_invite_code' as any,
-        { p_code: code }
+  const cache = useQueryClient();
+  const path = communityInvitePath(code);
+  const preview = useQuery({
+    queryKey: ["community-invitation", code],
+    retry: false,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!code.trim()) return null;
+      const { data, error } = await withAuthDeadline((signal) =>
+        supabase
+          .rpc("find_group_by_invite_code", { p_code: code })
+          .abortSignal(signal)
       );
-      if (cancelled) return;
-      if (error || !data || (Array.isArray(data) && data.length === 0)) {
-        setPhase('error');
-        setErrorMsg('This invite code is invalid or has been revoked.');
-        return;
-      }
-      const row: any = Array.isArray(data) ? data[0] : data;
-
-      // Expired codes return the group row (so we can show its name)
-      // but with is_expired = true. Distinct copy from "not found" so
-      // the visitor knows the link was real but has expired.
-      if (row.is_expired) {
-        setPhase('error');
-        setErrorMsg(`The invite to ${row.name} has expired. Ask an admin for a new link.`);
-        return;
-      }
-
-      setGroup({
-        id: row.id,
-        name: row.name,
-        description: row.description ?? null,
-        visibility: row.visibility,
-        member_count: row.member_count ?? null,
-        icon_url: row.icon_url ?? null,
-      });
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled) return;
-      setPhase(user ? 'preview' : 'need_auth');
-    })();
-    return () => { cancelled = true; };
-  }, [code]);
-
-  // Step 2 — auto-join once we know who the user is and have a preview
+      if (error) throw error;
+      return ((Array.isArray(data) ? data[0] : data) ??
+        null) as InvitePreview | null;
+    },
+  });
+  const group = preview.data;
+  // Enrich only from the existing public projection, never from private group tables.
+  const publicPage = usePublicCommunity(
+    group && !group.is_expired ? group.id : undefined
+  );
+  const [result, setResult] = useState<JoinResult | null>(null);
+  const [joinError, setJoinError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const joining = useRef<{ key: string; promise: Promise<JoinResult> } | null>(
+    null
+  );
   useEffect(() => {
-    if (phase !== 'preview' || !code || !currentUserId || joinAttempted.current) return;
-    joinAttempted.current = true;
-    (async () => {
-      setPhase('joining');
-      const result = await joinGroupByCode(code);
-      if (!result?.id) {
-        setPhase('error');
-        setErrorMsg('We couldn\'t add you to this group. The code may have been revoked.');
-        return;
-      }
-      setResultStatus((result as any).status ?? 'joined');
-      setPhase('success');
-    })();
-  }, [phase, code, currentUserId, joinGroupByCode]);
+    if (!isAuthenticated || !user?.id || !group || group.is_expired) return;
+    let active = true;
+    const key = `${user.id}:${code}:${attempt}`;
+    setJoinError("");
+    setResult(null);
+    // Reuse an in-flight join under StrictMode; only an explicit retry issues another write.
+    if (joining.current?.key !== key)
+      joining.current = {
+        key,
+        promise: (async () => {
+          const { data, error } = await withAuthDeadline((signal) =>
+            supabase
+              .rpc("join_group_by_code", { p_code: code })
+              .abortSignal(signal)
+          );
+          if (error) throw error;
+          return data as unknown as JoinResult;
+        })(),
+      };
+    joining.current.promise
+      .then((response) => {
+        if (!active) return;
+        if (
+          ["joined", "already_member", "pending"].includes(response?.status) &&
+          response.group_id === group.id
+        ) {
+          setResult(response);
+          void cache.invalidateQueries({
+            queryKey: ["group-detail", group.id],
+          });
+          if (response.status !== "pending") {
+            // Keep the handoff until the actual group route acknowledges arrival.
+            const destination = communityPath(group.id);
+            stashPostAuthRedirect(destination);
+            navigate(destination, { replace: true });
+          } else clearPostAuthRedirect(path);
+        } else {
+          const messages: Record<string, string> = {
+            expired:
+              "This invitation has expired. Ask a community admin for a new link.",
+            banned:
+              "This account cannot join this community. Contact a community admin.",
+            not_found:
+              "This invitation is no longer available. Ask a member for a new link.",
+          };
+          setJoinError(
+            messages[response?.status] ||
+              "We couldn’t confirm your membership. Please try again."
+          );
+        }
+      })
+      .catch(() => {
+        if (active)
+          setJoinError(
+            "We couldn’t confirm your membership. Check your connection and try again."
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, user?.id, group, code, path, attempt, cache, navigate]);
 
-  const goToAuth = (mode: 'signin' | 'signup') => {
-    stashPostAuthRedirect(returnTo);
-    navigate(communityAuthUrl(returnTo, mode), { replace: false });
-  };
-
-  // ---------- Render ----------
+  if (preview.isLoading)
+    return (
+      <p role="status" className="flex items-center justify-center gap-3 py-16">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Opening your community…
+      </p>
+    );
+  if (preview.isError)
+    return (
+      <section role="alert" className="space-y-4 py-12">
+        <h1 className="text-2xl font-semibold">Let’s try that again</h1>
+        <p className="text-muted-foreground">
+          We couldn’t load the community. Your invitation is still here.
+        </p>
+        <Button onClick={() => void preview.refetch()}>Try again</Button>
+      </section>
+    );
+  if (!group || group.is_expired)
+    return (
+      <section className="space-y-4 py-12">
+        <h1 className="text-2xl font-semibold">
+          {group?.is_expired
+            ? "This invitation has expired"
+            : "Invitation not available"}
+        </h1>
+        <p className="text-muted-foreground">
+          Ask a member for a new invitation link.
+        </p>
+        <Button asChild variant="outline">
+          <Link to="/player/community">Explore communities</Link>
+        </Button>
+      </section>
+    );
+  const detail = publicPage.data;
+  const name = detail?.venue?.name || group.name;
+  const pending = result?.status === "pending";
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-8 text-center space-y-5">
-          {phase === 'loading' && (
-            <>
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Looking up invite…</p>
-            </>
+    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5">
+      <CommunityHero
+        group={{
+          ...group,
+          venue: detail?.venue || null,
+          is_venue_verified: detail?.is_venue_verified || false,
+        }}
+        inviteCode={code}
+      />
+      {!isAuthenticated ? (
+        <GuestAccountPrompt
+          name={name}
+          action={
+            group.join_method === "request_to_join"
+              ? "request to join this community"
+              : "accept your invitation and join the community"
+          }
+          returnTo={path}
+        />
+      ) : (
+        <section
+          className="space-y-3 rounded-2xl border bg-card p-5"
+          aria-live="polite"
+        >
+          <h2 className="text-lg font-semibold">
+            {joinError
+              ? "Couldn’t complete your request"
+              : pending
+              ? "Your request has been sent"
+              : "Opening your community…"}
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {joinError ||
+              (pending
+                ? "A community admin needs to approve your request before you can take part."
+                : "We’re confirming your membership and taking you to the community.")}
+          </p>
+          {joinError && (
+            <Button onClick={() => setAttempt((value) => value + 1)}>
+              Try again
+            </Button>
           )}
-
-          {phase === 'error' && (
-            <>
-              <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto" />
-              <div>
-                <p className="text-lg font-semibold">Invite not available</p>
-                <p className="text-sm text-muted-foreground mt-1">{errorMsg}</p>
-              </div>
-              <Button onClick={() => navigate('/player/community')} className="w-full">
-                Back to Community
-              </Button>
-            </>
+          {pending && (
+            <Button asChild variant="outline">
+              <Link to="/player/community">Explore communities</Link>
+            </Button>
           )}
-
-          {(phase === 'need_auth' || phase === 'preview' || phase === 'joining') && group && (
-            <>
-              {group.icon_url ? (
-                <img
-                  src={group.icon_url}
-                  alt=""
-                  className="w-16 h-16 rounded-xl mx-auto object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-primary/10 mx-auto flex items-center justify-center">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-              )}
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
-                  {group.visibility === 'private' && <Lock className="h-3 w-3" />}
-                  You're invited to
-                </p>
-                <p className="text-2xl font-bold mt-1">{group.name}</p>
-                {group.description && (
-                  <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{group.description}</p>
-                )}
-                {typeof group.member_count === 'number' && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
-                  </p>
-                )}
-              </div>
-
-              {phase === 'joining' && (
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Joining…</span>
-                </div>
-              )}
-
-              {phase === 'need_auth' && (
-                <div className="space-y-2">
-                  <Button onClick={() => goToAuth('signin')} className="w-full">
-                    Sign in to join
-                  </Button>
-                  <Button variant="outline" onClick={() => goToAuth('signup')} className="w-full">
-                    Create an account
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-
-          {phase === 'success' && group && (
-            <>
-              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {resultStatus === 'already_member'
-                    ? `Welcome back to ${group.name}`
-                    : `You joined ${group.name}`}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {resultStatus === 'already_member'
-                    ? 'You\'re already a member of this crew.'
-                    : 'You\'re in. Say hi in the feed!'}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Button
-                  onClick={() => navigate(`/player/community/group/${group.id}`)}
-                  className="w-full"
-                >
-                  Open {group.name}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate('/player/community')}
-                  className="w-full"
-                >
-                  Back to Community
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+        </section>
+      )}
+      <section className="rounded-2xl border bg-card p-5 sm:p-7">
+        <h2 className="text-xl font-semibold [overflow-wrap:anywhere]">
+          {detail?.venue?.welcome_headline || `Welcome to ${name}`}
+        </h2>
+        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground [overflow-wrap:anywhere]">
+          {detail?.venue?.welcome_message ||
+            group.description ||
+            "Connect with local players and make more time for pickleball."}
+        </p>
+        {group.join_method === "request_to_join" && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Membership requires community approval.
+          </p>
+        )}
+      </section>
+      <section
+        className="grid gap-3 sm:grid-cols-3"
+        aria-label="Inside the community"
+      >
+        {[
+          {
+            icon: Users,
+            title: "Find your people",
+            text: "Connect with fellow players.",
+          },
+          {
+            icon: CalendarDays,
+            title: "Get on court",
+            text: "Discover community games and events.",
+          },
+          {
+            icon: MessageCircle,
+            title: "Stay connected",
+            text: "Catch up on posts and conversations.",
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            className="flex items-start gap-3 rounded-2xl border p-4"
+          >
+            <item.icon className="mt-1 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h3 className="text-sm font-semibold">{item.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {item.text}
+              </p>
+            </div>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

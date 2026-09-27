@@ -17,7 +17,8 @@ describe('guest community surfaces', () => {
     expect(html).toContain('Welcome to Palace');
     expect(html).toContain('Request to join');
     expect(html).toContain('Create a free account');
-    expect(html).toContain('You’re welcome to look around.');
+    expect(html).toContain('You’ll return to this community');
+    expect(html).toContain('Share Palace');
     expect(html).toContain('mode=signup');
     expect(html).toContain('mode=signin');
   });
