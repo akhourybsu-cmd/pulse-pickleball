@@ -24,9 +24,10 @@ export const supabase = {
       const result = { data: args?.p_code === 'REVOKED' ? [] : data, error: null };
       return Object.assign(Promise.resolve(result), { abortSignal: () => Promise.resolve(result) });
     }
-    if (['get_venue_address_setup','check_venue_address','request_venue_address','list_venue_address_requests'].includes(name)) {
+    if (['get_venue_address_setup','check_venue_address','request_venue_address','list_venue_address_requests','queue_venue_address_check'].includes(name)) {
       const setup=JSON.parse(sessionStorage.getItem('venue-address-preview') || '{"venue_slug":"pickleball-palace","verified":true,"active":true,"public_ready":true,"private_sample":false,"connection":null}');
       let data=setup;
+      if(name==='queue_venue_address_check') return Promise.resolve({data:null,error:null});
       if(name==='check_venue_address') data={slug:args?.p_slug,available:args?.p_slug!=='taken',reason:args?.p_slug==='taken'?'That address is already taken. Try adding your city.':null};
       if(name==='request_venue_address') { setup.connection={id:'preview',venue_id:args?.p_venue_id,slug:args?.p_slug,status:'requested',requested_at:new Date().toISOString(),checked_at:null}; sessionStorage.setItem('venue-address-preview',JSON.stringify(setup)); }
       if(name==='list_venue_address_requests') data=setup.connection?[{...setup.connection,venue_name:'Pickleball Palace'}]:[];

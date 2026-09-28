@@ -27,7 +27,6 @@ jobs:
       deploy_functions: true
     secrets:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1 }}
   deploy:
     name: Build and deploy frontend
     needs: backend

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { RESERVED_VENUE_HOSTS } from '@/lib/venues/address';
 
 let db: PGlite;
@@ -66,6 +66,7 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260928100000_public_community_pages.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260928110000_venue_address_integrations.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260928120000_venue_address_mfa_policy.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260928230000_venue_address_automation.sql', 'utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
@@ -198,5 +199,61 @@ describe('venue integration permissions and lifecycle', () => {
     await db.query('DELETE FROM venues WHERE id=$1',[id(20)]);
     expect((await manager(2,"SELECT check_venue_address($1,'permanent-address') AS check",[id(2)]))[0].check.available).toBe(false);
     await expect(db.query("INSERT INTO venues(id,slug) VALUES($1,'permanent-address')",[id(21)])).rejects.toThrow(/already reserved/);
+  });
+});
+
+describe('automatic venue address queue', () => {
+  const claim = async () => (await manager(99,'SELECT claim_venue_address_jobs(10) AS job',[],'service_role')).map(row=>row.job);
+  const finish = (job:any,status:string,details:unknown) => manager(99,'SELECT finish_venue_address_job($1,$2,$3,$4)',[job.venue_id,job.token,status,JSON.stringify(details)],'service_role');
+  const ready = {host:'HOST_ACTIVE',ownership:'OWNERSHIP_ACTIVE',certificate:'CERT_ACTIVE',dns:[],issues:[]};
+  beforeEach(async () => {
+    await db.exec('DELETE FROM venue_address_connections');
+    await db.query('UPDATE venues SET verification_approved_at=NULL WHERE id=$1',[id(4)]);
+    for (const n of [1,3,4,5,6]) await db.query('INSERT INTO venue_address_connections(venue_id,slug) VALUES($1,$2)',[id(n),`queue-${n}`]);
+  });
+  it('denies queue execution and completion to clients, and restricts retry to an MFA-verified admin', async () => {
+    await expect(guest('SELECT claim_venue_address_jobs()')).rejects.toThrow(/permission denied/);
+    await expect(manager(99,'SELECT claim_venue_address_jobs()')).rejects.toThrow(/permission denied/);
+    await expect(manager(1,"SELECT finish_venue_address_job($1,$2,'connected','{}')",[id(1),id(2)])).rejects.toThrow(/permission denied/);
+    await expect(manager(1,'SELECT queue_venue_address_check($1)',[id(1)])).rejects.toThrow(/administrator access/);
+    await db.exec("SET test.mfa='false'");
+    await expect(manager(99,'SELECT queue_venue_address_check($1)',[id(1)])).rejects.toThrow(/administrator access/);
+    await db.exec("SET test.mfa='true'");
+  });
+  it('claims eligible due addresses once, excludes inactive/unverified/sample venues, and preserves privacy', async () => {
+    const jobs=await claim(); expect(jobs.map(job=>job.venue_id).sort()).toEqual([id(1),id(3)]);
+    expect(await claim()).toEqual([]);
+    await expect(manager(99,'SELECT queue_venue_address_check($1)',[id(1)])).rejects.toThrow(/already running/);
+    expect((await guest("SELECT get_public_community(NULL,'queue-3') AS page"))[0].page).toBeNull();
+  });
+  it('fences expired and replaced leases and rejects false connected results', async () => {
+    const old=(await claim()).find(job=>job.venue_id===id(1));
+    await expect(finish(old,'connected',{})).rejects.toThrow(/HTTPS/);
+    await db.query("UPDATE venue_address_connections SET check_after=now()-interval '1 second' WHERE venue_id=$1",[id(1)]);
+    await expect(finish(old,'connected',ready)).rejects.toThrow(/lease expired/);
+    const current=(await claim())[0]; expect(current.token).not.toBe(old.token);
+    await expect(finish(old,'connected',ready)).rejects.toThrow(/lease expired/);
+    await finish(current,'connected',ready);
+    await expect(finish(current,'connected',ready)).rejects.toThrow(/lease expired/);
+    const row=(await db.query('SELECT *,check_after>now()+interval \'23 hours\' AS daily FROM venue_address_connections WHERE venue_id=$1',[id(1)])).rows[0] as any;
+    expect(row.daily).toBe(true); expect(row.check_token).toBeNull();
+    const audits=(await db.query("SELECT * FROM platform_admin_audit WHERE action='venue.address.automated'")).rows as any[];
+    expect(audits.at(-1).actor_id).toBeNull();
+  });
+  it('backs off failures, permits an admin retry, and does not mark DNS propagation as connected', async () => {
+    const job=(await claim()).find(job=>job.venue_id===id(1));
+    await finish(job,'error',{issues:['Provider unavailable']});
+    let row=(await db.query("SELECT failure_count,check_after>now()+interval '9 minutes' AS delayed FROM venue_address_connections WHERE venue_id=$1",[id(1)])).rows[0] as any;
+    expect(row).toMatchObject({failure_count:1,delayed:true});
+    await manager(99,'SELECT queue_venue_address_check($1)',[id(1)]);
+    const next=(await claim())[0]; await finish(next,'provisioning',{...ready,dns:[{type:'A'}]});
+    row=(await db.query('SELECT status,failure_count FROM venue_address_connections WHERE venue_id=$1',[id(1)])).rows[0] as any;
+    expect(row).toEqual({status:'provisioning',failure_count:0});
+  });
+  it('rechecks venue eligibility before accepting an in-flight result', async () => {
+    const job=(await claim()).find(job=>job.venue_id===id(1));
+    await db.query('UPDATE venues SET is_active=false WHERE id=$1',[id(1)]);
+    try { await expect(finish(job,'connected',ready)).rejects.toThrow(/Active, verified/); }
+    finally { await db.query('UPDATE venues SET is_active=true WHERE id=$1',[id(1)]); }
   });
 });
