@@ -127,6 +127,9 @@ export function VenueEventEditor({
   const [policy, setPolicy] = useState(
     seed?.cancellation_policy ?? event?.cancellation_policy ?? ""
   );
+  const [games, setGames] = useState(
+    seed?.rr_games_per_player ?? event?.rr_games_per_player ?? 3
+  );
   const [rotation, setRotation] = useState(
     seed?.rotation_style ?? event?.rotation_style ?? ""
   );
@@ -194,6 +197,7 @@ export function VenueEventEditor({
       skill_level_min: min === "" ? null : Number(min),
       skill_level_max: max === "" ? null : Number(max),
       rotation_style: rotation || null,
+      rr_games_per_player: kind === "round_robin" ? games : null,
     };
     try {
       if (!/^\d+(\.\d{1,2})?$/.test(price))
@@ -442,6 +446,20 @@ export function VenueEventEditor({
             cannot purchase places until the owner completes payment setup and
             enables event payments.
           </p>
+        )}
+        {kind === "round_robin" && (
+          <EventField
+            label="Games per player"
+            hint="Copied into the round robin when you set it up for match play."
+          >
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={games}
+              onChange={(e) => setGames(Number(e.target.value))}
+            />
+          </EventField>
         )}
         <div className="grid gap-4 sm:grid-cols-3">
           <EventField label="Minimum skill (optional)">

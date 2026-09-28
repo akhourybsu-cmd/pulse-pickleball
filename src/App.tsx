@@ -197,6 +197,7 @@ const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
+const VenueCompetitions = lazy(() => import("./pages/player/VenueCompetitions"));
 const VenueEventManagement = lazy(() => import("./pages/player/VenueEventManagement"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
@@ -496,6 +497,8 @@ const AppContent = () => {
               <Route path="venue-requests" element={<VenueRequests />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
               <Route path="community/group/:groupId/events/manage" element={<VenueEventManagement />} />
+              <Route path="community/group/:groupId/competitions" element={<VenueCompetitions />} />
+              <Route path="community/group/:groupId/competitions/leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
               <Route path="community/group/:groupId/ops" element={<VenueOps />} />
             </Route>
             <Route path="messages" element={<Social />} />

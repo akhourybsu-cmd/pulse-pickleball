@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { VenueRoundRobinContext } from "@/components/venue/VenueRoundRobinContext";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
@@ -113,6 +114,7 @@ const scoreSchema = z.object({
 );
 
 interface Event {
+  venue_id?: string | null;
   id: string;
   name: string;
   date: string;
@@ -264,7 +266,8 @@ export default function RoundRobinDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Back-nav lands on the player's own round-robin history page.
-  const backHref = "/player/round-robins";
+  const venueGroup = searchParams.get("venueGroup");
+  const backHref = venueGroup ? `/player/community/group/${encodeURIComponent(venueGroup)}/competitions` : "/player/round-robins";
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -431,7 +434,7 @@ export default function RoundRobinDetail() {
         // Keep the base reads independent and portable. Cross-table embeds
         // through profiles_public worked in Lovable's PostgREST schema cache but
         // fail on the external Supabase project, zeroing the roster and schedule.
-        const [adminFlag, eventResult, playersResult, scheduleData] = await Promise.all([
+        const [adminFlag, eventResult, playersResult, scheduleData, managerResult] = await Promise.all([
           isPlatformAdmin(user.id, signal),
           supabase
             .from("round_robin_events")
@@ -443,6 +446,7 @@ export default function RoundRobinDetail() {
             .select("*")
             .eq("event_id", id).abortSignal(signal),
           fetchCanonicalRoundRobinSchedule(supabase, id!, signal),
+          (supabase as any).rpc("can_manage_round_robin", { p_event: id }).abortSignal(signal),
         ]);
 
         const { data: eventData, error: eventError } = eventResult;
@@ -544,7 +548,7 @@ export default function RoundRobinDetail() {
         if (signal.aborted || request !== fetchRequestRef.current) return;
         setIsAdmin(adminFlag);
         setEvent(eventData as Event);
-        setIsOrganizer(eventData.organizer_id === user.id);
+        setIsOrganizer(!managerResult.error && managerResult.data === true);
         setLoadError(null);
         setPlayers(hydratedPlayers);
         setSchedule(hydratedSchedule);
@@ -2198,7 +2202,7 @@ export default function RoundRobinDetail() {
               status={event.status}
               hasSchedule={hasSchedule}
               isEditMode={isEditMode}
-              canDestroy={isOrganizer}
+              canDestroy={isOrganizer && !event.venue_id}
               onSettings={() => setEditDialogOpen(true)}
               onCourtsAndGames={() => setCourtsRoundsOpen(true)}
               onRegenerateSchedule={handleRegenerateSchedule}
@@ -2215,6 +2219,7 @@ export default function RoundRobinDetail() {
         }
       />
 
+      {isOrganizer && event.venue_id && event.group_id && <VenueRoundRobinContext groupId={event.group_id} roundRobinId={event.id} onPrepared={() => void fetchEventDetails()} />}
       {isOrganizer && hasSchedule && (
         <div className="rr-event-width py-3">
           <OrganizerCommandCenter
