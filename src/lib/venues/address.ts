@@ -8,9 +8,9 @@ export function venueAddressError(slug: string): string | null {
 }
 export type AddressStatus = 'requested' | 'provisioning' | 'action_required' | 'connected' | 'error';
 export const ADDRESS_STATUS: Record<AddressStatus, { label: string; message: string }> = {
-  requested: { label: 'Request received', message: 'Your name is reserved. PULSE will connect your address. You can keep sharing your current venue link while we finish setup.' },
-  provisioning: { label: 'Getting ready', message: 'PULSE is setting up your secure address. You don’t need to change any website settings. Check back here for updates.' },
+  requested: { label: 'Request received', message: 'Your name is reserved and setup is queued automatically. You can keep sharing your current venue link while we connect your address.' },
+  provisioning: { label: 'Getting ready', message: 'PULSE is setting up your secure address and checking progress automatically. DNS and HTTPS can take up to 24 hours.' },
   action_required: { label: 'PULSE is finishing setup', message: 'Your address needs a little more setup from PULSE. Your name is reserved, and your current venue link is still available.' },
-  error: { label: 'PULSE is checking setup', message: 'We couldn’t confirm the connection yet. PULSE needs to review it. In the meantime, use your current venue link.' },
+  error: { label: 'PULSE is checking setup', message: 'We couldn’t confirm the connection yet. PULSE will retry automatically and can review any setup issue. In the meantime, use your current venue link.' },
   connected: { label: 'Address connected', message: 'Your PULSE address is connected. Visitors can explore your public venue page and create a free account when they’re ready to join in.' },
 };

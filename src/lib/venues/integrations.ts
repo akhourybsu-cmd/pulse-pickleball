@@ -6,7 +6,7 @@ export const VENUE_INTEGRATIONS = [{ id: 'pulse-address', name: 'PULSE address',
 export interface AddressConnection {
   id: string; venue_id: string; slug: string; status: AddressStatus; requested_at: string; checked_at: string | null;
   provider_details?: {
-    host?: string; ownership?: string; certificate?: string;
+    host?: string; ownership?: string; certificate?: string; dns_automation?: string;
     dns?: { domainName: string; type: string; rdata: string; requiredAction: string }[];
     issues?: string[];
   };
@@ -37,12 +37,7 @@ export async function listVenueAddressRequests(): Promise<VenueAddressRequest[]>
   if (error) throw error;
   return data as unknown as VenueAddressRequest[];
 }
-export async function syncVenueAddress(venueId: string) {
-  const { data, error } = await supabase.functions.invoke('venue-integrations', { body: { action: 'sync', venueId } });
-  if (error) {
-    const detail = await error.context?.json?.().catch(() => null);
-    throw new Error(detail?.error ?? 'Couldn’t check hosting. Try again in a moment.');
-  }
-  if (data?.error) throw new Error(data.error);
-  return data as { status: AddressStatus };
+export async function queueVenueAddressCheck(venueId: string) {
+  const { error } = await supabase.rpc('queue_venue_address_check', { p_venue_id: venueId });
+  if (error) throw error;
 }

@@ -1,0 +1,37 @@
+name: Connect venue addresses
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Deploy frontend to Firebase Hosting']
+    branches: [main]
+    types: [completed]
+
+concurrency:
+  group: venue-address-automation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  connect:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Process due requests and verify HTTPS
+        run: node scripts/process-venue-addresses.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PULSE_PICKLEBALL_C60E1 }}
+          GODADDY_DNS_TOKEN: ${{ secrets.GODADDY_DNS_TOKEN }}
