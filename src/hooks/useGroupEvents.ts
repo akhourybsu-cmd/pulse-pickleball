@@ -150,6 +150,8 @@ export function useGroupEvents(groupId: string | undefined) {
       skill_level_max?: number;
       /** ISO start timestamps for additional occurrences (excluding start_time itself). */
       additional_starts?: string[];
+      /** Explicit venue-local ends preserve wall-clock duration across DST. */
+      additional_ends?: string[];
       /** Recurrence rule string, e.g. "WEEKLY:8". Applied to every inserted row. */
       recurring_rule?: string;
       event_format?: 'open_play' | 'round_robin' | 'practice' | 'social' | 'clinic' | 'other';
@@ -162,7 +164,7 @@ export function useGroupEvents(groupId: string | undefined) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { additional_starts, recurring_rule, venue_court_ids, ...base } = eventData;
+      const { additional_starts, additional_ends, recurring_rule, venue_court_ids, ...base } = eventData;
       const isSeries = !!recurring_rule && Array.isArray(additional_starts) && additional_starts.length > 0;
 
       // For a single event, end_time is the user-set ISO. For a series,
@@ -191,64 +193,29 @@ export function useGroupEvents(groupId: string | undefined) {
       const rows = isSeries
         ? [
             baseRow,
-            ...additional_starts!.map((iso) => ({
+            ...additional_starts!.map((iso, index) => ({
               ...baseRow,
               start_time: iso,
-              end_time: endDelta != null
+              end_time: additional_ends?.[index] ?? (endDelta != null
                 ? new Date(new Date(iso).getTime() + endDelta).toISOString()
-                : undefined,
+                : undefined),
             })),
           ]
         : [baseRow];
 
-      const { data, error } = await supabase
-        .from('group_events')
-        .insert(rows)
-        .select();
-
-      if (error) throw error;
-
-      // A public venue program stays one RSVP-able event even when it occupies
-      // several courts. Small child rows claim each playing surface so the
-      // existing database overlap constraint remains the final authority on
-      // double-booking. They are hidden from feeds and programming lists.
-      if (venue_court_ids?.length) {
-        if (!base.venue_id || data.some((event) => !event.end_time)) {
-          await supabase.from('group_events').delete().in('id', data.map((event) => event.id));
-          throw new Error('Venue programs need a venue and an end time.');
+      if (base.venue_id) {
+        if (!groupId || !venue_court_ids?.length || rows.some(event => !event.end_time)) {
+          throw new Error('Venue programs require a duration and dedicated courts.');
         }
-
-        const holds = data.flatMap((event) =>
-          venue_court_ids.map((venueCourtId) => ({
-            group_id: groupId!,
-            created_by: user.id,
-            title: event.title,
-            description: event.description,
-            start_time: event.start_time,
-            end_time: event.end_time,
-            location_type: 'venue',
-            custom_location: event.custom_location,
-            venue_id: base.venue_id,
-            venue_court_id: venueCourtId,
-            capacity: event.capacity,
-            event_format: 'program_hold',
-            waitlist_enabled: false,
-            parent_event_id: event.id,
-          })),
-        );
-
-        const { error: holdError } = await supabase.from('group_events').insert(holds);
-        if (holdError) {
-          // The hold insert is one statement, so it is all-or-nothing. Remove
-          // the public parents too, leaving no phantom program after a clash.
-          await supabase.from('group_events').delete().in('id', data.map((event) => event.id));
-          if (holdError.code === '23P01') {
-            throw new Error('One or more selected courts is already booked during this program.');
-          }
-          throw holdError;
-        }
+        const { data, error } = await supabase.rpc('create_venue_program', {
+          p_group: groupId, p_venue: base.venue_id, p_events: rows, p_court_ids: venue_court_ids,
+        });
+        if (error?.code === '23P01') throw new Error('A selected court was just booked. Choose available courts and try again.');
+        if (error) throw error;
+        return data;
       }
-
+      const { data, error } = await supabase.from('group_events').insert(rows).select();
+      if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
@@ -260,6 +227,7 @@ export function useGroupEvents(groupId: string | undefined) {
           : 'Your event has been scheduled',
       });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['venue-event-conflicts'] });
       const venueId = Array.isArray(data) ? data[0]?.venue_id : null;
       if (venueId) queryClient.invalidateQueries({ queryKey: ['venue-day', venueId] });
     },
@@ -285,6 +253,8 @@ export function useGroupEvents(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Deleted', description: 'Event has been removed' });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['venue-day'] });
+      queryClient.invalidateQueries({ queryKey: ['venue-event-conflicts'] });
     },
     onError: (error: unknown) => {
       console.error('Error deleting event:', error);

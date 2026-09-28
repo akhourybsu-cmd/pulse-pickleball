@@ -108,6 +108,7 @@ export function useCommunityActivity() {
           `)
           .in('group_id', groupIds)
           .gte('start_time', new Date().toISOString())
+          .is('parent_event_id', null)
           .order('start_time', { ascending: true })
           .limit(10),
       ]);

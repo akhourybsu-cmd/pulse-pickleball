@@ -14,6 +14,7 @@ interface VenueEventDialogProps {
   groupId: string;
   venueId: string;
   venueName: string;
+  timeZone?: string | null;
   courts: Court[];
   initialDate?: Date | null;
   initialStart?: Date | null;
@@ -34,6 +35,7 @@ export function VenueEventDialog({
   groupId,
   venueId,
   venueName,
+  timeZone,
   courts,
   initialDate,
   initialStart,
@@ -61,6 +63,7 @@ export function VenueEventDialog({
             venue={{
               id: venueId,
               name: venueName,
+              timeZone,
               courts: courts.filter((court) => court.is_active !== false),
               initialDate,
               initialStart,

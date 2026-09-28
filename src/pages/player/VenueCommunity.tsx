@@ -556,6 +556,7 @@ export default function VenueCommunity() {
             onBooked={refresh}
           />
           <VenueEventDialog
+            timeZone={venue?.timezone}
             open={eventCreatorOpen}
             onOpenChange={setEventCreatorOpen}
             groupId={groupId!}
