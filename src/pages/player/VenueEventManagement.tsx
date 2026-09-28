@@ -68,6 +68,7 @@ export default function VenueEventManagement() {
         ...bounds(),
       }),
     refetchInterval: editing || working ? false : 30000,
+    refetchOnWindowFocus: !editing && !working,
   });
   const w = query.data;
   const selected = w?.events.find((e) => e.id === params.get("event"));
@@ -556,6 +557,11 @@ export default function VenueEventManagement() {
               Registration, attendance and payment records for this occurrence.
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           {selected && (
             <>
               <div className="flex flex-wrap gap-2">
