@@ -2,6 +2,12 @@
 -- exclusion constraint and checkout/payment guards remain the booking authority.
 BEGIN;
 
+-- Operational blocks are not additional public events or announcements.
+DROP TRIGGER IF EXISTS trg_notify_group_event_new ON public.group_events;
+CREATE TRIGGER trg_notify_group_event_new AFTER INSERT ON public.group_events
+  FOR EACH ROW WHEN (NEW.parent_event_id IS NULL AND NEW.event_format <> 'program_hold')
+  EXECUTE FUNCTION public.notify_group_event_new();
+
 CREATE FUNCTION public.create_venue_program(p_group uuid, p_venue uuid, p_events jsonb, p_court_ids uuid[])
 RETURNS SETOF public.group_events
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$

@@ -55,6 +55,7 @@ export function useMyBookings() {
           .select(EVENT_SELECT)
           .eq('created_by', user.id)
           .not('venue_court_id', 'is', null)
+          .is('parent_event_id', null)
           .neq('event_format', 'maintenance')
           .order('start_time', { ascending: true }),
         supabase

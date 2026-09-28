@@ -36,6 +36,8 @@ async function setup(importSchedule=false) {
     CREATE TABLE group_files(id uuid PRIMARY KEY,group_id uuid,uploader_id uuid,file_url text,file_name text,file_type text,file_size integer);
     CREATE TABLE payment_orders(id uuid DEFAULT gen_random_uuid(),court_id uuid,livemode boolean,status text,start_time timestamptz,end_time timestamptz,kind text,group_id uuid,venue_id uuid,buyer_id uuid);
     CREATE TABLE venue_payment_settings(venue_id uuid,accepting_payments boolean);
+    CREATE TABLE notified_events(id uuid);
+    CREATE FUNCTION notify_group_event_new() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO notified_events VALUES(NEW.id); RETURN NEW; END $$;
     INSERT INTO venues(id,owner_id,timezone,welcome_message) VALUES('${venue}','${owner}','America/New_York','Owner welcome');
     INSERT INTO groups VALUES('${group}','${venue}','${owner}','venue_official');
     INSERT INTO group_members VALUES('${group}','${owner}','owner','active');
@@ -57,6 +59,7 @@ async function count() {return (await db.query<{n:number}>('SELECT count(*)::int
 
 it('atomically allocates only requested courts, leaves remaining inventory bookable and releases blocks on cancellation',async()=>{
   await setup(); const {rows:[parent]}=await create();
+  expect((await db.query('SELECT * FROM notified_events')).rows).toEqual([{id:parent.id}]);
   const blocks=(await db.query<Reservation>('SELECT * FROM group_events')).rows;
   const inventory=(await db.query<Court>('SELECT * FROM venue_courts')).rows;
   const grid=buildDayGrid(inventory,blocks,new Date(2026,10,2),{timeZone:'America/New_York',openHour:9.5,closeHour:11,slotMinutes:30,now:new Date('2026-01-01')});
@@ -127,6 +130,7 @@ it('assigns all 108 live-schedule events to existing courts, preserves RSVPs, an
   const first=(await db.query<{id:string}>('SELECT id FROM group_events ORDER BY start_time LIMIT 1')).rows[0].id;
   await db.query("INSERT INTO group_event_rsvps VALUES($1,$2,'going')",[first,owner]);
   await db.exec(backfill);
+  expect((await db.query('SELECT * FROM notified_events')).rows).toHaveLength(0);
   expect((await db.query('SELECT * FROM venue_courts')).rows).toHaveLength(4);
   const allocations=(await db.query<{event_format:string;n:number}>(`SELECT p.event_format,count(h.id)::int n FROM group_events p
     JOIN group_events h ON h.parent_event_id=p.id GROUP BY p.id`)).rows;
