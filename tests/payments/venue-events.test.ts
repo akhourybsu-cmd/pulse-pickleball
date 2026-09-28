@@ -176,6 +176,7 @@ beforeAll(async () => {
       ADD COLUMN waitlist_enabled boolean DEFAULT false, ADD COLUMN waitlist_limit integer, ADD COLUMN is_recurring boolean, ADD COLUMN recurring_rule text, ADD COLUMN series_id uuid,
       ADD COLUMN rr_courts integer, ADD COLUMN rr_games_per_player integer, ADD COLUMN updated_at timestamptz DEFAULT now(),ADD COLUMN created_at timestamptz DEFAULT now();
     CREATE TABLE group_event_rsvps(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),event_id uuid REFERENCES group_events ON DELETE CASCADE,user_id uuid,status text,waitlist_position integer,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),UNIQUE(event_id,user_id));
+    CREATE FUNCTION pulse_has_required_mfa() RETURNS boolean LANGUAGE sql AS $$ SELECT coalesce(current_setting('test.mfa_required',true),'')<>'unverified' $$;
     CREATE TABLE group_notification_prefs(group_id uuid,user_id uuid,muted_all boolean,events boolean);
     CREATE TABLE change_notifications(user_id uuid,title text);
     CREATE FUNCTION enqueue_notification(uuid,text,text,text,text,text,uuid,jsonb) RETURNS void LANGUAGE sql AS $$ INSERT INTO change_notifications VALUES($1,$4) $$;
@@ -191,6 +192,7 @@ beforeAll(async () => {
     "20260928210000_venue_event_management.sql",
     "20260928211000_venue_event_payments.sql",
     "20260928212000_venue_event_operations.sql",
+    "20260928213000_venue_event_draft_mfa.sql",
   ])
     await db.exec(readFileSync("supabase/migrations/" + migration, "utf8"));
   const d = new Date();
@@ -641,4 +643,25 @@ it("returns a scoped management workspace and keeps payment activation restricte
   await expect(
     db.query("SELECT payment_save_event_settings($1,$2,true)", [owner, venue])
   ).rejects.toThrow("Complete Stripe verification");
+});
+it("applies the required restrictive MFA policy to event drafts", async () => {
+  await draft();
+  expect(
+    (await asUser(owner, "SELECT id FROM venue_event_drafts")).rows
+  ).toHaveLength(1);
+  await db.exec("SELECT set_config('test.mfa_required','unverified',false)");
+  try {
+    expect(
+      (await asUser(owner, "SELECT id FROM venue_event_drafts")).rows
+    ).toHaveLength(0);
+  } finally {
+    await db.exec("SELECT set_config('test.mfa_required','',false)");
+  }
+  expect(
+    (
+      await db.query<any>(
+        "SELECT polpermissive FROM pg_policy WHERE polname='pulse_required_mfa' AND polrelid='venue_event_drafts'::regclass"
+      )
+    ).rows[0].polpermissive
+  ).toBe(false);
 });
