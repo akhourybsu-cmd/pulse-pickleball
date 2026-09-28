@@ -188,10 +188,8 @@ serve(async (req) => {
     if (schErr) return json({ error: { code: "snapshot_failed", message: schErr.message } }, 500);
 
     // Best-effort authorization pre-check (the RPC re-checks authoritatively).
-    if (event.organizer_id !== user.id) {
-      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
-      if (isAdmin !== true) return json({ error: { code: "not_authorized" } }, 403);
-    }
+    const { data: canManage, error: managerError } = await supabase.rpc("can_manage_round_robin", { p_event: event.id, p_user: user.id });
+    if (managerError || canManage !== true) return json({ error: { code: "not_authorized" } }, 403);
 
     // ---- Gender lookup (only needed for gendered formats) ----------------
     const genders = new Map<SeatId, string>();

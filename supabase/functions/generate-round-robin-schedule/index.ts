@@ -218,16 +218,9 @@ serve(async (req) => {
       return respond(404, { error: "Round robin not found" });
     }
     const event = rawEvent as EventSnapshot;
-    let canManage = event.organizer_id === authData.user.id;
-    if (!canManage) {
-      const { data: hasAdminRole, error: roleError } = await supabase.rpc("has_role", {
-        _user_id: authData.user.id,
-        _role: "admin",
-      });
-      if (roleError) throw roleError;
-      canManage = hasAdminRole === true;
-    }
-    if (!canManage) {
+    const { data: canManage, error: managerError } = await supabase.rpc("can_manage_round_robin", { p_event: eventId, p_user: authData.user.id });
+    if (managerError) throw managerError;
+    if (canManage !== true) {
       return respond(403, { error: "Only the organizer or an administrator can rebuild this schedule" });
     }
     if (event.voided || event.status === "completed" || event.status === "voided") {

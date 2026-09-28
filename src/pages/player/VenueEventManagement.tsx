@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import { useAuthState } from "@/hooks/useAuthState";
 
 export default function VenueEventManagement() {
   const { groupId } = useParams();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { user } = useAuthState();
   const client = useQueryClient();
@@ -253,6 +254,7 @@ export default function VenueEventManagement() {
         skill_level_min: e.skill_level_min,
         skill_level_max: e.skill_level_max,
         rotation_style: e.rotation_style,
+        rr_games_per_player: e.rr_games_per_player,
       },
     });
   };
@@ -293,6 +295,7 @@ export default function VenueEventManagement() {
         </div>
       </header>
       <nav className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to={`${base}/competitions`}>Round robins & leagues</Link></Button>
         <Button asChild variant="outline">
           <Link to={`${base}/ops`}>
             <CalendarDays className="mr-2 h-4 w-4" />
@@ -565,6 +568,7 @@ export default function VenueEventManagement() {
           {selected && (
             <>
               <div className="flex flex-wrap gap-2">
+                {selected.event_format === "round_robin" && !selected.canceled_at && <Button disabled={working} onClick={() => void act(async () => { const id = await rpc<string>("setup_venue_round_robin", { p_event: selected.id }); navigate(`/round-robin/${id}?venueGroup=${groupId}`); })}>Set up / manage round robin</Button>}
                 {!selected.canceled_at &&
                   new Date(selected.end_time ?? selected.start_time) >
                     new Date() && (

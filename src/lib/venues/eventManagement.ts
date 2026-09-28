@@ -18,6 +18,7 @@ export interface EventDocument {
   skill_level_max: number | null;
   frequency?: import("@/components/community/event-wizard/types").RecurringFrequency;
   rotation_style?: string | null;
+  rr_games_per_player?: number | null;
 }
 export interface EventDraft {
   id: string;
@@ -72,6 +73,14 @@ export function validateEventDocument(d: EventDocument) {
     );
   if (!Number.isInteger(d.capacity) || d.capacity < 1 || d.capacity > 5000)
     throw new Error("Choose a capacity from 1 to 5,000 players.");
+  if (
+    d.event_format === "round_robin" &&
+    d.rr_games_per_player != null &&
+    (!Number.isInteger(d.rr_games_per_player) ||
+      d.rr_games_per_player < 1 ||
+      d.rr_games_per_player > 20)
+  )
+    throw new Error("Choose 1 to 20 games per player.");
   if (!d.occurrences.length || !d.court_ids.length)
     throw new Error(
       "Choose valid dates, a duration and at least one available court."

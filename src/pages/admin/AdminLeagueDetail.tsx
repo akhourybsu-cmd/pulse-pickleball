@@ -40,7 +40,7 @@ interface Counts {
 }
 
 export default function AdminLeagueDetail() {
-  const { leagueId } = useParams<{ leagueId: string }>();
+  const { leagueId, groupId } = useParams<{ leagueId: string; groupId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   // The same component now backs BOTH /admin/leagues/:id (platform
@@ -48,8 +48,8 @@ export default function AdminLeagueDetail() {
   // (self-serve owner surface, no admin chrome). Detect by URL prefix
   // so we can wrap the render conditionally.
   const isPlayerContext = location.pathname.startsWith("/player/");
-  // Leagues are one public portal now; both contexts return to it.
-  const backHref = "/player/leagues";
+  // Venue-managed leagues return to their venue workspace.
+  const backHref = groupId ? `/player/community/group/${groupId}/competitions?tab=leagues` : "/player/leagues";
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
@@ -150,7 +150,7 @@ export default function AdminLeagueDetail() {
       setLoading(false);
       return;
     }
-    if (!data) {
+    if (!data || (groupId && (data as unknown as League).community_id !== groupId)) {
       setAccessDenied(true);
       setLoading(false);
       return;
@@ -249,14 +249,14 @@ export default function AdminLeagueDetail() {
         </div>
         <p className="text-sm font-semibold">You don't have access</p>
         <p className="text-xs text-muted-foreground">
-          Only the owner, active assistant managers, and platform administrators can manage this league.
+          Only authorized league or venue managers can manage this league.
         </p>
         <button
           type="button"
           onClick={() => navigate(backHref)}
           className="text-xs text-primary hover:underline"
         >
-          ← Back to My Leagues
+          ← {groupId ? "Back to venue leagues" : "Back to My Leagues"}
         </button>
       </div>,
       "Access denied"
@@ -274,7 +274,7 @@ export default function AdminLeagueDetail() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 max-w-[1440px] space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" className="h-11 rounded-xl" onClick={() => navigate(backHref)}>
-            <ArrowLeft className="h-4 w-4" /> All leagues
+            <ArrowLeft className="h-4 w-4" /> {groupId ? "Venue leagues" : "All leagues"}
           </Button>
           <Button variant="outline" className="h-11 rounded-xl" onClick={() => navigate(`/player/leagues/${league.id}${searchParams.get('season') ? `?season=${encodeURIComponent(searchParams.get('season')!)}` : ''}`)}>
             <ExternalLink className="h-4 w-4" /> Player view

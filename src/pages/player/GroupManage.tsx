@@ -65,6 +65,7 @@ export default function GroupManage() {
   const [venueRole, setVenueRole] = useState<VenueRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const setActiveTab = (tab: string) => {
+    if(tab==='competitions'){navigate(`/player/community/group/${groupId}/competitions`);return;}
     if(tab==='events'){navigate(`/player/community/group/${groupId}/events/manage`);return;}
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
@@ -400,6 +401,7 @@ export default function GroupManage() {
     ...(canManageFacility
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
+          { value: 'competitions', label: 'Round robins & leagues', shortLabel: 'Competitions', description: 'Match play, league seasons, rosters and standings', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'events', label: 'Events & registrations', shortLabel: 'Events', description: 'Schedule, court allocations, pricing and attendance', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
           { value: 'integrations', label: 'Integrations', description: 'Your PULSE address and connected services', icon: Plug, section: 'venue' as const },
