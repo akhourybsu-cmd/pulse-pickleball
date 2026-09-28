@@ -2,7 +2,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { afterEach, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/20260928120000_rally_haus_official_content.sql', 'utf8');
+const sql = readFileSync('supabase/migrations/20260928162000_rally_haus_official_content.sql', 'utf8');
 const venue = 'd99d7de3-2431-4ee2-a826-04cc293da1cd';
 const group = 'd5b47d17-d217-441a-a62a-bcdd87307d62';
 const owner = '00000000-0000-4000-8000-000000000001';
