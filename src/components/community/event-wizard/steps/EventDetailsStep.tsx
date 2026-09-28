@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,8 @@ interface EventDetailsStepProps {
   venueName?: string | null;
   courts?: VenueEventCourt[];
   selectedCourtIds?: string[];
+  courtCount?: number;
+  onCourtCountChange?: (count: number) => void;
   busyCourtIds?: ReadonlySet<string>;
   courtConflictsPending?: boolean;
   courtConflictsError?: boolean;
@@ -89,6 +92,8 @@ export function EventDetailsStep({
   venueName,
   courts = [],
   selectedCourtIds = [],
+  courtCount = selectedCourtIds.length,
+  onCourtCountChange,
   busyCourtIds = new Set<string>(),
   courtConflictsPending = false,
   courtConflictsError = false,
@@ -107,6 +112,7 @@ export function EventDetailsStep({
   onRotationStyleChange,
 }: EventDetailsStepProps) {
   const isRoundRobin = eventType === 'round_robin';
+  const freeCount = courts.filter(c => c.is_active !== false && !busyCourtIds.has(c.id)).length;
   const rotations = ROTATION_OPTIONS.filter((option) =>
     eventType ? option.formats.includes(eventType) : true,
   );
@@ -138,6 +144,21 @@ export function EventDetailsStep({
               : 'Choose at least one court. Busy courts cannot be selected.'
           }
         >
+          <div className="mb-3 space-y-2">
+            <Label htmlFor="event-court-count">How many courts are needed?</Label>
+            <Input id="event-court-count" type="number" min={1} max={courts.length} step={1} required
+              disabled={courtConflictsPending || courtConflictsError || !courts.length}
+              value={courtCount || ''} placeholder="Number of courts"
+              onChange={event => onCourtCountChange?.(Math.max(0, Math.floor(Number(event.target.value))))} />
+            {!courtConflictsPending && !courtConflictsError && (
+              <p className="text-xs text-muted-foreground">{freeCount} courts available for every occurrence. Enter a number to assign courts automatically, or choose them below. Unassigned courts remain available for rentals.</p>
+            )}
+            {courtCount > freeCount && <p role="alert" className="text-xs text-destructive">Only {freeCount} courts are available for the full schedule. Reduce the court count or change the time.</p>}
+            {courtCount > 0 && (selectedCourtIds.length !== courtCount || selectedCourtIds.some(id => busyCourtIds.has(id))) && (
+              <Button type="button" variant="outline" disabled={courtConflictsPending || courtConflictsError || courtCount > freeCount}
+                onClick={() => onCourtCountChange?.(courtCount)}>Assign available courts</Button>
+            )}
+          </div>
           {courts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center text-sm text-muted-foreground">
               No active courts are configured for this venue.

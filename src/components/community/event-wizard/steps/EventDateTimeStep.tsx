@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { AlertCircle } from 'lucide-react';
 import { RECURRING_OPTIONS, type RecurringFrequency } from '../types';
 import { Button } from '@/components/ui/button';
+import { clockMinutes, endAfterDuration } from '@/lib/venues/programScheduling';
+import { venueCalendarNow } from '@/lib/venues/timezone';
 
 interface EventDateTimeStepProps {
   date: string;
@@ -24,6 +26,7 @@ interface EventDateTimeStepProps {
   onRecurringFrequencyChange: (freq: RecurringFrequency) => void;
   onRecurringCountChange: (count: number) => void;
   venueMode?: boolean;
+  timeZone?: string | null;
 }
 
 const COUNT_OPTIONS = [2, 4, 6, 8, 10, 12];
@@ -40,20 +43,16 @@ export function EventDateTimeStep({
   onRecurringFrequencyChange,
   onRecurringCountChange,
   venueMode = false,
+  timeZone,
 }: EventDateTimeStepProps) {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(venueCalendarNow(timeZone), 'yyyy-MM-dd');
   const isRecurring = recurringFrequency !== 'none';
   const invalidWindow = !!startTime && !!endTime && endTime <= startTime;
 
   const setDuration = (minutes: number) => {
-    if (!startTime) return;
-    const [hours, mins] = startTime.split(':').map(Number);
-    const total = hours * 60 + mins + minutes;
-    const endHours = Math.floor(total / 60);
-    const endMinutes = total % 60;
-    if (endHours >= 24) return;
-    onEndTimeChange(`${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`);
+    onEndTimeChange(endAfterDuration(startTime, minutes));
   };
+  const duration = clockMinutes(endTime) - clockMinutes(startTime);
 
   return (
     <div className="space-y-4">
@@ -62,14 +61,16 @@ export function EventDateTimeStep({
         {venueMode && (
           <p className="mt-1 text-[13px] text-muted-foreground">
             Set the full court window. Repeating programs create independently manageable dates.
+            {timeZone && ` Times are in ${timeZone.replace(/_/g, ' ')}.`}
           </p>
         )}
       </div>
 
       <div className="space-y-3">
         <div>
-          <Label className="text-xs text-muted-foreground mb-1 block">Date</Label>
+          <Label htmlFor="event-date" className="text-xs text-muted-foreground mb-1 block">Date</Label>
           <Input
+            id="event-date"
             type="date"
             value={date}
             onChange={(e) => onDateChange(e.target.value)}
@@ -79,18 +80,20 @@ export function EventDateTimeStep({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Start time</Label>
+            <Label htmlFor="event-start" className="text-xs text-muted-foreground mb-1 block">Start time</Label>
             <Input
+              id="event-start"
               type="time"
               value={startTime}
               onChange={(e) => onStartTimeChange(e.target.value)}
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">
+            <Label htmlFor="event-end" className="text-xs text-muted-foreground mb-1 block">
               End time {venueMode ? '' : '(optional)'}
             </Label>
             <Input
+              id="event-end"
               type="time"
               value={endTime}
               onChange={(e) => onEndTimeChange(e.target.value)}
@@ -98,6 +101,15 @@ export function EventDateTimeStep({
           </div>
         </div>
 
+        {venueMode && (
+          <div>
+            <Label htmlFor="event-duration" className="mb-1 block text-sm">How long is the event? (minutes)</Label>
+            <Input id="event-duration" type="number" min={1} max={1439} step={1} required disabled={!startTime}
+              placeholder="Choose a duration" value={Number.isFinite(duration) && duration > 0 ? duration : ''}
+              onChange={event => setDuration(Number(event.target.value))} />
+            <p className="mt-1 text-xs text-muted-foreground">Courts are reserved for the entire duration. Include any setup and cleanup time.</p>
+          </div>
+        )}
         {venueMode && startTime && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -110,6 +122,7 @@ export function EventDateTimeStep({
                 variant="outline"
                 size="sm"
                 className="h-7 rounded-full px-2.5 text-[11px]"
+                disabled={!endAfterDuration(startTime, minutes)}
                 onClick={() => setDuration(minutes)}
               >
                 {minutes < 60 ? `${minutes}m` : minutes % 60 ? `${Math.floor(minutes / 60)}h 30m` : `${minutes / 60}h`}

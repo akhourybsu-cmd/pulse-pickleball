@@ -1,5 +1,6 @@
 import { Calendar, Clock, MapPin, Users, Repeat, ListOrdered, LayoutGrid, Gauge, Shuffle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { clockMinutes } from '@/lib/venues/programScheduling';
 import {
   EventWizardFormData,
   EVENT_TYPE_OPTIONS,
@@ -13,6 +14,7 @@ interface EventReviewStepProps {
   formData: EventWizardFormData;
   venueName?: string | null;
   courts?: VenueEventCourt[];
+  timeZone?: string | null;
 }
 
 function Row({
@@ -35,7 +37,7 @@ function Row({
   );
 }
 
-export function EventReviewStep({ formData, venueName, courts = [] }: EventReviewStepProps) {
+export function EventReviewStep({ formData, venueName, courts = [], timeZone }: EventReviewStepProps) {
   const eventType = EVENT_TYPE_OPTIONS.find((t) => t.value === formData.eventType);
   const recurring = RECURRING_OPTIONS.find((r) => r.value === formData.recurringFrequency);
   const isRecurring = formData.recurringFrequency !== 'none';
@@ -95,13 +97,14 @@ export function EventReviewStep({ formData, venueName, courts = [] }: EventRevie
               : formatTime(formData.startTime)
           }
         />
+        {venueName && <Row icon={Clock} label="Duration" value={`${clockMinutes(formData.endTime) - clockMinutes(formData.startTime)} minutes${timeZone ? ` · ${timeZone.replace(/_/g, ' ')}` : ''}`} />}
         {(venueName || formData.location) && (
           <Row icon={MapPin} label="Where" value={venueName || formData.location} />
         )}
         {selectedCourts.length > 0 && (
           <Row
             icon={LayoutGrid}
-            label="Courts"
+            label={`${selectedCourts.length} courts`}
             value={selectedCourts
               .map((court) => court.name ?? `Court ${court.court_number}`)
               .join(', ')}

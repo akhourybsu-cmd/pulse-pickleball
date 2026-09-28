@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { canUseVenueCourtSelection } from '@/lib/venues/experience';
 import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
+import { allocateAvailableCourts, clockMinutes, endAfterDuration, programWindows } from '@/lib/venues/programScheduling';
+import { venueCalendarNow } from '@/lib/venues/timezone';
 import {
   EventWizardFormData,
   EVENT_FORMAT_LABELS,
@@ -37,6 +39,7 @@ interface EventWizardContainerProps {
   venue?: {
     id: string;
     name: string;
+    timeZone?: string | null;
     courts: VenueEventCourt[];
     initialDate?: Date | null;
     initialStart?: Date | null;
@@ -57,39 +60,35 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   const [isLoading, setIsLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [capacityManuallySet, setCapacityManuallySet] = useState(false);
+  const [courtCount, setCourtCount] = useState(venue?.initialCourtIds?.length ?? 0);
 
   const [formData, setFormData] = useState<EventWizardFormData>(() => ({
     ...INITIAL_EVENT_WIZARD_DATA,
     location: venue?.name ?? '',
     date: venue?.initialStart
-      ? format(venue.initialStart, 'yyyy-MM-dd')
+      ? format(venueCalendarNow(venue.timeZone, venue.initialStart), 'yyyy-MM-dd')
       : venue?.initialDate
         ? format(venue.initialDate, 'yyyy-MM-dd')
         : '',
-    startTime: timeValue(venue?.initialStart),
-    endTime: timeValue(venue?.initialEnd),
+    startTime: timeValue(venue?.initialStart ? venueCalendarNow(venue.timeZone, venue.initialStart) : null),
+    endTime: timeValue(venue?.initialEnd ? venueCalendarNow(venue.timeZone, venue.initialEnd) : null),
     selectedCourtIds: venue?.initialCourtIds ?? [],
   }));
 
   const occurrenceWindows = useMemo(() => {
-    if (!formData.date || !formData.startTime || !formData.endTime) return [];
-    const firstStart = new Date(`${formData.date}T${formData.startTime}`);
-    const firstEnd = new Date(`${formData.date}T${formData.endTime}`);
-    if (Number.isNaN(firstStart.getTime()) || Number.isNaN(firstEnd.getTime()) || firstEnd <= firstStart) {
-      return [];
-    }
-    const duration = firstEnd.getTime() - firstStart.getTime();
-    return generateOccurrenceStarts(
-      firstStart,
+    return programWindows(
+      formData.date, formData.startTime, formData.endTime,
       formData.recurringFrequency,
       formData.recurringCount,
-    ).map((start) => ({ start, end: new Date(start.getTime() + duration) }));
+      venue?.timeZone,
+    );
   }, [
     formData.date,
     formData.startTime,
     formData.endTime,
     formData.recurringFrequency,
     formData.recurringCount,
+    venue?.timeZone,
   ]);
 
   const conflictQuery = useQuery({
@@ -122,7 +121,15 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
 
   const step = EVENT_WIZARD_STEPS[currentStep];
   const isLastStep = currentStep === EVENT_WIZARD_STEPS.length - 1;
-  const courtsConfirmed = canUseVenueCourtSelection(formData.selectedCourtIds, busyCourtIds, conflictQuery.isSuccess && !conflictQuery.isFetching);
+  const courtsConfirmed = formData.selectedCourtIds.length === courtCount
+    && formData.selectedCourtIds.every(id => venue?.courts.some(c => c.id === id && c.is_active !== false))
+    && canUseVenueCourtSelection(formData.selectedCourtIds, busyCourtIds, conflictQuery.isSuccess && !conflictQuery.isFetching);
+
+  const selectCourts = (selectedCourtIds: string[]) => setFormData(prev => ({
+    ...prev, selectedCourtIds,
+    rrCourts: prev.eventType === 'round_robin' ? selectedCourtIds.length : prev.rrCourts,
+    capacity: capacityManuallySet ? prev.capacity : selectedCourtIds.length ? selectedCourtIds.length * suggestedPlayersPerCourt(prev.eventType) : null,
+  }));
 
   const isStepValid = (): boolean => {
     switch (step.id) {
@@ -183,17 +190,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
     setIsLoading(true);
     setCreateError(null);
     try {
-      const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
+      const startDateTime = venueMode ? occurrenceWindows[0].start : new Date(`${formData.date}T${formData.startTime}`);
       let endDateTime: Date | undefined;
       if (formData.endTime) {
-        endDateTime = new Date(`${formData.date}T${formData.endTime}`);
+        endDateTime = venueMode ? occurrenceWindows[0].end : new Date(`${formData.date}T${formData.endTime}`);
       }
 
       // Generate occurrences for the series. generateOccurrenceStarts
       // returns [firstStart] for 'none', so we always slice the first
       // element off — that's the start_time on the base row — and pass
       // the rest as additional_starts to useGroupEvents.createEvent.
-      const occurrences = generateOccurrenceStarts(
+      const occurrences = venueMode ? occurrenceWindows.map(window => window.start) : generateOccurrenceStarts(
         startDateTime,
         formData.recurringFrequency,
         formData.recurringCount,
@@ -228,7 +235,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
         rr_games_per_player:
           formData.eventType === 'round_robin' ? formData.rrGamesPerPlayer ?? undefined : undefined,
         ...(recurringRule
-          ? { recurring_rule: recurringRule, additional_starts: additionalStarts }
+          ? { recurring_rule: recurringRule, additional_starts: additionalStarts,
+            additional_ends: venueMode ? occurrenceWindows.slice(1).map(window => window.end.toISOString()) : undefined }
           : {}),
       });
 
@@ -295,8 +303,11 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             recurringFrequency={formData.recurringFrequency}
             recurringCount={formData.recurringCount}
             venueMode={venueMode}
+            timeZone={venue?.timeZone}
             onDateChange={(date) => setFormData((prev) => ({ ...prev, date }))}
-            onStartTimeChange={(startTime) => setFormData((prev) => ({ ...prev, startTime }))}
+            onStartTimeChange={(startTime) => setFormData((prev) => ({ ...prev, startTime,
+              endTime: venueMode && prev.endTime ? endAfterDuration(startTime, clockMinutes(prev.endTime) - clockMinutes(prev.startTime)) : prev.endTime,
+            }))}
             onEndTimeChange={(endTime) => setFormData((prev) => ({ ...prev, endTime }))}
             onRecurringFrequencyChange={(recurringFrequency) =>
               setFormData((prev) => ({ ...prev, recurringFrequency }))
@@ -320,6 +331,11 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             venueName={venue?.name}
             courts={venue?.courts}
             selectedCourtIds={formData.selectedCourtIds}
+            courtCount={courtCount}
+            onCourtCountChange={(count) => {
+              setCourtCount(count);
+              selectCourts(allocateAvailableCourts(venue?.courts ?? [], busyCourtIds, count, formData.selectedCourtIds));
+            }}
             busyCourtIds={busyCourtIds}
             courtConflictsPending={conflictQuery.isPending || conflictQuery.isFetching}
             courtConflictsError={conflictQuery.isError}
@@ -341,18 +357,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             onRrGamesChange={(rrGamesPerPlayer) =>
               setFormData((prev) => ({ ...prev, rrGamesPerPlayer }))
             }
-            onSelectedCourtsChange={(selectedCourtIds) =>
-              setFormData((prev) => ({
-                ...prev,
-                selectedCourtIds,
-                rrCourts: prev.eventType === 'round_robin' ? selectedCourtIds.length : prev.rrCourts,
-                capacity: capacityManuallySet
-                  ? prev.capacity
-                  : selectedCourtIds.length > 0
-                    ? selectedCourtIds.length * suggestedPlayersPerCourt(prev.eventType)
-                    : null,
-              }))
-            }
+            onSelectedCourtsChange={(ids) => { setCourtCount(ids.length); selectCourts(ids); }}
             onSkillLevelMinChange={(skillLevelMin) =>
               setFormData((prev) => ({ ...prev, skillLevelMin }))
             }
@@ -365,7 +370,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
           />
         );
       case 'review':
-        return <EventReviewStep formData={formData} venueName={venue?.name} courts={venue?.courts} />;
+        return <EventReviewStep formData={formData} venueName={venue?.name} courts={venue?.courts} timeZone={venue?.timeZone} />;
       default:
         return null;
     }
