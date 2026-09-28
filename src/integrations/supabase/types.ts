@@ -9269,6 +9269,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_venue_program_roster: {
+        Args: { p_event_id: string }
+        Returns: { name: string }[]
+      }
       create_venue_program: {
         Args: { p_group: string; p_venue: string; p_events: Json; p_court_ids: string[] }
         Returns: Database['public']['Tables']['group_events']['Row'][]

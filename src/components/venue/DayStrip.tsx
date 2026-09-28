@@ -43,10 +43,11 @@ export function DayStrip({ value, onChange, days = 14, accent, trailing, timeZon
               event.preventDefault(); onChange(options[next]);
               scroller.current?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
             }}
-            className={cn('flex h-[60px] w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-xl text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', active ? 'bg-primary font-semibold text-primary-foreground' : 'bg-card text-muted-foreground')}
+            className={cn('flex h-20 w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-border/60 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', active ? 'bg-primary font-semibold text-primary-foreground' : 'bg-card text-foreground')}
             style={active && color ? { backgroundColor: color, color: contrastInk(color) } : undefined}>
-            <span className="text-[10px] uppercase tracking-wide">{day.toLocaleDateString([], { weekday: 'short' })}</span>
-            <span className="text-lg font-semibold tabular-nums">{day.getDate()}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide">{day.toLocaleDateString([], { weekday: 'short' })}</span>
+            <span className="text-[22px] font-semibold leading-6 tabular-nums">{day.getDate()}</span>
+            <span className="text-[10px] uppercase tracking-wide">{day.toLocaleDateString([], { month: 'short' })}</span>
           </button>;
         })}
       </div>

@@ -20,6 +20,23 @@ const program = { id: 'p1', title: 'Community open play', event_format: 'open_pl
 const dialog = (props: Partial<Parameters<typeof VenueProgramDialog>[0]> = {}) => renderToStaticMarkup(<VenueProgramDialog event={program} open onOpenChange={() => {}} venueName="Pickleball Palace" canRsvp onRsvp={() => 'going'} {...props} />);
 
 describe('program registration presentation', () => {
+  it('places only abbreviated names below availability and above registration controls', () => {
+    const html = dialog({ roster: [{name:'Jamie B.'},{name:'Zoë Á.'}], timeZone:'America/New_York' });
+    expect(html.indexOf('aria-label="Availability"')).toBeLessThan(html.indexOf('aria-label="Players signed up"'));
+    expect(html.indexOf('Jamie B.')).toBeLessThan(html.indexOf('Are you playing?'));
+    expect(html).toContain('Zoë Á.');
+    expect(html).not.toMatch(/<img|href=.*profile/);
+    expect(html).toContain('6:00 AM – 8:00 AM'); expect(html).toContain('EDT');
+  });
+  it('distinguishes empty, loading and failed rosters while keeping registration available', () => {
+    expect(dialog()).toContain('No players have signed up yet.');
+    const loading = dialog({rosterLoading:true});
+    expect(loading).toContain('Loading players…'); expect(loading).not.toContain('No players have signed up yet.');
+    const error = dialog({rosterError:true,onRetryRoster:()=>{}});
+    expect(error).toContain('Retry roster'); expect(error).not.toContain('No players have signed up yet.');
+    expect(error).toContain('Are you playing?');
+    expect(dialog({event:{...program,capacity:null},roster:[{name:'Alex S.'}]})).toContain('Open registration');
+  });
   it('opens a visible loading surface instead of silently doing nothing', () => {
     const html = dialog({ event: null, loading: true });
     expect(html).toContain('role="dialog"'); expect(html).toContain('Loading your session');

@@ -37,6 +37,13 @@ export async function fetchVenueProgram(venueId: string, eventId: string, viewer
   return { event: { ...data, rsvps: counts, user_rsvp: viewerRsvp } as GroupEvent, canRsvp: membership.data?.status === 'active' };
 }
 
+export async function fetchVenueProgramRoster(eventId: string) {
+  const { data, error } = await supabase.rpc('get_venue_program_roster', { p_event_id: eventId });
+  if (error) throw error;
+  if (!Array.isArray(data)) throw new Error('The player roster could not be confirmed.');
+  return data;
+}
+
 export function useVenuePrograms(venueId: string | null | undefined, selectedId: string | null) {
   const { user } = useAuthState();
   const client = useQueryClient();
@@ -52,6 +59,12 @@ export function useVenuePrograms(venueId: string | null | undefined, selectedId:
     queryFn: () => fetchVenueProgram(venueId!, selectedId!, user!.id),
     staleTime: 0, refetchInterval: saving ? false : 30_000, refetchOnWindowFocus: !saving,
   });
+  const rosterKey = ['venue-program-roster', venueId, selectedId, user?.id];
+  const roster = useQuery({
+    queryKey: rosterKey, enabled: !!venueId && !!selectedId && !!user,
+    queryFn: () => fetchVenueProgramRoster(selectedId!),
+    staleTime: 0, refetchInterval: saving ? false : 30_000, refetchOnWindowFocus: !saving,
+  });
   const updateRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going') => {
     if (lock.current) throw new Error('Your previous response is still being confirmed.');
     if (eventId !== selectedId || !detail.data?.canRsvp || detail.isError) throw new Error('Registration access could not be confirmed. Reload the program.');
@@ -64,10 +77,11 @@ export function useVenuePrograms(venueId: string | null | undefined, selectedId:
       await client.cancelQueries({ queryKey: detailKey });
       client.setQueryData<typeof detail.data>(detailKey, previous => previous ? { ...previous, event: withConfirmedProgramRsvp(previous.event, data) } : previous);
       void client.invalidateQueries({ queryKey: detailKey });
+      void client.invalidateQueries({ queryKey: rosterKey });
       void client.invalidateQueries({ queryKey: ['venue-day', venueId] });
       void client.invalidateQueries({ queryKey: ['group-events', detail.data.event.group_id] });
       return data;
     } finally { lock.current = false; setSaving(false); }
   };
-  return { upcoming, detail, updateRsvp };
+  return { upcoming, detail, roster, updateRsvp };
 }

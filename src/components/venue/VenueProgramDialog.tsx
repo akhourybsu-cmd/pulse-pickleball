@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { format, isSameDay, parseISO } from 'date-fns';
+import { eventSchedule } from '@/lib/venues/eventPresentation';
+import { clubSkill } from '@/lib/venues/clubPresentation';
 import {
   CalendarDays,
   Check,
@@ -48,6 +49,11 @@ const ROTATION_LABEL: Record<string, string> = {
 type RsvpChoice = 'going' | 'maybe' | 'not_going';
 
 interface VenueProgramDialogProps {
+  timeZone?: string | null;
+  roster?: { name: string }[];
+  rosterLoading?: boolean;
+  rosterError?: boolean;
+  onRetryRoster?: () => void;
   event: GroupEvent | null;
   venueName: string;
   open: boolean;
@@ -63,6 +69,11 @@ interface VenueProgramDialogProps {
 
 /** Player-facing program details and registration in one focused surface. */
 export function VenueProgramDialog({
+  timeZone,
+  roster = [],
+  rosterLoading = false,
+  rosterError = false,
+  onRetryRoster,
   event,
   venueName,
   open,
@@ -93,8 +104,7 @@ export function VenueProgramDialog({
     </Dialog>
   );
 
-  const start = parseISO(event.start_time);
-  const end = event.end_time ? parseISO(event.end_time) : null;
+  const schedule = eventSchedule(event.start_time, event.end_time, timeZone);
   const going = event.rsvps?.going ?? 0;
   const spotsLeft = event.capacity == null ? null : Math.max(0, event.capacity - going);
   const fillPercent = event.capacity ? Math.min(100, Math.round((going / event.capacity) * 100)) : null;
@@ -103,11 +113,11 @@ export function VenueProgramDialog({
   const ended = programPhase(event) === 'ended';
   const skill =
     event.skill_level_min != null && event.skill_level_max != null
-      ? `${event.skill_level_min.toFixed(1)}–${event.skill_level_max.toFixed(1)}`
+      ? `${clubSkill(event.skill_level_min)}–${clubSkill(event.skill_level_max)}`
       : event.skill_level_min != null
-        ? `${event.skill_level_min.toFixed(1)}+`
+        ? `${clubSkill(event.skill_level_min)}+`
         : event.skill_level_max != null
-          ? `Up to ${event.skill_level_max.toFixed(1)}`
+          ? `Up to ${clubSkill(event.skill_level_max)}`
           : 'All levels';
 
   const choose = async (status: RsvpChoice) => {
@@ -159,14 +169,14 @@ export function VenueProgramDialog({
             <h2 className="mt-3 break-words text-2xl font-semibold leading-tight tracking-[-0.025em] sm:text-[30px]">
               {event.title}
             </h2>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-white/75">
+            <div className="mt-4 flex flex-col gap-2 text-sm font-semibold leading-6 text-white">
               <span className="inline-flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" />
-                {format(start, 'EEEE, MMMM d')}
+                {schedule?.label}
               </span>
               <span className="inline-flex items-center gap-1.5 tabular-nums">
                 <Clock3 className="h-3.5 w-3.5" />
-                {format(start, 'h:mm a')}{end ? ` – ${format(end, isSameDay(start, end) ? 'h:mm a' : 'MMM d, h:mm a')}` : ''}
+                {schedule?.time}{schedule?.zone ? ` ${schedule.zone}` : ''}
               </span>
             </div>
           </div>
@@ -193,26 +203,26 @@ export function VenueProgramDialog({
             )}
           </div>
 
-          {fillPercent != null && !ended && (
-            <div className="rounded-2xl border border-border/70 bg-muted/25 p-3.5">
-              <div className="flex items-center justify-between gap-3 text-xs">
+            <section aria-label="Availability" className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="font-semibold">Availability</span>
                 <span className="font-bold tabular-nums text-foreground/75">
-                  {isFull
+                  {ended ? 'Registration closed' : spotsLeft == null ? 'Open registration' : isFull
                     ? event.waitlist_enabled
                       ? waitlistFull ? 'Waitlist full' : 'Waitlist available'
                       : 'Program full'
                     : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
                 </span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              {fillPercent != null && !ended && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Confirmed places" aria-valuenow={going} aria-valuemin={0} aria-valuemax={event.capacity!}>
                 <div
                   className={cn('h-full rounded-full bg-primary', isFull && 'bg-amber-500')}
                   style={{ width: `${fillPercent}%`, ...(accent && !isFull ? { backgroundColor: accent } : {}) }}
                 />
-              </div>
-            </div>
-          )}
+              </div>}
+            </section>
+
+          <VenueProgramRoster players={roster} loading={rosterLoading} error={rosterError} onRetry={onRetryRoster} />
 
           {ended ? <p role="status" className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm leading-6">This program has ended. Registration is closed; your recorded response is unchanged.</p> : canRsvp ? (
             <div className="border-t border-border/70 pt-5">
@@ -255,6 +265,13 @@ export function VenueProgramDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+export function VenueProgramRoster({ players, loading, error, onRetry }: { players: { name: string }[]; loading?: boolean; error?: boolean; onRetry?: () => void }) {
+  return <section aria-label="Players signed up" className="rounded-2xl border border-border/70 p-4">
+    <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold">Players signed up</h3>{!loading && !error && <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold tabular-nums">{players.length}</span>}</div>
+    {loading ? <p role="status" className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden className="h-4 w-4 animate-spin" />Loading players…</p> : error ? <div className="mt-3"><p role="alert" className="text-sm text-muted-foreground">Players couldn’t be loaded.</p>{onRetry && <Button variant="outline" className="mt-2 min-h-11" onClick={onRetry}>Retry roster</Button>}</div> : players.length ? <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{players.map((player, index) => <li key={index} className="min-w-0 break-words rounded-xl bg-muted/45 px-3 py-2.5 text-sm font-medium [overflow-wrap:anywhere]">{player.name}</li>)}</ul> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No players have signed up yet.</p>}
+  </section>;
 }
 
 function ProgramFact({

@@ -3,10 +3,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VenueLoadState } from './VenueLoadState';
 import type { ClubPlayer } from '@/hooks/useVenueCommunityPreview';
-import { clubDate, clubTime, clubHoursStatus, clubSkill } from '@/lib/venues/clubPresentation';
+import { clubHoursStatus } from '@/lib/venues/clubPresentation';
 import { programPhase, venueWebsiteLink } from '@/lib/venues/programExperience';
 import { groupedVenueHours } from '@/lib/venues/hours';
 import type { VenueHomeSession } from './VenueHome';
+import { VenueEventCard } from './VenueEventCard';
 
 export interface ClubSession extends VenueHomeSession { end_time?: string | null; capacity?: number | null; skill_level_min?: number | null; skill_level_max?: number | null; going?: number | null }
 export interface VenueClubHomeProps {
@@ -63,14 +64,7 @@ function ClubPlayCard({ icon: Icon, title, detail, action, onClick, wide }: { ic
 }
 
 export function ClubSessionCard({ session, timeZone, onPick }: { session: ClubSession; timeZone?: string | null; onPick: (id: string) => void }) {
-  const count = session.going;
-  const skill = session.skill_level_min != null && session.skill_level_max != null ? `${clubSkill(session.skill_level_min)}–${clubSkill(session.skill_level_max)}` : session.skill_level_min != null ? `${clubSkill(session.skill_level_min)}+` : session.skill_level_max != null ? `Up to ${clubSkill(session.skill_level_max)}` : 'All levels';
-  return <button type="button" onClick={() => onPick(session.id)} className="club-session-card relative block w-full overflow-hidden rounded-2xl border border-border/70 bg-card p-4 text-left">
-    <span aria-hidden className="absolute inset-y-4 left-0 w-[3px] rounded-r-full bg-[var(--club-accent)]" />
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-muted-foreground"><span>{clubDate(session.start_time, timeZone)}</span><span>{clubTime(session.start_time, timeZone)}{session.end_time ? ` – ${clubTime(session.end_time, timeZone)}` : ''}</span>{programPhase(session) === 'live' && <span className="text-emerald-700 dark:text-emerald-300">In progress</span>}</span>
-    <span className="mt-2 block break-words text-[15px] font-semibold leading-5">{session.title}</span>
-    <span className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{skill}</span><span>{session.capacity != null && count != null ? count >= session.capacity ? 'Full · View options' : `${count} / ${session.capacity} players` : 'View availability'}<ChevronRight aria-hidden className="ml-1 inline h-3 w-3" /></span></span>
-  </button>;
+  return <VenueEventCard event={session} going={session.going} timeZone={timeZone} onPick={onPick} />;
 }
 
 export function VenueClubCommunityNav({ section, onPosts, onMembers, onChat }: { section: 'posts' | 'members' | 'chat'; onPosts: () => void; onMembers: () => void; onChat?: () => void }) {

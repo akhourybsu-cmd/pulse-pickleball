@@ -343,6 +343,7 @@ export default function VenueCommunity() {
                   {privateSample && !isDesktopLayout && <div className="mb-4"><PrivateVenueNotice /></div>}
                   {availabilityError}
                   {isDesktopLayout ? <VenueHome
+                    timeZone={venue?.timezone}
                     welcomeHeadline={venue?.welcome_headline ?? null}
                     welcomeMessage={venue?.welcome_message ?? null}
                     city={venue?.city ?? null}
@@ -571,6 +572,11 @@ export default function VenueCommunity() {
             }}
           />
           <VenueProgramDialog
+            timeZone={venue?.timezone}
+            roster={programQueries.roster.data}
+            rosterLoading={programQueries.roster.isPending}
+            rosterError={programQueries.roster.isError}
+            onRetryRoster={() => void programQueries.roster.refetch()}
             event={selectedProgram}
             venueName={venue?.name ?? group.name}
             open={!!selectedProgramId}

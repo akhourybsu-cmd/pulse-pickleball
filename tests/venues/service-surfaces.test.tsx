@@ -43,7 +43,7 @@ describe('venue service presentation', () => {
     const html=renderToStaticMarkup(<VenueProgramming sessions={sessions} going={{'0':8,'1':6}} loading={false} onPick={noop} />);
     expect(html).toContain('data-venue-service="coaching"'); expect(html).toContain('data-venue-service="competition"');
     expect(html).toContain('Clinic'); expect(html).toContain('Round Robin');
-    expect(html).toContain('Waitlist available'); expect(html).toContain('2 spots left');
+    expect(html).toContain('Full · View options'); expect(html).toContain('2 spots left');
   });
 });
 

@@ -7,7 +7,7 @@ import { fetchProgramAvailability } from '@/lib/venues/programAvailability';
 import { fetchVenueCourts, refreshVenueSettings, removeVenueCourt, saveVenueHours, updateVenueCourt } from '@/lib/venues/settings';
 import { defaultVenueHours } from '@/lib/venues/hours';
 import { fetchVenueOccasions, useVenueEvents } from '@/hooks/useVenueEvents';
-import { fetchUpcomingVenuePrograms, fetchVenueProgram, useVenuePrograms } from '@/hooks/useVenuePrograms';
+import { fetchUpcomingVenuePrograms, fetchVenueProgram, fetchVenueProgramRoster, useVenuePrograms } from '@/hooks/useVenuePrograms';
 import { fetchVenueAdminCounts } from '@/lib/venues/adminOverview';
 import { listVenueApplications } from '@/lib/venues/venueApplications';
 import { fetchVenueCommunityPreview, useVenueCommunityPreview } from '@/hooks/useVenueCommunityPreview';
@@ -56,6 +56,16 @@ beforeEach(() => {
   state.queries = [];
   state.calls = [];
   state.responses = {};
+});
+
+it('requests only the abbreviated roster RPC and preserves read failures', async () => {
+  state.responses.holds = {data:[{name:'Alex S.'}],error:null};
+  await expect(fetchVenueProgramRoster('program')).resolves.toEqual([{name:'Alex S.'}]);
+  expect(state.calls).toEqual([{table:'rpc',method:'rpc',args:['get_venue_program_roster',{p_event_id:'program'}]}]);
+  state.responses.holds = {data:null,error:{message:'Roster unavailable'}};
+  await expect(fetchVenueProgramRoster('program')).rejects.toMatchObject({message:'Roster unavailable'});
+  state.responses.holds = {data:null,error:null};
+  await expect(fetchVenueProgramRoster('program')).rejects.toThrow('could not be confirmed');
 });
 
 describe('venue overview and ownership request reads', () => {
@@ -199,6 +209,7 @@ describe('venue program details and upcoming sessions', () => {
     renderToStaticMarkup(createElement(() => { useVenuePrograms('venue-one', 'program'); return null; }));
     expect(state.queries.map(query => query.queryKey)).toEqual([
       ['venue-upcoming-programs', 'venue-one', 'viewer-one'], ['venue-program', 'venue-one', 'program', 'viewer-one'],
+      ['venue-program-roster', 'venue-one', 'program', 'viewer-one'],
     ]);
     state.user = null; state.queries = [];
     renderToStaticMarkup(createElement(() => { useVenuePrograms('venue-one', 'program'); return null; }));

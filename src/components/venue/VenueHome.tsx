@@ -1,11 +1,12 @@
 import { ArrowUpRight, CalendarDays, ChevronRight, Clock3, Globe, LayoutGrid, Mail, MapPin, Phone, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatSlotTime } from '@/lib/venues/availability';
+import { eventSchedule } from '@/lib/venues/eventPresentation';
+import { VenueEventCard, type VenueCardEvent } from './VenueEventCard';
 import { DAY_NAMES, describeDay, type VenueHours } from '@/lib/venues/hours';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VenueLoadState } from './VenueLoadState';
-import { programDateLabel, venueWebsiteLink } from '@/lib/venues/programExperience';
+import { venueWebsiteLink } from '@/lib/venues/programExperience';
 import type { VenueService } from '@/lib/venues/servicePresentation';
 
 /**
@@ -20,7 +21,7 @@ import type { VenueService } from '@/lib/venues/servicePresentation';
  * which is the order of attention there anyway.
  */
 
-export interface VenueHomeSession {
+export interface VenueHomeSession extends VenueCardEvent {
   id: string;
   title: string;
   description: string | null;
@@ -28,6 +29,7 @@ export interface VenueHomeSession {
 }
 
 interface VenueHomeProps {
+  timeZone?: string | null;
   welcomeHeadline: string | null;
   welcomeMessage: string | null;
   city: string | null;
@@ -51,6 +53,7 @@ interface VenueHomeProps {
 }
 
 export function VenueHome({
+  timeZone,
   welcomeHeadline,
   welcomeMessage,
   city,
@@ -74,6 +77,7 @@ export function VenueHome({
 }: VenueHomeProps) {
   const today = new Date().getDay();
   const nextSession = nextUp[0];
+  const nextSchedule = nextSession && eventSchedule(nextSession.start_time, nextSession.end_time, timeZone);
   const website = venueWebsiteLink(websiteUrl);
   const phoneNumber = phone?.replace(/[^\d+]/g, '');
 
@@ -101,7 +105,7 @@ export function VenueHome({
             title="Find a session"
             detail={
               loadingPrograms ? 'Loading the next sessions…' : programsUnavailable ? 'Schedule temporarily unavailable' : nextSession
-                ? `${programDateLabel(nextSession.start_time)} · ${formatSlotTime(new Date(nextSession.start_time))}`
+                ? `${nextSchedule?.label} · ${nextSchedule?.time}`
                 : 'Browse open play and clinics'
             }
             service="programs"
@@ -116,35 +120,7 @@ export function VenueHome({
         {programsUnavailable && onRetryPrograms ? <VenueLoadState title="Programs couldn’t load" description="We couldn’t confirm the upcoming schedule. Try again to see the latest sessions." onRetry={onRetryPrograms} /> : loadingPrograms ? <div role="status" aria-label="Loading upcoming programs" className="space-y-2"><Skeleton className="h-20 rounded-2xl" /><Skeleton className="h-20 rounded-2xl" /></div> : nextUp.length > 0 ? (
           <Section title="Coming up" actionLabel="View schedule" onAction={onOpenPlay}>
             <div className="space-y-2">
-              {nextUp.map((session) => (
-                <button
-                  key={session.id}
-                  type="button"
-                  data-venue-service="programs"
-                  onClick={() => onPickProgram ? onPickProgram(session.id) : onOpenPlay()}
-                  className="venue-interactive group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 text-left sm:p-4"
-                >
-                  <span
-                    className="venue-service-icon flex min-h-14 w-[76px] shrink-0 flex-col items-center justify-center rounded-xl px-1 text-center"
-                  >
-                    <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                      {programDateLabel(session.start_time)}
-                    </span>
-                    <span className="mt-0.5 text-xs font-semibold tabular-nums">
-                      {formatSlotTime(new Date(session.start_time))}
-                    </span>
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 break-words text-sm font-semibold leading-5 tracking-tight">{session.title}</p>
-                    {session.description && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                        {session.description}
-                      </p>
-                    )}
-                  </div>
-                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              ))}
+              {nextUp.map(session => <VenueEventCard key={session.id} event={session} timeZone={timeZone} onPick={onPickProgram ?? onOpenPlay} />)}
             </div>
           </Section>
         ) : <div className="rounded-2xl border border-dashed border-border/80 p-5"><p className="text-sm font-semibold">No upcoming programs</p><p className="mt-1 text-sm leading-6 text-muted-foreground">No upcoming programs are listed yet. Check the schedule for court times and future sessions.</p><button type="button" className="mt-2 min-h-11 text-sm font-semibold text-primary" onClick={onOpenPlay}>View schedule</button></div>}
