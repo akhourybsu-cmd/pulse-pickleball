@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarDays, MapPin, MessageCircle, Users } from 'lucide-react';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -8,6 +8,9 @@ import { CommunityHero } from '@/components/community/CommunityHero';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { publicWebsiteUrl } from '@/lib/communityAccess';
+import { isRallyHausDemo } from '@/lib/venues/rallyHausDemo';
+
+const RallyHausDemoPage = lazy(() => import('@/components/venue/RallyHausDemoPage'));
 
 export default function PublicCommunity() {
   const { groupId, slug } = useParams<{ groupId: string; slug: string }>();
@@ -21,6 +24,7 @@ export default function PublicCommunity() {
   const group = query.data;
   if (!group) return <div className="space-y-4 py-12"><h1 className="text-2xl font-semibold">This community isn’t available to browse</h1><p className="text-muted-foreground">It may be private or not published yet. If you’re a member, sign in or use the invite link your host shared.</p><GuestAccountPrompt action="access your communities" /><Link to="/player/community" className="inline-block py-3 underline">Explore communities</Link></div>;
   if (isAuthenticated && slug) return <Navigate to={`/player/community/group/${group.id}${location.search}${location.hash}`} replace />;
+  if (isRallyHausDemo(group.venue?.id, group.id, params)) return <Suspense fallback={<p role="status">Opening Rally Haus…</p>}><RallyHausDemoPage group={group} /></Suspense>;
   const venue = group.venue;
   const name = venue?.name || group.name;
   const website = publicWebsiteUrl(venue?.website_url);
