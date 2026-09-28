@@ -9,11 +9,9 @@ import { VenueStaffProvider } from '@/components/venue/VenueStaffContext';
 import { Button } from '@/components/ui/button';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
 import { VenueEntrance } from '@/components/venue/VenueEntrance';
-import { isRallyHausDemo } from '@/lib/venues/rallyHausDemo';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const VenueCommunity = lazy(() => import('./VenueCommunity'));
-const RallyHausDemoPage = lazy(() => import('@/components/venue/RallyHausDemoPage'));
 
 /**
  * Chooses the shell for a community.
@@ -46,8 +44,6 @@ export default function GroupRoute() {
       </div>
     );
   }
-
-  if (group && isRallyHausDemo(group.venue?.id, group.id, params)) return <Suspense fallback={<div role="status" className="p-8">Opening Rally Haus…</div>}><RallyHausDemoPage group={group} /></Suspense>;
 
   const moduleError = isVenue && modules.isError && !communityView;
   const moduleFailure = <div role="alert" className="m-4 space-y-3 rounded-2xl border p-5 font-sans sm:p-6"><h2 className="text-lg font-semibold">Facility features couldn’t load</h2><p className="text-sm leading-6 text-muted-foreground">Court booking and operations need a fresh access check. You can still open the venue’s community for posts, messages, and members.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="min-h-11" onClick={() => modules.refetch()}>Try again</Button><Button className="min-h-11" onClick={() => { const next = new URLSearchParams(params); next.set('view', 'community'); setParams(next); }}>Open community</Button></div></div>;
