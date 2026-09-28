@@ -65,6 +65,7 @@ export default function GroupManage() {
   const [venueRole, setVenueRole] = useState<VenueRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const setActiveTab = (tab: string) => {
+    if(tab==='events'){navigate(`/player/community/group/${groupId}/events/manage`);return;}
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     setSearchParams(next);
@@ -399,6 +400,7 @@ export default function GroupManage() {
     ...(canManageFacility
       ? [
           { value: 'overview', label: 'Overview', description: 'Venue health and shortcuts', icon: LayoutDashboard, section: 'venue' as const },
+          { value: 'events', label: 'Events & registrations', shortLabel: 'Events', description: 'Schedule, court allocations, pricing and attendance', icon: LayoutDashboard, section: 'venue' as const },
           { value: 'profile', label: 'Profile & brand', shortLabel: 'Profile', description: 'Identity, imagery, and contact details', icon: Palette, section: 'venue' as const },
           { value: 'integrations', label: 'Integrations', description: 'Your PULSE address and connected services', icon: Plug, section: 'venue' as const },
           { value: 'modules', label: privateSample ? 'Included features' : 'Plan & upgrades', shortLabel: privateSample ? 'Features' : 'Upgrades', description: privateSample ? 'Sample access · no subscription' : 'Free plan, ownership and $10/month features', icon: ShieldCheck, section: 'venue' as const },

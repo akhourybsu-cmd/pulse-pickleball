@@ -8,8 +8,8 @@ import { PROGRAM_FORMATS, programPhase, withConfirmedProgramRsvp } from '@/lib/v
 
 export async function fetchUpcomingVenuePrograms(venueId: string) {
   const { data, error } = await supabase.from('group_events')
-    .select('id,title,description,start_time,end_time,event_format,capacity,skill_level_min,skill_level_max').eq('venue_id', venueId)
-    .is('parent_event_id', null).in('event_format', [...PROGRAM_FORMATS])
+    .select('id,title,description,start_time,end_time,event_format,capacity,skill_level_min,skill_level_max,price_cents,currency,registration_paused').eq('venue_id', venueId)
+    .is('parent_event_id', null).is('canceled_at',null).in('event_format', [...PROGRAM_FORMATS])
     .gte('start_time', new Date().toISOString()).order('start_time').limit(3);
   if (error) throw error;
   return data ?? [];
@@ -34,7 +34,9 @@ export async function fetchVenueProgram(venueId: string, eventId: string, viewer
     counts[row.status] += 1;
     if (row.user_id === viewerId) viewerRsvp = row.status;
   }
-  return { event: { ...data, rsvps: counts, user_rsvp: viewerRsvp } as GroupEvent, canRsvp: membership.data?.status === 'active' };
+  let availability: {pending_places?:number;checkout_order_id?:string|null} = {};
+  if(data.price_cents>0){const result=await (supabase as any).rpc('get_venue_program_availability',{p_event:eventId});if(result.error)throw result.error;availability=result.data;}
+  return { event: { ...data, ...availability, rsvps: counts, user_rsvp: viewerRsvp } as GroupEvent, canRsvp: membership.data?.status === 'active' };
 }
 
 export async function fetchVenueProgramRoster(eventId: string) {
@@ -65,7 +67,7 @@ export function useVenuePrograms(venueId: string | null | undefined, selectedId:
     queryFn: () => fetchVenueProgramRoster(selectedId!),
     staleTime: 0, refetchInterval: saving ? false : 30_000, refetchOnWindowFocus: !saving,
   });
-  const updateRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going') => {
+  const updateRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going' | 'waitlist') => {
     if (lock.current) throw new Error('Your previous response is still being confirmed.');
     if (eventId !== selectedId || !detail.data?.canRsvp || detail.isError) throw new Error('Registration access could not be confirmed. Reload the program.');
     if (programPhase(detail.data.event) === 'ended') throw new Error('This program has ended. Registration is closed.');

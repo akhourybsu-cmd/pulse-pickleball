@@ -9,6 +9,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export interface GroupEvent {
+  price_cents?: number; currency?: string; registration_paused?: boolean; registration_closes_at?: string|null; cancellation_policy?:string|null; canceled_at?:string|null; cancellation_reason?:string|null; pending_places?:number; checkout_order_id?:string|null;
   id: string;
   group_id: string;
   title: string;
@@ -58,7 +59,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
     .from('group_events')
     .select('*')
     .eq('group_id', groupId)
-    .is('parent_event_id', null)
+    .is('parent_event_id', null).is('canceled_at',null)
     .gte('start_time', new Date().toISOString())
     .order('start_time', { ascending: true });
 

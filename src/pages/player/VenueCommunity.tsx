@@ -17,7 +17,6 @@ import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { DayStrip } from '@/components/venue/DayStrip';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 import { VenueHome } from '@/components/venue/VenueHome';
-import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueProgramDialog } from '@/components/venue/VenueProgramDialog';
 import { VenueEventsPage, VenuePageHeading, VenuePlayCategories } from '@/components/venue/VenuePlayerPages';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
@@ -155,10 +154,9 @@ export default function VenueCommunity() {
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
   const [bookingMinutes, setBookingMinutes] = useState<number | null>(null);
-  const [eventCreatorOpen, setEventCreatorOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(searchParams.get('program'));
 
   // Snapshot the viewer's last-read marker BEFORE anything updates it, so the
   // chat's unread divider reflects where they actually left off.
@@ -212,11 +210,6 @@ export default function VenueCommunity() {
     modules.booking && !dayError && !dayLoading && isMember &&
     (canManageSettings ||
       (group?.settings as Record<string, unknown> | null)?.allow_member_events !== false);
-  const canCreateProgram = modules.facility && (
-    venueRole === 'owner' ||
-    venueRole === 'manager' ||
-    venueRole === 'organizer' ||
-    membership?.role === 'owner');
 
   useEffect(() => {
     if (loading || !group) return;
@@ -396,7 +389,7 @@ export default function VenueCommunity() {
 
                 <VenuePanel value="play" section={venueDayKey(selectedDay) + ':' + playCategory} className="venue-panel-enter mt-0">
                   <div className="max-w-3xl space-y-5">
-                    <VenuePageHeading title={'Play at ' + identity.name} description="Find a session, join a game or reserve your court." onAdd={canCreateProgram ? () => setEventCreatorOpen(true) : undefined} />
+                    <VenuePageHeading title={'Play at ' + identity.name} description="Find a session, join a game or reserve your court." />
                     <VenuePlayCategories category={playCategory} hasBooking={bookingTabAvailable} onChange={setPlayCategory} onBook={() => openTab('book')} onLeagues={() => setEventFilter('leagues')} />
                     <DayStrip value={selectedDay} onChange={setDay} accent={chrome?.accentHex} timeZone={venue?.timezone} />
                     <h3 className="text-sm font-semibold">{venueDayKey(selectedDay) === venueDayKey(venueCalendarNow(venue?.timezone)) ? 'Available today' : 'Sessions on ' + selectedDay.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
@@ -411,7 +404,7 @@ export default function VenueCommunity() {
                 <VenuePanel value="events" section={eventFilter} className="venue-panel-enter mt-0">
                   <VenueEventsPage name={identity.name} events={occasions.data ?? []} filter={eventFilter} onFilter={setEventFilter}
                     loading={occasions.isPending} error={occasions.isError} onRetry={() => void occasions.refetch()}
-                    timeZone={venue?.timezone} onAdd={canCreateProgram ? () => setEventCreatorOpen(true) : undefined}
+                    timeZone={venue?.timezone}
                     onProgram={setSelectedProgramId} onLeague={id => navigate('/player/leagues/' + id)} />
                 </VenuePanel>
 
@@ -555,21 +548,6 @@ export default function VenueCommunity() {
             presetMinutes={bookingMinutes}
             dayEnd={dayEnd}
             onBooked={refresh}
-          />
-          <VenueEventDialog
-            timeZone={venue?.timezone}
-            open={eventCreatorOpen}
-            onOpenChange={setEventCreatorOpen}
-            groupId={groupId!}
-            venueId={group.venue_id}
-            venueName={venue?.name ?? group.name}
-            courts={courts}
-            initialDate={day}
-            onCreated={() => {
-              refresh();
-              void programQueries.upcoming.refetch();
-              void occasions.refetch();
-            }}
           />
           <VenueProgramDialog
             timeZone={venue?.timezone}

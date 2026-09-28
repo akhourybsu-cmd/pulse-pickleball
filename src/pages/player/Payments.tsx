@@ -286,7 +286,7 @@ export default function Payments() {
           <div className="flex items-center gap-2">
             <ReceiptText className="h-5 w-5 text-primary" />
             <h2 className="font-sans text-lg font-semibold">
-              {venueId ? "Rental purchase history" : "Purchase history"}
+              {venueId ? "Venue purchase history" : "Purchase history"}
             </h2>
           </div>
           {history.isPending ? (
@@ -311,7 +311,7 @@ export default function Payments() {
                   <ReceiptText className="mx-auto h-8 w-8 text-muted-foreground/60" />
                   <p className="mt-3 font-semibold">No new purchases yet</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Payments for venue tools and court rentals will appear here
+                    Payments for venue tools and court rental or event registrations will appear here
                     with their merchant and status.
                   </p>
                 </div>

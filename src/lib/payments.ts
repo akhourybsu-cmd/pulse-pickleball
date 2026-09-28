@@ -86,7 +86,7 @@ export function paymentStatus(order: PaymentOrder): string {
   }[order.status];
 }
 export function refundNotice(order: Pick<PaymentOrder, 'refund_state' | 'canceled_at' | 'livemode'>): string | null {
-  const booking = !order.livemode ? 'This is a test purchase; no real reservation exists.' : order.canceled_at ? 'Your reservation remains canceled; it has not been rebooked.' : 'Your reservation has not been canceled.';
+  const booking = !order.livemode ? 'This is a test purchase; no real booking exists.' : order.canceled_at ? 'Your booking remains canceled; it has not been rebooked.' : 'Your booking has not been canceled.';
   if (order.refund_state === 'failed') return `The refund did not complete. The venue needs to review it and arrange the next step with you. Only completed refunds count toward the refunded amount shown. ${booking}`;
   if (order.refund_state === 'pending') return `Stripe is processing the refund or awaiting required information. It is not yet counted as money returned. ${booking}`;
   return null;
@@ -96,7 +96,7 @@ export function cancellationLabel(status: string): string {
 }
 export function canRequestCancellation(order: PaymentOrder): boolean {
   const request = order.payment_cancellation_requests;
-  return order.kind === 'court_rental' && ['paid','partially_refunded','refunded'].includes(order.status) && !order.canceled_at && (!request || (request.refund_review_only === true && request.status === 'approved'));
+  return ['court_rental','event_registration'].includes(order.kind) && ['paid','partially_refunded','refunded'].includes(order.status) && !order.canceled_at && (!request || (request.refund_review_only === true && request.status === 'approved'));
 }
 export function openStripe(url: string) {
   const parsed = new URL(url);

@@ -1,3 +1,4 @@
+import { VenueEventCheckout } from './VenueEventCheckout';
 import { useEffect, useState } from 'react';
 import { eventSchedule } from '@/lib/venues/eventPresentation';
 import { clubSkill } from '@/lib/venues/clubPresentation';
@@ -46,7 +47,7 @@ const ROTATION_LABEL: Record<string, string> = {
   coach_led: 'Coach-led',
 };
 
-type RsvpChoice = 'going' | 'maybe' | 'not_going';
+type RsvpChoice = 'going' | 'maybe' | 'not_going' | 'waitlist';
 
 interface VenueProgramDialogProps {
   timeZone?: string | null;
@@ -106,11 +107,12 @@ export function VenueProgramDialog({
 
   const schedule = eventSchedule(event.start_time, event.end_time, timeZone);
   const going = event.rsvps?.going ?? 0;
-  const spotsLeft = event.capacity == null ? null : Math.max(0, event.capacity - going);
+  const spotsLeft = event.capacity == null ? null : Math.max(0, event.capacity - going - (event.pending_places ?? 0));
   const fillPercent = event.capacity ? Math.min(100, Math.round((going / event.capacity) * 100)) : null;
   const isFull = spotsLeft === 0;
   const waitlistFull = event.waitlist_limit != null && (event.rsvps?.waitlist ?? 0) >= event.waitlist_limit;
   const ended = programPhase(event) === 'ended';
+  const closed=ended || !!event.canceled_at || !!event.registration_paused || Date.now()>=Date.parse(event.registration_closes_at??event.start_time);
   const skill =
     event.skill_level_min != null && event.skill_level_max != null
       ? `${clubSkill(event.skill_level_min)}–${clubSkill(event.skill_level_max)}`
@@ -207,7 +209,7 @@ export function VenueProgramDialog({
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="font-semibold">Availability</span>
                 <span className="font-bold tabular-nums text-foreground/75">
-                  {ended ? 'Registration closed' : spotsLeft == null ? 'Open registration' : isFull
+                  {closed ? 'Registration closed' : spotsLeft == null ? 'Open registration' : isFull
                     ? event.waitlist_enabled
                       ? waitlistFull ? 'Waitlist full' : 'Waitlist available'
                       : 'Program full'
@@ -220,11 +222,12 @@ export function VenueProgramDialog({
                   style={{ width: `${fillPercent}%`, ...(accent && !isFull ? { backgroundColor: accent } : {}) }}
                 />
               </div>}
+              {!!event.pending_places && <p className="mt-3 text-xs text-muted-foreground">{event.pending_places} {event.pending_places === 1 ? 'place' : 'places'} held during checkout.</p>}
             </section>
 
           <VenueProgramRoster players={roster} loading={rosterLoading} error={rosterError} onRetry={onRetryRoster} />
 
-          {ended ? <p role="status" className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm leading-6">This program has ended. Registration is closed; your recorded response is unchanged.</p> : canRsvp ? (
+          {(event.price_cents??0)>0 ? <VenueEventCheckout event={event} canRsvp={canRsvp} onRsvp={onRsvp} /> : closed ? <p role="status" className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm leading-6">Registration is closed for this program. Existing responses remain recorded.</p> : canRsvp ? (
             <div className="border-t border-border/70 pt-5">
               {rsvpError && <p role="alert" className="mb-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm leading-6">{rsvpError}</p>}
               {saving && <p role="status" className="mb-3 text-sm text-muted-foreground">Confirming your response…</p>}
