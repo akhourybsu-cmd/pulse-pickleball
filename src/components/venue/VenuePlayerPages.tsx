@@ -1,8 +1,8 @@
-import { ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VenueLoadState } from './VenueLoadState';
-import { clubDate, clubTime } from '@/lib/venues/clubPresentation';
+import { VenueEventCard } from './VenueEventCard';
 import { filterVenueOccasions, type VenueEventFilter, type VenueOccasion } from '@/lib/venues/events';
 
 export function VenuePageHeading({ title, description, onAdd }: { title: string; description?: string; onAdd?: () => void }) {
@@ -12,7 +12,7 @@ export function VenuePageHeading({ title, description, onAdd }: { title: string;
 }
 
 export function VenueFilter({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) {
-  return <button type="button" aria-pressed={active} onClick={onClick} className={'min-h-11 shrink-0 rounded-xl border px-3 text-xs font-semibold ' + (active ? 'border-transparent bg-foreground text-background' : 'border-border bg-card text-muted-foreground')}>{children}</button>;
+  return <button type="button" aria-pressed={active} onClick={onClick} className="venue-event-filter">{children}</button>;
 }
 
 export function VenuePlayCategories({ category, hasBooking, onChange, onBook, onLeagues }: {
@@ -29,7 +29,7 @@ export function VenuePlayCategories({ category, hasBooking, onChange, onBook, on
 }
 
 const EVENT_FILTERS: Array<[VenueEventFilter, string]> = [['upcoming', 'Upcoming'], ['competition', 'Competitions'], ['leagues', 'Leagues'], ['social', 'Social']];
-const EVENT_LABELS = { competition: 'Competition', leagues: 'League', social: 'Social', special: 'Special event' };
+const EVENT_FORMATS = { competition: 'round_robin', leagues: 'league', social: 'social', special: 'other' };
 
 export function VenueEventsPage({ name, events, filter, onFilter, loading, error, onRetry, onAdd, onProgram, onLeague, timeZone }: {
   name: string; events: VenueOccasion[]; filter: VenueEventFilter; onFilter: (filter: VenueEventFilter) => void;
@@ -41,11 +41,6 @@ export function VenueEventsPage({ name, events, filter, onFilter, loading, error
     <VenuePageHeading title="Events" description={'Competitions, leagues and special events at ' + name + '.'} onAdd={onAdd} />
     <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter venue events">{EVENT_FILTERS.map(([value, label]) => <VenueFilter key={value} active={filter === value} onClick={() => onFilter(value)}>{label}</VenueFilter>)}</div>
     {error ? <VenueLoadState title="Events unavailable" description="We couldn’t load upcoming events. Please try again." onRetry={onRetry} /> : loading ? <Skeleton aria-label="Loading venue events" className="h-32 rounded-2xl" /> : shown.length === 0 ? <div className="rounded-2xl bg-card px-5 py-8 text-center"><h3 className="text-sm font-semibold">{filter === 'upcoming' ? 'More events are on the way' : 'No ' + (filter === 'leagues' ? 'active leagues' : filter === 'competition' ? 'upcoming competitions' : 'upcoming socials')}</h3><p className="mt-2 text-sm text-muted-foreground">{filter === 'upcoming' ? 'Check back for the next special event at this venue.' : 'Try Upcoming to see everything happening here.'}</p></div> :
-      <div className="space-y-3">{shown.map(event => <button type="button" key={event.id} onClick={() => event.programId ? onProgram(event.programId) : event.leagueId && onLeague(event.leagueId)} className="club-session-card block w-full rounded-2xl border bg-card p-4 text-left">
-        <span className="text-xs font-medium text-primary">{EVENT_LABELS[event.kind]}</span>
-        <span className="mt-2 block text-base font-semibold">{event.title}</span>
-        {event.description && <span className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{event.description}</span>}
-        <span className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{event.start ? clubDate(event.start, timeZone) + ' · ' + clubTime(event.start, timeZone) : 'Active league · View season details'}</span><ChevronRight className="h-4 w-4 shrink-0" /></span>
-      </button>)}</div>}
+      <div className="space-y-3">{shown.map(event => <VenueEventCard key={event.id} timeZone={timeZone} event={{ id: event.id, title: event.title, description: event.description, start_time: event.start, end_time: event.end, event_format: EVENT_FORMATS[event.kind] }} onPick={() => event.programId ? onProgram(event.programId) : event.leagueId && onLeague(event.leagueId)} />)}</div>}
   </div>;
 }
