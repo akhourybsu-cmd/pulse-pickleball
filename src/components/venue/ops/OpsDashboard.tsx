@@ -132,7 +132,7 @@ export function OpsDashboard({
           <Button
             size="sm"
             className="h-11 min-w-11 shrink-0 rounded-lg px-3"
-            aria-label={canCreateProgram ? 'New program' : 'Close court'}
+            aria-label={canCreateProgram ? 'Manage events' : 'Close court'}
             disabled={loading || (!canCreateProgram && (closed || !grid.length))}
             onClick={canCreateProgram ? onCreateProgram : onCloseCourt}
           >

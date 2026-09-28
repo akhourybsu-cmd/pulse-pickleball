@@ -26,6 +26,7 @@ import { venueCalendarBounds, venueCalendarNow } from '@/lib/venues/timezone';
  */
 
 export interface VenueDaySession extends Reservation {
+  price_cents?:number;currency?:string;registration_paused?:boolean;
   id: string;
   group_id: string;
   title: string;
@@ -98,9 +99,9 @@ export function useVenueDay(
         // is already taken.
         supabase
           .from('group_events')
-          .select('id, group_id, title, description, event_format, capacity, created_by, waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, rotation_style, skill_level_min, skill_level_max, rr_courts')
+          .select('id, group_id, title, description, event_format, capacity, created_by, waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, rotation_style, skill_level_min, skill_level_max, rr_courts, price_cents, currency, registration_paused')
           .eq('venue_id', venueId!)
-          .lt('start_time', to)
+          .is('canceled_at',null).lt('start_time', to)
           .or(venueDayOverlapFilter(from))
           .order('start_time', { ascending: true }),
       ]);

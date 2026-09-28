@@ -15,7 +15,7 @@ describe('refund recovery UX', () => {
     expect(paymentStatus(order)).toBe('Canceled · refund needs attention');
     expect(refundNotice(order)).toContain('has not been rebooked');
     expect(paymentStatus({ ...order, refund_state: 'pending' })).toBe('Canceled · refund processing');
-    expect(refundNotice({ ...order, livemode: false })).toContain('no real reservation');
+    expect(refundNotice({ ...order, livemode: false })).toContain('no real booking');
     expect(cancellationLabel('refund_failed')).toBe('Refund needs owner attention');
   });
   it('refreshes history, owner settings and owner requests together in the selected venue', async () => {

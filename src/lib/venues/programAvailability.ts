@@ -1,13 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ProgramWindow { start: Date; end: Date }
-interface CourtOccupancy { venue_court_id: string | null; start_time: string; end_time: string | null }
+interface CourtOccupancy { venue_court_id: string | null; start_time: string; end_time: string | null; parent_event_id?:string|null; id?:string }
 
 /** Include temporary checkout holds as well as confirmed court allocations. */
-export async function fetchProgramAvailability(venueId: string, windows: ProgramWindow[]): Promise<CourtOccupancy[]> {
+export async function fetchProgramAvailability(venueId: string, windows: ProgramWindow[], excludeEventId?:string): Promise<CourtOccupancy[]> {
   if (!windows.length) return [];
   const [sessions, ...holds] = await Promise.all([
-    supabase.from('group_events').select('venue_court_id, start_time, end_time')
+    supabase.from('group_events').select('id,parent_event_id,venue_court_id, start_time, end_time')
       .eq('venue_id', venueId).not('venue_court_id', 'is', null)
       .lt('start_time', windows[windows.length - 1].end.toISOString())
       .gt('end_time', windows[0].start.toISOString()),
@@ -19,5 +19,5 @@ export async function fetchProgramAvailability(venueId: string, windows: Program
     })),
   ]);
   for (const result of [sessions, ...holds]) if (result.error) throw result.error;
-  return [sessions, ...holds].flatMap(result => result.data ?? []) as CourtOccupancy[];
+  return ([sessions, ...holds].flatMap(result => result.data ?? []) as CourtOccupancy[]).filter(s=>!excludeEventId || (s.id!==excludeEventId && s.parent_event_id!==excludeEventId));
 }

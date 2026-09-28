@@ -1648,6 +1648,13 @@ export type Database = {
       }
       group_events: {
         Row: {
+          price_cents: number
+          currency: string
+          registration_paused: boolean
+          registration_closes_at?: string | null
+          cancellation_policy?: string | null
+          canceled_at?: string | null
+          cancellation_reason?: string | null
           capacity: number | null
           court_id: string | null
           created_at: string | null
@@ -1677,6 +1684,13 @@ export type Database = {
           waitlist_limit: number | null
         }
         Insert: {
+          price_cents?: number
+          currency?: string
+          registration_paused?: boolean
+          registration_closes_at?: string | null
+          cancellation_policy?: string | null
+          canceled_at?: string | null
+          cancellation_reason?: string | null
           capacity?: number | null
           court_id?: string | null
           created_at?: string | null
@@ -1706,6 +1720,13 @@ export type Database = {
           waitlist_limit?: number | null
         }
         Update: {
+          price_cents?: number
+          currency?: string
+          registration_paused?: boolean
+          registration_closes_at?: string | null
+          cancellation_policy?: string | null
+          canceled_at?: string | null
+          cancellation_reason?: string | null
           capacity?: number | null
           court_id?: string | null
           created_at?: string | null

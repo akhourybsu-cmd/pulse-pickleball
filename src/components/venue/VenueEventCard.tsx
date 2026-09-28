@@ -1,4 +1,5 @@
 import { CalendarDays, Check, ChevronRight, Clock3, GraduationCap, LayoutGrid, Sparkles, Target, Trophy, Users } from 'lucide-react';
+import { formatMoney } from '@/lib/payments';
 import { cn } from '@/lib/utils';
 import { clubSkill } from '@/lib/venues/clubPresentation';
 import { EVENT_LABELS, eventSchedule } from '@/lib/venues/eventPresentation';
@@ -6,6 +7,7 @@ import { programPhase } from '@/lib/venues/programExperience';
 import { programService } from '@/lib/venues/servicePresentation';
 
 export interface VenueCardEvent {
+  price_cents?:number; currency?:string; registration_paused?:boolean;
   id: string; title: string; start_time: string | null; end_time?: string | null;
   event_format?: string; description?: string | null; capacity?: number | null;
   skill_level_min?: number | null; skill_level_max?: number | null; rr_courts?: number | null;
@@ -33,8 +35,8 @@ export function VenueEventCard({ event, timeZone, going, viewerRsvp, venueName, 
   const schedule = eventSchedule(event.start_time, event.end_time, timeZone);
   const phase = event.start_time ? programPhase({ start_time: event.start_time, end_time: event.end_time }) : 'upcoming';
   const left = event.capacity != null && going != null ? Math.max(0, event.capacity - going) : null;
-  const status = phase === 'ended' ? 'Ended' : viewerRsvp === 'going' ? "You're in" : viewerRsvp === 'waitlist' ? 'Waitlisted'
-    : viewerRsvp === 'maybe' ? 'Maybe' : left === 0 ? 'Full · View options' : left != null ? `${left} spot${left === 1 ? '' : 's'} left` : format === 'league' ? 'View season' : 'View availability';
+  const status = event.registration_paused ? 'Registration paused' : phase === 'ended' ? 'Ended' : viewerRsvp === 'going' ? "You're in" : viewerRsvp === 'waitlist' ? 'Waitlisted'
+    : viewerRsvp === 'maybe' ? 'Maybe' : left === 0 ? 'Full · View options' : left != null && !event.price_cents ? `${left} spot${left === 1 ? '' : 's'} left` : format === 'league' ? 'View season' : 'View availability';
   const skill = event.skill_level_min != null && event.skill_level_max != null ? `${clubSkill(event.skill_level_min)}–${clubSkill(event.skill_level_max)}`
     : event.skill_level_min != null ? `${clubSkill(event.skill_level_min)}+` : event.skill_level_max != null ? `Up to ${clubSkill(event.skill_level_max)}` : 'All levels';
   const Row = onPick ? 'button' : 'div';
@@ -46,6 +48,7 @@ export function VenueEventCard({ event, timeZone, going, viewerRsvp, venueName, 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="venue-event-type"><Icon aria-hidden className="h-3.5 w-3.5" />{EVENT_LABELS[format] ?? 'Venue Event'}</span>
+          {format!=='league'&&<span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">{event.price_cents?`${formatMoney(event.price_cents)} / player`:'Free'}</span>}
           {phase === 'live' && <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">In progress</span>}
         </div>
         <h3 className="mt-2.5 break-words text-base font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] sm:text-lg">{event.title}</h3>

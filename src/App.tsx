@@ -197,6 +197,7 @@ const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
+const VenueEventManagement = lazy(() => import("./pages/player/VenueEventManagement"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 // Guarded at the import, not just at the route: a bare lazy() still emits the
@@ -494,6 +495,7 @@ const AppContent = () => {
             <Route element={<CommunityTransitionOutlet />}>
               <Route path="venue-requests" element={<VenueRequests />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
+              <Route path="community/group/:groupId/events/manage" element={<VenueEventManagement />} />
               <Route path="community/group/:groupId/ops" element={<VenueOps />} />
             </Route>
             <Route path="messages" element={<Social />} />

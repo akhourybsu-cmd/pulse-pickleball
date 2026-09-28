@@ -39,6 +39,7 @@ interface SessionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
+  onManageEvent?: (id:string) => void;
 }
 
 export function SessionSheet({
@@ -47,6 +48,7 @@ export function SessionSheet({
   open,
   onOpenChange,
   onChanged,
+  onManageEvent,
 }: SessionSheetProps) {
   const { toast } = useToast();
   const [working, setWorking] = useState(false);
@@ -61,12 +63,9 @@ export function SessionSheet({
   const end = session.end_time ? new Date(session.end_time) : null;
 
   const cancel = async () => {
-    if (working || checkoutHold) return;
+    if (working || checkoutHold || programHold || (!blocked && !reservation)) return;
     setWorking(true);
-    // A multi-court program is represented by one public parent plus a small
-    // hold on every selected court. Cancelling from any court removes the
-    // parent; cascading releases every court and avoids half-cancelled events.
-    const targetId = programHold ? session.parent_event_id! : session.id;
+    const targetId = session.id;
     try {
       const { data, error } = await supabase.from('group_events').delete().eq('id', targetId).select('id').maybeSingle();
       if (error) throw error;
@@ -131,7 +130,7 @@ export function SessionSheet({
         )}
 
         <div className="mt-5 flex justify-end pb-[env(safe-area-inset-bottom)]">
-          {checkoutHold ? <p className="rounded-xl bg-amber-500/10 p-4 text-sm leading-6">A player is completing payment for this time. This is not a confirmed reservation yet. The schedule updates when checkout completes or the hold is released. Checkout holds cannot be cancelled here.</p> : <AlertDialog>
+          {(programHold || (!blocked && !reservation && !checkoutHold)) ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Manage this event, its registrations and cancellations in event management.</p>{onManageEvent&&<Button onClick={()=>onManageEvent(session.parent_event_id??session.id)}>Manage event</Button>}</div> : checkoutHold ? <p className="rounded-xl bg-amber-500/10 p-4 text-sm leading-6">A player is completing payment for this time. This is not a confirmed reservation yet. The schedule updates when checkout completes or the hold is released. Checkout holds cannot be cancelled here.</p> : <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button className="min-h-11" variant="destructive" disabled={working}>
                 {working ? (

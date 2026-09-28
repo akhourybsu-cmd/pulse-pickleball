@@ -19,9 +19,9 @@ import { VenueAddonCheckout } from './VenueAddonCheckout';
 import { stripeRequirementLabels, stripeSetupGuidance } from '@/lib/venues/stripeSetupGuidance';
 
 const decisions = [
-  ["refund_pending", "Cancel & refund", "The remaining payment will be returned to the original payment method. The court stays reserved until the refund succeeds. Stripe fees may not be returned."],
-  ["cancel_without_refund", "Cancel without refund", "The court will be released. No money will be refunded."],
-  ["declined", "Decline request", "The reservation and payment will remain unchanged."],
+  ["refund_pending", "Cancel & refund", "The remaining payment will be returned to the original payment method. An active booking stays reserved until the refund succeeds. Stripe fees may not be returned."],
+  ["cancel_without_refund", "Cancel without refund", "The booking or event place will be released. No money will be refunded."],
+  ["declined", "Decline request", "The booking and payment will remain unchanged."],
 ] as const;
 type ResolutionConfirmation = { orderId: string; decision: string; label: string; impact: string; note: string; description: string; remaining: number };
 

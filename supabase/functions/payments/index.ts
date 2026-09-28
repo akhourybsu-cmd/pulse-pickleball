@@ -77,7 +77,7 @@ serve(async (req) => {
         .range(page * 25, page * 25 + 24);
       if (body.venue_id) {
         await owner(store, user.id, uuid(body.venue_id));
-        query = query.eq("venue_id", body.venue_id).eq("kind", "court_rental");
+        query = query.eq("venue_id", body.venue_id).in("kind", ["court_rental", "event_registration"]);
       } else query = query.eq("buyer_id", user.id);
       const orders = checked(await query) || [];
       // Older purchases remain visible without inventing missing amounts or
@@ -264,12 +264,21 @@ serve(async (req) => {
       return reply({ saved: true });
     }
 
+    if (body.action === 'save_event_payment_settings') {
+      const venue = await owner(store, user.id, uuid(body.venue_id));
+      if (body.accepting === true) {
+        if (!config.ready || !config.livemode) throw new Error('Live payments must be ready before enabling event payments.');
+        await requireRentalAccount(await runtime(), venue.id);
+      }
+      checked(await store.rpc('payment_save_event_settings', { p_user: user.id, p_venue: venue.id, p_accepting: body.accepting === true }));
+      return reply({ saved: true });
+    }
     if (configured.mode === "test" && !testAllowed)
       throw new Error(
         "Payment testing is restricted to approved test accounts."
       );
     const r = await runtime();
-    if (['module_checkout', 'court_checkout', 'quote', 'resume', 'save_card', 'onboard', 'connect_existing', 'complete_connect'].includes(body.action) && !config.ready) throw new Error('PULSE must finish payment setup before this action. No payment has been taken.');
+    if (['module_checkout', 'court_checkout', 'event_quote', 'event_checkout', 'quote', 'resume', 'save_card', 'onboard', 'connect_existing', 'complete_connect'].includes(body.action) && !config.ready) throw new Error('PULSE must finish payment setup before this action. No payment has been taken.');
     if (body.action === "cancellations") {
       await owner(store, user.id, uuid(body.venue_id));
       const requests = checked(
@@ -307,7 +316,7 @@ serve(async (req) => {
           .from("payment_orders")
           .select("*")
           .eq("id", uuid(body.order_id))
-          .eq("kind", "court_rental")
+          .in("kind", ["court_rental", "event_registration"])
           .eq("livemode", r.livemode)
           .single()
       );
@@ -478,6 +487,18 @@ serve(async (req) => {
         );
       return reply(await startCheckout(r, order, user));
     }
+    if (body.action === 'event_quote' || body.action === 'event_checkout') {
+      const eventId = uuid(body.event_id);
+      const event = checked(await store.from('group_events').select('venue_id,group_id').eq('id',eventId).is('parent_event_id',null).single());
+      const membership = checked(await store.from('group_members').select('user_id').eq('group_id',event.group_id).eq('user_id',user.id).eq('status','active').maybeSingle());
+      if (!event.venue_id || !membership) throw new Error('Join this venue community before registering.');
+      await requireRentalAccount(r,event.venue_id);
+      const args = { p_buyer:user.id,p_event:eventId,p_live:r.livemode };
+      if (body.action === 'event_quote') return reply({ ...checked(await store.rpc('payment_event_quote',args)), ...config });
+      if (body.accept_terms !== true || !Number.isInteger(body.amount_cents)) throw new Error('Review the price and cancellation policy before paying.');
+      const order=checked(await store.rpc('payment_reserve_event',{...args,p_expected:body.amount_cents,p_policy:body.policy,p_request:uuid(body.request_key)}));
+      return reply(await startCheckout(r,order,user));
+    }
     if (body.action === "quote" || body.action === "court_checkout") {
       const args = {
         p_buyer: user.id,
@@ -538,11 +559,11 @@ serve(async (req) => {
         return reply(await startCheckout(r, order, user));
       if (body.action === "request_cancellation") {
         if (
-          order.kind !== "court_rental" ||
+          !["court_rental", "event_registration"].includes(order.kind) ||
           !["paid", "partially_refunded", "refunded"].includes(order.status)
         )
           throw new Error(
-            "Only a paid court reservation can request cancellation."
+            "Only a paid booking can request cancellation."
           );
         checked(
           await store.rpc("payment_request_cancellation", {

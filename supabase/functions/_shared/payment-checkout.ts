@@ -72,9 +72,13 @@ export async function startCheckout(
     throw new Error(
       "This checkout is already finished. Check your purchase history."
     );
-  if (order.kind === 'court_rental') {
+  if (['court_rental','event_registration'].includes(order.kind)) {
     const venueAccount = await requireRentalAccount(r, order.venue_id);
     if (venueAccount.account_id !== order.account_id) throw new Error('The venue payment account changed. This checkout needs review.');
+  }
+  if (order.kind === 'event_registration') {
+    const event = checked(await r.store.from('group_events').select('canceled_at,end_time').eq('id',order.program_event_id).single());
+    if (!event || event.canceled_at || new Date(event.end_time).getTime()<=Date.now()) throw new Error('This event is canceled or ended. Cancel or reconcile this checkout in Payments & purchases.');
   }
   if (order.checkout_session_id) {
     const session = await r.stripe.checkout.sessions.retrieve(
@@ -126,7 +130,7 @@ export async function startCheckout(
             product_data: {
               name: order.description,
               description: `Sold by ${order.merchant_name}. ${
-                order.kind === "court_rental"
+                ["court_rental","event_registration"].includes(order.kind)
                   ? `${order.start_time} to ${order.end_time}. `
                   : ""
               }Prices include applicable taxes.`,
@@ -153,8 +157,8 @@ export async function startCheckout(
           }You are paying ${order.merchant_name}${
             recurring ? " $10 every month until canceled" : " for this purchase"
           }. ${
-            order.kind === "court_rental"
-              ? "Your reservation is confirmed only after successful payment."
+            ["court_rental","event_registration"].includes(order.kind)
+              ? "Your booking is confirmed only after successful payment."
               : ""
           }`,
         },

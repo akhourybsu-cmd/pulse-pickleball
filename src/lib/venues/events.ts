@@ -5,6 +5,7 @@ export interface VenueOccasion {
   id: string; title: string; description: string | null;
   kind: 'competition' | 'leagues' | 'social' | 'special';
   start: string | null; end: string | null;
+  price_cents?:number; currency?:string; registration_paused?:boolean;
   programId?: string; leagueId?: string;
 }
 export function filterVenueOccasions(events: VenueOccasion[], filter: VenueEventFilter) {

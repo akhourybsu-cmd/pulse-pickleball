@@ -14,7 +14,6 @@ import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
 import { SessionSheet } from '@/components/venue/ops/SessionSheet';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
-import { VenueEventDialog } from '@/components/venue/VenueEventDialog';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
 import { availableBookingEnd } from '@/lib/venues/experience';
 
@@ -57,10 +56,6 @@ export default function VenueOps() {
   const [bookCourtId, setBookCourtId] = useState<string | null>(null);
   const [bookStart, setBookStart] = useState<Date | null>(null);
   const [bookMinutes, setBookMinutes] = useState<number | null>(null);
-  const [eventCreatorOpen, setEventCreatorOpen] = useState(false);
-  const [eventStart, setEventStart] = useState<Date | null>(null);
-  const [eventEnd, setEventEnd] = useState<Date | null>(null);
-  const [eventCourtIds, setEventCourtIds] = useState<string[]>([]);
 
   const venue = group?.venue ?? null;
   useEffect(() => { const today = venueCalendarNow(venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }, [group?.venue_id, venue?.timezone]);
@@ -122,11 +117,16 @@ export default function VenueOps() {
   const dayStart = operatingWindow?.start ?? null;
   const dayEnd = operatingWindow?.end ?? null;
   const bookingEnd = availableBookingEnd(grid, bookCourtId, bookStart);
+  const manageEvent = (start?:Date,end?:Date,court?:string) => {
+    const params=new URLSearchParams({new:'1'});
+    if(start)params.set('start',start.toISOString());if(end)params.set('end',end.toISOString());if(court)params.set('court',court);
+    navigate(`/player/community/group/${groupId}/events/manage?${params}`);
+  };
   const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
     if (modules.booking) {
       setBookCourtId(courtId); setBookStart(start); setBookMinutes(minutes);
     } else if (canCreateProgram) {
-      setEventCourtIds([courtId]); setEventStart(start); setEventEnd(new Date(start.getTime() + minutes * 60_000)); setEventCreatorOpen(true);
+      manageEvent(start,new Date(start.getTime()+minutes*60_000),courtId);
     }
   };
 
@@ -154,12 +154,7 @@ export default function VenueOps() {
           setCloseCourtId(null);
           setCloseOpen(true);
         }}
-        onCreateProgram={() => {
-          setEventStart(null);
-          setEventEnd(null);
-          setEventCourtIds([]);
-          setEventCreatorOpen(true);
-        }}
+        onCreateProgram={() => navigate(`/player/community/group/${groupId}/events/manage`)}
         onPickCourt={(courtId) => {
           const status = statuses.find((s) => s.court.id === courtId);
           // Tapping a live court goes to what's on it; tapping a free one is a
@@ -178,10 +173,7 @@ export default function VenueOps() {
         onPickSession={setSessionId}
         onFillGap={(gap) => {
           if (canCreateProgram) {
-            setEventStart(gap.start);
-            setEventEnd(gap.end);
-            setEventCourtIds([gap.court.id]);
-            setEventCreatorOpen(true);
+            manageEvent(gap.start,gap.end,gap.court.id);
           } else {
             openSlot(gap.court.id, gap.start);
           }
@@ -222,24 +214,11 @@ export default function VenueOps() {
             dayEnd={bookingEnd}
             onBooked={refresh}
           />
-          <VenueEventDialog
-            timeZone={venue?.timezone}
-            open={eventCreatorOpen}
-            onOpenChange={setEventCreatorOpen}
-            groupId={groupId!}
-            venueId={group.venue_id}
-            venueName={venue?.name ?? group.name}
-            courts={courts}
-            initialDate={day}
-            initialStart={eventStart}
-            initialEnd={eventEnd}
-            initialCourtIds={eventCourtIds}
-            onCreated={refresh}
-          />
         </>
       )}
 
       <SessionSheet
+        onManageEvent={canCreateProgram ? (id) => navigate(`/player/community/group/${groupId}/events/manage?event=${id}`) : undefined}
         session={selectedSession}
         court={selectedSessionCourt}
         open={!!selectedSession}
