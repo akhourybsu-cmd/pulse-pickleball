@@ -1,0 +1,2 @@
+# Calendar downloads use the CRLF line endings required by iCalendar.
+*.ics text eol=crlf
