@@ -60,6 +60,20 @@ beforeAll(async () => {
   );
 }, 30000);
 afterAll(() => db?.close());
+it("keeps waiver reminder tracking private and covered by the session MFA release policy", async () => {
+  const { rows } = await db.query(`SELECT c.relrowsecurity AS rls,
+    EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid
+      AND p.polname='pulse_required_mfa' AND NOT p.polpermissive
+      AND p.polcmd='*'
+      AND pg_get_expr(p.polqual,p.polrelid) LIKE '%pulse_has_required_mfa%'
+      AND pg_get_expr(p.polwithcheck,p.polrelid) LIKE '%pulse_has_required_mfa%') AS mfa,
+    has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE') AS anon_access,
+    has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE') AS player_access
+    FROM pg_class c WHERE c.oid='public.venue_waiver_reminders'::regclass`);
+  expect(rows).toEqual([
+    { rls: true, mfa: true, anon_access: false, player_access: false },
+  ]);
+});
 it("shows private rentals alongside programs in the same check-in response", async () => {
   const day = (await db.query<any>("SELECT (current_date+1)::text AS day"))
     .rows[0].day;
@@ -206,7 +220,13 @@ it("keeps private rental rows hidden but preserves a redacted occupied court blo
       reservation,
     ]),
   ).toEqual([{ title: "Private birthday" }]);
-  await expect(as(player,"INSERT INTO group_event_rsvps(event_id,user_id,status) VALUES($1,$2,'going')",[reservation,player])).rejects.toMatchObject({code:'42501'});
+  await expect(
+    as(
+      player,
+      "INSERT INTO group_event_rsvps(event_id,user_id,status) VALUES($1,$2,'going')",
+      [reservation, player],
+    ),
+  ).rejects.toMatchObject({ code: "42501" });
   const calendar = (
     await as(
       outsider,
