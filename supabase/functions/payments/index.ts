@@ -333,7 +333,6 @@ serve(async (req) => {
     const r = await runtime();
     if (
       [
-        "venue_membership_cancel",
         "venue_appointment_checkout",
         "venue_walkin_checkout",
         "venue_sale_checkout",
