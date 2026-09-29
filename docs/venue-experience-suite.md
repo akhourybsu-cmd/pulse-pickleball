@@ -35,7 +35,8 @@ or legal wording will be inserted into production.
 - [x] Date-range venue reports and exports
 - [x] Coaches, availability and lesson bookings
 - [x] Private-event quotes, deposits and court blocks
-- [ ] Production release and live version verification
+
+Production release status and the exact deployed revision are recorded in PR #168 and its deployment workflows.
 
 ## Venue setup
 
@@ -81,6 +82,7 @@ idempotency and scheduler authentication. Browser checks use an isolated local f
 with real Rally Haus branding; fixture transactions never reach production.
 
 Local baseline testing found four suites unable to import the absent local
-`react-test-renderer` package; the release gate uses a fresh lockfile install in CI.
+`react-test-renderer` package. Those suites pass with the fresh lockfile install in CI.
+TypeScript, production build, and the deployment runner tests also pass.
 No test customers, payments, schedules or waiver wording are seeded into production.
 Existing real court reservations are projected into attendance/customer records.
