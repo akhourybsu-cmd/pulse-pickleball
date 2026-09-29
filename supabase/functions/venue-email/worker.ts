@@ -12,7 +12,10 @@ export async function processVenueEmail(
   limit = 10,
 ) {
   let processed = 0;
+  const started = Date.now();
   for (let i = 0; i < limit; i++) {
+    // Leave time for the current provider call and release the scheduler promptly.
+    if (Date.now() - started >= 30000) break;
     const claim = await deps.rpc("venue_email_claim", { p_job: jobId });
     if (!claim) break;
     if (claim.skipped) continue;

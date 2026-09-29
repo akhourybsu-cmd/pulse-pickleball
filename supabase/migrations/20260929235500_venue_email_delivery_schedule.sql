@@ -3,6 +3,7 @@ SELECT cron.schedule('venue-email-delivery','* * * * *',$job$
  SELECT net.http_post(
   url := (SELECT value FROM private.app_config WHERE key='edge_functions_base_url')||'/venue-email-delivery',
   headers := jsonb_build_object('Content-Type','application/json','x-dispatch-secret',(SELECT value FROM private.app_config WHERE key='scheduled_task_secret')),
-  body := '{}'::jsonb
+  body := '{}'::jsonb,
+  timeout_milliseconds := 90000
  );
 $job$);
