@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +20,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Clock, LayoutGrid, Loader2, Trash2, Users } from 'lucide-react';
-import { formatSlotTime, type Court, type Reservation } from '@/lib/venues/availability';
-import { isBlock, isCheckoutHold, isReservationSession } from '@/lib/venues/ops';
+} from "@/components/ui/alert-dialog";
+import { Clock, LayoutGrid, Loader2, Trash2, Users } from "lucide-react";
+import {
+  formatSlotTime,
+  type Court,
+  type Reservation,
+} from "@/lib/venues/availability";
+import {
+  isBlock,
+  isCheckoutHold,
+  isReservationSession,
+} from "@/lib/venues/ops";
 
 /**
  * What's on a court, and what staff can do about it.
@@ -34,12 +42,19 @@ import { isBlock, isCheckoutHold, isReservationSession } from '@/lib/venues/ops'
  */
 
 interface SessionSheetProps {
-  session: (Reservation & { description?: string | null; parent_event_id?: string | null }) | null;
+  session:
+    | (Reservation & {
+        description?: string | null;
+        parent_event_id?: string | null;
+        venue_visit_id?: string | null;
+        venue_appointment_id?: string | null;
+      })
+    | null;
   court: Court | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
-  onManageEvent?: (id:string) => void;
+  onManageEvent?: (id: string) => void;
 }
 
 export function SessionSheet({
@@ -58,29 +73,56 @@ export function SessionSheet({
   const blocked = isBlock(session);
   const checkoutHold = isCheckoutHold(session);
   const reservation = isReservationSession(session);
-  const programHold = session.event_format === 'program_hold' && !!session.parent_event_id;
+  const programHold =
+    session.event_format === "program_hold" && !!session.parent_event_id;
+  const deskBooking = !!(
+    session.venue_visit_id || session.venue_appointment_id
+  );
   const start = new Date(session.start_time);
   const end = session.end_time ? new Date(session.end_time) : null;
 
   const cancel = async () => {
-    if (working || checkoutHold || programHold || (!blocked && !reservation)) return;
+    if (
+      working ||
+      checkoutHold ||
+      programHold ||
+      deskBooking ||
+      (!blocked && !reservation)
+    )
+      return;
     setWorking(true);
     const targetId = session.id;
     try {
-      const { data, error } = await supabase.from('group_events').delete().eq('id', targetId).select('id').maybeSingle();
+      const { data, error } = await supabase
+        .from("group_events")
+        .delete()
+        .eq("id", targetId)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
-      if (!data) throw new Error('This session has changed or your access has changed. Refresh the schedule before trying again.');
+      if (!data)
+        throw new Error(
+          "This session has changed or your access has changed. Refresh the schedule before trying again."
+        );
 
       toast({
-        title: blocked ? 'Court reopened' : 'Session cancelled',
+        title: blocked ? "Court reopened" : "Session cancelled",
         description: blocked
-          ? 'The court is bookable again for that window.'
-          : 'The slot is free again.',
+          ? "The court is bookable again for that window."
+          : "The slot is free again.",
       });
       onChanged();
       onOpenChange(false);
     } catch (error) {
-      toast({ title: 'Could not cancel', description: error instanceof Error ? error.message : (error as { message?: string })?.message ?? 'Please check your connection and try again.', variant: 'destructive' });
+      toast({
+        title: "Could not cancel",
+        description:
+          error instanceof Error
+            ? error.message
+            : (error as { message?: string })?.message ??
+              "Please check your connection and try again.",
+        variant: "destructive",
+      });
       onChanged();
     } finally {
       setWorking(false);
@@ -88,20 +130,31 @@ export function SessionSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={value => { if (!working) onOpenChange(value); }}>
-      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] max-w-xl overflow-y-auto rounded-t-2xl font-sans">
+    <Sheet
+      open={open}
+      onOpenChange={(value) => {
+        if (!working) onOpenChange(value);
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        className="mx-auto max-h-[85dvh] max-w-xl overflow-y-auto rounded-t-2xl font-sans"
+      >
         <SheetHeader className="pr-5 text-left">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <SheetTitle className="break-words font-sans">
-                {session.title || (blocked ? 'Closed' : 'Booked')}
+                {session.title || (blocked ? "Closed" : "Booked")}
               </SheetTitle>
               <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {start.toLocaleDateString([], { month: 'short', day: 'numeric' })} ·{' '}
-                  {formatSlotTime(start)}
-                  {end ? `–${formatSlotTime(end)}` : ''}
+                  {start.toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  · {formatSlotTime(start)}
+                  {end ? `–${formatSlotTime(end)}` : ""}
                 </span>
                 {court && (
                   <span className="inline-flex items-center gap-1.5">
@@ -118,7 +171,13 @@ export function SessionSheet({
               </SheetDescription>
             </div>
             <Badge variant="outline" className="shrink-0 text-[10px]">
-              {checkoutHold ? 'Checkout pending' : blocked ? 'Closure' : reservation ? 'Reservation' : 'Programming'}
+              {checkoutHold
+                ? "Checkout pending"
+                : blocked
+                ? "Closure"
+                : reservation
+                ? "Reservation"
+                : "Programming"}
             </Badge>
           </div>
         </SheetHeader>
@@ -130,43 +189,80 @@ export function SessionSheet({
         )}
 
         <div className="mt-5 flex justify-end pb-[env(safe-area-inset-bottom)]">
-          {(programHold || (!blocked && !reservation && !checkoutHold)) ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Manage this event, its registrations and cancellations in event management.</p>{onManageEvent&&<Button onClick={()=>onManageEvent(session.parent_event_id??session.id)}>Manage event</Button>}</div> : checkoutHold ? <p className="rounded-xl bg-amber-500/10 p-4 text-sm leading-6">A player is completing payment for this time. This is not a confirmed reservation yet. The schedule updates when checkout completes or the hold is released. Checkout holds cannot be cancelled here.</p> : <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button className="min-h-11" variant="destructive" disabled={working}>
-                {working ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {blocked ? 'Reopen court' : 'Cancel session'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {blocked ? 'Reopen this court?' : 'Cancel this session?'}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {blocked
-                    ? 'The court becomes bookable again for that window.'
-                    : reservation
+          {deskBooking ? (
+            <p className="rounded-xl border p-4 text-sm">
+              Venue staff manage this booking, attendance and payments in{" "}
+              {session.venue_appointment_id
+                ? "Lessons & private bookings"
+                : "Walk-ins & visits"}
+              .
+            </p>
+          ) : programHold || (!blocked && !reservation && !checkoutHold) ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Manage this event, its registrations and cancellations in event
+                management.
+              </p>
+              {onManageEvent && (
+                <Button
+                  onClick={() =>
+                    onManageEvent(session.parent_event_id ?? session.id)
+                  }
+                >
+                  Manage event
+                </Button>
+              )}
+            </div>
+          ) : checkoutHold ? (
+            <p className="rounded-xl bg-amber-500/10 p-4 text-sm leading-6">
+              A player is completing payment for this time. This is not a
+              confirmed reservation yet. The schedule updates when checkout
+              completes or the hold is released. Checkout holds cannot be
+              cancelled here.
+            </p>
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  className="min-h-11"
+                  variant="destructive"
+                  disabled={working}
+                >
+                  {working ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  {blocked ? "Reopen court" : "Cancel session"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {blocked ? "Reopen this court?" : "Cancel this session?"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {blocked
+                      ? "The court becomes bookable again for that window."
+                      : reservation
                       ? "This frees the court. Whoever booked it isn't asked first, so tell them."
                       : programHold
-                        ? 'This cancels the full program, releases every court assigned to it, and removes all registrations.'
-                        : 'This removes the session and frees the court. Anyone signed up loses their place.'}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep it</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={cancel}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {blocked ? 'Reopen' : 'Cancel session'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>}
+                      ? "This cancels the full program, releases every court assigned to it, and removes all registrations."
+                      : "This removes the session and frees the court. Anyone signed up loses their place."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep it</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={cancel}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {blocked ? "Reopen" : "Cancel session"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </SheetContent>
     </Sheet>

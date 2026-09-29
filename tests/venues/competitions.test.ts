@@ -58,7 +58,7 @@ beforeAll(async () => {
     CREATE TABLE round_robin_audit(event_id uuid,editor_id uuid,change_type text,changes jsonb,reason text);
     CREATE TABLE rr_schedule_mutation_requests(id uuid);
     CREATE TABLE rr_participant_mutation_requests(id uuid);
-    CREATE TABLE guest_players(id uuid);
+    CREATE TABLE guest_players(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),display_name text,created_by uuid,group_id uuid); CREATE UNIQUE INDEX rr_guest_unique ON round_robin_players(event_id,guest_player_id) WHERE guest_player_id IS NOT NULL;
     ALTER TABLE round_robin_events ENABLE ROW LEVEL SECURITY;
     ALTER TABLE round_robin_players ENABLE ROW LEVEL SECURITY;
     ALTER TABLE round_robin_schedule ENABLE ROW LEVEL SECURITY;
@@ -114,10 +114,29 @@ beforeAll(async () => {
   );
   await db.exec(read("20260928220000_venue_competitions.sql"));
   await db.exec(read("20260929010000_venue_attendance.sql"));
+  await db.exec(read("20260928200000_venue_program_roster.sql"));
+  await db.exec(
+    "CREATE TABLE notification_preferences(user_id uuid,category text,in_app_enabled boolean)"
+  );
+  await db.exec(read("20260929100000_venue_customer_records.sql"));
+  await db.exec(read("20260929110000_venue_desk_sales.sql"));
+  await db.exec(read("20260929120000_venue_booking_policies.sql"));
+  await db.exec(read("20260929130000_venue_walkins.sql"));
+  await db.exec(read("20260929131000_venue_visit_integration.sql"));
+  await db.exec(read("20260929140000_venue_player_checkin.sql"));
+  await db.exec(read("20260929150000_venue_waitlist_offers.sql"));
+  await db.exec(read("20260929160000_venue_communications.sql"));
+  await db.exec(read("20260929170000_venue_series_management.sql"));
+  await db.exec(read("20260929180000_venue_reports.sql"));
+  await db.exec(read("20260929190000_venue_lessons_private_bookings.sql"));
+  await db.exec(read("20260929200000_venue_online_booking_attendance.sql"));
+  await db.exec(read("20260929210000_venue_desk_completion.sql"));
+  await db.exec(read("20260929220000_venue_player_visit_portal.sql"));
+  await db.exec(read("20260929230000_venue_desk_competitions.sql"));
 }, 30000);
 beforeEach(async () => {
   await db.exec(
-    "TRUNCATE venue_round_robin_links,venue_league_links,group_events,round_robin_players,round_robin_schedule,round_robin_events,round_robin_audit,groups,venues,venue_courts,venue_module_access,venue_staff,group_members,leagues,profiles,auth.users CASCADE;"
+    "TRUNCATE guest_players,venue_round_robin_links,venue_league_links,group_events,round_robin_players,round_robin_schedule,round_robin_events,round_robin_audit,groups,venues,venue_courts,venue_module_access,venue_staff,group_members,leagues,profiles,auth.users CASCADE;"
   );
   for (const user of [owner, staff, player, stranger, id(5), id(6), id(7)]) {
     await db.query("INSERT INTO auth.users VALUES($1)", [user]);
@@ -538,14 +557,124 @@ it("applies the required MFA policy to both new tables and denies anonymous RPC 
 
 it("records front desk arrivals without rebuilding a linked round robin roster", async () => {
   const e = await program();
-  for (const user of [player,id(5),id(6),id(7)]) await signup(e,user);
+  for (const user of [player, id(5), id(6), id(7)]) await signup(e, user);
   const rr = await setup(e);
-  await db.query("UPDATE venue_staff SET role='staff' WHERE user_id=$1",[staff]);
-  const r=(await db.query<any>("SELECT id FROM group_event_rsvps WHERE event_id=$1 AND user_id=$2",[e,player])).rows[0];
-  const before=(await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows;
-  await asUser(staff,"SELECT record_venue_attendance($1,$2,'checked_in',0)",[e,r.id]);
-  expect((await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows).toEqual(before);
+  await db.query("UPDATE venue_staff SET role='staff' WHERE user_id=$1", [
+    staff,
+  ]);
+  const r = (
+    await db.query<any>(
+      "SELECT id FROM group_event_rsvps WHERE event_id=$1 AND user_id=$2",
+      [e, player]
+    )
+  ).rows[0];
+  const before = (
+    await db.query(
+      "SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",
+      [rr]
+    )
+  ).rows;
+  await asUser(staff, "SELECT record_venue_attendance($1,$2,'checked_in',0)", [
+    e,
+    r.id,
+  ]);
+  expect(
+    (
+      await db.query(
+        "SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",
+        [rr]
+      )
+    ).rows
+  ).toEqual(before);
   await prepare(e);
-  await asUser(staff,"SELECT record_venue_attendance($1,$2,'expected',1)",[e,r.id]);
-  expect((await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows).toEqual(before);
+  await asUser(staff, "SELECT record_venue_attendance($1,$2,'expected',1)", [
+    e,
+    r.id,
+  ]);
+  expect(
+    (
+      await db.query(
+        "SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",
+        [rr]
+      )
+    ).rows
+  ).toEqual(before);
+});
+it("includes real desk guests and linked players in preparation and removes canceled desk entries", async () => {
+  const e = await program();
+  await signup(e);
+  await signup(e, id(5));
+  const guest = (
+    await asUser(
+      owner,
+      "SELECT * FROM venue_customer_save($1,NULL,NULL,'Jamie','Surname',NULL,NULL)",
+      [venue]
+    )
+  )[0];
+  const linked = (
+    await asUser(
+      owner,
+      "SELECT * FROM venue_customer_save($1,NULL,NULL,'Alex','Player',NULL,NULL)",
+      [venue]
+    )
+  )[0];
+  await db.query("UPDATE venue_customers SET user_id=$1 WHERE id=$2", [
+    id(6),
+    linked.id,
+  ]);
+  const visit = (
+    await asUser(
+      owner,
+      "SELECT * FROM venue_walkin_book($1,$2,NULL,NULL,NULL,'free',NULL,0,$3)",
+      [guest.id, e, id(70)]
+    )
+  )[0];
+  await asUser(
+    owner,
+    "SELECT venue_walkin_book($1,$2,NULL,NULL,NULL,'free',NULL,0,$3)",
+    [linked.id, e, id(71)]
+  );
+  const rr = await setup(e);
+  expect(
+    (
+      await db.query("SELECT id FROM round_robin_players WHERE event_id=$1", [
+        rr,
+      ])
+    ).rows
+  ).toHaveLength(4);
+  expect(
+    (await db.query<any>("SELECT display_name FROM guest_players")).rows[0]
+      .display_name
+  ).toBe("Jamie S.");
+  expect(
+    (await asUser(owner, "SELECT get_venue_competitions($1) w", [group]))[0].w
+      .round_robins[0].confirmed
+  ).toBe(4);
+  await asUser(
+    owner,
+    "SELECT venue_visit_status($1,'canceled',0,'Guest changed plans')",
+    [visit.id]
+  );
+  expect(
+    (
+      await db.query("SELECT id FROM round_robin_players WHERE event_id=$1", [
+        rr,
+      ])
+    ).rows
+  ).toHaveLength(3);
+  await expect(prepare(e)).rejects.toThrow(/four confirmed/);
+  await asUser(
+    owner,
+    "SELECT venue_walkin_book($1,$2,NULL,NULL,NULL,'free',NULL,0,$3)",
+    [guest.id, e, id(72)]
+  );
+  await prepare(e);
+  expect(
+    (
+      await db.query<any>(
+        "SELECT roster_locked_at FROM venue_round_robin_links WHERE event_id=$1",
+        [e]
+      )
+    ).rows[0].roster_locked_at
+  ).toBeTruthy();
 });

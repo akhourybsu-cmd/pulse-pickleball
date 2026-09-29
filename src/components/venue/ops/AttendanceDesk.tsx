@@ -126,12 +126,18 @@ export function AttendanceDesk({
   const mark = (attendee: VenueAttendee, status: AttendanceStatus) =>
     void act(
       () =>
-        rpc("record_venue_attendance", {
-          p_event: selected!.id,
-          p_rsvp: attendee.id,
-          p_status: status,
-          p_expected_version: attendee.version,
-        }),
+        attendee.walk_in
+          ? rpc("venue_visit_status", {
+              p_visit: attendee.id,
+              p_status: status,
+              p_expected: attendee.version,
+            })
+          : rpc("record_venue_attendance", {
+              p_event: selected!.id,
+              p_rsvp: attendee.id,
+              p_status: status,
+              p_expected_version: attendee.version,
+            }),
       `${attendee.name} · ${
         status === "checked_in"
           ? "checked in"
@@ -611,6 +617,16 @@ export function AttendanceDesk({
                               >
                                 {a.name}
                               </p>
+                              {!!a.missing_documents && (
+                                <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                  Required documents need acknowledgment
+                                </p>
+                              )}
+                              {a.walk_in && (
+                                <p className="text-xs text-muted-foreground">
+                                  Front-desk registration
+                                </p>
+                              )}
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {status === "checked_in"
                                   ? `Checked in · ${formatSlotTime(

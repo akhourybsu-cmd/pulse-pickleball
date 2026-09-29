@@ -1,4 +1,6 @@
 export interface VenueAttendee {
+  walk_in?: boolean;
+  missing_documents?: number;
   id: string;
   name: string;
   checked_in_at: string | null;

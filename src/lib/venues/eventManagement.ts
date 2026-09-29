@@ -2,6 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { GroupEvent } from "@/hooks/useGroupEvents";
 import type { VenueEventCourt } from "@/components/community/event-wizard/types";
 export interface EventDocument {
+  edit_scope?: "occurrence" | "following" | "all";
+  series_preview?: {
+    id: string;
+    updated_at: string;
+    start_time: string;
+    title: string;
+  }[];
+  skip_dates?: string[];
   title: string;
   description: string;
   event_format: GroupEvent["event_format"];

@@ -7,6 +7,8 @@ import { VenueTheme } from "@/components/venue/VenueTheme";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { formatInTimeZone } from "date-fns-tz";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
 import { useVenueModules } from "@/hooks/useVenueModules";
 import { useVenueDay } from "@/hooks/useVenueDay";
@@ -138,6 +140,10 @@ export default function VenueOps() {
     (membership?.status === "active" && membership.role === "owner") ||
     (!!user && group?.venue?.owner_id === user.id);
   const isStaff = modules.facility && (canOperateVenue(venueRole) || isOwner);
+  const canDesk =
+    (!!user && venue?.owner_id === user.id) ||
+    canManageVenue(venueRole) ||
+    (modules.facility && venueRole === "staff");
   const canCreateProgram =
     venueRole === "owner" ||
     venueRole === "manager" ||
@@ -247,7 +253,19 @@ export default function VenueOps() {
     navigate(`/player/community/group/${groupId}/events/manage?${params}`);
   };
   const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
-    if (modules.booking) {
+    if (modules.booking && canDesk) {
+      const p = new URLSearchParams({
+        court: courtId,
+        day: venueDayKey(day),
+        start: formatInTimeZone(
+          start,
+          venue?.timezone || "America/New_York",
+          "yyyy-MM-dd'T'HH:mm"
+        ),
+        minutes: String(minutes),
+      });
+      navigate(`/player/community/group/${groupId}/walk-ins?${p}`);
+    } else if (modules.booking) {
       setBookCourtId(courtId);
       setBookStart(start);
       setBookMinutes(minutes);
@@ -274,6 +292,39 @@ export default function VenueOps() {
         onViewChange={setDeskView}
         onToggleKiosk={toggleKiosk}
       />
+      {!kiosk && canDesk && (
+        <nav
+          aria-label="Daily desk shortcuts"
+          className="flex flex-wrap gap-2 px-4 py-3"
+        >
+          <Button
+            variant="outline"
+            onClick={() =>
+              navigate(
+                `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
+                  day
+                )}`
+              )
+            }
+          >
+            Walk-ins & guest check-in
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/player/community/group/${groupId}/desk`)}
+          >
+            Collect payment
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              navigate(`/player/community/group/${groupId}/check-in-stations`)
+            }
+          >
+            Player QR station
+          </Button>
+        </nav>
+      )}
       <div
         className={
           kiosk ? "mx-auto max-w-[1680px] p-4 sm:p-6 lg:p-8" : undefined
@@ -333,7 +384,23 @@ export default function VenueOps() {
                 const session = sessions.find(
                   (s) => s.id === status.current!.id
                 );
-                if (session?.parent_event_id) {
+                if (session?.venue_appointment_id && canDesk) {
+                  navigate(
+                    `/player/community/group/${groupId}/appointments?day=${venueDayKey(
+                      day
+                    )}`
+                  );
+                } else if (
+                  (session?.venue_visit_id ||
+                    session?.event_format === "reservation") &&
+                  canDesk
+                ) {
+                  navigate(
+                    `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
+                      day
+                    )}`
+                  );
+                } else if (session?.parent_event_id) {
                   selectEvent(session.parent_event_id);
                 } else setSessionId(status.current.id);
               } else {
@@ -355,7 +422,23 @@ export default function VenueOps() {
                 session?.event_format !== "maintenance"
                   ? session?.id
                   : null);
-              if (eventId) {
+              if (session?.venue_appointment_id && canDesk) {
+                navigate(
+                  `/player/community/group/${groupId}/appointments?day=${venueDayKey(
+                    day
+                  )}`
+                );
+              } else if (
+                (session?.venue_visit_id ||
+                  session?.event_format === "reservation") &&
+                canDesk
+              ) {
+                navigate(
+                  `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
+                    day
+                  )}`
+                );
+              } else if (eventId) {
                 selectEvent(eventId);
               } else setSessionId(id);
             }}

@@ -21,6 +21,7 @@ export function venueAdminItems(access: {
   manage: boolean;
   programs: boolean;
   operate: boolean;
+  desk?: boolean;
   community: boolean;
   facility: boolean;
   privateSample?: boolean;
@@ -67,6 +68,62 @@ export function venueAdminItems(access: {
             "Match play, seasons and standings",
             Trophy
           ),
+        ]
+      : []),
+    ...(access.desk
+      ? [
+          item(
+            "walk-ins",
+            "Walk-ins & visits",
+            "Guest bookings and daily attendance",
+            Users
+          ),
+          item(
+            "appointments",
+            "Lessons & private bookings",
+            "Coaches, quotes, deposits and court blocks",
+            CalendarDays
+          ),
+          item(
+            "players",
+            "Players & waivers",
+            "Player records, guests and first visits",
+            Users
+          ),
+          item(
+            "desk",
+            "Front desk & memberships",
+            "Sales, passes and cash reconciliation",
+            CreditCard
+          ),
+          item(
+            "check-in-stations",
+            "Player check-in kiosks",
+            "Venue QR stations and private check-in",
+            Gauge
+          ),
+          ...(access.manage
+            ? [
+                item(
+                  "booking-policies",
+                  "Booking rules & rates",
+                  "Pricing, member windows and holidays",
+                  CalendarDays
+                ),
+                item(
+                  "communications",
+                  "Communications",
+                  "Messages, reminders and waitlist offers",
+                  Users
+                ),
+                item(
+                  "reports",
+                  "Reports",
+                  "Revenue, attendance and court use",
+                  LayoutDashboard
+                ),
+              ]
+            : []),
         ]
       : []),
     ...(access.finance
@@ -160,6 +217,13 @@ export function venueAdminItems(access: {
 }
 export function venueAdminHref(groupId: string, tab: string) {
   const base = `/player/community/group/${groupId}`;
+  if (["communications", "reports", "appointments"].includes(tab))
+    return `${base}/${tab}`;
+  if (tab === "players") return `${base}/players`;
+  if (tab === "desk") return `${base}/desk`;
+  if (tab === "walk-ins") return `${base}/walk-ins`;
+  if (tab === "check-in-stations") return `${base}/check-in-stations`;
+  if (tab === "booking-policies") return `${base}/booking-policies`;
   if (tab === "payments") return `${base}/payments`;
   return tab === "ops"
     ? `${base}/ops`

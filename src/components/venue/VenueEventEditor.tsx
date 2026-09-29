@@ -19,6 +19,7 @@ import {
   type ManagedEvent,
   type EventWorkspace,
   validateEventDocument,
+  eventManagementRpc,
 } from "@/lib/venues/eventManagement";
 import type { RecurringFrequency } from "@/components/community/event-wizard/types";
 import type { ReactNode } from "react";
@@ -134,6 +135,20 @@ export function VenueEventEditor({
     seed?.rotation_style ?? event?.rotation_style ?? ""
   );
   const [error, setError] = useState("");
+  const [scope, setScope] = useState<"occurrence" | "following" | "all">(
+    "occurrence"
+  );
+  const [skipDates, setSkipDates] = useState<string[]>([]);
+  const series = useQuery({
+    queryKey: ["venue-series-preview", event?.id, scope],
+    enabled: !!event,
+    queryFn: () =>
+      eventManagementRpc<NonNullable<EventDocument["series_preview"]>>(
+        "venue_series_preview",
+        { p_event: event!.id, p_scope: scope }
+      ),
+    refetchOnWindowFocus: false,
+  });
   const windows = useMemo(
     () =>
       programWindows(
@@ -161,6 +176,11 @@ export function VenueEventEditor({
   });
   const busy = new Set(
     (availability.data ?? [])
+      .filter(
+        (s) =>
+          !s.parent_event_id ||
+          !series.data?.some((e) => e.id === s.parent_event_id)
+      )
       .filter((s) =>
         windows.some(
           (w) =>
@@ -178,6 +198,9 @@ export function VenueEventEditor({
   async function save(publish: boolean) {
     setError("");
     const d: EventDocument = {
+      edit_scope: scope,
+      series_preview: series.data,
+      skip_dates: skipDates,
       frequency,
       title: title.trim(),
       description,
@@ -203,6 +226,8 @@ export function VenueEventEditor({
       if (!/^\d+(\.\d{1,2})?$/.test(price))
         throw new Error("Enter a price with no more than two decimal places.");
       if (publish || event) {
+        if (event && (!series.data || series.isError || series.isFetching))
+          throw new Error("Preview the affected occurrences before saving.");
         validateEventDocument(d);
         if (availability.isPending || availability.isError)
           throw new Error(
@@ -578,6 +603,84 @@ export function VenueEventEditor({
           >
             {error}
           </p>
+        )}
+        {event && (
+          <section className="space-y-3 rounded-xl border p-4">
+            <h3 className="font-semibold">Apply changes to</h3>
+            <select
+              className={selectStyle}
+              value={scope}
+              onChange={(e) => {
+                setScope(e.target.value as typeof scope);
+                setSkipDates([]);
+              }}
+            >
+              <option value="occurrence">This occurrence</option>
+              {event.series_id && (
+                <>
+                  <option value="following">
+                    This and following occurrences
+                  </option>
+                  <option value="all">
+                    All upcoming occurrences in this series
+                  </option>
+                </>
+              )}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Completed and started events stay in your history. Times shift in
+              the venue’s time zone. Every affected court and registration is
+              checked together; a conflict saves none of the changes.
+            </p>
+            {series.isPending ? (
+              <p>Loading occurrences…</p>
+            ) : series.error ? (
+              <p role="alert">
+                {series.error.message}{" "}
+                <button
+                  onClick={() => void series.refetch()}
+                  className="underline"
+                >
+                  Retry
+                </button>
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-medium">
+                  {series.data?.length} occurrence(s) will be updated. Check a
+                  date below to cancel it as a holiday or series exception.
+                </p>
+                <div className="max-h-44 space-y-2 overflow-auto">
+                  {series.data
+                    ?.slice()
+                    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                    .map((e) => {
+                      const day = format(
+                        venueCalendarNow(tz, new Date(e.start_time)),
+                        "yyyy-MM-dd"
+                      );
+                      return (
+                        <label key={e.id} className="flex gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={skipDates.includes(day)}
+                            onChange={(x) =>
+                              setSkipDates(
+                                x.target.checked
+                                  ? [...skipDates, day]
+                                  : skipDates.filter((d) => d !== day)
+                              )
+                            }
+                          />
+                          {eventSchedule(e.start_time, null, tz)?.label} ·
+                          Cancel this date
+                        </label>
+                      );
+                    })}
+                </div>
+              </>
+            )}
+          </section>
         )}
         <div className="flex flex-wrap justify-end gap-3">
           {!event && (

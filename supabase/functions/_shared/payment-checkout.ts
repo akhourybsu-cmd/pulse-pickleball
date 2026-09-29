@@ -1,5 +1,5 @@
 import { assertCheckoutMatches } from "./payment-contracts.ts";
-import { requireRentalAccount } from './payment-connect.ts';
+import { requireRentalAccount } from "./payment-connect.ts";
 import {
   appOrigin,
   checked,
@@ -72,13 +72,31 @@ export async function startCheckout(
     throw new Error(
       "This checkout is already finished. Check your purchase history."
     );
-  if (['court_rental','event_registration'].includes(order.kind)) {
+  if (
+    ["court_rental", "event_registration", "venue_sale"].includes(order.kind)
+  ) {
     const venueAccount = await requireRentalAccount(r, order.venue_id);
-    if (venueAccount.account_id !== order.account_id) throw new Error('The venue payment account changed. This checkout needs review.');
+    if (venueAccount.account_id !== order.account_id)
+      throw new Error(
+        "The venue payment account changed. This checkout needs review."
+      );
   }
-  if (order.kind === 'event_registration') {
-    const event = checked(await r.store.from('group_events').select('canceled_at,end_time').eq('id',order.program_event_id).single());
-    if (!event || event.canceled_at || new Date(event.end_time).getTime()<=Date.now()) throw new Error('This event is canceled or ended. Cancel or reconcile this checkout in Payments & purchases.');
+  if (order.kind === "event_registration") {
+    const event = checked(
+      await r.store
+        .from("group_events")
+        .select("canceled_at,end_time")
+        .eq("id", order.program_event_id)
+        .single()
+    );
+    if (
+      !event ||
+      event.canceled_at ||
+      new Date(event.end_time).getTime() <= Date.now()
+    )
+      throw new Error(
+        "This event is canceled or ended. Cancel or reconcile this checkout in Payments & purchases."
+      );
   }
   if (order.checkout_session_id) {
     const session = await r.stripe.checkout.sessions.retrieve(
@@ -97,12 +115,29 @@ export async function startCheckout(
     throw new Error(
       "Checkout preparation expired. Cancel this attempt in purchase history and try again."
     );
-  const customerId = await customer(
-    r,
-    user,
-    order.account_id,
-    order.merchant_name
-  );
+  const customerId =
+    order.customer_id ||
+    (order.kind === "venue_sale" && !order.buyer_id
+      ? (
+          await r.stripe.customers.create(
+            { metadata: { pulse_order_id: order.id } },
+            options(r, order.account_id, `guest-customer:${order.id}`)
+          )
+        ).id
+      : await customer(r, user, order.account_id, order.merchant_name));
+  const sale =
+    order.kind === "venue_sale"
+      ? checked(
+          await r.store
+            .from("venue_sales")
+            .select("receipt_token")
+            .eq("id", order.venue_sale_id)
+            .single()
+        )
+      : null;
+  const returnUrl = sale
+    ? `${appOrigin()}/venue-payment/${sale.receipt_token}`
+    : `${appOrigin()}/player/payments?order=${order.id}`;
   checked(
     await r.store
       .from("payment_orders")
@@ -118,7 +153,7 @@ export async function startCheckout(
       client_reference_id: order.id,
       metadata: {
         pulse_order_id: order.id,
-        pulse_user_id: order.buyer_id,
+        pulse_user_id: order.buyer_id || "",
         purpose: order.kind,
       },
       line_items: [
@@ -130,7 +165,7 @@ export async function startCheckout(
             product_data: {
               name: order.description,
               description: `Sold by ${order.merchant_name}. ${
-                ["court_rental","event_registration"].includes(order.kind)
+                ["court_rental", "event_registration"].includes(order.kind)
                   ? `${order.start_time} to ${order.end_time}. `
                   : ""
               }Prices include applicable taxes.`,
@@ -155,21 +190,21 @@ export async function startCheckout(
               ? ""
               : "TEST ONLY — no real booking or add-on is granted. "
           }You are paying ${order.merchant_name}${
-            recurring ? " $10 every month until canceled" : " for this purchase"
+            recurring
+              ? ` $${(order.amount_cents / 100).toFixed(
+                  2
+                )} every month until canceled`
+              : " for this purchase"
           }. ${
-            ["court_rental","event_registration"].includes(order.kind)
+            ["court_rental", "event_registration"].includes(order.kind)
               ? "Your booking is confirmed only after successful payment."
               : ""
           }`,
         },
       },
       expires_at: Math.floor(new Date(order.expires_at).getTime() / 1000),
-      success_url: `${appOrigin()}/player/payments?order=${
-        order.id
-      }&checkout=returned`,
-      cancel_url: `${appOrigin()}/player/payments?order=${
-        order.id
-      }&checkout=cancel`,
+      success_url: `${returnUrl}${sale ? "?" : "&"}checkout=returned`,
+      cancel_url: `${returnUrl}${sale ? "?" : "&"}checkout=cancel`,
       // No transfer_data or application_fee_amount: rentals are direct charges
       // on the venue's account; module charges stay on PULSE's account.
     },

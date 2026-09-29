@@ -8,7 +8,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { persistOptions, clearPersistedQueryCache } from "@/lib/queryPersist";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
@@ -29,13 +37,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollManager } from "@/components/ScrollManager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { completeAuthCallback, hasPendingAuthCallback } from "@/lib/authCallback";
-import { consumePostAuthRedirect, isCommunityReturnPath, sanitizeRedirectPath, stashPostAuthRedirect } from "@/lib/authRedirect";
-const PublicCommunityLayout = lazy(() => import('./pages/public/PublicCommunityLayout'));
-const CommunityDirectoryRoute = lazy(() => import('./pages/public/PublicCommunityLayout').then(module => ({ default: module.CommunityDirectoryRoute })));
-const CommunityDetailRoute = lazy(() => import('./pages/public/PublicCommunityLayout').then(module => ({ default: module.CommunityDetailRoute })));
-const PublicVenueRoute = lazy(() => import('./pages/public/PublicCommunity'));
-const PickleballGuide = lazy(() => import('./pages/PickleballGuide'));
+import {
+  completeAuthCallback,
+  hasPendingAuthCallback,
+} from "@/lib/authCallback";
+import {
+  consumePostAuthRedirect,
+  isCommunityReturnPath,
+  sanitizeRedirectPath,
+  stashPostAuthRedirect,
+} from "@/lib/authRedirect";
+const PublicCommunityLayout = lazy(
+  () => import("./pages/public/PublicCommunityLayout")
+);
+const CommunityDirectoryRoute = lazy(() =>
+  import("./pages/public/PublicCommunityLayout").then((module) => ({
+    default: module.CommunityDirectoryRoute,
+  }))
+);
+const CommunityDetailRoute = lazy(() =>
+  import("./pages/public/PublicCommunityLayout").then((module) => ({
+    default: module.CommunityDetailRoute,
+  }))
+);
+const PublicVenueRoute = lazy(() => import("./pages/public/PublicCommunity"));
+const PickleballGuide = lazy(() => import("./pages/PickleballGuide"));
 
 /**
  * Forward the current location's `search` (and `hash`) when redirecting from a
@@ -79,13 +105,19 @@ const PageLoader = () => (
 // parsing the full player shell, notification center, and transition stack.
 const PlayerAppShell = lazy(() => import("@/components/layout/PlayerAppShell"));
 const CommunityTransitionOutlet = lazy(() =>
-  import("@/components/community/CommunityTransitionOutlet").then((module) => ({ default: module.CommunityTransitionOutlet })),
+  import("@/components/community/CommunityTransitionOutlet").then((module) => ({
+    default: module.CommunityTransitionOutlet,
+  }))
 );
 const LeagueTransitionOutlet = lazy(() =>
-  import("@/components/leagues/LeagueTransitionOutlet").then((module) => ({ default: module.LeagueTransitionOutlet })),
+  import("@/components/leagues/LeagueTransitionOutlet").then((module) => ({
+    default: module.LeagueTransitionOutlet,
+  }))
 );
 const PWAInstallPrompt = lazy(() =>
-  import("@/components/PWAInstallPrompt").then((module) => ({ default: module.PWAInstallPrompt })),
+  import("@/components/PWAInstallPrompt").then((module) => ({
+    default: module.PWAInstallPrompt,
+  }))
 );
 
 /** Load the install-prompt UI only after initial navigation has settled. */
@@ -94,7 +126,8 @@ function DeferredPWAInstallPrompt() {
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
-    if (localStorage.getItem("pulse_pwa_dismissed_permanent") === "true") return;
+    if (localStorage.getItem("pulse_pwa_dismissed_permanent") === "true")
+      return;
     if (localStorage.getItem("pulse_pwa_installed") === "true") return;
 
     const timer = window.setTimeout(() => setReady(true), 2500);
@@ -138,7 +171,9 @@ const AdminVenueRequests = lazy(() => import("./pages/AdminVenueRequests"));
 const VenueRequests = lazy(() => import("./pages/player/VenueRequests"));
 const AdminArchive = lazy(() => import("./pages/admin/AdminArchive"));
 const AdminVenues = lazy(() => import("./pages/AdminVenues"));
-const AdminPlatformActivity = lazy(() => import("./pages/AdminPlatformActivity"));
+const AdminPlatformActivity = lazy(
+  () => import("./pages/AdminPlatformActivity")
+);
 const AdminLegacyTools = lazy(() => import("./pages/AdminLegacyTools"));
 const AdminPlayers = lazy(() => import("./pages/AdminPlayers"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
@@ -157,8 +192,12 @@ const CreateRoundRobin = lazy(() => import("./pages/CreateRoundRobin"));
 const RoundRobinDetail = lazy(() => import("./pages/RoundRobinDetail"));
 const RoundRobinKiosk = lazy(() => import("./pages/RoundRobinKiosk"));
 const TournamentAdmin = lazy(() => import("./pages/TournamentAdmin"));
-const TournamentEventDetail = lazy(() => import("./pages/TournamentEventDetail"));
-const TournamentDivisionDetail = lazy(() => import("./pages/TournamentDivisionDetail"));
+const TournamentEventDetail = lazy(
+  () => import("./pages/TournamentEventDetail")
+);
+const TournamentDivisionDetail = lazy(
+  () => import("./pages/TournamentDivisionDetail")
+);
 const TournamentLiveView = lazy(() => import("./pages/TournamentLiveView"));
 const TournamentTeamView = lazy(() => import("./pages/TournamentTeamView"));
 const ManageTournaments = lazy(() => import("./pages/ManageTournaments"));
@@ -166,10 +205,16 @@ const TournamentRegister = lazy(() => import("./pages/TournamentRegister"));
 const TournamentLanding = lazy(() => import("./pages/TournamentLanding"));
 const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
 const TournamentMatchScore = lazy(() => import("./pages/TournamentMatchScore"));
-const TournamentNewWithGating = lazy(() => import("./pages/TournamentNewWithGating"));
+const TournamentNewWithGating = lazy(
+  () => import("./pages/TournamentNewWithGating")
+);
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail"));
-const TournamentPaymentSuccess = lazy(() => import("./pages/TournamentPaymentSuccess"));
-const TournamentPaymentCancelled = lazy(() => import("./pages/TournamentPaymentCancelled"));
+const TournamentPaymentSuccess = lazy(
+  () => import("./pages/TournamentPaymentSuccess")
+);
+const TournamentPaymentCancelled = lazy(
+  () => import("./pages/TournamentPaymentCancelled")
+);
 const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
 const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
@@ -186,21 +231,54 @@ const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const SelfAssessment = lazy(() => import("./pages/player/SelfAssessment"));
 const GuestSkillAssessment = lazy(() => import("./pages/GuestSkillAssessment"));
 const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
-const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
+const PlayerLeagueDetail = lazy(
+  () => import("./pages/player/PlayerLeagueDetail")
+);
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
 const Payments = lazy(() => import("./pages/player/Payments"));
 const PlayerPulse = lazy(() => import("./pages/player/PlayerPulse"));
-const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
+const MyRoundRobinsPage = lazy(
+  () => import("./pages/player/MyRoundRobinsPage")
+);
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
-const VenueCompetitions = lazy(() => import("./pages/player/VenueCompetitions"));
-const VenueEventManagement = lazy(() => import("./pages/player/VenueEventManagement"));
-const VenueAdminPayments = lazy(() => import("./components/venue/VenueAdminPayments"));
-const VenueAdminLayout = lazy(() => import("./components/venue/VenueAdminLayout"));
+const VenueCompetitions = lazy(
+  () => import("./pages/player/VenueCompetitions")
+);
+const VenueEventManagement = lazy(
+  () => import("./pages/player/VenueEventManagement")
+);
+const VenueAdminPayments = lazy(
+  () => import("./components/venue/VenueAdminPayments")
+);
+const VenueAdminLayout = lazy(
+  () => import("./components/venue/VenueAdminLayout")
+);
+const VenuePlayers = lazy(() => import("./pages/player/VenuePlayers"));
+const VenueVisit = lazy(() => import("./pages/VenueVisit"));
+const VenueDesk = lazy(() => import("./pages/player/VenueDesk"));
+const VenueAppointments = lazy(
+  () => import("./pages/player/VenueAppointments")
+);
+const VenueMyVisit = lazy(() => import("./pages/player/VenueMyVisit"));
+const VenueQuote = lazy(() => import("./pages/VenueQuote"));
+const VenueCommunications = lazy(
+  () => import("./pages/player/VenueCommunications")
+);
+const VenueReports = lazy(() => import("./pages/player/VenueReports"));
+const VenueWalkins = lazy(() => import("./pages/player/VenueWalkins"));
+const VenueCheckinStations = lazy(
+  () => import("./pages/player/VenueCheckinStations")
+);
+const VenuePlayerCheckin = lazy(() => import("./pages/VenuePlayerCheckin"));
+const VenueBookingPolicies = lazy(
+  () => import("./pages/player/VenueBookingPolicies")
+);
+const VenuePaymentReceipt = lazy(() => import("./pages/VenuePaymentReceipt"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 // Guarded at the import, not just at the route: a bare lazy() still emits the
@@ -221,14 +299,20 @@ const PlayerTabsPreview = import.meta.env.DEV
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
-const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
+const DirectMessageChat = lazy(
+  () => import("./pages/player/DirectMessageChat")
+);
 const Social = lazy(() => import("./pages/player/Social"));
 
 const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
 
 // Onboarding pages
-const OnboardingProfileSetup = lazy(() => import("./pages/onboarding/ProfileSetup"));
-const OnboardingRatingReveal = lazy(() => import("./pages/onboarding/RatingReveal"));
+const OnboardingProfileSetup = lazy(
+  () => import("./pages/onboarding/ProfileSetup")
+);
+const OnboardingRatingReveal = lazy(
+  () => import("./pages/onboarding/RatingReveal")
+);
 const OnboardingComplete = lazy(() => import("./pages/onboarding/Complete"));
 
 const queryClient = new QueryClient({
@@ -247,9 +331,13 @@ const AppContent = () => {
   // Ordinary refreshes have no auth payload to exchange, so render routes on
   // the first pass. Previously every page showed a full-screen loader for an
   // extra render before its lazy route chunk was even requested.
-  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(() => !hasPendingAuthCallback(window.location.href));
+  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(
+    () => !hasPendingAuthCallback(window.location.href)
+  );
 
-  const callbackCheck = useRef<ReturnType<typeof completeAuthCallback> | null>(null);
+  const callbackCheck = useRef<ReturnType<typeof completeAuthCallback> | null>(
+    null
+  );
   const callbackHandled = useRef(false);
   const [callbackError, setCallbackError] = useState<string | null>(null);
 
@@ -263,31 +351,56 @@ const AppContent = () => {
     let cancelled = false;
     // Confirmation links carry their destination across browsers, without
     // relying on storage left behind in the browser that started signup.
-    const callbackReturn = sanitizeRedirectPath(new URL(window.location.href).searchParams.get('redirect'));
-    if (isCommunityReturnPath(callbackReturn)) stashPostAuthRedirect(callbackReturn);
+    const callbackReturn = sanitizeRedirectPath(
+      new URL(window.location.href).searchParams.get("redirect")
+    );
+    if (isCommunityReturnPath(callbackReturn))
+      stashPostAuthRedirect(callbackReturn);
     // StrictMode may run the effect twice; both subscribers observe one check.
     callbackCheck.current ??= completeAuthCallback(
       supabase.auth,
       () => window.location.href,
-      path => window.history.replaceState(window.history.state, '', path),
+      (path) => window.history.replaceState(window.history.state, "", path)
     );
-    callbackCheck.current.then(result => {
-      if (cancelled || callbackHandled.current) return;
-      callbackHandled.current = true;
-      if (result.handled && result.entryPath) navigate(isCommunityReturnPath(callbackReturn) ? callbackReturn : consumePostAuthRedirect(), { replace: true });
-      setAuthRecoveryChecked(true);
-    }, error => {
-      if (cancelled || callbackHandled.current) return;
-      callbackHandled.current = true;
-      setCallbackError(error instanceof Error ? error.message : 'Sign-in could not be completed. Please sign in again.');
-      setAuthRecoveryChecked(true);
-    });
-    return () => { cancelled = true; };
+    callbackCheck.current.then(
+      (result) => {
+        if (cancelled || callbackHandled.current) return;
+        callbackHandled.current = true;
+        if (result.handled && result.entryPath)
+          navigate(
+            isCommunityReturnPath(callbackReturn)
+              ? callbackReturn
+              : consumePostAuthRedirect(),
+            { replace: true }
+          );
+        setAuthRecoveryChecked(true);
+      },
+      (error) => {
+        if (cancelled || callbackHandled.current) return;
+        callbackHandled.current = true;
+        setCallbackError(
+          error instanceof Error
+            ? error.message
+            : "Sign-in could not be completed. Please sign in again."
+        );
+        setAuthRecoveryChecked(true);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        (event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "INITIAL_SESSION") &&
+        session?.user
+      ) {
         // Now that a user session exists, (re)register for native push so the
         // device token is saved to device_tokens — the token upsert is a no-op
         // without an authed user, so registering only at cold startup can miss it.
@@ -295,7 +408,7 @@ const AppContent = () => {
         // The callback, Index, and Auth pages own navigation after their
         // checks finish. Auth events must not race that work or consume its link.
       }
-      if (event === 'SIGNED_OUT') {
+      if (event === "SIGNED_OUT") {
         // Drop both the live and the persisted cache so the next account on
         // this device never restores the previous user's data.
         queryClient.clear();
@@ -307,17 +420,32 @@ const AppContent = () => {
   }, [navigate]);
 
   if (callbackError) {
-    return <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div role="alert" className="max-w-sm text-center space-y-4">
-        <h1 className="text-xl font-semibold">Let’s reconnect your account</h1>
-        <p className="text-sm text-muted-foreground">{callbackError}</p>
-        <Button onClick={() => {
-          setCallbackError(null);
-          const destination = sanitizeRedirectPath(new URL(window.location.href).searchParams.get('redirect'));
-          navigate(isCommunityReturnPath(destination) ? `/auth?${new URLSearchParams({ redirect: destination })}` : '/auth', { replace: true });
-        }}>Sign in again</Button>
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div role="alert" className="max-w-sm text-center space-y-4">
+          <h1 className="text-xl font-semibold">
+            Let’s reconnect your account
+          </h1>
+          <p className="text-sm text-muted-foreground">{callbackError}</p>
+          <Button
+            onClick={() => {
+              setCallbackError(null);
+              const destination = sanitizeRedirectPath(
+                new URL(window.location.href).searchParams.get("redirect")
+              );
+              navigate(
+                isCommunityReturnPath(destination)
+                  ? `/auth?${new URLSearchParams({ redirect: destination })}`
+                  : "/auth",
+                { replace: true }
+              );
+            }}
+          >
+            Sign in again
+          </Button>
+        </div>
       </div>
-    </div>;
+    );
   }
 
   if (!authRecoveryChecked) {
@@ -335,22 +463,32 @@ const AppContent = () => {
           {VenuePreview && (
             <Route path="/__venue-preview" element={<VenuePreview />} />
           )}
-          {LeaguePreview && <Route path="/__league-preview" element={<LeaguePreview />} />}
+          {LeaguePreview && (
+            <Route path="/__league-preview" element={<LeaguePreview />} />
+          )}
           {DashboardPreview && (
             <Route path="/__dashboard-preview" element={<DashboardPreview />} />
           )}
           {PlayerTabsPreview && (
-            <Route path="/__player-tabs-preview" element={<PlayerTabsPreview />} />
+            <Route
+              path="/__player-tabs-preview"
+              element={<PlayerTabsPreview />}
+            />
           )}
           {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          {isSkillAssessmentEnabled() && <Route path="/skill-assessment" element={<GuestSkillAssessment />} />}
+          {isSkillAssessmentEnabled() && (
+            <Route
+              path="/skill-assessment"
+              element={<GuestSkillAssessment />}
+            />
+          )}
           <Route path="/pickleball-guide" element={<PickleballGuide />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-         <Route path="/unsubscribe" element={<Unsubscribe />} />
-         <Route path="/claim-guest/:token" element={<ClaimGuest />} />
-         <Route path="/demo" element={<DemoTour />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
+          <Route path="/claim-guest/:token" element={<ClaimGuest />} />
+          <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
           {/* Public legal + account pages — reachable logged-out for the
               app-store listing links and reviewers. */}
@@ -371,26 +509,51 @@ const AppContent = () => {
           />
           {/* Legacy browse routes — redirect into the unified hub.
               Use RedirectWithParams so ?type=... and other query params survive. */}
-          <Route path="/events/browse" element={<RedirectWithParams to="/play" />} />
-          <Route path="/tournaments/browse" element={<RedirectWithParams to="/play" />} />
-          
+          <Route
+            path="/events/browse"
+            element={<RedirectWithParams to="/play" />}
+          />
+          <Route
+            path="/tournaments/browse"
+            element={<RedirectWithParams to="/play" />}
+          />
           {/* Onboarding routes - require auth but allow onboarding state.
-              Flow (3 steps): profile → how-it-works → complete. The match step
+              Flow (3 steps): profile â†’ how-it-works â†’ complete. The match step
               was decoupled (recording a match is now a post-onboarding action),
               so the legacy first-match/rating paths redirect into the new flow
               to keep any in-flight links working. */}
-          <Route path="/onboarding/profile" element={
-            <AuthGuard allowOnboarding><OnboardingProfileSetup /></AuthGuard>
-          } />
-          <Route path="/onboarding/how-it-works" element={
-            <AuthGuard allowOnboarding><OnboardingRatingReveal /></AuthGuard>
-          } />
-          <Route path="/onboarding/first-match" element={<Navigate to="/onboarding/how-it-works" replace />} />
-          <Route path="/onboarding/rating" element={<Navigate to="/onboarding/how-it-works" replace />} />
-          <Route path="/onboarding/complete" element={
-            <AuthGuard allowOnboarding><OnboardingComplete /></AuthGuard>
-          } />
-          
+          <Route
+            path="/onboarding/profile"
+            element={
+              <AuthGuard allowOnboarding>
+                <OnboardingProfileSetup />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/onboarding/how-it-works"
+            element={
+              <AuthGuard allowOnboarding>
+                <OnboardingRatingReveal />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/onboarding/first-match"
+            element={<Navigate to="/onboarding/how-it-works" replace />}
+          />
+          <Route
+            path="/onboarding/rating"
+            element={<Navigate to="/onboarding/how-it-works" replace />}
+          />
+          <Route
+            path="/onboarding/complete"
+            element={
+              <AuthGuard allowOnboarding>
+                <OnboardingComplete />
+              </AuthGuard>
+            }
+          />
           {/* Invite-link landing — intentionally OUTSIDE the /player
               AuthGuard wrapper below. JoinGroupByCode supports both
               anon (shows preview + Sign in / Sign up) and authenticated
@@ -399,32 +562,65 @@ const AppContent = () => {
               shared invite links keep working. Must be declared
               BEFORE the /player block so it wins the URL match. */}
           <Route element={<PublicCommunityLayout />}>
-            <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
-            <Route path="/player/community" element={<CommunityDirectoryRoute />} />
-            <Route path="/player/community/group/:groupId" element={<CommunityDetailRoute />} />
+            <Route
+              path="/player/community/join/:code"
+              element={<JoinGroupByCode />}
+            />
+            <Route
+              path="/player/community"
+              element={<CommunityDirectoryRoute />}
+            />
+            <Route
+              path="/player/community/group/:groupId"
+              element={<CommunityDetailRoute />}
+            />
             <Route path="/venues/:slug" element={<PublicVenueRoute />} />
+            <Route path="/venue-quote/:token" element={<VenueQuote />} />
+            <Route path="/venue-visit/:token" element={<VenueVisit />} />
+            <Route
+              path="/venue-payment/:token"
+              element={<VenuePaymentReceipt />}
+            />
+            <Route
+              path="/venue-kiosk/:token"
+              element={<VenuePlayerCheckin station />}
+            />
+            <Route
+              path="/venue-check-in/:token"
+              element={<VenuePlayerCheckin />}
+            />
           </Route>
-
           {/* League invite-link landing — same rationale as the group
               join route above: mounted OUTSIDE the /player AuthGuard so a
               logged-out recipient sees the league teaser (Sign in / Sign
               up) instead of a blank auth wall. find_league_by_invite_code
               is granted to anon; joining still requires an account.
               Declared BEFORE the /player block so it wins the URL match. */}
-          <Route path="/player/leagues/join/:code" element={<JoinLeagueByCode />} />
-
+          <Route
+            path="/player/leagues/join/:code"
+            element={<JoinLeagueByCode />}
+          />
           {/* Player routes with shell - require auth */}
-          <Route path="/player" element={
-            <AuthGuard>
-              <PlayerAppShell />
-            </AuthGuard>
-          }>
-            <Route index element={<Navigate to="/player/dashboard" replace />} />
+          <Route
+            path="/player"
+            element={
+              <AuthGuard>
+                <PlayerAppShell />
+              </AuthGuard>
+            }
+          >
+            <Route
+              index
+              element={<Navigate to="/player/dashboard" replace />}
+            />
             <Route path="dashboard" element={<PlayerDashboard />} />
             {/* New primary nav routes (Phase 1) */}
             <Route path="matches" element={<MatchHistory />} />
             <Route path="matches/new" element={<NewMatch />} />
-            <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
+            <Route
+              path="matches/pending"
+              element={<Navigate to="/player/matches?tab=pending" replace />}
+            />
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
             <Route path="payments" element={<Payments />} />
@@ -450,33 +646,53 @@ const AppContent = () => {
                 don't remount, and react-router still owns navigation. */}
             <Route element={<LeagueTransitionOutlet />}>
               <Route path="leagues" element={<PlayerLeagues />} />
-              <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
+              <Route
+                path="leagues/:leagueId"
+                element={<PlayerLeagueDetail />}
+              />
               {/* League owner surface — same component as /admin/leagues/:id
                   but rendered inside PlayerShell chrome via URL detection.
                   NOTE: the /poster variant is mounted OUTSIDE PlayerShell
                   (see top-level route below) so print stylesheets don't
                   capture the sticky header + bottom nav. */}
-              <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
+              <Route
+                path="leagues/:leagueId/manage"
+                element={<AdminLeagueDetail />}
+              />
             </Route>
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
-            <Route path="find" element={<RedirectWithParams to="/player/play" />} />
+            <Route
+              path="find"
+              element={<RedirectWithParams to="/player/play" />}
+            />
             <Route path="events" element={<PlayerEvents />} />
             {/* Retired venue-era paths — kept as redirects so legacy deep
                 links land safely instead of 404-ing. */}
-            <Route path="venues" element={<Navigate to="/player/play" replace />} />
-            <Route path="coaching" element={<Navigate to="/player/dashboard" replace />} />
+            <Route
+              path="venues"
+              element={<Navigate to="/player/play" replace />}
+            />
+            <Route
+              path="coaching"
+              element={<Navigate to="/player/dashboard" replace />}
+            />
             {/* Bookings only exist where venues do, so the route follows the
                 same flag; with it off these stay the redirects they were. */}
             <Route
               path="bookings"
               element={
-                isVenueCommunitiesEnabled()
-                  ? <MyBookings />
-                  : <Navigate to="/player/dashboard" replace />
+                isVenueCommunitiesEnabled() ? (
+                  <MyBookings />
+                ) : (
+                  <Navigate to="/player/dashboard" replace />
+                )
               }
             />
-            <Route path="my-bookings" element={<Navigate to="/player/bookings" replace />} />
+            <Route
+              path="my-bookings"
+              element={<Navigate to="/player/bookings" replace />}
+            />
             <Route path="my-events" element={<MyEvents />} />
             {/* Friends now lives inside the unified Social hub; the path is
                 kept so existing links (incl. ?tab=requests) still resolve. */}
@@ -498,77 +714,308 @@ const AppContent = () => {
             <Route element={<CommunityTransitionOutlet />}>
               <Route path="venue-requests" element={<VenueRequests />} />
             </Route>
+            <Route
+              path="community/group/:groupId/my-visit"
+              element={<VenueMyVisit />}
+            />
             <Route element={<VenueAdminLayout />}>
-              <Route path="community/group/:groupId/payments" element={<VenueAdminPayments />} />
-              <Route path="community/group/:groupId/competitions/round-robins/:id" element={<RoundRobinDetail />} />
-              <Route path="community/group/:groupId/manage" element={<GroupManage />} />
-              <Route path="community/group/:groupId/events/manage" element={<VenueEventManagement />} />
-              <Route path="community/group/:groupId/competitions" element={<VenueCompetitions />} />
-              <Route path="community/group/:groupId/competitions/leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
-              <Route path="community/group/:groupId/ops" element={<VenueOps />} />
+              <Route
+                path="community/group/:groupId/players"
+                element={<VenuePlayers />}
+              />
+              <Route
+                path="community/group/:groupId/desk"
+                element={<VenueDesk />}
+              />
+              <Route
+                path="community/group/:groupId/appointments"
+                element={<VenueAppointments />}
+              />
+              <Route
+                path="community/group/:groupId/communications"
+                element={<VenueCommunications />}
+              />
+              <Route
+                path="community/group/:groupId/reports"
+                element={<VenueReports />}
+              />
+              <Route
+                path="community/group/:groupId/walk-ins"
+                element={<VenueWalkins />}
+              />
+              <Route
+                path="community/group/:groupId/check-in-stations"
+                element={<VenueCheckinStations />}
+              />
+              <Route
+                path="community/group/:groupId/booking-policies"
+                element={<VenueBookingPolicies />}
+              />
+              <Route
+                path="community/group/:groupId/payments"
+                element={<VenueAdminPayments />}
+              />
+              <Route
+                path="community/group/:groupId/competitions/round-robins/:id"
+                element={<RoundRobinDetail />}
+              />
+              <Route
+                path="community/group/:groupId/manage"
+                element={<GroupManage />}
+              />
+              <Route
+                path="community/group/:groupId/events/manage"
+                element={<VenueEventManagement />}
+              />
+              <Route
+                path="community/group/:groupId/competitions"
+                element={<VenueCompetitions />}
+              />
+              <Route
+                path="community/group/:groupId/competitions/leagues/:leagueId/manage"
+                element={<AdminLeagueDetail />}
+              />
+              <Route
+                path="community/group/:groupId/ops"
+                element={<VenueOps />}
+              />
             </Route>
             <Route path="messages" element={<Social />} />
-            <Route path="messages/:conversationId" element={<DirectMessageChat />} />
+            <Route
+              path="messages/:conversationId"
+              element={<DirectMessageChat />}
+            />
             <Route path="profile/edit" element={<EditProfile />} />
           </Route>
-
           {/* Legacy routes - redirect to new structure */}
-          <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
-
+          <Route
+            path="/dashboard"
+            element={<Navigate to="/player/dashboard" replace />}
+          />
           {/* Existing routes */}
-          <Route path="/profile/edit" element={<RedirectWithParams to="/player/profile/edit" />} />
+          <Route
+            path="/profile/edit"
+            element={<RedirectWithParams to="/player/profile/edit" />}
+          />
           <Route path="/profile/:userId" element={<ViewProfile />} />
           <Route path="/player/profile/:userId" element={<ViewProfile />} />
           {/* Match routes: legacy /match/* paths now redirect into the player shell */}
           {/* RedirectWithParams preserves ?onboarding=true and the #matchId hash
               that plain <Navigate> would drop. /match/pending keeps <Navigate>
               because its target already carries a query string. */}
-          <Route path="/match/new" element={<RedirectWithParams to="/player/matches/new" />} />
-          <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
-          <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />          <Route path="/faq" element={<FAQ />} />
+          <Route
+            path="/match/new"
+            element={<RedirectWithParams to="/player/matches/new" />}
+          />
+          <Route
+            path="/match/pending"
+            element={<Navigate to="/player/matches?tab=pending" replace />}
+          />
+          <Route
+            path="/match/history"
+            element={<RedirectWithParams to="/player/matches" />}
+          />{" "}
+          <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
-          <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-          <Route path="/admin/venue-requests" element={<AdminGuard><AdminVenueRequests /></AdminGuard>} />
-          <Route path="/admin/venues" element={<AdminGuard><AdminVenues /></AdminGuard>} />
-          <Route path="/admin/activity" element={<AdminGuard><AdminPlatformActivity /></AdminGuard>} />
-          <Route path="/admin/legacy-tools" element={<AdminGuard><AdminLegacyTools /></AdminGuard>} />
-          <Route path="/archive" element={<AdminGuard><AdminArchive /></AdminGuard>} />
-          <Route path="/admin/session" element={<AdminGuard><AdminSession /></AdminGuard>} />
-          <Route path="/admin/pairing" element={<AdminGuard><AdminPairing /></AdminGuard>} />
-          <Route path="/admin/players" element={<AdminGuard><AdminPlayers /></AdminGuard>} />
-          <Route path="/admin/badges" element={<AdminGuard><AdminBadges /></AdminGuard>} />
-          <Route path="/admin/matches" element={<AdminGuard><AdminMatches /></AdminGuard>} />
+          <Route
+            path="/admin"
+            element={
+              <AdminGuard>
+                <AdminDashboard />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/venue-requests"
+            element={
+              <AdminGuard>
+                <AdminVenueRequests />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/venues"
+            element={
+              <AdminGuard>
+                <AdminVenues />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/activity"
+            element={
+              <AdminGuard>
+                <AdminPlatformActivity />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/legacy-tools"
+            element={
+              <AdminGuard>
+                <AdminLegacyTools />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/archive"
+            element={
+              <AdminGuard>
+                <AdminArchive />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/session"
+            element={
+              <AdminGuard>
+                <AdminSession />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/pairing"
+            element={
+              <AdminGuard>
+                <AdminPairing />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/players"
+            element={
+              <AdminGuard>
+                <AdminPlayers />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/badges"
+            element={
+              <AdminGuard>
+                <AdminBadges />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/matches"
+            element={
+              <AdminGuard>
+                <AdminMatches />
+              </AdminGuard>
+            }
+          />
           {/* Leagues are now ONE public portal under /player/leagues —
               no separate admin surface. These legacy /admin/leagues*
               paths redirect there so old links/bookmarks keep working.
               RLS still enforces that only owners/admins can manage. */}
-          <Route path="/admin/leagues" element={<Navigate to="/player/leagues" replace />} />
-          <Route path="/admin/leagues/:leagueId" element={<LeagueAdminRedirect suffix="/manage" />} />
-          <Route path="/admin/leagues/:leagueId/poster" element={<LeagueAdminRedirect suffix="/poster" />} />
+          <Route
+            path="/admin/leagues"
+            element={<Navigate to="/player/leagues" replace />}
+          />
+          <Route
+            path="/admin/leagues/:leagueId"
+            element={<LeagueAdminRedirect suffix="/manage" />}
+          />
+          <Route
+            path="/admin/leagues/:leagueId/poster"
+            element={<LeagueAdminRedirect suffix="/poster" />}
+          />
           {/* Player-context poster route — mounted OUTSIDE PlayerShell so
               the sticky header + bottom nav don't overlap the poster on
               screen or bleed into the printed sheet. */}
-          <Route path="/player/leagues/:leagueId/poster" element={<AuthGuard><LeaguePoster /></AuthGuard>} />
-          <Route path="/admin/marketing" element={<AdminGuard><AdminMarketing /></AdminGuard>} />
-          <Route path="/admin/audit-log" element={<AdminGuard><AdminAuditLog /></AdminGuard>} />
-          <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
-          <Route path="/admin/biometrics" element={<AdminGuard><AdminBiometrics /></AdminGuard>} />
-          <Route path="/admin/system-health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
-          <Route path="/admin/password-reset" element={<AdminGuard><AdminPasswordReset /></AdminGuard>} />
-          <Route path="/admin/manage/:sessionId" element={<AdminGuard><AdminManage /></AdminGuard>} />
+          <Route
+            path="/player/leagues/:leagueId/poster"
+            element={
+              <AuthGuard>
+                <LeaguePoster />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/admin/marketing"
+            element={
+              <AdminGuard>
+                <AdminMarketing />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/audit-log"
+            element={
+              <AdminGuard>
+                <AdminAuditLog />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/test-accounts"
+            element={
+              <AdminGuard>
+                <AdminTestAccounts />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/biometrics"
+            element={
+              <AdminGuard>
+                <AdminBiometrics />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/system-health"
+            element={
+              <AdminGuard>
+                <AdminSystemHealth />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/password-reset"
+            element={
+              <AdminGuard>
+                <AdminPasswordReset />
+              </AdminGuard>
+            }
+          />
+          <Route
+            path="/admin/manage/:sessionId"
+            element={
+              <AdminGuard>
+                <AdminManage />
+              </AdminGuard>
+            }
+          />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
           <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/changelog" element={<Changelog />} />          {/* NOTE: /events/browse is intentionally redirected to /play above
+          <Route path="/changelog" element={<Changelog />} />{" "}
+          {/* NOTE: /events/browse is intentionally redirected to /play above
               (the unified hub). The former <BrowseEvents /> route here was dead
-              (shadowed by that earlier redirect) and has been removed. */}          <Route path="/profile/data-export" element={<DataExport />} />
-          <Route path="/settings/notifications" element={<NotificationSettings />} />
-          <Route path="/settings/security" element={<AuthGuard><SecuritySettings /></AuthGuard>} />
+              (shadowed by that earlier redirect) and has been removed. */}{" "}
+          <Route path="/profile/data-export" element={<DataExport />} />
+          <Route
+            path="/settings/notifications"
+            element={<NotificationSettings />}
+          />
+          <Route
+            path="/settings/security"
+            element={
+              <AuthGuard>
+                <SecuritySettings />
+              </AuthGuard>
+            }
+          />
           <Route path="/settings/blocked" element={<BlockedUsers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
-          <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
+          <Route
+            path="/events/:eventId/add-match"
+            element={<EventMatchEntry />}
+          />
           <Route path="/round-robin" element={<RoundRobinHub />} />
           {/* Wizard writes to the DB on submit and reads getUser() on submit.
               Wrap in AuthGuard so unauthenticated visitors are bounced before
@@ -581,7 +1028,14 @@ const AppContent = () => {
               </AuthGuard>
             }
           />
-          <Route path="/round-robin/:id" element={<AuthGuard><RoundRobinDetail /></AuthGuard>} />
+          <Route
+            path="/round-robin/:id"
+            element={
+              <AuthGuard>
+                <RoundRobinDetail />
+              </AuthGuard>
+            }
+          />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
           {/* Tournament surface — under reconstruction and invisible to
               everyone (players, organizers, other admins) until the
@@ -591,25 +1045,151 @@ const AppContent = () => {
               admin-only is not the same as invisible. */}
           {isTournamentsEnabled() && (
             <>
-              <Route path="/tournaments" element={<AdminGuard><TournamentsLanding /></AdminGuard>} />
-              <Route path="/tournaments/manage" element={<AdminGuard><ManageTournaments /></AdminGuard>} />
-              <Route path="/tournaments/new" element={<AdminGuard><TournamentNewWithGating /></AdminGuard>} />
-              <Route path="/tournaments/:id" element={<AdminGuard><TournamentDetail /></AdminGuard>} />
-              <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
-              <Route path="/tournaments/:id/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
-              <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
-              <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />
-              <Route path="/tournament/:slug" element={<AdminGuard><TournamentLanding /></AdminGuard>} />
-              <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />
-              <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
-              <Route path="/tournament/:eventId/team/:teamId" element={<AdminGuard><TournamentTeamView /></AdminGuard>} />
-              <Route path="/tournament/:eventId/match/:matchId/score" element={<AdminGuard><TournamentMatchScore /></AdminGuard>} />
+              <Route
+                path="/tournaments"
+                element={
+                  <AdminGuard>
+                    <TournamentsLanding />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/manage"
+                element={
+                  <AdminGuard>
+                    <ManageTournaments />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/new"
+                element={
+                  <AdminGuard>
+                    <TournamentNewWithGating />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/:id"
+                element={
+                  <AdminGuard>
+                    <TournamentDetail />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/:id/divisions/:divisionId"
+                element={
+                  <AdminGuard>
+                    <TournamentDivisionDetail />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/:id/customize"
+                element={
+                  <AdminGuard>
+                    <TournamentCustomize />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/:id/payment-success"
+                element={
+                  <AdminGuard>
+                    <TournamentPaymentSuccess />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournaments/:id/payment-cancelled"
+                element={
+                  <AdminGuard>
+                    <TournamentPaymentCancelled />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament/:slug"
+                element={
+                  <AdminGuard>
+                    <TournamentLanding />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament/:eventId/register"
+                element={
+                  <AdminGuard>
+                    <TournamentRegister />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament/:eventId/live"
+                element={
+                  <AdminGuard>
+                    <TournamentLiveView />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament/:eventId/team/:teamId"
+                element={
+                  <AdminGuard>
+                    <TournamentTeamView />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament/:eventId/match/:matchId/score"
+                element={
+                  <AdminGuard>
+                    <TournamentMatchScore />
+                  </AdminGuard>
+                }
+              />
               {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
-              <Route path="/tournament-admin" element={<AdminGuard><TournamentAdmin /></AdminGuard>} />
-              <Route path="/tournament-admin/:eventId/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
-              <Route path="/tournament-admin/event/:eventId" element={<AdminGuard><TournamentEventDetail /></AdminGuard>} />
-              <Route path="/tournament-admin/event/:eventId/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
-              <Route path="/tournament-admin/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
+              <Route
+                path="/tournament-admin"
+                element={
+                  <AdminGuard>
+                    <TournamentAdmin />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament-admin/:eventId/customize"
+                element={
+                  <AdminGuard>
+                    <TournamentCustomize />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament-admin/event/:eventId"
+                element={
+                  <AdminGuard>
+                    <TournamentEventDetail />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament-admin/event/:eventId/division/:divisionId"
+                element={
+                  <AdminGuard>
+                    <TournamentDivisionDetail />
+                  </AdminGuard>
+                }
+              />
+              <Route
+                path="/tournament-admin/division/:divisionId"
+                element={
+                  <AdminGuard>
+                    <TournamentDivisionDetail />
+                  </AdminGuard>
+                }
+              />
             </>
           )}
           <Route path="*" element={<NotFound />} />
@@ -634,7 +1214,6 @@ const appTree = (
             </ActiveViewProvider>
           </AuthStateProvider>
         </BrowserRouter>
-
       </ErrorBoundary>
     </TooltipProvider>
   </ThemeProvider>
@@ -646,7 +1225,10 @@ const appTree = (
 // locked-down webviews) — persistence is an optimization, never a requirement.
 const App = () =>
   persistOptions ? (
-    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={persistOptions}
+    >
       {appTree}
     </PersistQueryClientProvider>
   ) : (
