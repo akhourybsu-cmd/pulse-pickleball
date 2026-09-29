@@ -197,7 +197,7 @@ export function VenueAdminShell({
           </div>
         </aside>}
 
-        <main ref={body} className="venue-management-content min-w-0 p-4 sm:p-6 lg:p-8">
+        <main ref={body} className={cn("venue-management-content min-w-0", !kiosk && "p-4 sm:p-6 lg:p-8")}>
           {!kiosk && <p className="mb-4 text-sm leading-6 text-muted-foreground lg:hidden">{activeItem?.description}</p>}
           {!kiosk && <div className="mb-6 hidden items-end justify-between gap-4 border-b border-border/70 pb-4 lg:flex">
             <div>

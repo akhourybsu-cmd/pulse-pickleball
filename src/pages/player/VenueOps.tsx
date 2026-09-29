@@ -1,6 +1,5 @@
 import { useAuthState } from "@/hooks/useAuthState";
-import { Button } from "@/components/ui/button";
-import { Expand, Minimize, CalendarDays, UserCheck } from "lucide-react";
+import { VenueOpsHeader } from "@/components/venue/ops/VenueOpsHeader";
 import { AttendanceDesk } from "@/components/venue/ops/AttendanceDesk";
 import { useVenueAttendance } from "@/hooks/useVenueAttendance";
 import { parseVenueDay, venueDayKey } from "@/lib/venues/navigation";
@@ -259,130 +258,117 @@ export default function VenueOps() {
 
   return (
     <VenueTheme brand={venue}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2" aria-label="Operations workspace">
-          <Button
-            className="h-11"
-            variant={deskView === "attendance" ? "default" : "outline"}
-            aria-pressed={deskView === "attendance"}
-            onClick={() => setDeskView("attendance")}
-          >
-            <UserCheck className="mr-2 h-4 w-4" />
-            Check-in desk
-          </Button>
-          <Button
-            className="h-11"
-            variant={deskView === "courts" ? "default" : "outline"}
-            aria-pressed={deskView === "courts"}
-            onClick={() => setDeskView("courts")}
-          >
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Court calendar
-          </Button>
-        </div>
-        <div className="flex items-center gap-3">
-          {kiosk && (
-            <span className="text-sm font-semibold">
-              {venue?.name ?? group.name} · Staff kiosk
-            </span>
-          )}
-          <Button className="h-11" variant="outline" onClick={toggleKiosk}>
-            {kiosk ? (
-              <Minimize className="mr-2 h-4 w-4" />
-            ) : (
-              <Expand className="mr-2 h-4 w-4" />
-            )}
-            {kiosk ? "Exit kiosk" : "Open staff kiosk"}
-          </Button>
-        </div>
-      </div>
-      {deskView === "attendance" && (
-        <AttendanceDesk
-          data={attendance.data}
-          day={day}
-          timeZone={venue?.timezone}
-          loading={attendance.isLoading}
-          failed={attendance.isError}
-          refreshing={attendance.isFetching}
-          updatedAt={attendance.dataUpdatedAt}
-          selectedId={params.get("event")}
-          onSelect={selectEvent}
-          onDayChange={setDay}
-          onRefresh={attendance.refresh}
-          kiosk={kiosk}
-        />
-      )}
-      {deskView === "courts" && (
-        <OpsDashboard
-          embedded
-          timeZone={venue?.timezone}
-          venueName={venue?.name ?? group.name}
-          day={day}
-          now={now}
-          isToday={isToday}
-          loading={dayLoading}
-          closed={closed}
-          statuses={statuses}
-          summary={summary}
-          gaps={gaps}
-          grid={grid}
-          accent={chrome?.accentHex}
-          canManage={canManageVenue(venueRole) || isOwner}
-          canCreateProgram={canCreateProgram}
-          canScheduleSlot={modules.booking || canCreateProgram}
-          onBack={() => navigate(`/player/community/group/${groupId}`)}
-          onSettings={() =>
-            navigate(`/player/community/group/${groupId}/manage`)
-          }
-          onCloseCourt={() => {
-            setCloseCourtId(null);
-            setCloseOpen(true);
-          }}
-          onCreateProgram={() =>
-            navigate(`/player/community/group/${groupId}/events/manage`)
-          }
-          onPickCourt={(courtId) => {
-            const status = statuses.find((s) => s.court.id === courtId);
-            // Tapping a live court goes to what's on it; tapping a free one is a
-            // request to put something there.
-            if (status?.current) {
-              const session = sessions.find((s) => s.id === status.current!.id);
-              if (session?.parent_event_id) {
-                selectEvent(session.parent_event_id);
-              } else setSessionId(status.current.id);
-            } else {
-              const nextSlot = grid
-                .find((c) => c.court.id === courtId)
-                ?.slots.find((s) => s.bookable);
-              if (nextSlot) {
-                openSlot(courtId, nextSlot.start);
+      <VenueOpsHeader
+        identity={{
+          name: venue?.name ?? group.name,
+          logoUrl: venue?.logo_url ?? group.icon_url,
+          logoShape: venue?.logo_shape,
+          logoImageFit: venue?.logo_image_fit,
+          secondaryColor: venue?.secondary_color,
+          logoBackgroundColor: venue?.logo_background_color,
+        }}
+        timeZone={venue?.timezone}
+        now={now}
+        kiosk={kiosk}
+        view={deskView}
+        onViewChange={setDeskView}
+        onToggleKiosk={toggleKiosk}
+      />
+      <div
+        className={
+          kiosk ? "mx-auto max-w-[1680px] p-4 sm:p-6 lg:p-8" : undefined
+        }
+      >
+        {deskView === "attendance" && (
+          <AttendanceDesk
+            data={attendance.data}
+            day={day}
+            timeZone={venue?.timezone}
+            loading={attendance.isLoading}
+            failed={attendance.isError}
+            refreshing={attendance.isFetching}
+            updatedAt={attendance.dataUpdatedAt}
+            selectedId={params.get("event")}
+            onSelect={selectEvent}
+            onDayChange={setDay}
+            onRefresh={attendance.refresh}
+            kiosk={kiosk}
+          />
+        )}
+        {deskView === "courts" && (
+          <OpsDashboard
+            embedded
+            kiosk={kiosk}
+            timeZone={venue?.timezone}
+            venueName={venue?.name ?? group.name}
+            day={day}
+            now={now}
+            isToday={isToday}
+            loading={dayLoading}
+            closed={closed}
+            statuses={statuses}
+            summary={summary}
+            gaps={gaps}
+            grid={grid}
+            accent={chrome?.accentHex}
+            canManage={canManageVenue(venueRole) || isOwner}
+            canCreateProgram={canCreateProgram}
+            canScheduleSlot={modules.booking || canCreateProgram}
+            onBack={() => navigate(`/player/community/group/${groupId}`)}
+            onSettings={() =>
+              navigate(`/player/community/group/${groupId}/manage`)
+            }
+            onCloseCourt={() => {
+              setCloseCourtId(null);
+              setCloseOpen(true);
+            }}
+            onCreateProgram={() =>
+              navigate(`/player/community/group/${groupId}/events/manage`)
+            }
+            onPickCourt={(courtId) => {
+              const status = statuses.find((s) => s.court.id === courtId);
+              // Tapping a live court goes to what's on it; tapping a free one is a
+              // request to put something there.
+              if (status?.current) {
+                const session = sessions.find(
+                  (s) => s.id === status.current!.id
+                );
+                if (session?.parent_event_id) {
+                  selectEvent(session.parent_event_id);
+                } else setSessionId(status.current.id);
+              } else {
+                const nextSlot = grid
+                  .find((c) => c.court.id === courtId)
+                  ?.slots.find((s) => s.bookable);
+                if (nextSlot) {
+                  openSlot(courtId, nextSlot.start);
+                }
               }
-            }
-          }}
-          onDayChange={setDay}
-          onPickSlot={openSlot}
-          onPickSession={(id) => {
-            const session = sessions.find((s) => s.id === id);
-            const eventId =
-              session?.parent_event_id ??
-              (session?.event_format !== "reservation" &&
-              session?.event_format !== "maintenance"
-                ? session?.id
-                : null);
-            if (eventId) {
-              selectEvent(eventId);
-            } else setSessionId(id);
-          }}
-          onFillGap={(gap) => {
-            if (canCreateProgram) {
-              manageEvent(gap.start, gap.end, gap.court.id);
-            } else {
-              openSlot(gap.court.id, gap.start);
-            }
-          }}
-        />
-      )}
-
+            }}
+            onDayChange={setDay}
+            onPickSlot={openSlot}
+            onPickSession={(id) => {
+              const session = sessions.find((s) => s.id === id);
+              const eventId =
+                session?.parent_event_id ??
+                (session?.event_format !== "reservation" &&
+                session?.event_format !== "maintenance"
+                  ? session?.id
+                  : null);
+              if (eventId) {
+                selectEvent(eventId);
+              } else setSessionId(id);
+            }}
+            onFillGap={(gap) => {
+              if (canCreateProgram) {
+                manageEvent(gap.start, gap.end, gap.court.id);
+              } else {
+                openSlot(gap.court.id, gap.start);
+              }
+            }}
+          />
+        )}
+      </div>
       {group.venue_id && (
         <>
           <CloseCourtDialog

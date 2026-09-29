@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  Clock3,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Download,
   RefreshCw,
   Search,
-  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,18 +176,33 @@ export function AttendanceDesk({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Welcome your players
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            {kiosk
+              ? day.toLocaleDateString([], {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })
+              : "Welcome your players"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Event attendance · {timeZone ?? data?.timezone ?? "Venue time"}
+            {kiosk
+              ? "Choose an event. Check in your players."
+              : `Event attendance · ${
+                  timeZone ?? data?.timezone ?? "Venue time"
+                }`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div
+          className={cn(
+            "flex items-center gap-1.5",
+            kiosk ? "w-full flex-nowrap sm:w-auto" : "flex-wrap"
+          )}
+        >
           <Button
             variant="outline"
             size="icon"
-            className="h-11 w-11"
+            className="h-11 w-11 shrink-0"
             aria-label="Previous operating day"
             disabled={busy}
             onClick={() => changeDay(-1)}
@@ -196,7 +212,10 @@ export function AttendanceDesk({
           <Input
             type="date"
             aria-label="Operating date"
-            className="h-11 w-auto"
+            className={cn(
+              "h-11 min-w-0",
+              kiosk ? "w-0 flex-1 sm:w-auto sm:flex-none" : "w-auto"
+            )}
             value={dayKey}
             disabled={busy}
             onChange={(e) => {
@@ -207,7 +226,7 @@ export function AttendanceDesk({
           <Button
             variant="outline"
             size="icon"
-            className="h-11 w-11"
+            className="h-11 w-11 shrink-0"
             aria-label="Next operating day"
             disabled={busy}
             onClick={() => changeDay(1)}
@@ -216,7 +235,7 @@ export function AttendanceDesk({
           </Button>
           <Button
             variant="ghost"
-            className="h-11"
+            className={cn("h-11 shrink-0 px-2", kiosk && "max-[360px]:hidden")}
             disabled={busy}
             onClick={() => onDayChange(venueCalendarNow(timeZone))}
           >
@@ -225,7 +244,7 @@ export function AttendanceDesk({
           <Button
             variant="outline"
             size="icon"
-            className="h-11 w-11"
+            className="h-11 w-11 shrink-0"
             aria-label="Refresh attendance"
             disabled={refreshing || busy}
             onClick={() => void onRefresh()}
@@ -247,14 +266,16 @@ export function AttendanceDesk({
           )}
         </div>
       </div>
-      <p className="text-sm font-medium">
-        {day.toLocaleDateString([], {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })}
-      </p>
+      {!kiosk && (
+        <p className="text-sm font-medium">
+          {day.toLocaleDateString([], {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+      )}
       {loading ? (
         <p role="status" className="rounded-2xl border p-8">
           Loading the day’s registrations…
@@ -274,133 +295,240 @@ export function AttendanceDesk({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
             {[
-              [
-                totals.registrations,
-                "Confirmed places",
-                "Across all active events",
-              ],
-              [totals.checkedIn, "Checked in", "Arrivals recorded"],
-              [totals.expected, "Unmarked", "Awaiting arrival or review"],
-              [totals.noShows, "No-shows", "Recorded after events end"],
-            ].map(([value, label, hint]) => (
-              <div key={label} className="rounded-2xl border bg-card px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {label}
-                </p>
-                <p className="mt-2 text-3xl font-semibold tabular-nums">
+              {
+                value: totals.registrations,
+                label: "Confirmed places",
+                hint: "Across active events",
+                featured: false,
+              },
+              {
+                value: totals.checkedIn,
+                label: "Checked in",
+                hint: "Arrivals recorded",
+                featured: true,
+              },
+              {
+                value: totals.expected,
+                label: "Unmarked",
+                hint: "Awaiting arrival or review",
+                featured: false,
+              },
+              {
+                value: totals.noShows,
+                label: "No-shows",
+                hint: "Recorded after events end",
+                featured: false,
+              },
+            ].map(({ value, label, hint, featured }) => (
+              <div
+                key={label}
+                className={cn(
+                  "rounded-2xl border bg-card px-4 py-3 sm:px-5",
+                  featured &&
+                    "border-primary bg-primary text-primary-foreground"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      !featured && "text-muted-foreground"
+                    )}
+                  >
+                    {label}
+                  </p>
+                  {featured && <Check className="h-4 w-4" aria-hidden />}
+                </div>
+                <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">
                   {value}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+                <p
+                  className={cn(
+                    "mt-1 hidden text-xs sm:block",
+                    !featured && "text-muted-foreground"
+                  )}
+                >
+                  {hint}
+                </p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Totals count event registrations; a player in two events counts
-            twice.{" "}
-            {updatedAt
-              ? `Updated ${formatSlotTime(
-                  new Date(updatedAt),
-                  timeZone
-                )} · refreshes every 15 seconds.`
-              : ""}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>Totals count registrations across events.</p>
+            <p>
+              {refreshing
+                ? "Updating attendance…"
+                : updatedAt
+                ? `Updated ${formatSlotTime(new Date(updatedAt), timeZone)}`
+                : "Refreshes automatically"}
+            </p>
+          </div>
           <div className="relative">
-            <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
             <Input
-              className="h-12 pl-10"
+              className="h-[52px] rounded-xl bg-card pl-12 text-base"
               aria-label="Search events or players"
               placeholder="Find an event or player…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.5fr)]">
-            <nav
-              aria-label="Day’s events"
-              className="max-h-[540px] space-y-2 overflow-y-auto pr-1"
-            >
-              {(needle ? matches : events).map((e) => {
-                const t = attendanceTotals([e]);
-                return (
-                  <button
-                    type="button"
-                    key={e.id}
-                    disabled={busy}
-                    aria-current={selected?.id === e.id ? "true" : undefined}
-                    onClick={() => onSelect(e.id)}
-                    className={cn(
-                      "w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted/50",
-                      selected?.id === e.id &&
-                        "border-primary ring-1 ring-primary"
-                    )}
-                  >
-                    <p className="text-xs font-semibold tabular-nums text-muted-foreground">
-                      {formatSlotTime(new Date(e.start_time), timeZone)} –{" "}
-                      {formatSlotTime(new Date(e.end_time), timeZone)}
-                      {e.canceled_at
-                        ? " · Canceled"
-                        : Date.parse(e.start_time) <=
-                            Date.parse(data.server_now) &&
-                          Date.parse(e.end_time) > Date.parse(data.server_now)
-                        ? " · In progress"
-                        : Date.parse(e.end_time) <= Date.parse(data.server_now)
-                        ? " · Ended"
-                        : ""}
-                    </p>
-                    <p className="mt-2 text-base font-semibold">{e.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {e.courts.join(" · ") || "No courts assigned"}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-                      <span>
-                        {t.checkedIn}/{t.registrations} checked in
-                      </span>
-                      <span>
-                        {e.waitlisted > 0
-                          ? `${e.waitlisted} waitlisted`
-                          : e.event_format.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{
-                          width: `${
-                            t.registrations
-                              ? (100 * t.checkedIn) / t.registrations
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-              {!(needle ? matches : events).length && (
-                <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
-                  {needle
-                    ? "No matching events or players on this date."
-                    : "No events scheduled for this day. Court rentals are shown in the court calendar."}
-                </p>
-              )}
-            </nav>
-            <div className="min-w-0 rounded-2xl border bg-card">
+          <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.5fr)]">
+            <div className="min-w-0">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <h3 className="text-sm font-semibold">Day’s events</h3>
+                <span className="text-xs text-muted-foreground">
+                  {(needle ? matches : events).length} scheduled
+                </span>
+              </div>
+              <nav
+                aria-label="Day’s events"
+                className="flex snap-x gap-3 overflow-x-auto pb-2 lg:max-h-[620px] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1"
+              >
+                {(needle ? matches : events).map((e) => {
+                  const t = attendanceTotals([e]);
+                  const inProgress =
+                    !e.canceled_at &&
+                    Date.parse(e.start_time) <= Date.parse(data.server_now) &&
+                    Date.parse(e.end_time) > Date.parse(data.server_now);
+                  const eventStatus = e.canceled_at
+                    ? "Canceled"
+                    : inProgress
+                    ? "In progress"
+                    : Date.parse(e.end_time) <= Date.parse(data.server_now)
+                    ? "Ended"
+                    : "Upcoming";
+                  return (
+                    <button
+                      type="button"
+                      key={e.id}
+                      disabled={busy}
+                      aria-current={selected?.id === e.id ? "true" : undefined}
+                      onClick={() => onSelect(e.id)}
+                      className={cn(
+                        "w-[min(280px,85%)] shrink-0 snap-start rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 lg:w-full",
+                        selected?.id === e.id &&
+                          "border-ring bg-accent text-accent-foreground shadow-[inset_4px_0_0_hsl(var(--ring))]"
+                      )}
+                    >
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <span className="font-medium capitalize text-muted-foreground">
+                          {e.event_format.replace(/_/g, " ")}
+                        </span>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 font-medium",
+                            inProgress
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground"
+                          )}
+                        >
+                          {eventStatus}
+                        </span>
+                      </div>
+                      <p className="text-base font-semibold tabular-nums">
+                        {formatSlotTime(new Date(e.start_time), timeZone)} –{" "}
+                        {formatSlotTime(new Date(e.end_time), timeZone)}
+                      </p>
+                      <p className="mt-1.5 text-base font-semibold leading-snug">
+                        {e.title}
+                      </p>
+                      <p className="mt-1.5 text-sm text-muted-foreground">
+                        {e.courts.join(" · ") || "No courts assigned"}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+                        <span>
+                          {t.checkedIn}/{t.registrations} checked in
+                        </span>
+                        <span>
+                          {e.waitlisted > 0
+                            ? `${e.waitlisted} waitlisted`
+                            : `${t.expected} unmarked`}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{
+                            width: `${
+                              t.registrations
+                                ? (100 * t.checkedIn) / t.registrations
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+                {!(needle ? matches : events).length && (
+                  <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    {needle
+                      ? "No matching events or players on this date."
+                      : "No events scheduled for this day. Court rentals are shown in the court calendar."}
+                  </p>
+                )}
+              </nav>
+            </div>
+            <div className="min-w-0 overflow-hidden rounded-2xl border bg-card shadow-sm">
               {selected ? (
                 <>
                   <div className="border-b p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold">
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Event check-in
+                        </p>
+                        <h3 className="break-words text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
                           {selected.title}
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {selected.courts.join(" · ") || "No courts assigned"}{" "}
-                          · {selected.attendees.length} confirmed
+                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            {new Date(selected.start_time).toLocaleDateString(
+                              [],
+                              {
+                                timeZone: timeZone ?? data.timezone,
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </span>
+                          <span className="flex items-center gap-2 tabular-nums">
+                            <Clock3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            {formatSlotTime(
+                              new Date(selected.start_time),
+                              timeZone
+                            )}{" "}
+                            –{" "}
+                            {formatSlotTime(
+                              new Date(selected.end_time),
+                              timeZone
+                            )}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {selected.courts.join(" · ") || "No courts assigned"}
                         </p>
                       </div>
-                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <div
+                        className="rounded-xl bg-muted px-3 py-2 text-right"
+                        aria-label={`${selectedTotals.checkedIn} of ${selected.attendees.length} checked in`}
+                      >
+                        <p className="text-xl font-semibold tabular-nums">
+                          {selectedTotals.checkedIn}
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {" "}
+                            / {selected.attendees.length}
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          checked in
+                        </p>
+                      </div>
                     </div>
                     {selected.canceled_at && (
                       <p className="mt-3 text-sm text-destructive">
@@ -416,7 +544,7 @@ export function AttendanceDesk({
                       ).map((value) => (
                         <Button
                           key={value}
-                          className="min-h-11"
+                          className="min-h-11 rounded-full px-3"
                           size="sm"
                           variant={filter === value ? "default" : "outline"}
                           onClick={() => setFilter(value)}
@@ -459,27 +587,43 @@ export function AttendanceDesk({
                           key={a.id}
                           className="flex flex-wrap items-center justify-between gap-3 py-4"
                         >
-                          <div>
-                            <p
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span
+                              aria-hidden
                               className={cn(
-                                "font-semibold",
-                                kiosk && "text-lg"
+                                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-muted text-sm font-semibold",
+                                status === "checked_in" &&
+                                  "border-primary bg-primary text-primary-foreground"
                               )}
                             >
-                              {a.name}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {status === "checked_in"
-                                ? `Checked in · ${formatSlotTime(
-                                    new Date(a.checked_in_at!),
-                                    timeZone
-                                  )}`
-                                : status === "no_show"
-                                ? "No-show"
-                                : ended
-                                ? "Attendance needs review"
-                                : "Expected"}
-                            </p>
+                              {status === "checked_in" ? (
+                                <Check className="h-5 w-5" />
+                              ) : (
+                                a.name.slice(0, 1).toLocaleUpperCase()
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <p
+                                className={cn(
+                                  "break-words font-semibold",
+                                  kiosk && "text-lg"
+                                )}
+                              >
+                                {a.name}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {status === "checked_in"
+                                  ? `Checked in · ${formatSlotTime(
+                                      new Date(a.checked_in_at!),
+                                      timeZone
+                                    )}`
+                                  : status === "no_show"
+                                  ? "No-show"
+                                  : ended
+                                  ? "Attendance needs review"
+                                  : "Expected"}
+                              </p>
+                            </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {status !== "checked_in" && (
