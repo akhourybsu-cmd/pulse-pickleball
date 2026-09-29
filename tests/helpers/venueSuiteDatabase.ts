@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { venueEventDatabase } from "./venueEventDatabase";
-export async function venueSuiteDatabase() {
+import type { PGlite } from "@electric-sql/pglite";
+export async function venueSuiteDatabase(
+  beforeMigrations?: (db: PGlite) => Promise<void>
+) {
   const db = await venueEventDatabase();
+  await beforeMigrations?.(db);
   await db.exec(
     "CREATE TABLE IF NOT EXISTS notification_preferences(user_id uuid,category text,in_app_enabled boolean)"
   );

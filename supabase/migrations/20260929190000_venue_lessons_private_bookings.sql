@@ -1,9 +1,12 @@
 BEGIN;
-CREATE TABLE public.venue_coaches (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),venue_id uuid NOT NULL REFERENCES venues(id),name text NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 120),
- bio text NOT NULL DEFAULT '' CHECK(length(bio)<=2000),hourly_cents integer NOT NULL CHECK(hourly_cents BETWEEN 0 AND 9999999),
- active boolean NOT NULL DEFAULT true,availability jsonb NOT NULL DEFAULT '[]',updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),UNIQUE(venue_id,id)
-);
+-- Extend the existing coach directory without replacing IDs, contact details,
+-- lessons, public views or existing column grants. The legacy price/status
+-- remain authoritative, so both management surfaces see the same values.
+ALTER TABLE public.venue_coaches
+ ADD COLUMN availability jsonb NOT NULL DEFAULT '[]',
+ ADD COLUMN hourly_cents bigint GENERATED ALWAYS AS (round(coalesce(hourly_rate,0)*100)::bigint) STORED,
+ ADD COLUMN active boolean GENERATED ALWAYS AS (coalesce(is_active,false)) STORED,
+ ADD CONSTRAINT venue_coaches_venue_id_id_key UNIQUE(venue_id,id);
 CREATE TABLE public.venue_appointments (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),venue_id uuid NOT NULL REFERENCES venues(id),group_id uuid NOT NULL REFERENCES groups(id),customer_id uuid NOT NULL,
  kind text NOT NULL CHECK(kind IN ('lesson','private_event')),title text NOT NULL CHECK(length(trim(title)) BETWEEN 1 AND 150),
@@ -25,7 +28,7 @@ ALTER TABLE venue_sales DROP CONSTRAINT venue_sale_item_shape;
 ALTER TABLE venue_sales ADD CONSTRAINT venue_sale_item_shape CHECK(product_id IS NOT NULL OR visit_id IS NOT NULL OR appointment_id IS NOT NULL);
 CREATE UNIQUE INDEX venue_appointment_pending_sale ON venue_sales(appointment_id) WHERE status='pending';
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['venue_coaches','venue_appointments'] LOOP
+ FOREACH t IN ARRAY ARRAY['venue_appointments'] LOOP
   EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
   EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC,anon,authenticated',t);
   EXECUTE format('GRANT ALL ON public.%I TO service_role',t);
@@ -38,16 +41,19 @@ DECLARE c venue_coaches;slot jsonb;
 BEGIN
  IF NOT venue_desk_access(p_venue,true) THEN RAISE EXCEPTION 'Venue management access required' USING ERRCODE='42501'; END IF;
  PERFORM id FROM venues WHERE id=p_venue FOR UPDATE;
+ IF (length(trim(p_document->>'name')) BETWEEN 1 AND 120 AND length(coalesce(p_document->>'bio',''))<=2000
+  AND (p_document->>'hourly_cents')::integer BETWEEN 0 AND 9999999 AND jsonb_typeof(p_document->'active')='boolean') IS NOT TRUE
+ THEN RAISE EXCEPTION 'Enter a coach name, a valid hourly price and active status'; END IF;
  IF jsonb_typeof(p_document->'availability') IS DISTINCT FROM 'array' OR jsonb_array_length(p_document->'availability')>50 THEN RAISE EXCEPTION 'Add weekly availability windows'; END IF;
  FOR slot IN SELECT value FROM jsonb_array_elements(p_document->'availability') LOOP
   IF ((slot->>'weekday')::integer BETWEEN 0 AND 6 AND (slot->>'start_minute')::integer BETWEEN 0 AND 1439 AND (slot->>'end_minute')::integer BETWEEN 1 AND 1440 AND (slot->>'end_minute')::integer>(slot->>'start_minute')::integer) IS NOT TRUE THEN RAISE EXCEPTION 'Choose a valid weekday and availability window'; END IF;
  END LOOP;
  IF p_id IS NULL THEN
-  INSERT INTO venue_coaches(venue_id,name,bio,hourly_cents,active,availability) VALUES(p_venue,trim(p_document->>'name'),coalesce(p_document->>'bio',''),(p_document->>'hourly_cents')::integer,(p_document->>'active')::boolean,p_document->'availability') RETURNING * INTO c;
+  INSERT INTO venue_coaches(venue_id,name,bio,hourly_rate,is_active,availability) VALUES(p_venue,trim(p_document->>'name'),coalesce(p_document->>'bio',''),(p_document->>'hourly_cents')::numeric/100,(p_document->>'active')::boolean,p_document->'availability') RETURNING * INTO c;
  ELSE
   SELECT * INTO c FROM venue_coaches WHERE id=p_id AND venue_id=p_venue FOR UPDATE;
   IF NOT FOUND OR c.updated_at IS DISTINCT FROM p_expected THEN RAISE EXCEPTION 'Coach changed. Refresh before saving.' USING ERRCODE='40001'; END IF;
-  UPDATE venue_coaches SET name=trim(p_document->>'name'),bio=coalesce(p_document->>'bio',''),hourly_cents=(p_document->>'hourly_cents')::integer,active=(p_document->>'active')::boolean,availability=p_document->'availability',updated_at=clock_timestamp() WHERE id=c.id RETURNING * INTO c;
+  UPDATE venue_coaches SET name=trim(p_document->>'name'),bio=coalesce(p_document->>'bio',''),hourly_rate=(p_document->>'hourly_cents')::numeric/100,is_active=(p_document->>'active')::boolean,availability=p_document->'availability',updated_at=clock_timestamp() WHERE id=c.id RETURNING * INTO c;
  END IF;
  RETURN c;
 END $$;
@@ -65,6 +71,9 @@ BEGIN
  IF day_hours='null'::jsonb OR local_start<local_start::date+opens OR local_end>local_start::date+closes OR EXISTS(SELECT 1 FROM venue_holiday_closures WHERE venue_id=v.id AND day BETWEEN local_start::date AND (local_end-interval '1 microsecond')::date) THEN RAISE EXCEPTION 'Choose a time within venue hours on an open date'; END IF;
  PERFORM id FROM venue_courts WHERE id=ANY(a.court_ids) ORDER BY id FOR UPDATE;
  IF cardinality(a.court_ids)<>(SELECT count(*) FROM venue_courts WHERE id=ANY(a.court_ids) AND venue_id=v.id AND is_active) THEN RAISE EXCEPTION 'Choose distinct active courts at this venue'; END IF;
+ IF EXISTS(SELECT 1 FROM venue_bookings WHERE court_id=ANY(a.court_ids) AND status IN ('pending','confirmed') AND tstzrange(start_time,end_time,'[)')&&tstzrange(a.start_time,a.end_time,'[)'))
+  OR EXISTS(SELECT 1 FROM venue_lessons WHERE (court_id=ANY(a.court_ids) OR coach_id=a.coach_id) AND status IN ('scheduled','in_progress') AND tstzrange(start_time,end_time,'[)')&&tstzrange(a.start_time,a.end_time,'[)'))
+ THEN RAISE EXCEPTION 'A requested court or coach already has a booking' USING ERRCODE='23P01'; END IF;
  IF EXISTS(SELECT 1 FROM group_events WHERE venue_court_id=ANY(a.court_ids) AND venue_appointment_id IS DISTINCT FROM a.id AND canceled_at IS NULL AND tstzrange(start_time,end_time,'[)')&&tstzrange(a.start_time,a.end_time,'[)')) OR EXISTS(SELECT 1 FROM payment_orders WHERE court_id=ANY(a.court_ids) AND status='pending' AND livemode AND tstzrange(start_time,end_time,'[)')&&tstzrange(a.start_time,a.end_time,'[)')) THEN RAISE EXCEPTION 'A requested court is already booked or held for checkout' USING ERRCODE='23P01'; END IF;
  IF a.coach_id IS NOT NULL THEN
   SELECT * INTO c FROM venue_coaches WHERE id=a.coach_id AND venue_id=v.id FOR UPDATE;

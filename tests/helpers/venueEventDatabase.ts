@@ -22,6 +22,17 @@ export async function venueEventDatabase() {
     GRANT SELECT ON venues,groups,group_members,venue_courts TO authenticated;
     GRANT ALL ON group_events TO authenticated,service_role;
   `);
+  const legacyVenueSql = readFileSync(
+    "supabase/migrations/20251223010423_da2572a8-8021-44d0-a5e2-f68101a7bbf1.sql",
+    "utf8"
+  );
+  for (const table of ["venue_coaches", "venue_lessons", "venue_bookings"]) {
+    const definition = legacyVenueSql.match(
+      new RegExp(`CREATE TABLE public\\.${table} \\([\\s\\S]*?\\n\\);`)
+    );
+    if (!definition) throw new Error(`Missing legacy ${table} definition`);
+    await db.exec(definition[0]);
+  }
   await db.exec(
     readFileSync(
       "supabase/migrations/20260918100000_payment_foundation.sql",
