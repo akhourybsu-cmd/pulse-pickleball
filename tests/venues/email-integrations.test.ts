@@ -98,6 +98,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20260929235800_venue_email_mfa_policies.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 beforeEach(async () => {
   await db.exec(
@@ -148,6 +154,15 @@ it("isolates settings, keys and outbox from guests, players and desk staff", asy
   );
   await db.exec("SELECT set_config('test.mfa_required','unverified',false)");
   await expect(workspace()).rejects.toThrow(/management access/);
+});
+it("meets the production MFA policy invariant for all four private email tables", async () => {
+  const rows = (
+    await db.query<{ table_name: string }>(`SELECT c.relname AS table_name
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname IN ('venue_email_connections','venue_email_preferences','venue_email_campaigns','venue_email_outbox')
+    AND (NOT c.relrowsecurity OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polname='pulse_required_mfa' AND NOT p.polpermissive))`)
+  ).rows;
+  expect(rows).toEqual([]);
 });
 it("rejects cross-venue, unverified and sample connections and untested activation", async () => {
   await expect(
