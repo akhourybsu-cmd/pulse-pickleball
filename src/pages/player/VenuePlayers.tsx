@@ -33,7 +33,13 @@ import { formatMoney } from "@/lib/payments";
 
 export default function VenuePlayers({
   embedded = false,
-}: { embedded?: boolean } = {}) {
+  initialPlayer,
+  onOpenDesk,
+}: {
+  embedded?: boolean;
+  initialPlayer?: string;
+  onOpenDesk?: (player?: string) => void;
+} = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
@@ -43,9 +49,11 @@ export default function VenuePlayers({
   const venue = group?.venue_id;
   const timezone = group?.venue?.timezone || "America/New_York";
   const [routeParams, setRouteParams] = useSearchParams();
-  const [localParams, setLocalParams] = useState(
-    () => new URLSearchParams(routeParams),
-  );
+  const [localParams, setLocalParams] = useState(() => {
+    const next = new URLSearchParams(routeParams);
+    if (initialPlayer) next.set("player", initialPlayer);
+    return next;
+  });
   const params = embedded ? localParams : routeParams;
   const setParams = (next: Record<string, string>) =>
     embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
@@ -546,6 +554,14 @@ export default function VenuePlayers({
                   <Link
                     className="mt-3 inline-block text-sm underline"
                     to={`/player/community/group/${groupId}/desk?player=${p.player.id}`}
+                    onClick={
+                      onOpenDesk
+                        ? (e) => {
+                            e.preventDefault();
+                            onOpenDesk(p.player.id);
+                          }
+                        : undefined
+                    }
                   >
                     Manage purchases and benefits
                   </Link>

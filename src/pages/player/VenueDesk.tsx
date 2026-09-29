@@ -37,7 +37,13 @@ import { VenueDeskFollowup } from "@/components/venue/VenueDeskFollowup";
 const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 export default function VenueDesk({
   embedded = false,
-}: { embedded?: boolean } = {}) {
+  initialPlayer,
+  onOpenPlayers,
+}: {
+  embedded?: boolean;
+  initialPlayer?: string;
+  onOpenPlayers?: (player?: string) => void;
+} = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
@@ -46,9 +52,11 @@ export default function VenueDesk({
   const timezone = group?.venue?.timezone || "America/New_York";
   const today = localVenueDay(timezone);
   const [routeParams, setRouteParams] = useSearchParams();
-  const [localParams, setLocalParams] = useState(
-    () => new URLSearchParams(routeParams),
-  );
+  const [localParams, setLocalParams] = useState(() => {
+    const next = new URLSearchParams(routeParams);
+    if (initialPlayer) next.set("player", initialPlayer);
+    return next;
+  });
   const params = embedded ? localParams : routeParams;
   const setParams = (next: Record<string, string>) =>
     embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
@@ -129,7 +137,17 @@ export default function VenueDesk({
         description="Sell passes, manage member benefits and reconcile your cash day."
       >
         <Button asChild variant="outline">
-          <Link to={`/player/community/group/${groupId}/players`}>
+          <Link
+            to={`/player/community/group/${groupId}/players`}
+            onClick={
+              onOpenPlayers
+                ? (e) => {
+                    e.preventDefault();
+                    onOpenPlayers(customer || undefined);
+                  }
+                : undefined
+            }
+          >
             Player directory
           </Link>
         </Button>

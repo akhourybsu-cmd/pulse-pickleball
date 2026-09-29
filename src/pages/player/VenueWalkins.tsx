@@ -55,7 +55,17 @@ interface WalkinDay {
 const selectClass = "h-11 w-full rounded-md border bg-background px-3 text-sm";
 export default function VenueWalkins({
   embedded = false,
-}: { embedded?: boolean } = {}) {
+  initialPlayer,
+  onOpenPlayers,
+  onOpenDesk,
+  onClose,
+}: {
+  embedded?: boolean;
+  initialPlayer?: string;
+  onOpenPlayers?: (player?: string) => void;
+  onOpenDesk?: (player?: string) => void;
+  onClose?: () => void;
+} = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
@@ -63,9 +73,11 @@ export default function VenueWalkins({
   const venue = group?.venue_id,
     tz = group?.venue?.timezone || "America/New_York";
   const [routeParams, setRouteParams] = useSearchParams();
-  const [localParams, setLocalParams] = useState(
-    () => new URLSearchParams(routeParams),
-  );
+  const [localParams, setLocalParams] = useState(() => {
+    const next = new URLSearchParams(routeParams);
+    if (initialPlayer) next.set("player", initialPlayer);
+    return next;
+  });
   const params = embedded ? localParams : routeParams;
   const setParams = (next: Record<string, string>) =>
     embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
@@ -182,7 +194,17 @@ export default function VenueWalkins({
         description="Register guests, reserve their space and keep the day’s attendance current."
       >
         <Button asChild variant="outline">
-          <Link to={`/player/community/group/${groupId}/ops?day=${day}`}>
+          <Link
+            to={`/player/community/group/${groupId}/ops?day=${day}`}
+            onClick={
+              onClose
+                ? (e) => {
+                    e.preventDefault();
+                    onClose();
+                  }
+                : undefined
+            }
+          >
             Open operations calendar
           </Link>
         </Button>
@@ -286,6 +308,14 @@ export default function VenueWalkins({
               <Link
                 className="inline-block text-sm underline"
                 to={`/player/community/group/${groupId}/players`}
+                onClick={
+                  onOpenPlayers
+                    ? (e) => {
+                        e.preventDefault();
+                        onOpenPlayers();
+                      }
+                    : undefined
+                }
               >
                 Add a new guest or update contact details
               </Link>
@@ -550,6 +580,14 @@ export default function VenueWalkins({
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
                       to={`/player/community/group/${groupId}/players?player=${v.customer_id}`}
+                      onClick={
+                        onOpenPlayers
+                          ? (e) => {
+                              e.preventDefault();
+                              onOpenPlayers(v.customer_id);
+                            }
+                          : undefined
+                      }
                     >
                       <Button variant="outline" size="sm">
                         Player & documents
@@ -558,6 +596,14 @@ export default function VenueWalkins({
                     {v.method !== "free" && (
                       <Link
                         to={`/player/community/group/${groupId}/desk?player=${v.customer_id}&day=${day}`}
+                        onClick={
+                          onOpenDesk
+                            ? (e) => {
+                                e.preventDefault();
+                                onOpenDesk(v.customer_id);
+                              }
+                            : undefined
+                        }
                       >
                         <Button variant="outline" size="sm">
                           Payment / pass

@@ -1,3 +1,4 @@
+import { VenueAdminPageContext } from "@/components/venue/VenueAdminPageHeader";
 import VenuePlayers from "./VenuePlayers";
 import VenueWalkins from "./VenueWalkins";
 import VenueDesk from "./VenueDesk";
@@ -68,6 +69,14 @@ export default function VenueOps() {
   const [deskTool, setDeskTool] = useState<
     "walkins" | "payments" | "players" | null
   >(null);
+  const [deskPlayer, setDeskPlayer] = useState<string | undefined>();
+  const openDeskTool = (
+    tool: "walkins" | "players" | "payments",
+    player?: string,
+  ) => {
+    setDeskPlayer(player);
+    setDeskTool(tool);
+  };
   const kiosk = params.get("kiosk") === "1";
   const deskView = params.get("view") === "courts" ? "courts" : "attendance";
   const setDeskView = (view: "attendance" | "courts") => {
@@ -310,13 +319,13 @@ export default function VenueOps() {
           aria-label="Daily desk shortcuts"
           className="flex flex-wrap gap-2 px-4 py-3"
         >
-          <Button variant="outline" onClick={() => setDeskTool("walkins")}>
+          <Button variant="outline" onClick={() => openDeskTool("walkins")}>
             Walk-ins & guest check-in
           </Button>
-          <Button variant="outline" onClick={() => setDeskTool("players")}>
+          <Button variant="outline" onClick={() => openDeskTool("players")}>
             Players & waivers
           </Button>
-          <Button variant="outline" onClick={() => setDeskTool("payments")}>
+          <Button variant="outline" onClick={() => openDeskTool("payments")}>
             Collect payment
           </Button>
           <Button
@@ -535,13 +544,32 @@ export default function VenueOps() {
                 kiosk.
               </DialogDescription>
             </DialogHeader>
-            {deskTool === "walkins" ? (
-              <VenueWalkins embedded />
-            ) : deskTool === "players" ? (
-              <VenuePlayers embedded />
-            ) : (
-              <VenueDesk embedded />
-            )}
+            <VenueAdminPageContext.Provider value={null}>
+              {deskTool === "walkins" ? (
+                <VenueWalkins
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenPlayers={(id) => openDeskTool("players", id)}
+                  onOpenDesk={(id) => openDeskTool("payments", id)}
+                  onClose={() => setDeskTool(null)}
+                />
+              ) : deskTool === "players" ? (
+                <VenuePlayers
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenDesk={(id) => openDeskTool("payments", id)}
+                />
+              ) : (
+                <VenueDesk
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenPlayers={(id) => openDeskTool("players", id)}
+                />
+              )}
+            </VenueAdminPageContext.Provider>
           </DialogContent>
         </Dialog>
       )}
