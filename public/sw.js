@@ -3,6 +3,16 @@ const urlsToCache = [
   '/pulse-icon-192.png'
 ];
 
+// Hosting rewrites missing asset URLs to index.html with status 200. Caching that
+// response under an immutable JS/CSS URL makes a failed route fail on every retry.
+function usableAsset(response, pathname) {
+  if (!response || !response.ok || response.type !== 'basic' || response.redirected) return false;
+  const mime = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (/\.m?js$/.test(pathname)) return /^(?:text|application)\/(?:javascript|ecmascript)$/.test(mime);
+  if (/\.css$/.test(pathname)) return mime === 'text/css';
+  return !!mime && mime !== 'text/html';
+}
+
 // Install - cache resources
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -18,7 +28,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_VERSION) {
+          if (cacheName.startsWith('pulse-') && cacheName !== CACHE_VERSION) {
             return caches.delete(cacheName);
           }
         })
@@ -69,10 +79,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE_VERSION).then(async (cache) => {
         const cached = await cache.match(event.request);
-        if (cached) return cached;
+        if (usableAsset(cached, url.pathname)) return cached;
+        if (cached) await cache.delete(event.request);
 
-        const response = await fetch(event.request);
-        if (response && response.ok && response.type === 'basic') {
+        const response = await fetch(event.request, cached ? { cache: 'reload' } : undefined);
+        if (usableAsset(response, url.pathname)) {
           void cache.put(event.request, response.clone()).catch(() => {});
         }
         return response;
