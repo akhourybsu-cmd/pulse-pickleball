@@ -146,6 +146,7 @@ const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const VenueEmailUnsubscribe = lazy(() => import("./pages/VenueEmailUnsubscribe"));
 const ClaimGuest = lazy(() => import("./pages/ClaimGuest"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -487,6 +488,7 @@ const AppContent = () => {
           <Route path="/pickleball-guide" element={<PickleballGuide />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
+          <Route path="/venue-email/unsubscribe" element={<VenueEmailUnsubscribe />} />
           <Route path="/claim-guest/:token" element={<ClaimGuest />} />
           <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />

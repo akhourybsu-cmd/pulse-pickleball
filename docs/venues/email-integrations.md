@@ -26,7 +26,7 @@ Players opt in under the venue's **Notifications → Venue email updates**. This
 
 - `venue-email`: authenticated connection/save/test/disconnect endpoint; current user, MFA and venue authority are checked before service operations.
 - `venue-email-delivery`: server-only worker called each minute using the existing database-generated scheduler secret.
-- `venue-email-unsubscribe`: token-specific preference update. GET displays a confirmation; POST performs the update, including one-click email-client requests.
+- `venue-email-unsubscribe`: token-specific preference API. GET redirects to the public PULSE confirmation page without changing consent; POST performs the update, including one-click email-client requests. The browser confirmation lives at `/venue-email/unsubscribe` because Supabase’s shared API domains do not serve HTML pages.
 - Four private tables: connections, preferences, campaigns and outbox. Raw tables and credential RPCs are closed to browser roles. All management reads and writes check venue authority.
 - Preview fingerprints detect audience changes; campaign request IDs deduplicate retries. Consent and venue authorization are checked again before dispatch.
 - Outbox leases fence workers. Explicit provider rate limits retry up to five attempts. Uncertain network/server outcomes become **Check provider activity** and are not automatically resent. Resend requests additionally use a stable idempotency key.

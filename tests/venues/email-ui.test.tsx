@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { it, expect, vi } from "vitest";
 import { VenueEmailSetup } from "@/components/venue/VenueEmailIntegration";
 import type { VenueEmailWorkspace } from "@/lib/venues/email";
+import VenueEmailUnsubscribe from "@/pages/VenueEmailUnsubscribe";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 const w: VenueEmailWorkspace = {
   eligible: true,
@@ -63,4 +64,25 @@ it("requires a saved successful test before activating and never claims inbox de
   expect(html).toMatch(/disabled=""[^>]*>Enable venue email/);
   expect(html).toContain("does not confirm inbox delivery");
   expect(html).toContain("Saved securely");
+});
+it("offers an explicit unsubscribe confirmation without sending a request on page load", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter
+      initialEntries={[
+        "/venue-email/unsubscribe?token=81000000-0000-4000-8000-000000000005",
+      ]}
+    >
+      <VenueEmailUnsubscribe />
+    </MemoryRouter>,
+  );
+  expect(html).toContain("Unsubscribe from this venue");
+  expect(html).toContain("bookings and other venues");
+  expect(html).not.toContain("You’re unsubscribed");
+  const invalid = renderToStaticMarkup(
+    <MemoryRouter>
+      <VenueEmailUnsubscribe />
+    </MemoryRouter>,
+  );
+  expect(invalid).toContain("This link is invalid");
+  expect(invalid).not.toContain("<button");
 });

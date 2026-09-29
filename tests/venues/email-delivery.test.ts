@@ -260,7 +260,7 @@ it("dispatches server-selected recipients and branded content, and finishes the 
     id: "job",
   });
   expect(deliver.mock.calls[0][0].html).toContain(
-    "venue-email-unsubscribe?token=token",
+    "pulsepb.com/venue-email/unsubscribe?token=token",
   );
   expect(rpc.mock.calls[1]).toEqual([
     "venue_email_finish",

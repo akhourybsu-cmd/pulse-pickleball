@@ -19,8 +19,8 @@ Deno.serve(
   createVenueEmailHandler({
     rpc,
     async authorize(req, venue) {
-      const denial = await requireCallerMfa(req);
-      if (denial) return denial;
+      const mfaDenial = await requireCallerMfa(req);
+      if (mfaDenial) return mfaDenial;
       const caller = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
         global: {
           headers: { Authorization: req.headers.get("Authorization") || "" },

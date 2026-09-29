@@ -29,7 +29,9 @@ export async function processVenueEmail(
       body: j.body,
       footer: j.footer,
       venueUrl: j.venue_url,
-      unsubscribeUrl,
+      unsubscribeUrl: unsubscribeUrl
+        ? `https://pulsepb.com/venue-email/unsubscribe?token=${j.unsubscribe_token}`
+        : undefined,
     });
     const key = c.provider === "pulse" ? deps.managedKey : claim.key;
     let result: DeliveryResult;
