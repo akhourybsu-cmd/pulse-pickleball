@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { checked, env, options, runtime } from "../_shared/payment-runtime.ts";
 import { objectId, reconcileOrder } from "../_shared/payment-checkout.ts";
-import { accountSnapshot } from '../_shared/payment-connect.ts';
-import { recordSettledCharge } from '../_shared/payment-refunds.ts';
+import { accountSnapshot } from "../_shared/payment-connect.ts";
+import { recordSettledCharge } from "../_shared/payment-refunds.ts";
 
 serve(async (req) => {
   if (req.method !== "POST")
@@ -72,9 +72,25 @@ serve(async (req) => {
         );
         await reconcileOrder(r, order, payload.id);
       }
-    } else if (event.type === 'account.application.deauthorized' && event.account) {
+    } else if (
+      event.type === "account.application.deauthorized" &&
+      event.account
+    ) {
       // Keep historical account references, but stop all new collections.
-      checked(await r.store.from('venue_payment_accounts').update({ charges_enabled: false, payouts_enabled: false, card_payments_active: false, disconnected_at: new Date().toISOString(), disabled_reason: 'platform_connection_revoked', updated_at: new Date().toISOString() }).eq('account_id', account).eq('livemode', r.livemode));
+      checked(
+        await r.store
+          .from("venue_payment_accounts")
+          .update({
+            charges_enabled: false,
+            payouts_enabled: false,
+            card_payments_active: false,
+            disconnected_at: new Date().toISOString(),
+            disabled_reason: "platform_connection_revoked",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("account_id", account)
+          .eq("livemode", r.livemode)
+      );
     } else if (event.type === "account.updated" && event.account) {
       const current = await r.stripe.accounts.retrieve(account);
       checked(
@@ -126,7 +142,9 @@ serve(async (req) => {
           if (
             intent.status !== "succeeded" ||
             intent.currency !== "usd" ||
-            intent.amount_received !== 1000
+            intent.amount_received !== order.amount_cents ||
+            invoice.amount_paid !== order.amount_cents ||
+            invoice.currency !== order.currency
           )
             throw new Error("Invoice payment mismatch");
           checked(
@@ -166,7 +184,8 @@ serve(async (req) => {
       // extend access; cancellations retain only the already-paid-through period.
     } else if (
       event.type === "charge.refunded" ||
-      event.type.startsWith("charge.dispute.") || event.type.startsWith('refund.')
+      event.type.startsWith("charge.dispute.") ||
+      event.type.startsWith("refund.")
     ) {
       const chargeId =
         event.type === "charge.refunded"
@@ -199,17 +218,15 @@ serve(async (req) => {
     // Operations above are individually transactional/idempotent. Mark only
     // after success; a crash before this insert is safe to replay.
     checked(
-      await r.store
-        .from("payment_webhook_events")
-        .upsert(
-          {
-            account_id: account,
-            livemode: r.livemode,
-            event_id: event.id,
-            event_type: event.type,
-          },
-          { onConflict: "account_id,livemode,event_id", ignoreDuplicates: true }
-        )
+      await r.store.from("payment_webhook_events").upsert(
+        {
+          account_id: account,
+          livemode: r.livemode,
+          event_id: event.id,
+          event_type: event.type,
+        },
+        { onConflict: "account_id,livemode,event_id", ignoreDuplicates: true }
+      )
     );
     return new Response("Processed");
   } catch {

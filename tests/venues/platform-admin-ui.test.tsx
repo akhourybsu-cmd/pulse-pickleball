@@ -47,7 +47,7 @@ describe('platform portal presentation',()=>{
  });
  it('keeps all new routes behind AdminGuard',()=>{
    const routes=readFileSync('src/App.tsx','utf8');
-   for(const route of ['venues','activity','legacy-tools'])expect(routes).toContain('path="/admin/'+route+'" element={<AdminGuard>');
+   for(const route of ['venues','activity','legacy-tools'])expect(routes).toMatch(new RegExp('path="/admin/'+route+'"\\s+element=\\{\\s*<AdminGuard>'));
  });
 });
 describe('feature access validation',()=>{

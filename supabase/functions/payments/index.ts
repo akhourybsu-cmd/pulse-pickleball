@@ -1,5 +1,6 @@
+import { venueDeskPayment } from "../_shared/payment-venue-desk.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { MfaAccessError } from '../_shared/mfa.ts';
+import { MfaAccessError } from "../_shared/mfa.ts";
 import {
   billingMode,
   MODULE_AMOUNT_CENTS,
@@ -22,8 +23,15 @@ import {
   runtime,
 } from "../_shared/payment-runtime.ts";
 import { reconcileOrder, startCheckout } from "../_shared/payment-checkout.ts";
-import { completeExisting, connectExisting, createOrRecoverVenueAccount, merchantPortal, refreshVenueAccount, requireRentalAccount } from '../_shared/payment-connect.ts';
-import { reconcileRefundPayment } from '../_shared/payment-refunds.ts';
+import {
+  completeExisting,
+  connectExisting,
+  createOrRecoverVenueAccount,
+  merchantPortal,
+  refreshVenueAccount,
+  requireRentalAccount,
+} from "../_shared/payment-connect.ts";
+import { reconcileRefundPayment } from "../_shared/payment-refunds.ts";
 
 serve(async (req) => {
   let cors: Record<string, string> = {
@@ -50,10 +58,24 @@ serve(async (req) => {
       configured.mode === "test" && !testAllowed
         ? { ...configured, mode: "off" }
         : configured;
-    const setupIssues = visibleMode.mode === 'off' ? ['PULSE has not enabled payment checkout yet.'] : paymentLaunchIssues(env);
-    const config = { ...visibleMode, ready: setupIssues.length === 0, setup_issues: setupIssues };
-    if (['status', 'venue'].includes(body.action) && config.ready) {
-      try { await runtime(); } catch { config.ready = false; config.setup_issues = ['PULSE could not verify its Stripe connection. Checkout remains unavailable.']; }
+    const setupIssues =
+      visibleMode.mode === "off"
+        ? ["PULSE has not enabled payment checkout yet."]
+        : paymentLaunchIssues(env);
+    const config = {
+      ...visibleMode,
+      ready: setupIssues.length === 0,
+      setup_issues: setupIssues,
+    };
+    if (["status", "venue"].includes(body.action) && config.ready) {
+      try {
+        await runtime();
+      } catch {
+        config.ready = false;
+        config.setup_issues = [
+          "PULSE could not verify its Stripe connection. Checkout remains unavailable.",
+        ];
+      }
     }
     const reply = (value: unknown) =>
       new Response(JSON.stringify(value), { headers: cors });
@@ -71,13 +93,17 @@ serve(async (req) => {
           : 0;
       let query = store
         .from("payment_orders")
-        .select("*,payment_cancellation_requests(status,resolution_note,refund_review_only)")
+        .select(
+          "*,payment_cancellation_requests(status,resolution_note,refund_review_only)"
+        )
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(page * 25, page * 25 + 24);
       if (body.venue_id) {
         await owner(store, user.id, uuid(body.venue_id));
-        query = query.eq("venue_id", body.venue_id).in("kind", ["court_rental", "event_registration"]);
+        query = query
+          .eq("venue_id", body.venue_id)
+          .in("kind", ["court_rental", "event_registration", "venue_sale"]);
       } else query = query.eq("buyer_id", user.id);
       const orders = checked(await query) || [];
       // Older purchases remain visible without inventing missing amounts or
@@ -154,9 +180,7 @@ serve(async (req) => {
           .maybeSingle()
       );
       return reply({
-        paid:
-          !!settings &&
-          Number(court.hourly_rate) > 0,
+        paid: !!settings && Number(court.hourly_rate) > 0,
         hourly_rate: court.hourly_rate || 0,
         policy: settings?.cancellation_policy || "",
         ...config,
@@ -193,8 +217,15 @@ serve(async (req) => {
         account,
         courts,
         transferred: !!account && account.connected_by !== user.id,
-        booking_enabled: !!checked(await store.rpc('venue_has_module', { p_venue_id: venue.id, p_module: 'court_booking' })),
-        connect_existing_available: /^ca_[A-Za-z0-9]+$/.test(env('PULSE_STRIPE_CONNECT_CLIENT_ID') || ''),
+        booking_enabled: !!checked(
+          await store.rpc("venue_has_module", {
+            p_venue_id: venue.id,
+            p_module: "court_booking",
+          })
+        ),
+        connect_existing_available: /^ca_[A-Za-z0-9]+$/.test(
+          env("PULSE_STRIPE_CONNECT_CLIENT_ID") || ""
+        ),
       });
     }
     if (body.action === "save_venue") {
@@ -221,7 +252,10 @@ serve(async (req) => {
           "Confirm that your rates include any applicable taxes."
         );
       if (body.accepting_payments === true) {
-        if (!config.ready) throw new Error('PULSE payment setup must be complete before enabling collections.');
+        if (!config.ready)
+          throw new Error(
+            "PULSE payment setup must be complete before enabling collections."
+          );
         const r = await runtime();
         if (!r.livemode)
           throw new Error(
@@ -245,7 +279,17 @@ serve(async (req) => {
           throw new Error(
             "Complete ownership verification and Stripe onboarding first."
           );
-        if (!checked(await store.rpc('venue_has_module', { p_venue_id: venue.id, p_module: 'court_booking' }))) throw new Error('Enable the court booking feature before accepting rental payments.');
+        if (
+          !checked(
+            await store.rpc("venue_has_module", {
+              p_venue_id: venue.id,
+              p_module: "court_booking",
+            })
+          )
+        )
+          throw new Error(
+            "Enable the court booking feature before accepting rental payments."
+          );
       }
       checked(
         await store.rpc("payment_save_venue", {
@@ -264,13 +308,22 @@ serve(async (req) => {
       return reply({ saved: true });
     }
 
-    if (body.action === 'save_event_payment_settings') {
+    if (body.action === "save_event_payment_settings") {
       const venue = await owner(store, user.id, uuid(body.venue_id));
       if (body.accepting === true) {
-        if (!config.ready || !config.livemode) throw new Error('Live payments must be ready before enabling event payments.');
+        if (!config.ready || !config.livemode)
+          throw new Error(
+            "Live payments must be ready before enabling event payments."
+          );
         await requireRentalAccount(await runtime(), venue.id);
       }
-      checked(await store.rpc('payment_save_event_settings', { p_user: user.id, p_venue: venue.id, p_accepting: body.accepting === true }));
+      checked(
+        await store.rpc("payment_save_event_settings", {
+          p_user: user.id,
+          p_venue: venue.id,
+          p_accepting: body.accepting === true,
+        })
+      );
       return reply({ saved: true });
     }
     if (configured.mode === "test" && !testAllowed)
@@ -278,36 +331,102 @@ serve(async (req) => {
         "Payment testing is restricted to approved test accounts."
       );
     const r = await runtime();
-    if (['module_checkout', 'court_checkout', 'event_quote', 'event_checkout', 'quote', 'resume', 'save_card', 'onboard', 'connect_existing', 'complete_connect'].includes(body.action) && !config.ready) throw new Error('PULSE must finish payment setup before this action. No payment has been taken.');
+    if (
+      [
+        "venue_appointment_checkout",
+        "venue_walkin_checkout",
+        "venue_sale_checkout",
+        "venue_sale_resume",
+        "module_checkout",
+        "court_checkout",
+        "event_quote",
+        "event_checkout",
+        "quote",
+        "resume",
+        "save_card",
+        "onboard",
+        "connect_existing",
+        "complete_connect",
+      ].includes(body.action) &&
+      !config.ready
+    )
+      throw new Error(
+        "PULSE must finish payment setup before this action. No payment has been taken."
+      );
     if (body.action === "cancellations") {
       await owner(store, user.id, uuid(body.venue_id));
-      const requests = checked(
+      const requests =
+        checked(
           await store
             .from("payment_cancellation_requests")
             .select(
               "*,payment_orders!inner(description,amount_cents,refunded_cents,status,livemode,start_time,end_time,canceled_at,refund_state,payment_intent_id,account_id)"
             )
             .eq("venue_id", body.venue_id)
-            .eq('payment_orders.livemode', r.livemode)
+            .eq("payment_orders.livemode", r.livemode)
             .in("status", ["requested", "refund_pending", "refund_failed"])
             .order("created_at")
             .limit(100)
         ) || [];
-      const ids = [...new Set(requests.map((request: any) => request.buyer_id))];
-      const profiles = ids.length ? checked(await store.from('profiles').select('id,display_name,full_name').in('id', ids)) || [] : [];
-      return reply({ requests: requests.map((request: any) => {
-        const profile = profiles.find((p: any) => p.id === request.buyer_id);
-        return { ...request, player_name: profile?.display_name?.trim() || profile?.full_name?.trim() || 'Player' };
-      }) });
+      const ids = [
+        ...new Set(requests.map((request: any) => request.buyer_id)),
+      ];
+      const profiles = ids.length
+        ? checked(
+            await store
+              .from("profiles")
+              .select("id,display_name,full_name")
+              .in("id", ids)
+          ) || []
+        : [];
+      return reply({
+        requests: requests.map((request: any) => {
+          const profile = profiles.find((p: any) => p.id === request.buyer_id);
+          return {
+            ...request,
+            player_name:
+              profile?.display_name?.trim() ||
+              profile?.full_name?.trim() ||
+              "Player",
+          };
+        }),
+      });
     }
-    if (body.action === 'check_refund') {
-      const order = checked(await store.from('payment_orders').select('*').eq('id', uuid(body.order_id)).eq('livemode', r.livemode).single());
+    if (body.action === "check_refund") {
+      const order = checked(
+        await store
+          .from("payment_orders")
+          .select("*")
+          .eq("id", uuid(body.order_id))
+          .eq("livemode", r.livemode)
+          .single()
+      );
       await owner(store, user.id, order.venue_id);
       // Read-only processor action. Never creates or retries a refund.
-      const account = checked(await store.from('venue_payment_accounts').select('account_id,connected_by,disconnected_at').eq('venue_id', order.venue_id).eq('livemode', r.livemode).single());
-      if (!account || account.connected_by !== user.id || account.account_id !== order.account_id || account.disconnected_at) throw new Error('Financial ownership review is required before checking this payment.');
-      if (!order.payment_intent_id) throw new Error('Payment is not settled yet.');
-      await reconcileRefundPayment(r, order.account_id, order.payment_intent_id);
+      const account = checked(
+        await store
+          .from("venue_payment_accounts")
+          .select("account_id,connected_by,disconnected_at")
+          .eq("venue_id", order.venue_id)
+          .eq("livemode", r.livemode)
+          .single()
+      );
+      if (
+        !account ||
+        account.connected_by !== user.id ||
+        account.account_id !== order.account_id ||
+        account.disconnected_at
+      )
+        throw new Error(
+          "Financial ownership review is required before checking this payment."
+        );
+      if (!order.payment_intent_id)
+        throw new Error("Payment is not settled yet.");
+      await reconcileRefundPayment(
+        r,
+        order.account_id,
+        order.payment_intent_id
+      );
       return reply({ checked: true });
     }
     if (body.action === "resolve_cancellation") {
@@ -316,16 +435,40 @@ serve(async (req) => {
           .from("payment_orders")
           .select("*")
           .eq("id", uuid(body.order_id))
-          .in("kind", ["court_rental", "event_registration"])
+          .in("kind", ["court_rental", "event_registration", "venue_sale"])
           .eq("livemode", r.livemode)
           .single()
       );
       await owner(store, user.id, order.venue_id);
-      const request = checked(await store.from('payment_cancellation_requests').select('status').eq('order_id', order.id).single());
-      if (!request || request.status !== 'requested') throw new Error('This request has already been reviewed. Use Check refund status or review the original payment in Stripe; no new refund was issued.');
-      if (body.decision === 'refund_pending') {
-        const account = checked(await store.from('venue_payment_accounts').select('account_id,connected_by,disconnected_at').eq('venue_id', order.venue_id).eq('livemode', r.livemode).single());
-        if (!account || account.connected_by !== user.id || account.account_id !== order.account_id || account.disconnected_at) throw new Error('Financial ownership review is required before refunding this payment.');
+      const request = checked(
+        await store
+          .from("payment_cancellation_requests")
+          .select("status")
+          .eq("order_id", order.id)
+          .single()
+      );
+      if (!request || request.status !== "requested")
+        throw new Error(
+          "This request has already been reviewed. Use Check refund status or review the original payment in Stripe; no new refund was issued."
+        );
+      if (body.decision === "refund_pending") {
+        const account = checked(
+          await store
+            .from("venue_payment_accounts")
+            .select("account_id,connected_by,disconnected_at")
+            .eq("venue_id", order.venue_id)
+            .eq("livemode", r.livemode)
+            .single()
+        );
+        if (
+          !account ||
+          account.connected_by !== user.id ||
+          account.account_id !== order.account_id ||
+          account.disconnected_at
+        )
+          throw new Error(
+            "Financial ownership review is required before refunding this payment."
+          );
       }
       if (body.confirm !== true)
         throw new Error("Confirm the cancellation and refund decision.");
@@ -355,19 +498,47 @@ serve(async (req) => {
           },
           options(r, order.account_id, `cancellation-refund:${order.id}`)
         );
-        await reconcileRefundPayment(r, order.account_id, order.payment_intent_id);
-        if (refund.status === 'failed' || refund.status === 'canceled') throw new Error('The refund did not complete. Review the payment in Stripe and contact the player; no second refund has been started.');
+        await reconcileRefundPayment(
+          r,
+          order.account_id,
+          order.payment_intent_id
+        );
+        if (refund.status === "failed" || refund.status === "canceled")
+          throw new Error(
+            "The refund did not complete. Review the payment in Stripe and contact the player; no second refund has been started."
+          );
       }
       return reply({ resolved: true });
     }
-    if (body.action === 'connect_existing' || body.action === 'complete_connect') {
+    if (
+      body.action === "connect_existing" ||
+      body.action === "complete_connect"
+    ) {
       const venue = await owner(store, user.id, uuid(body.venue_id));
-      if (!venue.verification_approved_at && !venue.payment_test_sandbox) throw new Error('Verify venue ownership before connecting payments.');
-      const existing = checked(await store.from('venue_payment_accounts').select('*').eq('venue_id', venue.id).eq('livemode', r.livemode).maybeSingle());
-      if (existing && existing.connected_by !== user.id) throw new Error('Financial ownership review is required before connecting this venue.');
-      return reply(body.action === 'connect_existing'
-        ? await connectExisting(r, user.id, venue.id, env('PULSE_STRIPE_CONNECT_CLIENT_ID') || '')
-        : await completeExisting(r, user.id, venue.id, body.state, body.code));
+      if (!venue.verification_approved_at && !venue.payment_test_sandbox)
+        throw new Error("Verify venue ownership before connecting payments.");
+      const existing = checked(
+        await store
+          .from("venue_payment_accounts")
+          .select("*")
+          .eq("venue_id", venue.id)
+          .eq("livemode", r.livemode)
+          .maybeSingle()
+      );
+      if (existing && existing.connected_by !== user.id)
+        throw new Error(
+          "Financial ownership review is required before connecting this venue."
+        );
+      return reply(
+        body.action === "connect_existing"
+          ? await connectExisting(
+              r,
+              user.id,
+              venue.id,
+              env("PULSE_STRIPE_CONNECT_CLIENT_ID") || ""
+            )
+          : await completeExisting(r, user.id, venue.id, body.state, body.code)
+      );
     }
     if (body.action === "onboard" || body.action === "refresh_account") {
       const venue = await owner(store, user.id, uuid(body.venue_id));
@@ -388,21 +559,32 @@ serve(async (req) => {
           "The venue changed owners. PULSE must review the financial account transfer before new collections."
         );
       if (!account && body.action === "onboard") {
-        if (body.create_new_account !== true) throw new Error('Confirm a new, separate Stripe account for this venue, or connect its existing account.');
+        if (body.create_new_account !== true)
+          throw new Error(
+            "Confirm a new, separate Stripe account for this venue, or connect its existing account."
+          );
         if (r.livemode && venue.stripe_account_id)
           throw new Error(
             "This venue already references a Stripe account. PULSE must verify and link that account before creating another."
           );
         const created = await createOrRecoverVenueAccount(r, venue, user);
-        account = checked(await store.rpc('payment_link_venue_account', { p_venue: venue.id, p_owner: user.id, p_live: r.livemode, p_account: created.id }));
+        account = checked(
+          await store.rpc("payment_link_venue_account", {
+            p_venue: venue.id,
+            p_owner: user.id,
+            p_live: r.livemode,
+            p_account: created.id,
+          })
+        );
       }
-      if (!account) throw new Error('Connect this venue’s Stripe account first.');
+      if (!account)
+        throw new Error("Connect this venue’s Stripe account first.");
       await refreshVenueAccount(r, account);
       if (body.action === "refresh_account") return reply({ refreshed: true });
       const link = await r.stripe.accountLinks.create({
         account: account.account_id,
         type: "account_onboarding",
-        collection_options: { fields: 'eventually_due' },
+        collection_options: { fields: "eventually_due" },
         refresh_url: `${appOrigin()}/player/payments?venue=${
           venue.id
         }&connect=refresh`,
@@ -487,17 +669,60 @@ serve(async (req) => {
         );
       return reply(await startCheckout(r, order, user));
     }
-    if (body.action === 'event_quote' || body.action === 'event_checkout') {
+    if (
+      [
+        "venue_membership_cancel",
+        "venue_appointment_checkout",
+        "venue_walkin_checkout",
+        "venue_sale_checkout",
+        "venue_sale_resume",
+        "venue_sale_cancel",
+        "venue_sale_reconcile",
+        "venue_sale_refund",
+      ].includes(body.action)
+    )
+      return reply(await venueDeskPayment(r, user, body));
+    if (body.action === "event_quote" || body.action === "event_checkout") {
       const eventId = uuid(body.event_id);
-      const event = checked(await store.from('group_events').select('venue_id,group_id').eq('id',eventId).is('parent_event_id',null).single());
-      const membership = checked(await store.from('group_members').select('user_id').eq('group_id',event.group_id).eq('user_id',user.id).eq('status','active').maybeSingle());
-      if (!event.venue_id || !membership) throw new Error('Join this venue community before registering.');
-      await requireRentalAccount(r,event.venue_id);
-      const args = { p_buyer:user.id,p_event:eventId,p_live:r.livemode };
-      if (body.action === 'event_quote') return reply({ ...checked(await store.rpc('payment_event_quote',args)), ...config });
-      if (body.accept_terms !== true || !Number.isInteger(body.amount_cents)) throw new Error('Review the price and cancellation policy before paying.');
-      const order=checked(await store.rpc('payment_reserve_event',{...args,p_expected:body.amount_cents,p_policy:body.policy,p_request:uuid(body.request_key)}));
-      return reply(await startCheckout(r,order,user));
+      const event = checked(
+        await store
+          .from("group_events")
+          .select("venue_id,group_id")
+          .eq("id", eventId)
+          .is("parent_event_id", null)
+          .single()
+      );
+      const membership = checked(
+        await store
+          .from("group_members")
+          .select("user_id")
+          .eq("group_id", event.group_id)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle()
+      );
+      if (!event.venue_id || !membership)
+        throw new Error("Join this venue community before registering.");
+      await requireRentalAccount(r, event.venue_id);
+      const args = { p_buyer: user.id, p_event: eventId, p_live: r.livemode };
+      if (body.action === "event_quote")
+        return reply({
+          ...checked(await store.rpc("payment_event_quote", args)),
+          ...config,
+        });
+      if (body.accept_terms !== true || !Number.isInteger(body.amount_cents))
+        throw new Error(
+          "Review the price and cancellation policy before paying."
+        );
+      const order = checked(
+        await store.rpc("payment_reserve_event", {
+          ...args,
+          p_expected: body.amount_cents,
+          p_policy: body.policy,
+          p_request: uuid(body.request_key),
+        })
+      );
+      return reply(await startCheckout(r, order, user));
     }
     if (body.action === "quote" || body.action === "court_checkout") {
       const args = {
@@ -510,10 +735,31 @@ serve(async (req) => {
       };
       // Fetch fresh Stripe capabilities before issuing a quote/hold. SQL remains
       // authoritative for buyer membership, destination, prices and inventory.
-      const court = checked(await store.from('venue_courts').select('venue_id').eq('id', args.p_court).single());
-      const membership = checked(await store.from('group_members').select('user_id').eq('group_id', args.p_group).eq('user_id', user.id).eq('status', 'active').maybeSingle());
-      const group = checked(await store.from('groups').select('venue_id').eq('id', args.p_group).maybeSingle());
-      if (!court || !membership || !group || group.venue_id !== court.venue_id) throw new Error('Join this venue community before booking.');
+      const court = checked(
+        await store
+          .from("venue_courts")
+          .select("venue_id")
+          .eq("id", args.p_court)
+          .single()
+      );
+      const membership = checked(
+        await store
+          .from("group_members")
+          .select("user_id")
+          .eq("group_id", args.p_group)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle()
+      );
+      const group = checked(
+        await store
+          .from("groups")
+          .select("venue_id")
+          .eq("id", args.p_group)
+          .maybeSingle()
+      );
+      if (!court || !membership || !group || group.venue_id !== court.venue_id)
+        throw new Error("Join this venue community before booking.");
       await requireRentalAccount(r, court.venue_id);
       if (body.action === "quote")
         return reply({
@@ -562,9 +808,7 @@ serve(async (req) => {
           !["court_rental", "event_registration"].includes(order.kind) ||
           !["paid", "partially_refunded", "refunded"].includes(order.status)
         )
-          throw new Error(
-            "Only a paid booking can request cancellation."
-          );
+          throw new Error("Only a paid booking can request cancellation.");
         checked(
           await store.rpc("payment_request_cancellation", {
             p_order: order.id,
@@ -605,8 +849,12 @@ serve(async (req) => {
           );
       }
       const reconciledOrder = await reconcileOrder(r, order);
-      if (body.action === 'reconcile' && reconciledOrder.payment_intent_id) {
-        await reconcileRefundPayment(r, order.account_id, reconciledOrder.payment_intent_id);
+      if (body.action === "reconcile" && reconciledOrder.payment_intent_id) {
+        await reconcileRefundPayment(
+          r,
+          order.account_id,
+          reconciledOrder.payment_intent_id
+        );
       }
       return reply({ order: reconciledOrder });
     }
