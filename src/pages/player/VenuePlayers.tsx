@@ -1,3 +1,5 @@
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,7 +46,7 @@ export default function VenuePlayers() {
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<VenueCustomer | true | null>(null);
   const [publishing, setPublishing] = useState<VenueDocument | true | null>(
-    null
+    null,
   );
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
@@ -84,12 +86,12 @@ export default function VenuePlayers() {
       await fn();
       await Promise.all(
         ["venue-customers", "venue-customer", "venue-documents"].map((key) =>
-          client.invalidateQueries({ queryKey: [key] })
-        )
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
       );
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Could not save. Please try again."
+        e instanceof Error ? e.message : "Could not save. Please try again.",
       );
     } finally {
       setWorking(false);
@@ -99,16 +101,10 @@ export default function VenuePlayers() {
   const rows = directory.data?.players.slice(0, 50) || [];
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {group?.venue?.name || group?.name}
-          </p>
-          <h1 className="text-2xl font-bold">Players & first visits</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Player history, guest records and venue documents in one place.
-          </p>
-        </div>
+      <VenueAdminPageHeader
+        title="Players & first visits"
+        description="Player history, guest records and venue documents in one place."
+      >
         <Button
           onClick={() => {
             setEditing(true);
@@ -118,23 +114,22 @@ export default function VenuePlayers() {
           <Plus className="mr-2 h-4 w-4" />
           Add guest
         </Button>
-      </header>
-      <nav className="flex flex-wrap gap-2" aria-label="Player management">
-        <Button
-          variant={!documents ? "default" : "outline"}
-          onClick={() => setParams({})}
-        >
-          <UserRound className="mr-2 h-4 w-4" />
-          Players
-        </Button>
-        <Button
-          variant={documents ? "default" : "outline"}
-          onClick={() => setParams({ tab: "documents" })}
-        >
-          <FileCheck2 className="mr-2 h-4 w-4" />
-          Waivers & documents
-        </Button>
-      </nav>
+      </VenueAdminPageHeader>
+      <VenueAdminSubnav
+        label="Player management"
+        value={documents ? "documents" : "players"}
+        onChange={(value) =>
+          setParams(value === "documents" ? { tab: "documents" } : {})
+        }
+        items={[
+          { value: "players", label: "Players", icon: UserRound },
+          {
+            value: "documents",
+            label: "Waivers & documents",
+            icon: FileCheck2,
+          },
+        ]}
+      />
       {(error || directory.error || docs.error || profile.error) && (
         <div
           role="alert"
@@ -191,8 +186,8 @@ export default function VenuePlayers() {
                       {d.retired_at
                         ? "Replaced"
                         : d.required
-                        ? "Required"
-                        : "Optional"}{" "}
+                          ? "Required"
+                          : "Optional"}{" "}
                       · {venueDate(d.published_at, timezone)}
                     </p>
                   </div>
@@ -349,7 +344,7 @@ export default function VenuePlayers() {
                             p_customer: p.player.id,
                           });
                           setLink(
-                            `${window.location.origin}/venue-visit/${token}`
+                            `${window.location.origin}/venue-visit/${token}`,
                           );
                         })
                       }
@@ -371,8 +366,8 @@ export default function VenuePlayers() {
                           {d.accepted_at
                             ? `Accepted ${venueDate(d.accepted_at, timezone)}`
                             : d.required
-                            ? "Needs acknowledgment"
-                            : "Optional"}
+                              ? "Needs acknowledgment"
+                              : "Optional"}
                         </span>
                       </p>
                     ))
@@ -402,8 +397,8 @@ export default function VenuePlayers() {
                               .then(() => setNotice("Player link copied."))
                               .catch(() =>
                                 setError(
-                                  "Copy failed. Select and copy the link below."
-                                )
+                                  "Copy failed. Select and copy the link below.",
+                                ),
                               )
                           }
                         >
@@ -467,8 +462,8 @@ export default function VenuePlayers() {
                           {r.checked_in_at
                             ? "Checked in"
                             : r.no_show_at
-                            ? "No-show"
-                            : r.status.replace("_", " ")}
+                              ? "No-show"
+                              : r.status.replace("_", " ")}
                         </p>
                       </div>
                     ))
@@ -495,10 +490,10 @@ export default function VenuePlayers() {
                       {e.revoked_at
                         ? "Revoked"
                         : new Date(e.expires_at) <= new Date()
-                        ? "Expired"
-                        : e.kind === "membership"
-                        ? "Active"
-                        : `${Number(e.remaining_units)} units remaining`}
+                          ? "Expired"
+                          : e.kind === "membership"
+                            ? "Active"
+                            : `${Number(e.remaining_units)} units remaining`}
                     </p>
                   ))}
                   <Link
@@ -659,7 +654,7 @@ export default function VenuePlayers() {
             });
             setPublishing(null);
             setNotice(
-              "Document published. Players will acknowledge this version before check-in."
+              "Document published. Players will acknowledge this version before check-in.",
             );
           })
         }
@@ -726,7 +721,7 @@ function DocumentPublisher({
               onSave(
                 String(d.get("title")),
                 String(d.get("body")),
-                d.get("required") === "on"
+                d.get("required") === "on",
               );
             }}
           >
@@ -756,7 +751,7 @@ function DocumentPublisher({
                     setBody(await f.text());
                   } catch {
                     setFileError(
-                      "Could not read this file. Paste the wording below."
+                      "Could not read this file. Paste the wording below.",
                     );
                   }
                 }}

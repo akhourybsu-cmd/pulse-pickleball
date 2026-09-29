@@ -1,3 +1,5 @@
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -99,12 +101,12 @@ export default function VenueDesk() {
       await fn();
       await Promise.all(
         ["venue-desk", "venue-customer"].map((key) =>
-          client.invalidateQueries({ queryKey: [key] })
-        )
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
       );
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Action could not be completed."
+        e instanceof Error ? e.message : "Action could not be completed.",
       );
     } finally {
       setWorking(false);
@@ -114,36 +116,22 @@ export default function VenueDesk() {
     setParams({ tab: next, ...(customer ? { player: customer } : {}) });
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {group?.venue?.name || group?.name}
-          </p>
-          <h1 className="text-2xl font-bold">Front desk & memberships</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sell passes, manage member benefits and reconcile your cash day.
-          </p>
-        </div>
-        <Link to={`/player/community/group/${groupId}/players`}>
-          <Button variant="outline">Player directory</Button>
-        </Link>
-      </header>
-      <nav aria-label="Front desk" className="flex flex-wrap gap-2">
-        {[
-          ["sales", "Sales", ShoppingBag],
-          ["catalog", "Products & memberships", Package],
-          ["cash", "Cash reconciliation", Wallet],
-        ].map(([key, label, Icon]) => (
-          <Button
-            key={String(key)}
-            variant={tab === key ? "default" : "outline"}
-            onClick={() => setTab(String(key))}
-          >
-            {typeof Icon !== "string" && <Icon className="mr-2 h-4 w-4" />}
-            {String(label)}
-          </Button>
-        ))}
-      </nav>
+      <VenueAdminPageHeader
+        title="Front desk & memberships"
+        description="Sell passes, manage member benefits and reconcile your cash day."
+      >
+        <Button asChild variant="outline"><Link to={`/player/community/group/${groupId}/players`}>Player directory</Link></Button>
+      </VenueAdminPageHeader>
+      <VenueAdminSubnav
+        label="Front desk"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "sales", label: "Sales", icon: ShoppingBag },
+          { value: "catalog", label: "Products & memberships", icon: Package },
+          { value: "cash", label: "Cash reconciliation", icon: Wallet },
+        ]}
+      />
       {(error || q.error || players.error) && (
         <p
           role="alert"
@@ -209,15 +197,15 @@ export default function VenueDesk() {
                       {p.kind === "membership"
                         ? `${p.member_discount_percent}% member court discount`
                         : p.kind === "merchandise" ||
-                          p.kind === "equipment_rental"
-                        ? p.stock === null
-                          ? "Unlimited stock"
-                          : `${p.stock} in stock`
-                        : `${p.units} ${
-                            p.kind === "court_hours"
-                              ? "court hours"
-                              : "visits / lessons"
-                          }`}
+                            p.kind === "equipment_rental"
+                          ? p.stock === null
+                            ? "Unlimited stock"
+                            : `${p.stock} in stock`
+                          : `${p.units} ${
+                              p.kind === "court_hours"
+                                ? "court hours"
+                                : "visits / lessons"
+                            }`}
                     </p>
                     {!["merchandise", "equipment_rental"].includes(p.kind) && (
                       <p className="text-xs text-muted-foreground">
@@ -276,7 +264,7 @@ export default function VenueDesk() {
                   <p>
                     Counted {formatMoney(w.closing.counted_cents)} · Difference{" "}
                     {formatMoney(
-                      w.closing.counted_cents - w.closing.expected_cents
+                      w.closing.counted_cents - w.closing.expected_cents,
                     )}
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -316,7 +304,7 @@ export default function VenueDesk() {
                             "on",
                         });
                         setNotice(
-                          "Cash payment recorded and player benefits issued."
+                          "Cash payment recorded and player benefits issued.",
                         );
                         setRequest(crypto.randomUUID());
                       } else {
@@ -329,11 +317,11 @@ export default function VenueDesk() {
                             amount_cents: total,
                             request_key: request,
                             accept_terms: true,
-                          }
+                          },
                         );
                         setCheckout(result.url);
                         setNotice(
-                          "Checkout is ready. The player pays on their own device."
+                          "Checkout is ready. The player pays on their own device.",
                         );
                       }
                     });
@@ -454,8 +442,8 @@ export default function VenueDesk() {
                     {working
                       ? "Preparing…"
                       : method === "cash"
-                      ? "Record cash payment"
-                      : "Create checkout"}
+                        ? "Record cash payment"
+                        : "Create checkout"}
                   </Button>
                 </form>
                 {checkout && (
@@ -475,7 +463,7 @@ export default function VenueDesk() {
                           .writeText(checkout)
                           .then(() => setNotice("Checkout link copied."))
                           .catch(() =>
-                            setError("Could not copy. Use the QR code.")
+                            setError("Could not copy. Use the QR code."),
                           )
                       }
                     >
@@ -496,12 +484,14 @@ export default function VenueDesk() {
                             {e.revoked_at
                               ? "Revoked"
                               : new Date(e.expires_at) <= new Date()
-                              ? "Expired"
-                              : e.kind === "membership"
-                              ? "Active membership"
-                              : `${e.remaining_units} of ${e.total_units} ${
-                                  e.kind === "court_hours" ? "hours" : "uses"
-                                } left`}
+                                ? "Expired"
+                                : e.kind === "membership"
+                                  ? "Active membership"
+                                  : `${e.remaining_units} of ${e.total_units} ${
+                                      e.kind === "court_hours"
+                                        ? "hours"
+                                        : "uses"
+                                    } left`}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Expires {venueDate(e.expires_at, timezone)}
@@ -615,7 +605,7 @@ export default function VenueDesk() {
                                 void act(async () => {
                                   const r = await paymentApi<{ url: string }>(
                                     "venue_sale_resume",
-                                    { sale_id: s.id }
+                                    { sale_id: s.id },
                                   );
                                   setCheckout(r.url);
                                 })
@@ -686,7 +676,7 @@ export default function VenueDesk() {
             });
             setEditing(null);
             setNotice(
-              "Product saved. Existing purchases retain their original benefits and price."
+              "Product saved. Existing purchases retain their original benefits and price.",
             );
           })
         }
@@ -696,7 +686,7 @@ export default function VenueDesk() {
         description={
           refund
             ? `${refund.product_name} · ${formatMoney(
-                refund.amount_cents - refund.refunded_cents
+                refund.amount_cents - refund.refunded_cents,
               )} refundable. A full refund revokes the associated membership or pass.`
             : ""
         }
@@ -726,7 +716,7 @@ export default function VenueDesk() {
               });
             setRefund(null);
             setNotice(
-              "Refund recorded. Card refunds may require processing time; refresh the payment for the final result."
+              "Refund recorded. Card refunds may require processing time; refresh the payment for the final result.",
             );
           })
         }
@@ -953,7 +943,7 @@ function ProductEditor({
                 });
               } catch (e) {
                 setIssue(
-                  e instanceof Error ? e.message : "Check the product fields."
+                  e instanceof Error ? e.message : "Check the product fields.",
                 );
               }
             }}

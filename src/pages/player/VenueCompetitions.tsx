@@ -1,4 +1,6 @@
-import { useVenueAdminLayout } from '@/components/venue/VenueAdminLayout';
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
+import { useVenueAdminLayout } from "@/components/venue/VenueAdminLayout";
 import { useState } from "react";
 import {
   Link,
@@ -7,7 +9,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Link2, Plus, Trophy } from "lucide-react";
+import { CalendarDays, Link2, Plus, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +30,6 @@ import {
 import { VenueRoundRobinCard } from "@/components/venue/VenueRoundRobinCard";
 
 export default function VenueCompetitions() {
-  const inVenueConsole = useVenueAdminLayout();
   const { groupId = "" } = useParams();
   const { user } = useAuthState();
   const navigate = useNavigate();
@@ -85,61 +86,36 @@ export default function VenueCompetitions() {
   const events = w.round_robins.filter(
     (e) =>
       e.title.toLowerCase().includes(search.toLowerCase()) &&
-      (showHistory || (!e.canceled_at && new Date(e.end_time) >= new Date()))
+      (showHistory || (!e.canceled_at && new Date(e.end_time) >= new Date())),
   );
   const leagues = w.leagues.filter((l) =>
-    l.name.toLowerCase().includes(search.toLowerCase())
+    l.name.toLowerCase().includes(search.toLowerCase()),
   );
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 pb-28 sm:px-6">
-      {!inVenueConsole && <header className={inVenueConsole ? "flex flex-wrap items-center justify-between gap-4" : "rounded-3xl bg-[#17251f] p-6 text-white sm:p-8"}>
-        <Link
-          to={`${base}/manage`}
-          className="inline-flex min-h-10 items-center gap-2 text-sm text-white/75"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Venue management
-        </Link>
-        <p className="mt-4 text-xs font-semibold uppercase tracking-[.18em] text-emerald-200">
-          {w.venue.name}
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Round robins & leagues
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-          Turn scheduled events into match play. Run your leagues, seasons,
-          players and standings from your venue.
-        </p>
-      </header>}
-      <nav
-        className="flex flex-wrap gap-2"
-        aria-label="Venue competition tools"
+      <VenueAdminPageHeader
+        title="Round robins & leagues"
+        description="Turn scheduled events into match play. Run your leagues, seasons, players and standings from your venue."
+      />
+      <VenueAdminSubnav
+        label="Venue competition tools"
+        value={leaguesTab ? "leagues" : "round-robins"}
+        onChange={(value) => {
+          setParams(value === "leagues" ? { tab: "leagues" } : {});
+          setSearch("");
+        }}
+        items={[
+          { value: "round-robins", label: "Round robins" },
+          { value: "leagues", label: "Leagues" },
+        ]}
       >
-        <Button
-          variant={leaguesTab ? "outline" : "default"}
-          onClick={() => {
-            setParams({});
-            setSearch("");
-          }}
-        >
-          Round robins
-        </Button>
-        <Button
-          variant={leaguesTab ? "default" : "outline"}
-          onClick={() => {
-            setParams({ tab: "leagues" });
-            setSearch("");
-          }}
-        >
-          Leagues
-        </Button>
         <Button asChild variant="outline">
           <Link to={`${base}/events/manage`}>
             <CalendarDays className="mr-2 h-4 w-4" />
             Events & registrations
           </Link>
         </Button>
-      </nav>
+      </VenueAdminSubnav>
       {error && !dialog && (
         <p
           role="alert"
@@ -395,8 +371,8 @@ export default function VenueCompetitions() {
               {busy
                 ? "Saving…"
                 : dialog === "create"
-                ? "Create league"
-                : "Connect league"}
+                  ? "Create league"
+                  : "Connect league"}
             </Button>
           </form>
         </DialogContent>

@@ -13,6 +13,11 @@ import {
   Trophy,
   Users,
   AlertTriangle,
+  ShoppingBag,
+  QrCode,
+  MessageSquare,
+  BarChart3,
+  UserRound,
 } from "lucide-react";
 import type { VenueAdminNavItem } from "@/components/community/admin/VenueAdminShell";
 
@@ -31,8 +36,24 @@ export function venueAdminItems(access: {
     label: string,
     description: string,
     icon: VenueAdminNavItem["icon"],
-    section: VenueAdminNavItem["section"] = "venue"
-  ): VenueAdminNavItem => ({ value, label, description, icon, section });
+    section: VenueAdminNavItem["section"] = "venue",
+  ): VenueAdminNavItem => ({
+    value,
+    label,
+    description,
+    icon,
+    section,
+    shortLabel: (
+      {
+        events: "Events & sign-ups",
+        competitions: "Round robins & leagues",
+        appointments: "Lessons & bookings",
+        desk: "Front desk",
+        "check-in-stations": "Check-in stations",
+        "booking-policies": "Booking rules & rates",
+      } as Record<string, string>
+    )[value],
+  });
   return [
     ...(access.manage
       ? [
@@ -40,7 +61,7 @@ export function venueAdminItems(access: {
             "overview",
             "Overview",
             "Venue health and shortcuts",
-            LayoutDashboard
+            LayoutDashboard,
           ),
         ]
       : []),
@@ -50,7 +71,7 @@ export function venueAdminItems(access: {
             "ops",
             "Operations",
             "Calendar, check-in and daily attendance",
-            Gauge
+            Gauge,
           ),
         ]
       : []),
@@ -60,13 +81,13 @@ export function venueAdminItems(access: {
             "events",
             "Events & registrations",
             "Schedule, courts, pricing and players",
-            CalendarDays
+            CalendarDays,
           ),
           item(
             "competitions",
             "Round robins & leagues",
             "Match play, seasons and standings",
-            Trophy
+            Trophy,
           ),
         ]
       : []),
@@ -76,31 +97,31 @@ export function venueAdminItems(access: {
             "walk-ins",
             "Walk-ins & visits",
             "Guest bookings and daily attendance",
-            Users
+            Users,
           ),
           item(
             "appointments",
             "Lessons & private bookings",
             "Coaches, quotes, deposits and court blocks",
-            CalendarDays
+            CalendarDays,
           ),
           item(
             "players",
             "Players & waivers",
             "Player records, guests and first visits",
-            Users
+            UserRound,
           ),
           item(
             "desk",
             "Front desk & memberships",
             "Sales, passes and cash reconciliation",
-            CreditCard
+            ShoppingBag,
           ),
           item(
             "check-in-stations",
             "Player check-in kiosks",
             "Venue QR stations and private check-in",
-            Gauge
+            QrCode,
           ),
           ...(access.manage
             ? [
@@ -108,19 +129,19 @@ export function venueAdminItems(access: {
                   "booking-policies",
                   "Booking rules & rates",
                   "Pricing, member windows and holidays",
-                  CalendarDays
+                  CalendarDays,
                 ),
                 item(
                   "communications",
                   "Communications",
-                  "Messages, reminders and waitlist offers",
-                  Users
+                  "Branded email, player messages and automated reminders",
+                  MessageSquare,
                 ),
                 item(
                   "reports",
                   "Reports",
                   "Revenue, attendance and court use",
-                  LayoutDashboard
+                  BarChart3,
                 ),
               ]
             : []),
@@ -132,7 +153,7 @@ export function venueAdminItems(access: {
             "payments",
             "Payments & refunds",
             "Venue payment setup and purchases",
-            CreditCard
+            CreditCard,
           ),
         ]
       : []),
@@ -142,7 +163,7 @@ export function venueAdminItems(access: {
             "profile",
             "Profile & brand",
             "Identity, imagery and contact details",
-            Palette
+            Palette,
           ),
           ...(access.facility
             ? [
@@ -150,7 +171,7 @@ export function venueAdminItems(access: {
                   "facility",
                   "Courts & hours",
                   "Booking inventory and availability",
-                  LayoutGrid
+                  LayoutGrid,
                 ),
               ]
             : []),
@@ -158,19 +179,19 @@ export function venueAdminItems(access: {
             "staff",
             "Staff access",
             "Venue roles and operations access",
-            ShieldCheck
+            ShieldCheck,
           ),
           item(
             "integrations",
             "Integrations",
             "Venue address and connected services",
-            Plug
+            Plug,
           ),
           item(
             "modules",
             access.privateSample ? "Included features" : "Plan & upgrades",
             "Venue features and subscriptions",
-            ShieldCheck
+            ShieldCheck,
           ),
         ]
       : []),
@@ -181,35 +202,35 @@ export function venueAdminItems(access: {
             "Community profile",
             "Name, description and identity",
             Settings,
-            "community"
+            "community",
           ),
           item(
             "permissions",
             "Member permissions",
             "Posting and chat controls",
             Shield,
-            "community"
+            "community",
           ),
           item(
             "privacy",
             "Access & privacy",
             "Visibility, joining and invite codes",
             Lock,
-            "community"
+            "community",
           ),
           item(
             "roles",
             "Community roles",
             "Owner and moderator authority",
             Users,
-            "community"
+            "community",
           ),
           item(
             "danger",
             "Danger zone",
             "Transfer or delete this community",
             AlertTriangle,
-            "advanced"
+            "advanced",
           ),
         ]
       : []),
@@ -228,8 +249,8 @@ export function venueAdminHref(groupId: string, tab: string) {
   return tab === "ops"
     ? `${base}/ops`
     : tab === "events"
-    ? `${base}/events/manage`
-    : tab === "competitions"
-    ? `${base}/competitions`
-    : `${base}/manage?tab=${tab}`;
+      ? `${base}/events/manage`
+      : tab === "competitions"
+        ? `${base}/competitions`
+        : `${base}/manage?tab=${tab}`;
 }

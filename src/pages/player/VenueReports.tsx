@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -99,7 +100,7 @@ export function reportCsv(r: Report) {
           if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
           return '"' + s.replace(/"/g, '""') + '"';
         })
-        .join(",")
+        .join(","),
     )
     .join("\r\n");
 }
@@ -125,15 +126,10 @@ export default function VenueReports() {
   const r = q.data;
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          {group?.venue?.name || group?.name}
-        </p>
-        <h1 className="text-2xl font-bold">Venue reports</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Revenue, attendance and court use in your venue’s time zone.
-        </p>
-      </header>
+      <VenueAdminPageHeader
+        title="Venue reports"
+        description="Revenue, attendance and court use in your venue’s time zone."
+      />
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           From
@@ -157,7 +153,7 @@ export default function VenueReports() {
           onClick={() => {
             if (!r) return;
             const url = URL.createObjectURL(
-              new Blob([reportCsv(r)], { type: "text/csv;charset=utf-8;" })
+              new Blob([reportCsv(r)], { type: "text/csv;charset=utf-8;" }),
             );
             const a = document.createElement("a");
             a.href = url;
@@ -192,7 +188,7 @@ export default function VenueReports() {
                   Number(r.available_hours) > 0
                     ? `${Math.round(
                         (Number(r.booked_hours) / Number(r.available_hours)) *
-                          100
+                          100,
                       )}%`
                     : "—",
                 ],
@@ -240,7 +236,7 @@ export default function VenueReports() {
                               ? (Number(c.booked_hours) /
                                   Number(c.available_hours)) *
                                   100
-                              : 0
+                              : 0,
                           )}%`,
                         }}
                       />

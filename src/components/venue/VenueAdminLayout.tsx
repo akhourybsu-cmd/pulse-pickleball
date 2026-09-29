@@ -69,41 +69,42 @@ export default function VenueAdminLayout() {
   const active = section.startsWith("/payments")
     ? "payments"
     : section.startsWith("/appointments")
-    ? "appointments"
-    : section.startsWith("/communications")
-    ? "communications"
-    : section.startsWith("/reports")
-    ? "reports"
-    : section.startsWith("/players")
-    ? "players"
-    : section.startsWith("/desk")
-    ? "desk"
-    : section.startsWith("/walk-ins")
-    ? "walk-ins"
-    : section.startsWith("/check-in-stations")
-    ? "check-in-stations"
-    : section.startsWith("/booking-policies")
-    ? "booking-policies"
-    : section.startsWith("/ops")
-    ? "ops"
-    : section.startsWith("/events")
-    ? "events"
-    : section.startsWith("/competitions")
-    ? "competitions"
-    : resolveVenueAdminTab(
-        params.get("tab"),
-        manage,
-        community,
-        modules.booking || modules.facility
-      );
+      ? "appointments"
+      : section.startsWith("/communications")
+        ? "communications"
+        : section.startsWith("/reports")
+          ? "reports"
+          : section.startsWith("/players")
+            ? "players"
+            : section.startsWith("/desk")
+              ? "desk"
+              : section.startsWith("/walk-ins")
+                ? "walk-ins"
+                : section.startsWith("/check-in-stations")
+                  ? "check-in-stations"
+                  : section.startsWith("/booking-policies")
+                    ? "booking-policies"
+                    : section.startsWith("/ops")
+                      ? "ops"
+                      : section.startsWith("/events")
+                        ? "events"
+                        : section.startsWith("/competitions")
+                          ? "competitions"
+                          : resolveVenueAdminTab(
+                              params.get("tab"),
+                              manage,
+                              community,
+                              modules.booking || modules.facility,
+                            );
   const kiosk = active === "ops" && params.get("kiosk") === "1";
   return (
-    <VenueTheme brand={group.venue}>
+    <VenueTheme brand={group.venue} variant="admin">
       <VenueAdminContext.Provider value={true}>
         <VenueAdminShell
+          brand={group.venue}
           venueName={group.venue?.name ?? group.name}
           verified={!!group.is_venue_verified}
-          roleLabel={owner ? "Owner" : staff.role ?? "Community moderator"}
+          roleLabel={owner ? "Owner" : (staff.role ?? "Community moderator")}
           accent={group.venue?.primary_color}
           activeTab={active}
           items={venueAdminItems({

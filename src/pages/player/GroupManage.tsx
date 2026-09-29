@@ -1,3 +1,4 @@
+import { VenueAdminPageActions } from "@/components/venue/VenueAdminPageHeader";
 import { useVenueAdminLayout } from '@/components/venue/VenueAdminLayout';
 import { VenueTheme } from '@/components/venue/VenueTheme';
 import { useCallback, useEffect, useState } from 'react';
@@ -574,7 +575,8 @@ export default function GroupManage() {
             ? 'Community moderator'
             : 'Venue staff';
     return (
-      <VenueTheme brand={group.venue}><VenueAdminShell
+      <VenueTheme brand={group.venue} variant="admin"><VenueAdminShell
+        brand={group.venue}
         venueName={group.venue?.name ?? group.name}
         verified={!!group.is_venue_verified}
         roleLabel={roleLabel}
@@ -650,10 +652,10 @@ function PanelSaveBar({
   disabled: boolean;
 }) {
   return (
-    <div className="mb-4 flex justify-end">
+    <VenueAdminPageActions>
       <Button onClick={onSave} disabled={saving || disabled} size="sm" className="rounded-full px-4">
         <Save className="mr-2 h-4 w-4" />{saving ? 'Saving' : 'Save changes'}
       </Button>
-    </div>
+    </VenueAdminPageActions>
   );
 }

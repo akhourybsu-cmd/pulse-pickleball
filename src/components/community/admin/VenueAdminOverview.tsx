@@ -84,23 +84,22 @@ export function VenueAdminOverview({
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[24px] bg-[#191b20] p-5 text-white shadow-[0_24px_70px_-48px_rgba(0,0,0,0.7)] sm:p-7">
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-7">
         <div
           aria-hidden
-          className="absolute -right-16 -top-24 h-64 w-64 rounded-full opacity-20 blur-3xl"
+          className="absolute -right-16 -top-24 h-64 w-64 rounded-full opacity-10 blur-3xl"
           style={{ backgroundColor: accent ?? 'hsl(var(--primary))' }}
         />
         <div className="relative max-w-2xl">
-          <p className="text-xs font-medium text-white/70">Venue overview</p>
+          <p className="text-xs font-medium text-muted-foreground">Venue overview</p>
           <h2 className="mt-2 break-words text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">Your venue, at a glance.</h2>
-          <p className="mt-2 max-w-xl break-words text-sm leading-6 text-white/60">
+          <p className="mt-2 max-w-xl break-words text-sm leading-6 text-muted-foreground">
             Manage {venueName}’s community, keep players informed, and find the next thing that needs your attention.
           </p>
           {hasFacility && <button
             type="button"
             onClick={operationsEnabled ? onOperations : () => onOpenVenueTab('book')}
-            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#15171b] transition-transform hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
-            style={{ backgroundColor: accent ?? 'hsl(var(--primary))' }}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
           >
             <Gauge className="h-4 w-4" /> {operationsEnabled ? 'Open live operations' : 'View court booking'}
           </button>}
@@ -108,10 +107,10 @@ export function VenueAdminOverview({
       </section>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric label="Active courts" value={counts?.courts ?? null} icon={LayoutGrid} accent={accent} />
-        <Metric label="Venue staff" value={counts?.staff ?? null} icon={ShieldCheck} accent={accent} />
-        <Metric label="Upcoming programs" value={counts?.upcoming ?? null} icon={CalendarDays} accent={accent} />
-        <Metric label="Members" value={counts ? counts.members ?? memberCount : null} icon={UsersRound} accent={accent} />
+        <Metric label="Active courts" value={counts?.courts ?? null} icon={LayoutGrid} />
+        <Metric label="Venue staff" value={counts?.staff ?? null} icon={ShieldCheck} />
+        <Metric label="Upcoming programs" value={counts?.upcoming ?? null} icon={CalendarDays} />
+        <Metric label="Members" value={counts ? counts.members ?? memberCount : null} icon={UsersRound} />
       </section>
 
       {!countsOverride && summary.isError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm"><p>We couldn’t load the venue totals. Your management tools are still available.</p><button type="button" onClick={() => void summary.refetch()} className="min-h-11 rounded-lg px-3 font-semibold underline underline-offset-4">Retry totals</button></div>}
@@ -216,7 +215,6 @@ function Metric({
   label,
   value,
   icon: Icon,
-  accent,
 }: {
   label: string;
   value: number | null;
@@ -227,7 +225,7 @@ function Metric({
     <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-[0_10px_30px_-28px_hsl(var(--foreground)/0.35)]">
       <div className="flex min-h-8 items-start justify-between gap-2 lg:min-h-4">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" style={accent ? { color: accent } : undefined} />
+        <Icon className="h-4 w-4 shrink-0 text-[hsl(var(--venue-card-highlight))]" />
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] tabular-nums" aria-label={value === null ? `${label} unavailable` : undefined}>{value ?? '—'}</p>
     </div>

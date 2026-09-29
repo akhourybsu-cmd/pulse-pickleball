@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -45,7 +46,7 @@ interface PolicyWorkspace {
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const time = (minute: number) =>
   `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(
-    minute % 60
+    minute % 60,
   ).padStart(2, "0")}`;
 const minutes = (s: string) => {
   const [h, m] = s.split(":").map(Number);
@@ -87,7 +88,7 @@ export default function VenueBookingPolicies() {
       await q.refetch();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Could not save booking settings."
+        e instanceof Error ? e.message : "Could not save booking settings.",
       );
     } finally {
       setWorking(false);
@@ -95,16 +96,10 @@ export default function VenueBookingPolicies() {
   }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          {group?.venue?.name || group?.name}
-        </p>
-        <h1 className="text-2xl font-bold">Booking rules & rates</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Control booking windows, member access, peak pricing and holiday
-          closures.
-        </p>
-      </header>
+      <VenueAdminPageHeader
+        title="Booking rules & rates"
+        description="Control booking windows, member access, peak pricing and holiday closures."
+      />
       {(error || q.error) && (
         <p
           role="alert"
@@ -139,7 +134,7 @@ export default function VenueBookingPolicies() {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
                 const rules = Object.fromEntries(
-                  fields.map(([key]) => [key, Number(f.get(key))])
+                  fields.map(([key]) => [key, Number(f.get(key))]),
                 );
                 void act(async () => {
                   await rpc("venue_booking_rules_save", {
@@ -272,7 +267,7 @@ export default function VenueBookingPolicies() {
                     });
                     form.reset();
                     setNotice(
-                      "Closure saved. New bookings and court allocations are blocked for that date."
+                      "Closure saved. New bookings and court allocations are blocked for that date.",
                     );
                   });
                 }}
@@ -284,7 +279,7 @@ export default function VenueBookingPolicies() {
                     type="date"
                     required
                     min={localVenueDay(
-                      group?.venue?.timezone || "America/New_York"
+                      group?.venue?.timezone || "America/New_York",
                     )}
                   />
                 </label>
@@ -443,7 +438,7 @@ export default function VenueBookingPolicies() {
                             : time(
                                 editing.end_minute === 1440
                                   ? 0
-                                  : editing.end_minute
+                                  : editing.end_minute,
                               )
                         }
                       />

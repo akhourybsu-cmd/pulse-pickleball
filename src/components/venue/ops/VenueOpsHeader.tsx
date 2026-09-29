@@ -1,3 +1,4 @@
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { CalendarDays, Expand, Minimize, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,13 +30,13 @@ export function VenueOpsHeader({
       className={cn(
         kiosk
           ? "sticky top-0 z-40 border-b border-t-4 border-t-primary bg-card text-card-foreground shadow-sm"
-          : "mb-6"
+          : "mb-6",
       )}
     >
       <div
         className={cn(
           kiosk &&
-            "mx-auto max-w-[1680px] px-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:px-8"
+            "mx-auto max-w-[1680px] px-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:px-8",
         )}
       >
         {kiosk && (
@@ -84,12 +85,12 @@ export function VenueOpsHeader({
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <nav
-            className={cn("flex min-w-0 gap-2", kiosk && "w-full sm:w-auto")}
-            aria-label="Operations workspace"
-          >
-            {(
-              [
+          {!kiosk ? (
+            <VenueAdminSubnav
+              label="Operations workspace"
+              value={view}
+              onChange={onViewChange}
+              items={[
                 {
                   value: "attendance",
                   label: "Check-in desk",
@@ -100,29 +101,49 @@ export function VenueOpsHeader({
                   label: "Court calendar",
                   icon: CalendarDays,
                 },
-              ] as const
-            ).map(({ value, label, icon: Icon }) => (
-              <Button
-                key={value}
-                variant={
-                  kiosk ? "ghost" : view === value ? "default" : "outline"
-                }
-                className={cn(
-                  "h-12 gap-2",
-                  kiosk &&
-                    "relative flex-1 rounded-none px-3 text-muted-foreground hover:bg-muted/50 sm:flex-none sm:px-5",
-                  kiosk &&
-                    view === value &&
-                      "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-ring"
-                )}
-                aria-pressed={view === value}
-                onClick={() => onViewChange(value)}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </Button>
-            ))}
-          </nav>
+              ]}
+            />
+          ) : (
+            <nav
+              className={cn("flex min-w-0 gap-2", kiosk && "w-full sm:w-auto")}
+              aria-label="Operations workspace"
+            >
+              {(
+                [
+                  {
+                    value: "attendance",
+                    label: "Check-in desk",
+                    icon: UserCheck,
+                  },
+                  {
+                    value: "courts",
+                    label: "Court calendar",
+                    icon: CalendarDays,
+                  },
+                ] as const
+              ).map(({ value, label, icon: Icon }) => (
+                <Button
+                  key={value}
+                  variant={
+                    kiosk ? "ghost" : view === value ? "default" : "outline"
+                  }
+                  className={cn(
+                    "h-12 gap-2",
+                    kiosk &&
+                      "relative flex-1 rounded-none px-3 text-muted-foreground hover:bg-muted/50 sm:flex-none sm:px-5",
+                    kiosk &&
+                      view === value &&
+                      "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-ring",
+                  )}
+                  aria-pressed={view === value}
+                  onClick={() => onViewChange(value)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </Button>
+              ))}
+            </nav>
+          )}
           {!kiosk && (
             <Button className="h-11" variant="outline" onClick={onToggleKiosk}>
               <Expand className="mr-2 h-4 w-4" />

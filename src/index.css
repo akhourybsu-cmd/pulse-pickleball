@@ -2,6 +2,7 @@
 @import './styles/venue-club.css';
 @import './styles/venue-theme.css';
 @import './styles/venue-events.css';
+@import './styles/venue-admin.css';
 
 @tailwind base;
 @tailwind components;

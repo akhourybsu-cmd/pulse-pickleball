@@ -1,3 +1,5 @@
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -78,7 +80,7 @@ export default function VenueAppointments() {
   const [from, setFrom] = useState(params.get("day") || localVenueDay(tz)),
     [to, setTo] = useState(
       params.get("day") ||
-        localVenueDay(tz, new Date(Date.now() + 30 * 86400000))
+        localVenueDay(tz, new Date(Date.now() + 30 * 86400000)),
     ),
     [tab, setTab] = useState("bookings");
   const [editing, setEditing] = useState<Appointment | true | null>(null),
@@ -118,7 +120,7 @@ export default function VenueAppointments() {
         void client.invalidateQueries({ queryKey: [key] });
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Unable to update the booking."
+        e instanceof Error ? e.message : "Unable to update the booking.",
       );
     } finally {
       setBusy(false);
@@ -126,33 +128,23 @@ export default function VenueAppointments() {
   }
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          {group?.venue?.name || group?.name}
-        </p>
-        <h1 className="text-2xl font-bold">Lessons & private bookings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Coach availability, personal lessons, event quotes and deposits share
-          your court calendar.
-        </p>
-      </header>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={tab === "bookings" ? "default" : "outline"}
-          onClick={() => setTab("bookings")}
-        >
-          Bookings & quotes
+      <VenueAdminPageHeader
+        title="Lessons & private bookings"
+        description="Coach availability, personal lessons, event quotes and deposits share your court calendar."
+      />
+      <VenueAdminSubnav
+        label="Lesson management"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "bookings", label: "Bookings & quotes" },
+          { value: "coaches", label: "Coaches" },
+        ]}
+      >
+        <Button asChild variant="outline">
+          <Link to={`${base}/walk-ins`}>Daily check-in</Link>
         </Button>
-        <Button
-          variant={tab === "coaches" ? "default" : "outline"}
-          onClick={() => setTab("coaches")}
-        >
-          Coaches
-        </Button>
-        <Link to={`${base}/walk-ins`}>
-          <Button variant="outline">Daily check-in</Button>
-        </Link>
-      </div>
+      </VenueAdminSubnav>
       {(error || q.error) && (
         <p role="alert" className="text-destructive">
           {error || q.error?.message}
@@ -201,8 +193,8 @@ export default function VenueAppointments() {
                       a.visit_method === "pass"
                         ? 0
                         : a.status === "draft"
-                        ? a.deposit_cents
-                        : Math.max(0, a.total_cents - Number(a.paid_cents));
+                          ? a.deposit_cents
+                          : Math.max(0, a.total_cents - Number(a.paid_cents));
                     return (
                       <article
                         className="space-y-3 rounded-2xl border bg-card p-5"
@@ -231,7 +223,7 @@ export default function VenueAppointments() {
                             .map(
                               (id) =>
                                 q.data!.courts.find((c) => c.id === id)?.name ||
-                                "Court"
+                                "Court",
                             )
                             .join(", ")}
                           {a.coach_id
@@ -246,7 +238,7 @@ export default function VenueAppointments() {
                           {a.visit_method === "pass"
                             ? "Paid with lesson package"
                             : `${formatMoney(
-                                Number(a.paid_cents)
+                                Number(a.paid_cents),
                               )} collected · ${formatMoney(due)} ${
                                 a.status === "draft"
                                   ? "deposit due"
@@ -297,8 +289,8 @@ export default function VenueAppointments() {
                                 {due === 0
                                   ? "Confirm booking"
                                   : a.status === "draft"
-                                  ? "Collect deposit / confirm"
-                                  : "Collect balance"}
+                                    ? "Collect deposit / confirm"
+                                    : "Collect balance"}
                               </Button>
                             )}
                           {a.pending_sale_id && (
@@ -427,7 +419,7 @@ export default function VenueAppointments() {
                     setTo(localVenueDay(tz, new Date(a.start_time)));
                     setEditing(null);
                     setNotice(
-                      "Quote saved. Confirm it or collect the deposit to reserve the courts."
+                      "Quote saved. Confirm it or collect the deposit to reserve the courts.",
                     );
                   })
                 }
@@ -470,7 +462,7 @@ export default function VenueAppointments() {
                         ? collect.deposit_cents
                         : Math.max(
                             0,
-                            collect.total_cents - Number(collect.paid_cents)
+                            collect.total_cents - Number(collect.paid_cents),
                           );
                     if (method === "stripe") {
                       const result = await paymentApi<{ url: string }>(
@@ -481,7 +473,7 @@ export default function VenueAppointments() {
                           amount_cents: amount,
                           request_key: request,
                           accept_terms: terms,
-                        }
+                        },
                       );
                       setCheckout(result.url);
                     } else {
@@ -497,7 +489,7 @@ export default function VenueAppointments() {
                       });
                       setCollect(null);
                       setNotice(
-                        "Booking confirmed. Courts and any coach time are reserved."
+                        "Booking confirmed. Courts and any coach time are reserved.",
                       );
                     }
                   })
@@ -529,7 +521,7 @@ export default function VenueAppointments() {
                       });
                       setCancel(null);
                       setNotice(
-                        "Booking canceled. Review any collected payments in Front desk."
+                        "Booking canceled. Review any collected payments in Front desk.",
                       );
                     });
                   }}
@@ -585,13 +577,13 @@ export default function VenueAppointments() {
                       onClick={() =>
                         void navigator.clipboard
                           .writeText(
-                            `${window.location.origin}/venue-quote/${share.quote_token}`
+                            `${window.location.origin}/venue-quote/${share.quote_token}`,
                           )
                           .then(() => setNotice("Quote link copied."))
                           .catch(() =>
                             setError(
-                              "Copy failed. Open the quote link instead."
-                            )
+                              "Copy failed. Open the quote link instead.",
+                            ),
                           )
                       }
                     >
@@ -610,7 +602,7 @@ export default function VenueAppointments() {
 const minutesTime = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(
     2,
-    "0"
+    "0",
   )}`;
 function CoachForm({
   initial,
@@ -653,7 +645,7 @@ function CoachForm({
               });
             } catch (e) {
               setError(
-                e instanceof Error ? e.message : "Check the coach details."
+                e instanceof Error ? e.message : "Check the coach details.",
               );
             }
           }}
@@ -697,13 +689,13 @@ function CoachForm({
                 const slot = slots.find((s) => s.weekday === weekday);
                 function change(
                   key: "start_minute" | "end_minute",
-                  value: string
+                  value: string,
                 ) {
                   const [h, m] = value.split(":").map(Number);
                   setSlots(
                     slots.map((s) =>
-                      s.weekday === weekday ? { ...s, [key]: h * 60 + m } : s
-                    )
+                      s.weekday === weekday ? { ...s, [key]: h * 60 + m } : s,
+                    ),
                   );
                 }
                 return (
@@ -726,7 +718,7 @@ function CoachForm({
                                     end_minute: 1020,
                                   },
                                 ]
-                              : slots.filter((s) => s.weekday !== weekday)
+                              : slots.filter((s) => s.weekday !== weekday),
                           )
                         }
                       />
@@ -754,7 +746,7 @@ function CoachForm({
                     )}
                   </div>
                 );
-              }
+              },
             )}
           </fieldset>
           {(error || localError) && (
@@ -796,13 +788,13 @@ function AppointmentForm({
     [start, setStart] = useState(
       initial
         ? formatInTimeZone(initial.start_time, tz, "yyyy-MM-dd'T'HH:mm")
-        : `${localVenueDay(tz, new Date(Date.now() + 86400000))}T09:00`
+        : `${localVenueDay(tz, new Date(Date.now() + 86400000))}T09:00`,
     ),
     [duration, setDuration] = useState(
       initial
         ? (Date.parse(initial.end_time) - Date.parse(initial.start_time)) /
             60000
-        : 60
+        : 60,
     ),
     [localError, setError] = useState("");
   const [request] = useState(() => crypto.randomUUID());
@@ -818,7 +810,7 @@ function AppointmentForm({
   const lessonTotal = Math.round(
     ((workspace.coaches.find((c) => c.id === coach)?.hourly_cents || 0) *
       duration) /
-      60
+      60,
   );
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
@@ -842,7 +834,7 @@ function AppointmentForm({
               const date = fromZonedTime(start, tz);
               if (formatInTimeZone(date, tz, "yyyy-MM-dd'T'HH:mm") !== start)
                 throw new Error(
-                  "This local time is skipped by daylight saving. Choose another time."
+                  "This local time is skipped by daylight saving. Choose another time.",
                 );
               save(
                 {
@@ -853,7 +845,7 @@ function AppointmentForm({
                   court_ids: courts,
                   start_time: date.toISOString(),
                   end_time: new Date(
-                    date.getTime() + duration * 60000
+                    date.getTime() + duration * 60000,
                   ).toISOString(),
                   total_cents:
                     kind === "lesson"
@@ -866,11 +858,11 @@ function AppointmentForm({
                   notes: f.get("notes"),
                   tax_inclusive: f.get("tax") === "on",
                 },
-                request
+                request,
               );
             } catch (e) {
               setError(
-                e instanceof Error ? e.message : "Check the booking details."
+                e instanceof Error ? e.message : "Check the booking details.",
               );
             }
           }}
@@ -918,7 +910,7 @@ function AppointmentForm({
             <option value="">Choose player or event contact</option>
             {initial &&
               !directory.data?.players.some(
-                (c) => c.id === initial.customer_id
+                (c) => c.id === initial.customer_id,
               ) && (
                 <option value={initial.customer_id}>
                   {initial.first_name} {initial.last_name}
@@ -996,8 +988,8 @@ function AppointmentForm({
                         kind === "lesson"
                           ? [c.id]
                           : e.target.checked
-                          ? [...courts, c.id]
-                          : courts.filter((id) => id !== c.id)
+                            ? [...courts, c.id]
+                            : courts.filter((id) => id !== c.id),
                       )
                     }
                   />
@@ -1083,7 +1075,7 @@ function CollectionForm({
     pass: string,
     request: string,
     cash: boolean,
-    terms: boolean
+    terms: boolean,
   ) => void;
 }) {
   const { user } = useAuthState();
@@ -1147,7 +1139,7 @@ function CollectionForm({
                 pass,
                 request,
                 f.get("cash") === "on",
-                f.get("terms") === "on"
+                f.get("terms") === "on",
               );
             }}
           >
@@ -1184,7 +1176,7 @@ function CollectionForm({
                       e.kind === "lesson_pack" &&
                       !e.revoked_at &&
                       Number(e.remaining_units) > 0 &&
-                      Date.parse(e.expires_at) >= Date.parse(a.end_time)
+                      Date.parse(e.expires_at) >= Date.parse(a.end_time),
                   )
                   .map((e) => (
                     <option key={e.id} value={e.id}>
@@ -1215,8 +1207,8 @@ function CollectionForm({
               {busy
                 ? "Processing…"
                 : method === "stripe"
-                ? "Reserve & create checkout"
-                : "Confirm booking / payment"}
+                  ? "Reserve & create checkout"
+                  : "Confirm booking / payment"}
             </Button>
           </form>
         )}
