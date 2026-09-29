@@ -306,7 +306,7 @@
   }
 }
 
-.venue-admin-content h3.text-2xl {
+.venue-admin-content h3[class~="md:text-2xl"] {
   font-size: 1rem;
   line-height: 1.5rem;
   letter-spacing: -0.01em;

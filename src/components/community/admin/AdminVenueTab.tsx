@@ -364,7 +364,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       {showProfile && publicSlug && <VenuePublicLink slug={publicSlug} groupId={groupId} />}
       {showProfile && (
         <>
-      <Card ref={element => { profileSections.current.identity = element; }} className="scroll-mt-32 border-border/60">
+      <Card ref={element => { profileSections.current.identity = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -518,7 +518,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             />
           </div>
 
-          <div ref={element => { profileSections.current.colors = element; }} className="scroll-mt-32 space-y-5">
+          <div ref={element => { profileSections.current.colors = element; }} className="scroll-mt-40 sm:scroll-mt-32 space-y-5">
             <div><h3 className="text-sm font-semibold">Venue color palette</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Personalize actions, highlights, artwork and the logo tile. PULSE keeps headers, reading colors and surfaces consistent. Leave a field on Auto to use its default.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               {VENUE_BRAND_COLOR_FIELDS.map(({ key, label, hint }) => <ColorField key={key} id={'venue-' + key.replace('_color', '').replace(/_/g, '-')} label={label} hint={hint} value={form[key]} fallbackColor={colorDefaults[key]} onChange={value => set(key, value)} />)}
@@ -528,7 +528,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card ref={element => { profileSections.current.chat = element; }} className="scroll-mt-32 border-border/60">
+      <Card ref={element => { profileSections.current.chat = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Chat colors</CardTitle>
           <CardDescription>Customize your venue’s conversation. Text adjusts automatically for readability. Use Auto to follow your venue colors and light or dark mode.</CardDescription>
@@ -541,7 +541,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card ref={element => { profileSections.current.welcome = element; }} className="scroll-mt-32 border-border/60">
+      <Card ref={element => { profileSections.current.welcome = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Welcome</CardTitle>
           <CardDescription>Shown to people arriving at your community.</CardDescription>
@@ -571,7 +571,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card ref={element => { profileSections.current.contact = element; }} className="scroll-mt-32 border-border/60">
+      <Card ref={element => { profileSections.current.contact = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Contact & Location</CardTitle>
           <CardDescription>How players reach you and find the courts.</CardDescription>
