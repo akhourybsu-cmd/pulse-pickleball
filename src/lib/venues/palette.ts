@@ -14,6 +14,12 @@ export const VENUE_COLOR_FIELDS = [
 export const VENUE_BRAND_COLOR_FIELDS = VENUE_COLOR_FIELDS.filter(({ key }) =>
   !['background_color', 'surface_color', 'text_color'].includes(key));
 
+export const VENUE_CHAT_COLOR_FIELDS = [
+  { key: 'chat_background_color', label: 'Chat background', hint: 'The conversation canvas behind messages.' },
+  { key: 'chat_incoming_color', label: 'Incoming messages', hint: 'Messages from other people in the venue.' },
+  { key: 'chat_outgoing_color', label: 'Your messages', hint: 'Each player sees their own messages in this color.' },
+] as const;
+
 function rgb(hex: string) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)); }
 function luminance(hex: string) {
   const [r, g, b] = rgb(hex).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
@@ -63,6 +69,7 @@ export function resolveVenuePalette(brand: VenueBrand = {}, dark = false) {
 /** Local semantic tokens also travel with portaled menus and booking dialogs. */
 export function venueThemeStyle(brand: VenueBrand = {}, dark = false): Record<string, string> {
   const p = resolveVenuePalette(brand, dark);
+  const chat = resolveVenueChatPalette(brand, dark);
   const muted = mix(p.background, p.pageText, .07);
   const tokens: Record<string, string> = {
     background: p.background, foreground: p.pageText,
@@ -80,6 +87,11 @@ export function venueThemeStyle(brand: VenueBrand = {}, dark = false): Record<st
     'venue-page-highlight': readableColor(p.accent, p.background), 'venue-card-highlight': readableColor(p.accent, p.surface),
     'venue-action': p.primary, 'venue-on-action': contrastInk(p.primary),
     'venue-highlight': p.accent,
+    'venue-chat-background': chat.background, 'venue-chat-foreground': chat.text,
+    'venue-chat-muted': chat.muted, 'venue-chat-muted-foreground': chat.mutedText,
+    'venue-chat-link': readableColor(p.primary, chat.background),
+    'venue-chat-incoming': chat.incoming, 'venue-chat-incoming-ink': chat.incomingText,
+    'venue-chat-outgoing': chat.outgoing, 'venue-chat-outgoing-ink': chat.outgoingText,
   };
   return {
     ...Object.fromEntries(Object.entries(tokens).map(([key, value]) => [`--${key}`, hexToHsl(value)])),
@@ -88,4 +100,18 @@ export function venueThemeStyle(brand: VenueBrand = {}, dark = false): Record<st
     '--venue-header-highlight': readableColor(p.accent, '#151b24'),
     '--venue-logo-background': p.logoBackground, '--venue-on-logo': contrastInk(p.logoBackground),
   };
+}
+
+/** Chat colors are independent of venue pages; labels follow the chosen surface. */
+export function resolveVenueChatPalette(brand: VenueBrand = {}, dark = false) {
+  const p = resolveVenuePalette(brand, dark);
+  const background = normalizeHex(brand.chat_background_color) ?? p.background;
+  const text = readableColor(p.text, background);
+  const muted = mix(background, text, .07);
+  const incoming = normalizeHex(brand.chat_incoming_color) ?? muted;
+  const outgoing = normalizeHex(brand.chat_outgoing_color) ?? p.primary;
+  return { background, text, muted,
+    mutedText: readableColor(mix(text, background, .3), background),
+    incoming, incomingText: readableColor(p.text, incoming),
+    outgoing, outgoingText: contrastInk(outgoing) };
 }

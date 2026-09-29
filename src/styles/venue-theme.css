@@ -19,6 +19,31 @@
   color: hsl(var(--foreground));
 }
 .venue-theme .text-primary { color: hsl(var(--venue-link)); }
+/* Only the conversation pane consumes chat colors. Bubble-local tokens also
+   keep the existing tails and shadows matched to their message surface. */
+.venue-theme .venue-chat-messages {
+  --background: var(--venue-chat-background);
+  --foreground: var(--venue-chat-foreground);
+  --muted: var(--venue-chat-muted);
+  --muted-foreground: var(--venue-chat-muted-foreground);
+  --venue-page-ink: var(--venue-chat-foreground);
+  --venue-page-muted: var(--venue-chat-muted-foreground);
+  --venue-page-link: var(--venue-chat-link);
+  --venue-link: var(--venue-chat-link);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.venue-theme .venue-chat-messages .chat-incoming-bubble {
+  --muted: var(--venue-chat-incoming);
+  --foreground: var(--venue-chat-incoming-ink);
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.venue-theme .venue-chat-messages .chat-outgoing-bubble {
+  --primary: var(--venue-chat-outgoing);
+  background: hsl(var(--primary));
+  color: hsl(var(--venue-chat-outgoing-ink));
+}
 .venue-theme [data-venue-service] {
   --venue-service: var(--venue-page-highlight);
   --venue-service-contrast: var(--venue-on-action);
