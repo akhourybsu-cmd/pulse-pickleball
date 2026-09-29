@@ -98,7 +98,7 @@ async function appointment(
       .length
   )
     await db.query(
-      "INSERT INTO venue_coaches(id,venue_id,name,hourly_cents,availability) VALUES($1,$2,'Coach',8000,$3)",
+      "INSERT INTO venue_coaches(id,venue_id,name,hourly_rate,availability) VALUES($1,$2,'Coach',80,$3)",
       [
         id(70),
         venue,
@@ -171,6 +171,26 @@ it("retries a quote once, rejects changed requests and uncollectable small balan
   expect(
     (await db.query("SELECT id FROM venue_appointments")).rows
   ).toHaveLength(1);
+});
+it("respects existing court reservations and legacy coach lessons", async () => {
+  const a = await appointment("lesson");
+  await db.query(
+    "INSERT INTO venue_bookings(venue_id,court_id,customer_name,start_time,end_time) VALUES($1,$2,'Existing guest',$3,$4)",
+    [venue, court, a.start_time, a.end_time]
+  );
+  await expect(appointment("lesson")).rejects.toThrow(/already has a booking/);
+  await db.exec("DELETE FROM venue_bookings");
+  await db.query(
+    "INSERT INTO venue_courts(id,venue_id,name,is_active) VALUES($1,$2,'Other court',true)",
+    [id(61), venue]
+  );
+  await db.query(
+    "INSERT INTO venue_lessons(venue_id,coach_id,court_id,title,start_time,end_time) VALUES($1,$2,$3,'Existing lesson',$4,$5)",
+    [venue, id(70), id(61), a.start_time, a.end_time]
+  );
+  await expect(appointment("lesson")).rejects.toThrow(/already has a booking/);
+  await db.exec("UPDATE venue_lessons SET status='cancelled'");
+  expect((await appointment("lesson")).status).toBe("draft");
 });
 it("collects a deposit once, reserves courts, and collects only the remaining balance", async () => {
   await db.query(
