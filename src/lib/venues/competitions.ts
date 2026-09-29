@@ -34,5 +34,5 @@ export interface VenueCompetitions {
   available_leagues: { id: string; name: string }[];
 }
 export function venueRoundRobinHref(groupId: string, id: string) {
-  return `/round-robin/${id}?venueGroup=${encodeURIComponent(groupId)}`;
+  return `/player/community/group/${encodeURIComponent(groupId)}/competitions/round-robins/${id}`;
 }

@@ -1,3 +1,4 @@
+import { useVenueAdminLayout } from '@/components/venue/VenueAdminLayout';
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,6 +34,7 @@ import { formatMoney, paymentApi } from "@/lib/payments";
 import { useAuthState } from "@/hooks/useAuthState";
 
 export default function VenueEventManagement() {
+  const inVenueConsole = useVenueAdminLayout();
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -114,6 +116,7 @@ export default function VenueEventManagement() {
     await query.refetch();
     for (const key of [
       "venue-event-attendees",
+      "venue-attendance",
       "venue-program",
       "venue-program-roster",
       "venue-day",
@@ -260,29 +263,10 @@ export default function VenueEventManagement() {
   };
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 font-sans sm:px-7 sm:py-8 [&_h1]:font-sans [&_h2]:font-sans">
-      <header className="rounded-3xl bg-[#17251f] p-6 text-white sm:p-8">
-        <Link
-          className="inline-flex min-h-10 items-center gap-2 text-sm text-white/75 hover:text-white"
-          to={`${base}/manage`}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Venue management
-        </Link>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald-200">
-              {w.venue.name}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-              Events & registrations
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-white/70">
-              Plan the schedule, assign courts, price each place, and welcome
-              your players.
-            </p>
-          </div>
+      <header className={inVenueConsole ? "flex flex-wrap items-center justify-between gap-4" : "rounded-3xl bg-[#17251f] p-6 text-white sm:p-8"}>
+        {!inVenueConsole && <div><h1 className="text-3xl font-semibold">Events & registrations</h1><p className="mt-2">Plan your schedule, courts, pricing and players.</p></div>}
           <Button
-            className="min-h-11 bg-white text-[#17251f] hover:bg-white/90"
+            className="min-h-11"
             disabled={working}
             onClick={() => {
               setParams({});
@@ -292,12 +276,11 @@ export default function VenueEventManagement() {
             <Plus className="mr-2 h-4 w-4" />
             Create event
           </Button>
-        </div>
       </header>
       <nav className="flex flex-wrap gap-2">
         <Button asChild variant="outline"><Link to={`${base}/competitions`}>Round robins & leagues</Link></Button>
         <Button asChild variant="outline">
-          <Link to={`${base}/ops`}>
+          <Link to={`${base}/ops?view=courts`}>
             <CalendarDays className="mr-2 h-4 w-4" />
             Court calendar
           </Link>
@@ -307,7 +290,7 @@ export default function VenueEventManagement() {
         </Button>
         {w.is_owner && (
           <Button asChild variant="outline">
-            <Link to={`/player/payments?venue=${w.venue.id}`}>
+            <Link to={inVenueConsole ? `${base}/payments` : `/player/payments?venue=${w.venue.id}`}>
               <CreditCard className="mr-2 h-4 w-4" />
               Payments & refunds
             </Link>
@@ -625,7 +608,7 @@ export default function VenueEventManagement() {
                         <p className="font-semibold">{a.name}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {a.status === "going"
-                            ? "Confirmed"
+                            ? (a.no_show_at ? "No-show" : "Confirmed")
                             : a.status === "checkout"
                             ? "Payment record"
                             : a.status.replace(/_/g, " ")}
@@ -651,10 +634,11 @@ export default function VenueEventManagement() {
                           disabled={working}
                           onClick={() =>
                             void act(async () => {
-                              await rpc("set_venue_event_checkin", {
+                              await rpc("record_venue_attendance", {
                                 p_event: selected.id,
                                 p_rsvp: a.id,
-                                p_checked: !a.checked_in_at,
+                                p_status: a.checked_in_at ? "expected" : "checked_in",
+                                p_expected_version: a.attendance_version,
                               });
                             })
                           }
@@ -672,7 +656,7 @@ export default function VenueEventManagement() {
               )}
               {w.is_owner && (
                 <Button asChild variant="outline">
-                  <Link to={`/player/payments?venue=${w.venue.id}`}>
+                  <Link to={inVenueConsole ? `${base}/payments` : `/player/payments?venue=${w.venue.id}`}>
                     Review payments & refund requests
                   </Link>
                 </Button>
@@ -754,7 +738,7 @@ export default function VenueEventManagement() {
             </p>
           )}
           <Button asChild variant="outline">
-            <Link to={`/player/payments?venue=${w.venue.id}`}>
+            <Link to={inVenueConsole ? `${base}/payments` : `/player/payments?venue=${w.venue.id}`}>
               Review Stripe & payment policies
             </Link>
           </Button>

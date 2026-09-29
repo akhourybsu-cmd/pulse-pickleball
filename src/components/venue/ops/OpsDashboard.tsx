@@ -33,6 +33,7 @@ import { VenueBookingGrid } from '../VenueBookingGrid';
  */
 
 export interface OpsDashboardProps {
+  embedded?: boolean;
   timeZone?: string | null;
   venueName: string;
   day: Date;
@@ -60,6 +61,7 @@ export interface OpsDashboardProps {
 }
 
 export function OpsDashboard({
+  embedded = false,
   timeZone,
   venueName,
   day,
@@ -86,13 +88,13 @@ export function OpsDashboard({
   onFillGap,
 }: OpsDashboardProps) {
   return (
-    <div className="min-h-[100dvh] bg-background pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans">
+    <div className={cn("bg-background font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans", !embedded && "min-h-[100dvh] pb-[env(safe-area-inset-bottom)]")}>
       {/* Toolbar. One slim row: where you are on the left, what you can do on
           the right. A chevron rather than a filled circle button — going back
           is not an action worth the visual weight of a control. */}
       <header className="venue-ops-toolbar sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[calc(3.5rem+env(safe-area-inset-top))] max-w-[1400px] items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-4">
-          <button
+          {!embedded && <button
             type="button"
             onClick={onBack}
             aria-label="Back to venue"
@@ -100,7 +102,7 @@ export function OpsDashboard({
           >
             <ChevronLeft className="h-4.5 w-4.5" />
             <span className="hidden sm:inline">Venue</span>
-          </button>
+          </button>}
 
           <div className="mx-1 hidden h-5 w-px shrink-0 bg-border sm:block" />
 
@@ -182,8 +184,8 @@ export function OpsDashboard({
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_336px] lg:items-start lg:gap-6">
+      <div className={embedded ? "py-5" : "mx-auto max-w-[1400px] px-4 py-5 sm:px-6"}>
+        <div className="lg:grid xl:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-6">
           {/* Main column: what an operator manipulates. */}
           <div className="min-w-0 space-y-7">
             {isToday && <Section
@@ -229,7 +231,7 @@ export function OpsDashboard({
 
           {/* Rail: what an operator glances at. Sticky, because it is reference
               material for the schedule you are scrolling beside it. */}
-          <aside className="hidden lg:sticky lg:top-[4.5rem] lg:block lg:space-y-7">
+          <aside className="hidden xl:sticky xl:top-[4.5rem] xl:block xl:space-y-7">
             {loading ? <Skeleton className="h-40 rounded-xl" /> : <DayPanel summary={summary} accent={accent} showLive={isToday} />}
             {!loading && canScheduleSlot && <GapsPanel gaps={gaps} summary={summary} accent={accent} onFillGap={onFillGap} timeZone={timeZone} />}
           </aside>

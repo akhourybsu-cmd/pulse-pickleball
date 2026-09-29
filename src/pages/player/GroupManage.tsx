@@ -1,3 +1,4 @@
+import { useVenueAdminLayout } from '@/components/venue/VenueAdminLayout';
 import { VenueTheme } from '@/components/venue/VenueTheme';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -46,6 +47,7 @@ import { resolveVenueAdminTab } from '@/lib/venues/navigation';
 import { VenueIntegrationsPanel } from '@/components/venue/VenueIntegrationsPanel';
 
 export default function GroupManage() {
+  const inVenueConsole = useVenueAdminLayout();
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -557,6 +559,8 @@ export default function GroupManage() {
       )}
     </Tabs>
   );
+
+  if (showsVenueAdmin && inVenueConsole) return <>{privateSample && <PrivateVenueNotice />}{panels}</>;
 
   if (showsVenueAdmin) {
     const roleLabel =

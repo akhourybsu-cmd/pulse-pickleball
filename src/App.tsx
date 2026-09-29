@@ -199,6 +199,8 @@ const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const VenueCompetitions = lazy(() => import("./pages/player/VenueCompetitions"));
 const VenueEventManagement = lazy(() => import("./pages/player/VenueEventManagement"));
+const VenueAdminPayments = lazy(() => import("./components/venue/VenueAdminPayments"));
+const VenueAdminLayout = lazy(() => import("./components/venue/VenueAdminLayout"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 // Guarded at the import, not just at the route: a bare lazy() still emits the
@@ -495,6 +497,10 @@ const AppContent = () => {
                 so the header + bottom nav don't remount. */}
             <Route element={<CommunityTransitionOutlet />}>
               <Route path="venue-requests" element={<VenueRequests />} />
+            </Route>
+            <Route element={<VenueAdminLayout />}>
+              <Route path="community/group/:groupId/payments" element={<VenueAdminPayments />} />
+              <Route path="community/group/:groupId/competitions/round-robins/:id" element={<RoundRobinDetail />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
               <Route path="community/group/:groupId/events/manage" element={<VenueEventManagement />} />
               <Route path="community/group/:groupId/competitions" element={<VenueCompetitions />} />

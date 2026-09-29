@@ -438,7 +438,8 @@ function CourtsView({
               key={`${col.court.id}-${block.fromIndex}`}
               block={block}
               column={colIndex + 2}
-              label={slotLabel(col, block.fromIndex, block.toIndex, timeZone)}
+              label={slotLabel(col, block.fromIndex, block.toIndex, timeZone, block.reservation)}
+              timeLabel={block.reservation?.end_time ? `${formatSlotTime(new Date(block.reservation.start_time), timeZone)}–${formatSlotTime(new Date(block.reservation.end_time), timeZone)}` : undefined}
               canBook={canBook}
               accent={accent}
               onBook={() => onPickSlot(col.court.id, col.slots[block.fromIndex].start)}
@@ -467,9 +468,9 @@ function shortCourtName(court: CourtColumn['court']): string {
 }
 
 /** Include venue-local date and range: a bare court number is ambiguous to assistive technology. */
-function slotLabel(column: CourtColumn, from: number, to: number, timeZone?: string | null): string {
-  const start = column.slots[from].start;
-  const end = column.slots[to].end;
+function slotLabel(column: CourtColumn, from: number, to: number, timeZone?: string | null, reservation?: CourtBlock['reservation']): string {
+  const start = reservation ? new Date(reservation.start_time) : column.slots[from].start;
+  const end = reservation?.end_time ? new Date(reservation.end_time) : column.slots[to].end;
   const date = start.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', timeZone: timeZone || undefined });
   return `${column.court.name || `Court ${column.court.court_number ?? ''}`} · ${date}, ${formatSlotTime(start, timeZone)}–${formatSlotTime(end, timeZone)}${timeZone ? ' · venue time' : ''}`;
 }
@@ -478,6 +479,7 @@ function GridBlock({
   block,
   column,
   label,
+  timeLabel,
   canBook,
   accent,
   onBook,
@@ -486,6 +488,7 @@ function GridBlock({
   block: CourtBlock;
   column: number;
   label: string;
+  timeLabel?: string;
   canBook: boolean;
   accent?: string | null;
   onBook: () => void;
@@ -519,6 +522,7 @@ function GridBlock({
           <span className="truncate font-semibold">
             {block.reservation.title || (closed ? 'Closed' : 'Booked')}
           </span>
+          {timeLabel && <span className="mt-1 text-[10px] tabular-nums opacity-80">{timeLabel}</span>}
         </div>
       </Tag>
     );

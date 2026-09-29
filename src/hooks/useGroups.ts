@@ -26,6 +26,7 @@ export interface Group {
   updated_at: string;
   is_venue_verified?: boolean;
   venue?: {
+    owner_id?: string | null;
     id: string;
     name: string;
     slug: string | null;

@@ -1,3 +1,4 @@
+import { useVenueAdminLayout } from '@/components/venue/VenueAdminLayout';
 import { useState } from "react";
 import {
   Link,
@@ -27,6 +28,7 @@ import {
 import { VenueRoundRobinCard } from "@/components/venue/VenueRoundRobinCard";
 
 export default function VenueCompetitions() {
+  const inVenueConsole = useVenueAdminLayout();
   const { groupId = "" } = useParams();
   const { user } = useAuthState();
   const navigate = useNavigate();
@@ -90,7 +92,7 @@ export default function VenueCompetitions() {
   );
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 pb-28 sm:px-6">
-      <header className="rounded-3xl bg-[#17251f] p-6 text-white sm:p-8">
+      {!inVenueConsole && <header className={inVenueConsole ? "flex flex-wrap items-center justify-between gap-4" : "rounded-3xl bg-[#17251f] p-6 text-white sm:p-8"}>
         <Link
           to={`${base}/manage`}
           className="inline-flex min-h-10 items-center gap-2 text-sm text-white/75"
@@ -108,7 +110,7 @@ export default function VenueCompetitions() {
           Turn scheduled events into match play. Run your leagues, seasons,
           players and standings from your venue.
         </p>
-      </header>
+      </header>}
       <nav
         className="flex flex-wrap gap-2"
         aria-label="Venue competition tools"
