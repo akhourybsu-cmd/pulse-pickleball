@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -86,15 +87,10 @@ export default function VenueCommunications() {
   }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          {group?.venue?.name || group?.name}
-        </p>
-        <h1 className="text-2xl font-bold">Communications & automation</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Keep players informed before their next visit.
-        </p>
-      </header>
+      <VenueAdminPageHeader
+        title="Communications & automation"
+        description="Keep players informed before their next visit."
+      />
       {(error || q.error) && (
         <p role="alert" className="text-destructive">
           {error || q.error?.message}
@@ -106,7 +102,11 @@ export default function VenueCommunications() {
       ) : (
         q.data && (
           <>
-            <VenueEmailComposer venueId={venue!} groupId={groupId} events={q.data.events} />
+            <VenueEmailComposer
+              venueId={venue!}
+              groupId={groupId}
+              events={q.data.events}
+            />
             <form
               className="space-y-4 rounded-2xl border bg-card p-5"
               onSubmit={(e) => {
@@ -217,7 +217,7 @@ export default function VenueCommunications() {
                       p_venue: venue,
                       p_audience: audience,
                       p_event: audience === "event" ? event : null,
-                    })
+                    }),
                   );
                 });
               }}

@@ -1,3 +1,4 @@
+import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { resolveVenuePalette, resolveVenueChatPalette, VENUE_BRAND_COLOR_FIELDS, VENUE_CHAT_COLOR_FIELDS } from '@/lib/venues/palette';
 import { useTheme } from 'next-themes';
 import { normalizeHex, type VenueBrand } from '@/lib/venues/branding';
@@ -133,6 +134,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
   const chatDefaults = { chat_background_color: chatPalette.background, chat_incoming_color: chatPalette.incoming, chat_outgoing_color: chatPalette.outgoing };
   const colorDefaults = { primary_color: palette.primary, secondary_color: palette.secondary, accent_color: palette.accent, background_color: palette.background, surface_color: palette.surface, text_color: palette.text, logo_background_color: palette.logoBackground };
 
+  const profileSections = useRef<Record<string, HTMLElement | null>>({});
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
   const imageMutation = useRef(false);
@@ -338,10 +340,31 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
 
   return (
     <div className="space-y-5">
+      {showProfile && (
+        <div className="venue-admin-section-links sticky top-0 z-10 bg-background py-2">
+          <VenueAdminSubnav
+            label="Jump to profile section"
+            value=""
+            items={[
+              { value: 'identity', label: 'Identity' },
+              { value: 'colors', label: 'Brand colors' },
+              { value: 'chat', label: 'Chat' },
+              { value: 'welcome', label: 'Welcome' },
+              { value: 'contact', label: 'Contact' },
+            ]}
+            onChange={section => profileSections.current[section]?.scrollIntoView({ block: 'start', behavior: 'instant' })}
+          >
+            <Button onClick={save} disabled={saving || uploading !== null}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save venue profile
+            </Button>
+          </VenueAdminSubnav>
+        </div>
+      )}
       {showProfile && publicSlug && <VenuePublicLink slug={publicSlug} groupId={groupId} />}
       {showProfile && (
         <>
-      <Card className="border-border/60">
+      <Card ref={element => { profileSections.current.identity = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -495,7 +518,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             />
           </div>
 
-          <div className="space-y-5">
+          <div ref={element => { profileSections.current.colors = element; }} className="scroll-mt-40 sm:scroll-mt-32 space-y-5">
             <div><h3 className="text-sm font-semibold">Venue color palette</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Personalize actions, highlights, artwork and the logo tile. PULSE keeps headers, reading colors and surfaces consistent. Leave a field on Auto to use its default.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               {VENUE_BRAND_COLOR_FIELDS.map(({ key, label, hint }) => <ColorField key={key} id={'venue-' + key.replace('_color', '').replace(/_/g, '-')} label={label} hint={hint} value={form[key]} fallbackColor={colorDefaults[key]} onChange={value => set(key, value)} />)}
@@ -505,7 +528,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card ref={element => { profileSections.current.chat = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Chat colors</CardTitle>
           <CardDescription>Customize your venue’s conversation. Text adjusts automatically for readability. Use Auto to follow your venue colors and light or dark mode.</CardDescription>
@@ -518,7 +541,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card ref={element => { profileSections.current.welcome = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Welcome</CardTitle>
           <CardDescription>Shown to people arriving at your community.</CardDescription>
@@ -548,7 +571,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card ref={element => { profileSections.current.contact = element; }} className="scroll-mt-40 sm:scroll-mt-32 border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Contact & Location</CardTitle>
           <CardDescription>How players reach you and find the courts.</CardDescription>
@@ -633,13 +656,6 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
           </div>
         </CardContent>
       </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={save} disabled={saving || uploading !== null}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save venue profile
-            </Button>
-          </div>
         </>
       )}
 

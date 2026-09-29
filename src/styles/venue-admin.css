@@ -1,0 +1,316 @@
+/* The venue console shares the venue palette, including portaled menus. */
+.venue-admin-ui {
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+}
+.venue-admin-ui :is(h1, h2, h3, h4) {
+  font-family: inherit;
+}
+.venue-admin-frame {
+  background: hsl(var(--background));
+}
+.venue-admin-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: calc(14px + env(safe-area-inset-top)) 24px 14px;
+  border-bottom: 1px solid hsl(var(--border));
+  border-top: 3px solid hsl(var(--primary));
+  background: hsl(var(--card));
+}
+.venue-admin-body {
+  flex: 1;
+  min-height: 0;
+}
+.venue-admin-sidebar {
+  background: hsl(var(--card) / 0.58);
+}
+.venue-admin-tool-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: hsl(var(--muted-foreground));
+}
+.venue-admin-tool-search > svg {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+}
+.venue-admin-tool-search input {
+  height: 40px;
+  border-radius: 10px;
+  padding-left: 36px;
+  padding-right: 35px;
+  font-size: 12px;
+  background: hsl(var(--background));
+  border-color: hsl(var(--border));
+  box-shadow: none;
+}
+.venue-admin-tool-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.venue-admin-tool-search > button {
+  position: absolute;
+  right: 2px;
+  height: 36px;
+  width: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.venue-admin-nav-group {
+  margin-top: 22px;
+}
+.venue-admin-nav-group > h2 {
+  padding: 0 12px;
+  margin-bottom: 7px;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.venue-admin-nav-group > div {
+  display: grid;
+  gap: 3px;
+}
+.venue-admin-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 11px;
+  text-align: left;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.venue-admin-nav-item > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.venue-admin-nav-item:hover {
+  background: hsl(var(--muted) / 0.7);
+  color: hsl(var(--foreground));
+}
+.venue-admin-nav-item[aria-current="page"] {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--primary) / 0.22);
+  color: hsl(var(--accent-foreground));
+  font-weight: 650;
+}
+.venue-admin-nav-item[aria-current="page"] > svg {
+  color: hsl(var(--venue-card-highlight));
+}
+.venue-admin-nav-danger:not([aria-current="page"]) {
+  color: hsl(var(--destructive));
+}
+.venue-admin-nav-item:focus-visible,
+.venue-admin-tool-search > button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+.venue-admin-page-heading {
+  margin-bottom: 28px;
+}
+.venue-admin-content > :not(.venue-admin-page-heading) {
+  max-width: 1440px;
+}
+.venue-admin-content .venue-admin-page-actions {
+  margin-top: -4px;
+  margin-bottom: 20px;
+}
+.venue-admin-subnav-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.venue-admin-subnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 5px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--muted) / 0.45);
+  scrollbar-width: thin;
+}
+.venue-admin-subnav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+.venue-admin-subnav button:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--card) / 0.65);
+}
+.venue-admin-subnav button[aria-current="page"] {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.05);
+}
+.venue-admin-subnav button[aria-current="page"] svg {
+  color: hsl(var(--venue-card-highlight));
+}
+.venue-admin-subnav button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+.venue-admin-ui
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    textarea,
+    select,
+    [role="combobox"]
+  ) {
+  border-radius: 10px;
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.025);
+}
+.venue-admin-ui
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    select,
+    [role="combobox"]
+  ) {
+  min-height: 42px;
+}
+.venue-admin-ui :is(input, textarea, select):focus-visible {
+  outline-color: hsl(var(--ring));
+}
+.venue-admin-ui
+  :is(button.inline-flex, a.inline-flex):not([role="switch"]):not(
+    [role="tab"]
+  ) {
+  border-radius: 10px;
+}
+.venue-admin-ui:is([role="menu"], [role="listbox"]),
+.venue-admin-ui :is([role="menu"], [role="listbox"]) {
+  border-radius: 14px;
+  padding: 6px;
+  border-color: hsl(var(--border));
+  box-shadow: 0 16px 45px -15px hsl(var(--foreground) / 0.25);
+}
+.venue-admin-ui
+  :is(
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"]
+  ) {
+  min-height: 40px;
+  border-radius: 8px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  font-size: 13px;
+}
+.venue-admin-ui [role="tablist"] {
+  max-width: 100%;
+  min-height: 46px;
+  height: auto;
+  padding: 5px;
+  gap: 4px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--muted) / 0.45);
+}
+.venue-admin-ui [role="tab"] {
+  min-height: 36px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+.venue-admin-ui [role="tab"][data-state="active"] {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+}
+.venue-admin-content :is(section, form, article, div).bg-card.border {
+  border-color: hsl(var(--border) / 0.8);
+  box-shadow: 0 2px 5px -3px hsl(var(--foreground) / 0.09);
+}
+.venue-admin-content table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  color: hsl(var(--muted-foreground));
+}
+.venue-admin-content table td {
+  font-size: 13px;
+}
+.venue-admin-drawer > button:last-child {
+  min-width: 40px;
+  min-height: 40px;
+  top: 12px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+}
+@media (max-width: 1023px) {
+  .venue-admin-topbar {
+    gap: 8px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  }
+  .venue-admin-page-heading {
+    margin-bottom: 22px;
+  }
+  .venue-admin-nav-item {
+    min-height: 44px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 639px) {
+  .venue-admin-ui
+    :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+      textarea,
+      select,
+      [role="combobox"]
+    ) {
+    font-size: 16px;
+  }
+  .venue-admin-ui .venue-admin-tool-search input {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .venue-admin-nav-item {
+    transition: none;
+  }
+}
+
+.venue-admin-content h3[class~="md:text-2xl"] {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  letter-spacing: -0.01em;
+}
+.venue-admin-section-links {
+  box-shadow: 0 5px 12px -10px hsl(var(--foreground) / 0.2);
+}

@@ -1,4 +1,5 @@
 import { useVenueAdminLayout } from "@/components/venue/VenueAdminLayout";
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useState } from "react";
 import {
   Link,
@@ -141,7 +142,7 @@ export default function VenueEventManagement() {
       await refresh();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "The action could not be completed."
+        e instanceof Error ? e.message : "The action could not be completed.",
       );
     } finally {
       setWorking(false);
@@ -165,12 +166,12 @@ export default function VenueEventManagement() {
             ...document.occurrences[0],
             registration_closes_at: new Date(
               Date.parse(document.occurrences[0].start_time) -
-                document.close_minutes * 60000
+                document.close_minutes * 60000,
             ).toISOString(),
           },
         });
         setNotice(
-          "Event updated. Court allocations and registration details are saved."
+          "Event updated. Court allocations and registration details are saved.",
         );
       } else {
         const d = await rpc<EventDraft>("save_venue_event_draft", {
@@ -189,7 +190,7 @@ export default function VenueEventManagement() {
           setNotice(
             `${ids.length} event${
               ids.length === 1 ? "" : "s"
-            } published with dedicated courts.`
+            } published with dedicated courts.`,
           );
         } else setNotice("Draft saved. No courts are reserved yet.");
       }
@@ -197,7 +198,7 @@ export default function VenueEventManagement() {
       await refresh();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "The event could not be saved."
+        e instanceof Error ? e.message : "The event could not be saved.",
       );
       throw e;
     } finally {
@@ -234,8 +235,8 @@ export default function VenueEventManagement() {
         (filter === "canceled"
           ? !!e.canceled_at
           : filter === "paused"
-          ? e.registration_paused && !e.canceled_at
-          : !e.canceled_at && !e.registration_paused))
+            ? e.registration_paused && !e.canceled_at
+            : !e.canceled_at && !e.registration_paused)),
   );
   const total = w.events.reduce(
     (a, e) => ({
@@ -243,7 +244,7 @@ export default function VenueEventManagement() {
       pending: a.pending + e.pending,
       collected: a.collected + e.collected_cents,
     }),
-    { players: 0, pending: 0, collected: 0 }
+    { players: 0, pending: 0, collected: 0 },
   );
   const duplicate = (e: ManagedEvent) => {
     setParams({});
@@ -270,21 +271,10 @@ export default function VenueEventManagement() {
   };
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 font-sans sm:px-7 sm:py-8 [&_h1]:font-sans [&_h2]:font-sans">
-      <header
-        className={
-          inVenueConsole
-            ? "flex flex-wrap items-center justify-between gap-4"
-            : "rounded-3xl bg-[#17251f] p-6 text-white sm:p-8"
-        }
+      <VenueAdminPageHeader
+        title="Events & registrations"
+        description="Plan your schedule, courts, pricing and players."
       >
-        {!inVenueConsole && (
-          <div>
-            <h1 className="text-3xl font-semibold">Events & registrations</h1>
-            <p className="mt-2">
-              Plan your schedule, courts, pricing and players.
-            </p>
-          </div>
-        )}
         <Button
           className="min-h-11"
           disabled={working}
@@ -296,7 +286,7 @@ export default function VenueEventManagement() {
           <Plus className="mr-2 h-4 w-4" />
           Create event
         </Button>
-      </header>
+      </VenueAdminPageHeader>
       <nav className="flex flex-wrap gap-2">
         <Button asChild variant="outline">
           <Link to={`${base}/competitions`}>Round robins & leagues</Link>
@@ -494,7 +484,7 @@ export default function VenueEventManagement() {
                 const s = eventSchedule(
                   e.start_time,
                   e.end_time,
-                  w.venue.timezone
+                  w.venue.timezone,
                 );
                 return (
                   <button
@@ -512,10 +502,10 @@ export default function VenueEventManagement() {
                         {e.canceled_at
                           ? "Canceled"
                           : new Date(e.end_time ?? e.start_time) < new Date()
-                          ? "Completed"
-                          : e.registration_paused
-                          ? "Paused"
-                          : "Published"}
+                            ? "Completed"
+                            : e.registration_paused
+                              ? "Paused"
+                              : "Published"}
                       </p>
                       <h3 className="mt-2 text-lg font-semibold">{e.title}</h3>
                       <p className="mt-2 text-sm font-medium">
@@ -525,7 +515,8 @@ export default function VenueEventManagement() {
                         {e.court_ids
                           .map(
                             (id) =>
-                              w.courts.find((c) => c.id === id)?.name ?? "Court"
+                              w.courts.find((c) => c.id === id)?.name ??
+                              "Court",
                           )
                           .join(", ") || "Courts released"}
                       </p>
@@ -587,7 +578,7 @@ export default function VenueEventManagement() {
                         void act(async () => {
                           const id = await rpc<string>(
                             "setup_venue_round_robin",
-                            { p_event: selected.id }
+                            { p_event: selected.id },
                           );
                           navigate(`/round-robin/${id}?venueGroup=${groupId}`);
                         })
@@ -656,16 +647,16 @@ export default function VenueEventManagement() {
                               ? "No-show"
                               : "Confirmed"
                             : a.status === "checkout"
-                            ? "Payment record"
-                            : a.status.replace(/_/g, " ")}
+                              ? "Payment record"
+                              : a.status.replace(/_/g, " ")}
                           {a.payment_status
                             ? ` · ${
                                 a.livemode ? "" : "Test · "
                               }${a.payment_status.replace(
                                 /_/g,
-                                " "
+                                " ",
                               )} · ${formatMoney(
-                                (a.amount_cents ?? 0) - (a.refunded_cents ?? 0)
+                                (a.amount_cents ?? 0) - (a.refunded_cents ?? 0),
                               )} net`
                             : ""}
                           {a.refund_state && a.refund_state !== "none"
@@ -760,7 +751,7 @@ export default function VenueEventManagement() {
                 });
                 setCanceling(null);
                 setNotice(
-                  "Event canceled. Review any paid registrations in Payments & refunds."
+                  "Event canceled. Review any paid registrations in Payments & refunds.",
                 );
               })
             }
@@ -814,7 +805,7 @@ export default function VenueEventManagement() {
                 setNotice(
                   w.accepting_event_payments
                     ? "New event payments paused."
-                    : "Event payments enabled."
+                    : "Event payments enabled.",
                 );
               })
             }

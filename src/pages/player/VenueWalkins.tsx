@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -157,7 +158,7 @@ export default function VenueWalkins() {
           "venue-program",
           "venue-program-roster",
           "venue-walkin-quote",
-        ].map((k) => client.invalidateQueries({ queryKey: [k] }))
+        ].map((k) => client.invalidateQueries({ queryKey: [k] })),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the visit.");
@@ -168,21 +169,12 @@ export default function VenueWalkins() {
   const p = q.data;
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {group?.venue?.name || group?.name}
-          </p>
-          <h1 className="text-2xl font-bold">Walk-ins & visits</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Register guests, reserve their space and keep the day’s attendance
-            current.
-          </p>
-        </div>
-        <Link to={`/player/community/group/${groupId}/ops?day=${day}`}>
-          <Button variant="outline">Open operations calendar</Button>
-        </Link>
-      </header>
+      <VenueAdminPageHeader
+        title="Walk-ins & visits"
+        description="Register guests, reserve their space and keep the day’s attendance current."
+      >
+        <Button asChild variant="outline"><Link to={`/player/community/group/${groupId}/ops?day=${day}`}>Open operations calendar</Link></Button>
+      </VenueAdminPageHeader>
       {(error || q.error || directory.error) && (
         <p
           role="alert"
@@ -225,11 +217,11 @@ export default function VenueWalkins() {
                         amount_cents: cost,
                         request_key: request,
                         accept_terms: confirmed,
-                      }
+                      },
                     );
                     setCheckout(result.url);
                     setNotice(
-                      "Space is held while the player completes checkout."
+                      "Space is held while the player completes checkout.",
                     );
                   } else {
                     await rpc("venue_walkin_book", {
@@ -241,7 +233,7 @@ export default function VenueWalkins() {
                       p_cash_received: payment === "cash" && confirmed,
                     });
                     setNotice(
-                      "Visit booked. Complete required documents, then check the player in."
+                      "Visit booked. Complete required documents, then check the player in.",
                     );
                     setRequest(crypto.randomUUID());
                   }
@@ -417,7 +409,7 @@ export default function VenueWalkins() {
                                 "visit_pass",
                                 "guest_pass",
                                 "lesson_pack",
-                              ].includes(e.kind))
+                              ].includes(e.kind)),
                       )
                       .map((e) => (
                         <option key={e.id} value={e.id}>
@@ -449,8 +441,8 @@ export default function VenueWalkins() {
                 {payment === "cash"
                   ? "I received the cash amount shown."
                   : payment === "pass"
-                  ? "Apply this player’s prepaid benefit to this visit."
-                  : "I reviewed the visit details and venue policy with the player."}
+                    ? "Apply this player’s prepaid benefit to this visit."
+                    : "I reviewed the visit details and venue policy with the player."}
               </label>
               <Button
                 type="submit"
@@ -465,8 +457,8 @@ export default function VenueWalkins() {
                 {working
                   ? "Saving…"
                   : payment === "stripe"
-                  ? "Reserve space & create checkout"
-                  : "Book visit"}
+                    ? "Reserve space & create checkout"
+                    : "Book visit"}
               </Button>
             </form>
             {checkout && (
@@ -524,8 +516,8 @@ export default function VenueWalkins() {
                         {v.method === "pass"
                           ? "Prepaid pass"
                           : v.method === "free"
-                          ? "Free"
-                          : v.method}{" "}
+                            ? "Free"
+                            : v.method}{" "}
                         · {v.status.replace(/_/g, " ")}
                       </p>
                     </div>
@@ -561,7 +553,7 @@ export default function VenueWalkins() {
                       </Link>
                     )}
                     {["expected", "checked_in", "no_show"].includes(
-                      v.status
+                      v.status,
                     ) && (
                       <>
                         {v.status !== "checked_in" && (
@@ -670,7 +662,7 @@ export default function VenueWalkins() {
                 });
                 setCancel(null);
                 setNotice(
-                  "Visit canceled. Review any collected payment in Front desk."
+                  "Visit canceled. Review any collected payment in Front desk.",
                 );
               });
             }}

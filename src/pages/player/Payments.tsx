@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -133,9 +134,25 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
       setBusy(null);
     }
   };
+  const refreshAction = (
+          <Button
+            variant="outline"
+            className="h-11 rounded-xl"
+            onClick={async () => {
+              setRefreshing(true);
+              try { await refreshPaymentWorkspace(client, venueId, user?.id); }
+              catch { toast.error('Some payment details could not refresh. Try again before taking action.'); }
+              finally { setRefreshing(false); }
+            }}
+            disabled={history.isFetching || refreshing}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+  );
   return (
     <div className={scopedVenueId ? "space-y-6 font-sans" : "mx-auto w-full max-w-6xl space-y-6 px-4 py-6 pb-24 font-sans sm:px-6 lg:py-9"}>
-      <header>
+      {scopedVenueId ? <VenueAdminPageHeader title="Venue finances" description="Your rental collections, checkout policies and player requests. PULSE add-on bills are separate.">{refreshAction}</VenueAdminPageHeader> : <header>
         {!scopedVenueId && <Link
           to="/player/profile"
           className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground"
@@ -154,22 +171,9 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
                 : "Secure payment methods and a clear record of what you paid for, who received it, and any refunds."}
             </p>
           </div>
-          <Button
-            variant="outline"
-            className="h-11 rounded-xl"
-            onClick={async () => {
-              setRefreshing(true);
-              try { await refreshPaymentWorkspace(client, venueId, user?.id); }
-              catch { toast.error('Some payment details could not refresh. Try again before taking action.'); }
-              finally { setRefreshing(false); }
-            }}
-            disabled={history.isFetching || refreshing}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          {refreshAction}
         </div>
-      </header>
+      </header>}
       {invalidReturn && <p role="alert" className="rounded-xl border p-4 text-sm">This Stripe return could not be matched to a venue. Open that venue’s payment settings and start the connection again. No account has been changed here.</p>}
       {config.data?.ready === false && config.data.mode !== 'off' && <p role="status" className="rounded-xl border p-4 text-sm">{config.data.setup_issues?.join(' ') || 'New payment setup is temporarily unavailable.'} Existing purchase records remain available.</p>}
       {config.data?.mode === "test" && (

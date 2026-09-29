@@ -1,3 +1,4 @@
+import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -37,7 +38,7 @@ export default function VenueCheckinStations() {
       await q.refetch();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Could not update check-in stations."
+        e instanceof Error ? e.message : "Could not update check-in stations.",
       );
     } finally {
       setBusy(false);
@@ -45,23 +46,17 @@ export default function VenueCheckinStations() {
   }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          {group?.venue?.name || group?.name}
-        </p>
-        <h1 className="text-2xl font-bold">Player check-in stations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Players scan a venue-branded QR screen, acknowledge required documents
-          and check in for their own confirmed visits.
-        </p>
-      </header>
+      <VenueAdminPageHeader
+        title="Player check-in stations"
+        description="Players scan a venue-branded QR screen, acknowledge required documents and check in for their own confirmed visits."
+      />
       <section className="rounded-2xl border bg-card p-5">
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             void act(() =>
-              rpc("venue_kiosk_create", { p_venue: venue, p_hours: hours })
+              rpc("venue_kiosk_create", { p_venue: venue, p_hours: hours }),
             );
           }}
         >
@@ -106,14 +101,14 @@ export default function VenueCheckinStations() {
                   {active
                     ? "Active station"
                     : k.revoked_at
-                    ? "Revoked station"
-                    : "Expired station"}
+                      ? "Revoked station"
+                      : "Expired station"}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Expires{" "}
                   {venueDate(
                     k.expires_at,
-                    group?.venue?.timezone || "America/New_York"
+                    group?.venue?.timezone || "America/New_York",
                   )}
                 </p>
                 {active && (
@@ -137,8 +132,8 @@ export default function VenueCheckinStations() {
                             .then(() => setNotice("Kiosk link copied."))
                             .catch(() =>
                               setError(
-                                "Copy failed. Open the kiosk link instead."
-                              )
+                                "Copy failed. Open the kiosk link instead.",
+                              ),
                             )
                         }
                       >
@@ -152,7 +147,7 @@ export default function VenueCheckinStations() {
                             rpc("venue_kiosk_manage", {
                               p_venue: venue,
                               p_revoke: k.id,
-                            })
+                            }),
                           )
                         }
                       >

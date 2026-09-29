@@ -1,9 +1,42 @@
-import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, BadgeCheck, ExternalLink, Gauge, Settings2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
+import { VenueAdminPageContext } from "@/components/venue/VenueAdminPageHeader";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BadgeCheck,
+  ChevronRight,
+  Gauge,
+  Menu,
+  Search,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { VenueBrandMark } from "@/components/venue/VenueBrandMark";
+import {
+  filterVenueAdminItems,
+  venueAdminSection,
+  VENUE_ADMIN_SECTIONS,
+} from "@/lib/venues/adminSections";
+import type { VenueBrand } from "@/lib/venues/branding";
+import { cn } from "@/lib/utils";
+import { useVisualViewportPane } from "@/hooks/useVisualViewportPane";
 
 export interface VenueAdminNavItem {
   value: string;
@@ -11,11 +44,12 @@ export interface VenueAdminNavItem {
   shortLabel?: string;
   description: string;
   icon: LucideIcon;
-  section?: 'venue' | 'community' | 'advanced';
+  section?: "venue" | "community" | "advanced";
 }
 
 export function VenueAdminShell({
   venueName,
+  brand,
   verified,
   roleLabel,
   accent,
@@ -30,6 +64,13 @@ export function VenueAdminShell({
   kiosk = false,
 }: {
   venueName: string;
+  brand?:
+    | (VenueBrand & {
+        logo_url?: string | null;
+        logo_shape?: "circle" | "square" | null;
+        logo_image_fit?: "contain" | "cover" | null;
+      })
+    | null;
   verified: boolean;
   roleLabel: string;
   accent?: string | null;
@@ -44,171 +85,322 @@ export function VenueAdminShell({
   kiosk?: boolean;
 }) {
   const viewport = useVisualViewportPane();
+  const [actionsTarget, setActionsTarget] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [search, setSearch] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
   const activeItem = items.find((item) => item.value === activeTab) ?? items[0];
-  const mobileNav = useRef<HTMLElement>(null);
+  const activeSection =
+    activeItem &&
+    VENUE_ADMIN_SECTIONS.find(
+      (section) => section.value === venueAdminSection(activeItem),
+    );
+  const filtered = filterVenueAdminItems(items, search);
   const body = useRef<HTMLElement>(null);
-  // A different settings section opens at its beginning; the toolbar stays put.
-  useLayoutEffect(() => { body.current?.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab]);
-  useEffect(() => {
-    const nav = mobileNav.current;
-    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!nav || !active) return;
-    const navRect = nav.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
-    if (activeRect.left < navRect.left || activeRect.right > navRect.right) {
-      nav.scrollTo({ left: nav.scrollLeft + activeRect.left - navRect.left - (nav.clientWidth - activeRect.width) / 2 });
-    }
+  const desktopNav = useRef<HTMLElement>(null);
+  const menuTitle = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    body.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [activeTab]);
-  const sections: Array<{ value: VenueAdminNavItem['section']; label: string }> = [
-    { value: 'venue', label: 'Venue' },
-    { value: 'community', label: 'Community' },
-    { value: 'advanced', label: 'Advanced' },
-  ];
+  useEffect(() => {
+    setMobileOpen(false);
+    setSearch("");
+    desktopNav.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeTab]);
+  function select(value: string) {
+    setSearch("");
+    setMobileOpen(false);
+    onTabChange(value);
+  }
+
+  const toolSearch = (
+    <div className="venue-admin-tool-search">
+      <Search className="h-4 w-4" aria-hidden />
+      <Input
+        aria-label="Find a venue tool"
+        placeholder="Find a tool…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        type="search"
+        autoComplete="off"
+      />
+      {search && (
+        <button
+          type="button"
+          aria-label="Clear tool search"
+          onClick={() => setSearch("")}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+  const navigation = (
+    <>
+      {VENUE_ADMIN_SECTIONS.map((section) => {
+        const sectionItems = filtered.filter(
+          (item) => venueAdminSection(item) === section.value,
+        );
+        if (!sectionItems.length) return null;
+        return (
+          <section
+            key={section.value}
+            className="venue-admin-nav-group"
+            aria-label={section.label}
+          >
+            <h2>{section.label}</h2>
+            <div>
+              {sectionItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    aria-current={item.value === activeTab ? "page" : undefined}
+                    onClick={() => select(item.value)}
+                    className={cn(
+                      "venue-admin-nav-item",
+                      item.value === "danger" && "venue-admin-nav-danger",
+                    )}
+                    title={item.description}
+                  >
+                    <Icon aria-hidden className="h-[18px] w-[18px] shrink-0" />
+                    <span>{item.shortLabel ?? item.label}</span>
+                    {item.value === activeTab && (
+                      <ChevronRight
+                        aria-hidden
+                        className="ml-auto h-3.5 w-3.5 shrink-0"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+      {filtered.length === 0 && (
+        <div
+          role="status"
+          className="px-3 py-6 text-sm leading-6 text-muted-foreground"
+        >
+          <p>No tools match “{search}”.</p>
+          <button
+            type="button"
+            className="mt-2 min-h-11 font-medium underline underline-offset-4"
+            onClick={() => setSearch("")}
+          >
+            Show all tools
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
-    <div
-      data-venue-service="operations"
-      className="venue-management-frame bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
-      style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))', '--venue-pane-height': viewport.height, '--venue-pane-top': viewport.top ?? 0 } as CSSProperties}
-    >
-      {!kiosk && <header className="venue-brand-chrome shrink-0 border-b border-white/10 bg-[#151b24] text-white">
-        <div className="venue-management-toolbar mx-auto max-w-[1920px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="h-11 w-11 shrink-0 rounded-full border border-white/10 text-white/75 hover:bg-white/10 hover:text-white"
-              aria-label="Back to venue"
-            >
-              <ArrowLeft className="h-[18px] w-[18px]" />
-            </Button>
-
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span
-                className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] sm:flex"
+    <VenueAdminPageContext.Provider value={{ target: actionsTarget }}>
+      <div
+        data-venue-service="operations"
+        className="venue-management-frame venue-admin-frame font-sans"
+        style={
+          {
+            "--venue-admin-accent": accent ?? "hsl(var(--primary))",
+            "--venue-pane-height": viewport.height,
+            "--venue-pane-top": viewport.top ?? 0,
+          } as CSSProperties
+        }
+      >
+        {!kiosk && (
+          <a
+            href="#venue-admin-content"
+            className="sr-only z-50 rounded-lg bg-card px-4 py-3 text-sm font-semibold focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
+          >
+            Skip to venue workspace
+          </a>
+        )}
+        {!kiosk && (
+          <header className="venue-admin-topbar">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <Sheet
+                open={mobileOpen}
+                onOpenChange={(open) => {
+                  setMobileOpen(open);
+                  if (!open) setSearch("");
+                }}
               >
-                <Settings2 className="h-5 w-5" />
-              </span>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 shrink-0 lg:hidden"
+                    aria-label="Venue management sections"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  className="venue-admin-drawer flex w-[min(90vw,340px)] flex-col gap-0 p-0"
+                  onOpenAutoFocus={(e) => {
+                    e.preventDefault();
+                    menuTitle.current?.focus();
+                  }}
+                >
+                  <SheetHeader className="border-b p-5 pr-12 text-left">
+                    <SheetTitle
+                      ref={menuTitle}
+                      tabIndex={-1}
+                      className="text-base outline-none"
+                    >
+                      {venueName}
+                    </SheetTitle>
+                    <SheetDescription>
+                      Venue management ·{" "}
+                      <span className="capitalize">{roleLabel}</span>
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="px-4 pb-2 pt-4">{toolSearch}</div>
+                  <nav
+                    aria-label="Venue management tools"
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-5"
+                  >
+                    {navigation}
+                  </nav>
+                  <div className="border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={onBack}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to venue
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <VenueBrandMark
+                name={venueName}
+                logoUrl={brand?.logo_url}
+                logoShape={brand?.logo_shape}
+                logoImageFit={brand?.logo_image_fit}
+                secondaryColor={brand?.secondary_color}
+                logoBackgroundColor={brand?.logo_background_color}
+                className="h-10 w-10 text-[40px] ring-1 ring-border/60"
+              />
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{venueName}</h1>
-                  {verified && <BadgeCheck className="h-4 w-4 shrink-0 text-amber-400" aria-label="Verified venue" />}
+                  <p className="truncate text-sm font-semibold sm:text-base">
+                    {venueName}
+                  </p>
+                  {verified && (
+                    <BadgeCheck
+                      className="h-4 w-4 shrink-0 text-primary"
+                      aria-label="Verified venue"
+                    />
+                  )}
                 </div>
-                <p className="truncate text-[11px] text-white/55 sm:text-xs">Venue admin · {roleLabel}</p>
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  Venue workspace{" "}
+                  <span className="hidden sm:inline">
+                    · <span className="capitalize">{roleLabel}</span>
+                  </span>
+                </p>
               </div>
             </div>
-
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={onViewVenue}
                 aria-label="View venue"
-                className="h-11 min-w-11 rounded-full border border-white/10 px-3 text-white/75 hover:bg-white/10 hover:text-white"
+                className="h-10 min-w-10 gap-2 px-2.5 sm:px-3"
               >
-                <ExternalLink className="h-4 w-4 sm:mr-1.5" />
                 <span className="hidden sm:inline">View venue</span>
+                <ArrowUpRight className="h-4 w-4" />
               </Button>
               {showOperations && (
                 <Button
                   size="sm"
                   onClick={onOperations}
                   aria-label="Open venue operations"
-                  className="venue-service-solid venue-interactive h-11 min-w-11 rounded-full px-3 shadow-none"
+                  className="h-10 min-w-10 gap-2 px-2.5 sm:px-3"
                 >
-                  <Gauge className="h-4 w-4 sm:mr-1.5" />
+                  <Gauge className="h-4 w-4" />
                   <span className="hidden sm:inline">Operations</span>
                 </Button>
               )}
             </div>
-          </div>
-
-        </div>
-
-        <div className="lg:hidden">
-          <nav ref={mobileNav} aria-label="Venue management sections" className="overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max items-center">
-              {items.map((item) => {
-                const Icon = item.icon;
-                const active = item.value === activeTab;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    aria-current={active ? 'page' : undefined}
-                    onClick={() => onTabChange(item.value)}
-                    className={cn(
-                      'relative flex h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-medium text-white/70 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-admin-accent)] after:transition-transform',
-                      active && 'text-white after:scale-x-100',
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {item.shortLabel ?? item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-      </header>}
-
-      <div className={cn("venue-management-body mx-auto w-full max-w-[1920px] lg:grid", !kiosk && "lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[272px_minmax(0,1fr)]")}>
-        {!kiosk && <aside aria-label="Venue administration" className="venue-management-sidebar hidden border-r border-border/70 p-4 lg:block">
-          <div className="space-y-5 p-1">
-            {sections.map((section) => {
-              const sectionItems = items.filter((item) => (item.section ?? 'venue') === section.value);
-              if (!sectionItems.length) return null;
-              return (
-                <div key={section.value}>
-                  <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                    {section.label}
+          </header>
+        )}
+        <div
+          className={cn(
+            "venue-management-body venue-admin-body w-full lg:grid",
+            !kiosk &&
+              "lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)]",
+          )}
+        >
+          {!kiosk && (
+            <aside
+              aria-label="Venue administration"
+              className="venue-admin-sidebar hidden min-h-0 flex-col border-r lg:flex"
+            >
+              <div className="shrink-0 px-4 pb-2 pt-5">{toolSearch}</div>
+              <nav
+                ref={desktopNav}
+                aria-label="Venue management sections"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6"
+              >
+                {navigation}
+              </nav>
+              <div className="shrink-0 border-t px-3 py-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-xs text-muted-foreground"
+                  onClick={onBack}
+                >
+                  <ArrowLeft className="mr-2 h-3.5 w-3.5" />
+                  Back to venue
+                </Button>
+              </div>
+            </aside>
+          )}
+          <main
+            ref={body}
+            id="venue-admin-content"
+            tabIndex={-1}
+            className={cn(
+              "venue-management-content min-w-0",
+              !kiosk &&
+                "venue-admin-content p-4 sm:p-6 lg:px-8 lg:py-7 xl:px-10",
+            )}
+          >
+            {!kiosk && (
+              <header className="venue-admin-page-heading flex flex-wrap items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{activeSection?.label || "Venue management"}</span>
+                    <ChevronRight aria-hidden className="h-3 w-3" />
+                    <span className="font-medium text-foreground">
+                      {activeItem?.shortLabel ?? activeItem?.label}
+                    </span>
                   </p>
-                  <div className="space-y-1">
-                    {sectionItems.map((item) => {
-                      const Icon = item.icon;
-                      const active = item.value === activeTab;
-                      return (
-                        <button
-                          key={item.value}
-                          type="button"
-                          onClick={() => onTabChange(item.value)}
-                          aria-current={active ? 'page' : undefined}
-                          data-venue-service={(item.section ?? 'venue') === 'venue' ? 'operations' : 'community'}
-                          className={cn(
-                            'relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:scale-y-0 before:rounded-full before:bg-[var(--venue-admin-accent)] before:transition-transform hover:bg-card/70',
-                            active && 'bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] before:scale-y-100',
-                          )}
-                        >
-                          <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'venue-service-icon' : 'text-muted-foreground')}><Icon aria-hidden className="h-4 w-4" /></span>
-                          <span className="min-w-0">
-                            <span className={cn('block text-sm font-semibold text-foreground/75', active && 'text-foreground')}>
-                              {item.label}
-                            </span>
-                            <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-[28px]">
+                    {activeItem?.label}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {activeItem?.description}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </aside>}
-
-        <main ref={body} className={cn("venue-management-content min-w-0", !kiosk && "p-4 sm:p-6 lg:p-8")}>
-          {!kiosk && <p className="mb-4 text-sm leading-6 text-muted-foreground lg:hidden">{activeItem?.description}</p>}
-          {!kiosk && <div className="mb-6 hidden items-end justify-between gap-4 border-b border-border/70 pb-4 lg:flex">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Venue admin</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">{activeItem?.label}</h2>
-            </div>
-            <p className="max-w-sm text-right text-sm text-muted-foreground">{activeItem?.description}</p>
-          </div>}
-          {children}
-        </main>
+                <div ref={setActionsTarget} className="shrink-0 empty:hidden" />
+              </header>
+            )}
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </VenueAdminPageContext.Provider>
   );
 }
