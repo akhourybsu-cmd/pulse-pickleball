@@ -1,4 +1,6 @@
 import { venueDeskPayment } from "../_shared/payment-venue-desk.ts";
+import { providerSettings } from "../_shared/payment-provider-settings.ts";
+import { squarePaymentAction } from "../_shared/payment-square-dispatch.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { MfaAccessError } from "../_shared/mfa.ts";
 import {
@@ -49,6 +51,10 @@ serve(async (req) => {
     const store = db();
     const user = await authenticate(req, store);
     const body = await req.json();
+    const providerResult = await providerSettings(store, user, body);
+    if (providerResult !== undefined) return new Response(JSON.stringify(providerResult), { headers: cors });
+    const squareResult = await squarePaymentAction(store, user, body);
+    if (squareResult !== undefined) return new Response(JSON.stringify(squareResult), { headers: cors });
     const configured = billingMode(env);
     const testAllowed = (env("PULSE_PAYMENT_TEST_USER_IDS") || "")
       .split(",")

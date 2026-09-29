@@ -1,4 +1,5 @@
 import { assertCheckoutMatches } from "./payment-contracts.ts";
+import { startSquareCheckout, reconcileSquareOrder } from './square-payments.ts';
 import { requireRentalAccount } from "./payment-connect.ts";
 import {
   appOrigin,
@@ -68,6 +69,7 @@ export async function startCheckout(
   order: any,
   user: { id: string; email?: string }
 ) {
+  if (order.provider === 'square') return startSquareCheckout(r.store, order);
   if (order.status !== "pending")
     throw new Error(
       "This checkout is already finished. Check your purchase history."
@@ -224,6 +226,7 @@ export async function reconcileOrder(
   order: any,
   sessionId?: string
 ) {
+  if (order.provider === 'square') return reconcileSquareOrder(r.store, order);
   if (!sessionId) order = await recoverCheckout(r, order);
   const reference = sessionId || order.checkout_session_id;
   if (!reference) return order;

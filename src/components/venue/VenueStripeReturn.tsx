@@ -4,7 +4,7 @@ import { paymentApi } from '@/lib/payments';
 
 export function VenueStripeReturn({ venueId, enabled, onChecked }: { venueId: string; enabled: boolean; onChecked: () => unknown }) {
   const [params, setParams] = useSearchParams();
-  const [payload] = useState(() => ({ state: params.get('state'), code: params.get('code'), error: params.get('error'), connect: params.get('connect') }));
+  const [payload] = useState(() => params.get('payment_provider') === 'square' ? {state:null,code:null,error:null,connect:null} : ({ state: params.get('state'), code: params.get('code'), error: params.get('error'), connect: params.get('connect') }));
   const [status, setStatus] = useState('');
   const started = useRef(false);
   const cleaned = useRef(false);

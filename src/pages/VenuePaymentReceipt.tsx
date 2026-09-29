@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { venueRpc } from "@/lib/venues/customerRecords";
 import { formatMoney } from "@/lib/payments";
+import { providerName } from '@/lib/venues/paymentProviders';
 export default function VenuePaymentReceipt() {
   const { token } = useParams();
   const q = useQuery({
@@ -15,6 +16,7 @@ export default function VenuePaymentReceipt() {
         refunded_cents: number;
         status: string;
         method: string;
+        provider?: string;
         billing_cadence: string;
         policy: string;
         booking_status?: string | null;
@@ -62,6 +64,7 @@ export default function VenuePaymentReceipt() {
             {r.refunded_cents > 0 && (
               <p>{formatMoney(r.refunded_cents)} refunded</p>
             )}
+            <p className="text-sm text-muted-foreground">Payment provider: {providerName(r.provider || r.method)}</p>
             {r.booking_status && (
               <p className="text-sm">
                 Booking: {r.booking_status.replace(/_/g, " ")}

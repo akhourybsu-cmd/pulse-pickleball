@@ -105,6 +105,10 @@ verify_jwt = false
 # Current session, MFA and platform-superadmin checks run inside the handler.
 verify_jwt = false
 
+[functions.square-webhook]
+# Square signs the exact notification URL and raw body; validated in the handler.
+verify_jwt = false
+
 [functions.venue-email]
 # Current user, live MFA and venue management authorization run inside the handler.
 verify_jwt = false

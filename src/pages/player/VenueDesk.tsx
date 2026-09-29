@@ -1,3 +1,4 @@
+import { providerName } from "@/lib/venues/paymentProviders";
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useMemo, useState } from "react";
@@ -424,7 +425,7 @@ export default function VenueDesk({
                         setMethod(e.target.value as "cash" | "stripe")
                       }
                     >
-                      <option value="stripe">Stripe checkout link / QR</option>
+                      <option value="stripe">Secure payment link / QR</option>
                       <option
                         value="cash"
                         disabled={chosen?.billing_cadence === "monthly"}
@@ -457,7 +458,7 @@ export default function VenueDesk({
                     />
                     {method === "cash"
                       ? "I have received this cash amount."
-                      : "I reviewed the total and venue policy with the player. They will complete payment in Stripe."}
+                      : "I reviewed the total and venue policy with the player. They will complete payment with the venue’s payment provider."}
                   </label>
                   <Button
                     type="submit"
@@ -581,7 +582,7 @@ export default function VenueDesk({
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {venueDate(s.created_at, timezone)} ·{" "}
-                            {s.method === "cash" ? "Cash" : "Stripe"} ·{" "}
+                            {s.method === "cash" ? "Cash" : providerName(s.payment_provider || "stripe")} ·{" "}
                             {s.status.replace(/_/g, " ")}
                           </p>
                         </div>

@@ -4,6 +4,7 @@ import { reconcileOrder } from "../_shared/payment-checkout.ts";
 import { reconcileRefundPayment } from "../_shared/payment-refunds.ts";
 import { billingMode } from "../_shared/payment-contracts.ts";
 import { authorizePaymentRecovery } from "../_shared/payment-recovery-auth.ts";
+import { reconcileSquareOrder } from '../_shared/square-payments.ts';
 
 // Invoke every five minutes from a server-side scheduler. It is NOT a public
 // user action and cannot accept a user's JWT in place of this distinct secret.
@@ -20,10 +21,21 @@ serve(async (req) => {
   );
   if (!authorized) return new Response("Unauthorized", { status: 401 });
   try {
+    const squareStore = db();
+    checked(await squareStore.from('venue_processor_oauth_states').delete().lt('expires_at',new Date(Date.now()-24*3600_000).toISOString()));
+    const squareOrders = checked(await squareStore.from('payment_orders').select('*').eq('provider','square').in('status',['pending','paid','partially_refunded','refunded']).order('processor_checked_at',{ascending:true,nullsFirst:true}).limit(50)) || [];
+    let squareFailed = 0;
+    for (const order of squareOrders) {
+      try {
+        await reconcileSquareOrder(squareStore, order);
+      } catch { squareFailed++; }
+      finally { checked(await squareStore.from('payment_orders').update({processor_checked_at:new Date().toISOString()}).eq('id',order.id)); }
+    }
     if (billingMode(env).mode === "off")
       return new Response(
-        JSON.stringify({ disabled: true, checked: 0, failed: 0 }),
+        JSON.stringify({ disabled: true, checked: squareOrders.length, failed: squareFailed }),
         {
+          status: squareFailed ? 500 : 200,
           headers: {
             "Content-Type": "application/json",
             "Cache-Control": "no-store",
@@ -38,10 +50,11 @@ serve(async (req) => {
           .select("*")
           .eq("livemode", r.livemode)
           .eq("status", "pending")
+          .eq('provider','stripe')
           .order("created_at")
           .limit(100)
       ) || [];
-    let failed = 0;
+    let failed = squareFailed;
     for (const order of orders) {
       try {
         await reconcileOrder(r, order);
@@ -57,6 +70,7 @@ serve(async (req) => {
           .from("payment_orders")
           .select("account_id,livemode,payment_intent_id")
           .eq("livemode", r.livemode)
+          .eq('provider','stripe')
           .in("status", ["paid", "partially_refunded", "refunded"])
           .not("payment_intent_id", "is", null)
           .order("refund_sync_started_at", {
@@ -90,7 +104,7 @@ serve(async (req) => {
     );
     return new Response(
       JSON.stringify({
-        checked: orders.length,
+        checked: orders.length + squareOrders.length,
         refunds_checked: refunds.length,
         failed,
       }),

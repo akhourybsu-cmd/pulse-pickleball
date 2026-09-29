@@ -22,7 +22,7 @@ describe('refund recovery UX', () => {
     const refetchQueries = vi.fn(async () => {});
     await refreshPaymentWorkspace({ refetchQueries } as any, 'venue-a', 'owner');
     expect(refetchQueries.mock.calls.map(c => (c as any)[0].queryKey)).toEqual([
-      ['payment-history','venue-a'], ['venue-payment-requests','venue-a','owner'], ['venue-payments','venue-a','owner'],
+      ['payment-history','venue-a'], ['venue-payment-providers','venue-a','owner'], ['venue-payment-requests','venue-a','owner'], ['venue-payments','venue-a','owner'],
     ]);
   });
   it('surfaces refresh failures rather than claiming the queue is current', async () => {
