@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BadgeCheck, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { VenueBrandMark } from "@/components/venue/VenueBrandMark";
+import { CommunityBrandMark } from "./CommunityBrandMark";
 import { VenueCoverImage } from "@/components/venue/VenueCoverImage";
 import { InviteModal } from "./InviteModal";
 import { venueChrome } from "@/lib/venues/branding";
@@ -41,7 +41,7 @@ export function CommunityHero({
           <VenueCoverImage
             src={venue?.cover_image_url || group.cover_url}
             fit={venue?.cover_image_fit}
-            focalPoint={venue?.cover_focal_point}
+            crop={venue?.cover_crop} focalPoint={venue?.cover_focal_point}
             alt={`${name} cover`}
           />
           <div
@@ -51,13 +51,8 @@ export function CommunityHero({
         </div>
         <div className="relative p-5 pt-0 sm:p-7 sm:pt-0">
           <div className="flex items-end justify-between gap-3">
-            <VenueBrandMark
-              name={name}
-              logoUrl={venue?.logo_url || group.icon_url}
-              logoShape={venue?.logo_shape}
-              logoImageFit={venue?.logo_image_fit}
-              logoBackgroundColor={venue?.logo_background_color}
-              secondaryColor={venue?.secondary_color}
+            <CommunityBrandMark
+              group={group}
               className="-mt-7 h-20 w-20 bg-secondary text-[80px] ring-4 ring-card sm:h-24 sm:w-24 sm:text-[96px]"
             />
             <Button

@@ -1,3 +1,5 @@
+import { useScopedTheme } from '@/components/ui/scoped-theme';
+import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Activity, ArrowRight, Check, ChevronLeft, ChevronRight, Coffee, ListOrdered, Maximize2, X } from 'lucide-react';
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export function OrganizerCommandCenter(props: Props) {
+  const theme=useScopedTheme();
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -39,8 +42,8 @@ export function OrganizerCommandCenter(props: Props) {
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="rr-command-overlay" />
-        <Dialog.Content className="rr-command" onOpenAutoFocus={event => event.preventDefault()}>
+        <Dialog.Overlay className={cn(theme?.className,"rr-command-overlay")} style={theme?.style} />
+        <Dialog.Content className={cn(theme?.className,"rr-command")} style={theme?.style} onOpenAutoFocus={event => event.preventDefault()}>
           <CommandPanel {...props} />
         </Dialog.Content>
       </Dialog.Portal>

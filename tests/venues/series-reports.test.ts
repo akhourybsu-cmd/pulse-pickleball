@@ -310,8 +310,11 @@ it("rolls back every occurrence when a reassigned court conflicts", async () => 
   ).toHaveLength(1);
 });
 it("reports visits once, uses opening hours, and restricts financial reporting", async () => {
-  const dates = (await db.query<any>("SELECT now()::date::text AS day"))
-    .rows[0];
+  // The fixture starts 30 minutes from now and can be on the next venue day.
+  const dates = (await db.query<any>(
+    "SELECT (e.start_time AT TIME ZONE v.timezone)::date::text AS day FROM group_events e JOIN venues v ON v.id=e.venue_id WHERE e.id=$1",
+    [event],
+  )).rows[0];
   const r = (
     await as(owner, "SELECT venue_operating_report($1,$2,$2) data", [
       venue,

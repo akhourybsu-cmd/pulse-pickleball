@@ -28,7 +28,7 @@ export async function uploadVenueImage(venueId: string, kind: VenueImageKind, fi
   const { error: uploadError } = await storage.upload(path, prepared.blob, { upsert: false, contentType: prepared.blob.type, cacheControl: '31536000' });
   if (uploadError) throw uploadError;
   const { data: { publicUrl } } = storage.getPublicUrl(path);
-  const { error } = await supabase.from('venues').update({ [kind === 'logo' ? 'logo_url' : 'cover_image_url']: publicUrl }).eq('id', venueId).select('id').single();
+  const { error } = await supabase.from('venues').update({ [kind === 'logo' ? 'logo_url' : 'cover_image_url']: publicUrl, [kind === 'logo' ? 'logo_crop' : 'cover_crop']: {x:50,y:50,zoom:1} }).eq('id', venueId).select('id').single();
   if (error) {
     // Only an explicit database rejection proves the new file is unreferenced.
     // A lost network response may follow a committed update: keep both files safe.

@@ -285,7 +285,7 @@ export function VenueAdminShell({
                 name={venueName}
                 logoUrl={brand?.logo_url}
                 logoShape={brand?.logo_shape}
-                logoImageFit={brand?.logo_image_fit}
+                logoCrop={brand?.logo_crop} logoImageFit={brand?.logo_image_fit}
                 secondaryColor={brand?.secondary_color}
                 logoBackgroundColor={brand?.logo_background_color}
                 className="h-10 w-10 text-[40px] ring-1 ring-border/60"

@@ -303,7 +303,7 @@ export default function VenueOps() {
           name: venue?.name ?? group.name,
           logoUrl: venue?.logo_url ?? group.icon_url,
           logoShape: venue?.logo_shape,
-          logoImageFit: venue?.logo_image_fit,
+          logoCrop: venue?.logo_crop, logoImageFit: venue?.logo_image_fit,
           secondaryColor: venue?.secondary_color,
           logoBackgroundColor: venue?.logo_background_color,
         }}

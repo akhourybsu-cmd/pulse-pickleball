@@ -76,6 +76,7 @@ export interface VisitDocumentView {
   timezone?: string;
   server_now?: string;
   brand?: import("./branding").VenueBrand;
+  venue_contact?: import("@/lib/venues/branding").VenueContact;
   visits?: {
     id: string;
     kind: "registration" | "desk";

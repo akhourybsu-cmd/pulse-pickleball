@@ -47,6 +47,8 @@ export async function venueSuiteDatabase(
     "20260930103000_venue_waiver_reminders_mfa.sql",
     "20260930110000_venue_payment_providers.sql",
     "20260930111000_route_venue_desk_payments.sql",
+    "20260930120000_venue_image_framing.sql",
+    "20260930122000_venue_owned_service_pages.sql",
   ])
     await db.exec(readFileSync("supabase/migrations/" + file, "utf8"));
   return db;

@@ -36,7 +36,7 @@ beforeAll(async () => {
     CREATE TABLE venue_staff(venue_id uuid,user_id uuid,role text,is_active bool,status text);
     CREATE TABLE venues(id uuid PRIMARY KEY, slug text UNIQUE, name text, address text, city text, state text, phone text, email text, website_url text,
       logo_url text, cover_image_url text, logo_image_fit text, cover_image_fit text, logo_shape text, cover_focal_point text,
-      primary_color text, secondary_color text, tagline text, welcome_headline text, welcome_message text, timezone text, hours_of_operation jsonb,
+      accent_color text, logo_background_color text, background_color text, surface_color text, text_color text, primary_color text, secondary_color text, tagline text, welcome_headline text, welcome_message text, timezone text, hours_of_operation jsonb,
       is_active bool DEFAULT true, is_published bool DEFAULT true, owner_id uuid, stripe_account_id text,
       verification_approved_at timestamptz DEFAULT now(),verification_approved_by uuid DEFAULT '${id(99)}');
     CREATE TABLE groups(id uuid PRIMARY KEY, venue_id uuid REFERENCES venues, type text DEFAULT 'club', name text, description text,
@@ -67,6 +67,8 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260928110000_venue_address_integrations.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260928120000_venue_address_mfa_policy.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260928230000_venue_address_automation.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260930120000_venue_image_framing.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260930121000_public_venue_branding.sql', 'utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
@@ -256,4 +258,13 @@ describe('automatic venue address queue', () => {
     try { await expect(finish(job,'connected',ready)).rejects.toThrow(/Active, verified/); }
     finally { await db.query('UPDATE venues SET is_active=true WHERE id=$1',[id(1)]); }
   });
+});
+
+it('projects saved venue framing and logo colors without exposing payment or owner information',async()=>{
+ await db.query("UPDATE venues SET logo_crop=$1,cover_crop=$2,logo_background_color='#123456',accent_color='#654321' WHERE id=$3",[JSON.stringify({x:15,y:70,zoom:1.5}),JSON.stringify({x:80,y:25,zoom:2}),id(1)]);
+ const page=await preview(1);
+ expect(page.venue).toMatchObject({logo_crop:{x:15,y:70,zoom:1.5},cover_crop:{x:80,y:25,zoom:2},logo_background_color:'#123456',accent_color:'#654321'});
+ expect(JSON.stringify(page)).not.toMatch(/SECRET_STRIPE|owner_id/);
+ await expect(guest('SELECT venue_brand_identity($1)',[id(1)])).rejects.toThrow(/permission denied/);
+ await expect(db.query('UPDATE venues SET logo_crop=$1 WHERE id=$2',[JSON.stringify({x:101,y:0,zoom:4}),id(1)])).rejects.toThrow();
 });

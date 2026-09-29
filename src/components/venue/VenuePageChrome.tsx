@@ -49,6 +49,8 @@ const NAV_ITEMS: Array<{
 interface VenueMastheadProps {
   venueName: string;
   tagline?: string | null;
+  logoCrop?: unknown;
+  coverCrop?: unknown;
   logoUrl?: string | null;
   logoBackgroundColor?: string | null;
   secondaryColor?: string | null;
@@ -79,6 +81,8 @@ export function VenueMasthead({
   venueName,
   tagline,
   logoUrl,
+  logoCrop,
+  coverCrop,
   logoBackgroundColor,
   secondaryColor,
   coverImageUrl,
@@ -105,7 +109,7 @@ export function VenueMasthead({
   const fullPhoto = !!coverImageUrl && coverImageFit === 'contain';
   const identity = (
           <div className="relative flex min-w-0 items-center gap-3 bg-card px-4 py-3 sm:px-6" data-testid="venue-desktop-identity">
-            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoImageFit={logoImageFit} logoBackgroundColor={logoBackgroundColor} secondaryColor={secondaryColor} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/70" />
+            <VenueBrandMark name={venueName} logoUrl={logoUrl} logoShape={logoShape} logoCrop={logoCrop} logoImageFit={logoImageFit} logoBackgroundColor={logoBackgroundColor} secondaryColor={secondaryColor} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/70" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -138,7 +142,7 @@ export function VenueMasthead({
             backgroundColor: 'var(--venue-header, #171a1f)',
           }}
         >
-          <VenueCoverImage src={coverImageUrl} fit={coverImageFit} focalPoint={coverFocalPoint} alt={`${venueName} banner`} />
+          <VenueCoverImage src={coverImageUrl} fit={coverImageFit} crop={coverCrop} focalPoint={coverFocalPoint} alt={`${venueName} banner`} />
           {!fullPhoto && <div
             aria-hidden
             className="absolute inset-0"

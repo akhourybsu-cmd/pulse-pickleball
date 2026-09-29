@@ -19,7 +19,7 @@ describe('venue image persistence', () => {
     expect(mock.prepare).toHaveBeenCalledWith({}, VENUE_IMAGE_OPTIONS.cover);
     expect(VENUE_IMAGE_OPTIONS.cover).not.toHaveProperty('squareFit');
     expect(mock.upload).toHaveBeenCalledWith(expect.stringMatching(/^venue-1\/venue-cover-.*\.webp$/), expect.any(Blob), expect.objectContaining({ upsert: false, contentType: 'image/webp' }));
-    expect(mock.update).toHaveBeenCalledWith({ cover_image_url: result.publicUrl });
+    expect(mock.update).toHaveBeenCalledWith({ cover_image_url: result.publicUrl, cover_crop: {x:50,y:50,zoom:1} });
     expect(mock.select).toHaveBeenCalledWith('id'); expect(mock.single).toHaveBeenCalled();
     expect(mock.remove).toHaveBeenCalledWith(['venue-1/old.png']);
     expect(mock.upload.mock.invocationCallOrder[0]).toBeLessThan(mock.update.mock.invocationCallOrder[0]);
@@ -28,7 +28,7 @@ describe('venue image persistence', () => {
   it('keeps logos sharp without retaining oversized camera files', async () => {
     await uploadVenueImage('venue-1', 'logo', {} as File, null);
     expect(mock.prepare).toHaveBeenCalledWith({}, expect.objectContaining({ maxDimension: 1024, minWidth: 320, quality: 0.92 }));
-    expect(mock.update).toHaveBeenCalledWith({ logo_url: expect.any(String) });
+    expect(mock.update).toHaveBeenCalledWith({ logo_url: expect.any(String), logo_crop: {x:50,y:50,zoom:1} });
   });
   it('blocks private sample uploads before preparation or storage', async () => {
     mock.guard.mockRejectedValue(new Error('Private sample'));

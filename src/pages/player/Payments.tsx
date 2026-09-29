@@ -1,3 +1,4 @@
+import { VenuePaymentHandoff } from '@/components/venue/VenuePaymentHandoff';
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -44,7 +45,7 @@ import {
   type PaymentOrder,
 } from "@/lib/payments";
 
-export default function Payments({ venueId: scopedVenueId }: { venueId?: string } = {}) {
+function PaymentWorkspace({ venueId: scopedVenueId }: { venueId?: string } = {}) {
   const { user } = useAuthState();
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -575,4 +576,11 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
       </Dialog>
     </div>
   );
+}
+
+export default function Payments(props: {venueId?:string} = {}) {
+ const [params]=useSearchParams();
+ const venue=props.venueId||params.get('venue')||stripeReturnVenue(params.get('state'));
+ if(venue&&!props.venueId)return <VenuePaymentHandoff venueId={venue}/>;
+ return <PaymentWorkspace {...props}/>;
 }

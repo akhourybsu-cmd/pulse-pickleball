@@ -1,3 +1,4 @@
+import { imageCropStyle } from '@/lib/venues/imageCrop';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { contrastInk } from '@/lib/venues/palette';
@@ -5,6 +6,7 @@ import { normalizeHex } from '@/lib/venues/branding';
 
 export interface VenueIdentity {
   name: string;
+  logoCrop?: unknown;
   logoUrl?: string | null;
   logoShape?: 'circle' | 'square' | null;
   logoImageFit?: 'contain' | 'cover' | null;
@@ -19,13 +21,13 @@ export function venueInitials(name: string): string {
 }
 
 /** Broken or missing images keep a deliberate identity instead of a broken-image icon. */
-export function VenueBrandMark({ name, logoUrl, logoShape, logoImageFit, secondaryColor, logoBackgroundColor, className }: VenueIdentity & { className?: string }) {
+export function VenueBrandMark({ name, logoUrl, logoCrop, logoShape, logoImageFit, secondaryColor, logoBackgroundColor, className }: VenueIdentity & { className?: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const showImage = !!logoUrl && failedUrl !== logoUrl;
   const matte = normalizeHex(logoBackgroundColor) ?? normalizeHex(secondaryColor);
-  return <div className={cn('relative flex aspect-square max-w-full shrink-0 items-center justify-center overflow-hidden bg-white/10 text-white', logoShape === 'circle' ? 'rounded-full' : 'rounded-2xl', className)} style={{ backgroundColor: matte ?? 'var(--venue-logo-background)', color: matte ? contrastInk(matte) : 'var(--venue-on-logo)' }}>
+  return <div className={cn('relative flex aspect-square max-w-full shrink-0 items-center justify-center overflow-hidden bg-white/10 text-white', logoShape === 'circle' ? 'rounded-full' : 'rounded-2xl', className)} style={{ backgroundColor: matte ?? 'var(--venue-logo-background, hsl(var(--muted)))', color: matte ? contrastInk(matte) : 'var(--venue-on-logo, hsl(var(--foreground)))' }}>
     {(!showImage || loadedUrl !== logoUrl) && <span aria-hidden className="font-sans text-[0.3em] font-semibold tracking-tight">{venueInitials(name)}</span>}
-    {showImage && <img src={logoUrl!} alt={`${name} logo`} width={128} height={128} decoding="async" onLoad={() => setLoadedUrl(logoUrl!)} onError={() => setFailedUrl(logoUrl!)} className="absolute inset-0 h-full w-full transition-opacity duration-150 motion-reduce:transition-none" style={{ objectFit: logoImageFit ?? 'contain', padding: logoImageFit === 'cover' ? 0 : logoShape === 'circle' ? '15%' : '4%', opacity: loadedUrl === logoUrl ? 1 : 0 }} />}
+    {showImage && <img src={logoUrl!} alt={`${name} logo`} width={128} height={128} decoding="async" onLoad={() => setLoadedUrl(logoUrl!)} onError={() => setFailedUrl(logoUrl!)} className="absolute inset-0 h-full w-full transition-opacity duration-150 motion-reduce:transition-none" style={{ objectFit: logoImageFit ?? 'contain', ...imageCropStyle(logoCrop), padding: logoImageFit === 'cover' ? 0 : logoShape === 'circle' ? '15%' : '4%', opacity: loadedUrl === logoUrl ? 1 : 0 }} />}
   </div>;
 }

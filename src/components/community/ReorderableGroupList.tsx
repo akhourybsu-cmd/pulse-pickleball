@@ -3,7 +3,7 @@ import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import type { GroupWithMembership } from '@/hooks/useGroups';
-import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
+import { CommunityBrandMark } from './CommunityBrandMark';
 
 interface ReorderableGroupListProps {
   groups: GroupWithMembership[];
@@ -24,18 +24,6 @@ const typeLabels: Record<string, string> = {
   club: 'Club / Venue',
 };
 
-// Avatar fallback gradients — soft, brand-aligned. Replaced the prior
-// per-type pill colors (blue/amber/green/purple/red) which read busy
-// and off-brand against the gold + ink palette.
-const avatarGradients = [
-  'bg-gradient-to-br from-primary/30 to-primary/10 text-primary',
-  'bg-gradient-to-br from-amber-400/30 to-amber-500/10 text-amber-700 dark:text-amber-300',
-  'bg-gradient-to-br from-emerald-400/25 to-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  'bg-gradient-to-br from-sky-400/25 to-sky-500/10 text-sky-700 dark:text-sky-300',
-  'bg-gradient-to-br from-rose-400/25 to-rose-500/10 text-rose-700 dark:text-rose-300',
-  'bg-gradient-to-br from-violet-400/25 to-violet-500/10 text-violet-700 dark:text-violet-300',
-];
-
 function GroupRow({ group }: { group: GroupWithMembership }) {
   const navigate = useNavigate();
 
@@ -54,8 +42,6 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
     : <Globe className="h-3 w-3" />;
 
   const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
-  const initials = group.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const colorIndex = group.name.charCodeAt(0) % avatarGradients.length;
   const hasUnread = !!group.unread_count && group.unread_count > 0;
 
   return (
@@ -79,22 +65,8 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
       )}
 
       <div className="p-4 flex items-center gap-3">
-        {/* Avatar — soft gradient swatch when no icon. Subtle ring on
-            verified venues for status without yet another pill. */}
-        {group.venue ? <VenueBrandMark name={group.venue.name || group.name} logoUrl={group.venue.logo_url || group.icon_url} logoImageFit={group.venue.logo_image_fit} logoShape={group.venue.logo_shape} secondaryColor={group.venue.secondary_color} className="h-12 w-12 bg-muted text-[48px] text-foreground ring-1 ring-border/40" /> : <div
-          className={cn(
-            'h-12 w-12 rounded-xl flex items-center justify-center text-base font-semibold shrink-0 ring-1 ring-border/40',
-            isVerifiedVenue && 'ring-amber-400/40',
-            group.icon_url ? '' : avatarGradients[colorIndex],
-          )}
-          style={
-            group.icon_url
-              ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-              : undefined
-          }
-        >
-          {!group.icon_url && initials}
-        </div>}
+        {/* Shared identity keeps logos and fallback initials consistent. */}
+        <CommunityBrandMark group={group} className="h-12 w-12 text-[48px] ring-1 ring-border/40" />
 
         {/* Content — title row + one tight metadata line. The role +
             type + members + visibility used to render as four separate

@@ -248,7 +248,7 @@ export default function VenueCommunity() {
     activeTab === 'chat' ||
     activeTab === 'more';
 
-  const identity = { name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color, logoBackgroundColor: venue?.logo_background_color };
+  const identity = { name: venue?.name ?? group.name, logoUrl: venue?.logo_url ?? group.icon_url, logoCrop: venue?.logo_crop, logoImageFit: venue?.logo_image_fit, logoShape: venue?.logo_shape, secondaryColor: venue?.secondary_color, logoBackgroundColor: venue?.logo_background_color };
   const onShare = !privateSample && (group.invite_code || group.visibility === 'public') ? () => setSharing(true) : undefined;
   const availabilityError = dayError && <div className="mb-5"><VenueLoadState title="Availability is temporarily unavailable" description="We couldn’t verify courts, programs and reservations. Retry before choosing a time; your existing bookings are unchanged." onRetry={refresh} /></div>;
 
@@ -265,8 +265,8 @@ export default function VenueCommunity() {
         tagline={venue?.tagline}
         logoUrl={venue?.logo_url ?? group.icon_url}
         coverImageUrl={venue?.cover_image_url}
-        logoImageFit={venue?.logo_image_fit}
-        coverImageFit={venue?.cover_image_fit}
+        logoCrop={venue?.logo_crop} logoImageFit={venue?.logo_image_fit}
+        coverCrop={venue?.cover_crop} coverImageFit={venue?.cover_image_fit}
         logoShape={venue?.logo_shape}
         logoBackgroundColor={venue?.logo_background_color}
         secondaryColor={venue?.secondary_color}
@@ -328,7 +328,7 @@ export default function VenueCommunity() {
               <main className="venue-page-main min-w-0">
                 <VenuePanel value="home" className="venue-panel-enter mt-0">
                   {!isDesktopLayout && <div className="-mx-5 -mt-5 mb-7"><VenueClubHeader embedded
-                    identity={identity} cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, focalPoint: venue?.cover_focal_point }}
+                    identity={identity} cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, crop: venue?.cover_crop, focalPoint: venue?.cover_focal_point }}
                     city={venue?.city} state={venue?.state} verified={group.is_venue_verified} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone}
                     courtCount={dayLoading || dayError ? 0 : activeCourtCount} freeNow={freeNow} hasBooking={bookingTabAvailable} isAdmin={canManageSettings} isOperator={isOperator}
                     onBack={() => navigate('/player/community')} onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}

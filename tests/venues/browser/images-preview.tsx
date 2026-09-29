@@ -3,6 +3,7 @@ import { AdminVenueTab } from '../../../src/components/community/admin/AdminVenu
 import { Toaster } from '../../../src/components/ui/toaster';
 
 export function ImagesPreview() {
+  const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState('Ready. Uploads stay in local browser memory; no network writes.');
   useEffect(() => {
     const listener = (event: Event) => setStatus((event as CustomEvent<string>).detail);
@@ -11,7 +12,8 @@ export function ImagesPreview() {
   }, []);
   return <main className="mx-auto w-full min-w-0 max-w-5xl space-y-4 p-3 sm:p-6">
     <p className="break-words text-xs text-muted-foreground" role="status" data-testid="image-qa-status">LOCAL IMAGE FIXTURE · {status}</p>
-    <AdminVenueTab groupId="local-group" venueId="local-sample" isVerified mode="profile" />
+    <button type="button" className="rounded border px-3 py-2 text-sm" onClick={()=>setRevision(n=>n+1)}>Reload saved profile</button>
+    <AdminVenueTab key={revision} groupId="local-group" venueId="local-sample" isVerified mode="profile" />
     <Toaster />
   </main>;
 }
