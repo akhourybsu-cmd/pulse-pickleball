@@ -34,6 +34,7 @@ import { VenueBookingGrid } from '../VenueBookingGrid';
 
 export interface OpsDashboardProps {
   embedded?: boolean;
+  kiosk?: boolean;
   timeZone?: string | null;
   venueName: string;
   day: Date;
@@ -62,6 +63,7 @@ export interface OpsDashboardProps {
 
 export function OpsDashboard({
   embedded = false,
+  kiosk = false,
   timeZone,
   venueName,
   day,
@@ -92,7 +94,7 @@ export function OpsDashboard({
       {/* Toolbar. One slim row: where you are on the left, what you can do on
           the right. A chevron rather than a filled circle button — going back
           is not an action worth the visual weight of a control. */}
-      <header className="venue-ops-toolbar sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-xl">
+      <header className={cn("border-b border-border/80 bg-background/80", !kiosk && "venue-ops-toolbar sticky top-0 z-30 backdrop-blur-xl")}>
         <div className="mx-auto flex min-h-[calc(3.5rem+env(safe-area-inset-top))] max-w-[1400px] items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-4">
           {!embedded && <button
             type="button"
@@ -107,7 +109,7 @@ export function OpsDashboard({
           <div className="mx-1 hidden h-5 w-px shrink-0 bg-border sm:block" />
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[15px] font-semibold leading-none">{venueName}</h1>
+            <h1 className="truncate text-[15px] font-semibold leading-none">{kiosk ? 'Court operations' : venueName}</h1>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
               Operations
             </p>
@@ -115,7 +117,7 @@ export function OpsDashboard({
 
           {/* A live board deserves a live clock — it is also the quiet signal
               that what you're looking at is current. */}
-          {isToday && (
+          {isToday && !kiosk && (
             <span className="mr-1 hidden items-center gap-1.5 text-xs font-medium tabular-nums text-muted-foreground sm:flex">
               <span className="relative flex h-1.5 w-1.5">
                 <span
