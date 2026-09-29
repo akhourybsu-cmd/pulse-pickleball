@@ -261,12 +261,12 @@ function SeatAvatars({
 }
 
 export default function RoundRobinDetail() {
-  const { id } = useParams();
+  const { id, groupId } = useParams();
   const { user: authUser } = useAuthState();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Back-nav lands on the player's own round-robin history page.
-  const venueGroup = searchParams.get("venueGroup");
+  const venueGroup = groupId ?? searchParams.get("venueGroup");
   const backHref = venueGroup ? `/player/community/group/${encodeURIComponent(venueGroup)}/competitions` : "/player/round-robins";
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
@@ -1936,6 +1936,10 @@ export default function RoundRobinDetail() {
         </motion.div>
       </div>
     );
+  }
+
+  if (groupId && event.group_id !== groupId) {
+    return <div role="alert" className="space-y-3 p-6"><p>This round robin belongs to a different venue.</p><Button variant="outline" onClick={() => navigate(backHref)}>Back to venue competitions</Button></div>;
   }
 
   // Non-organizers see simplified view

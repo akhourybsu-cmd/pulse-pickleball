@@ -14,7 +14,7 @@ it("shows a precise venue-local date, time, physical court, price and confirmed 
 });
 it("opens the existing competition after setup and retains venue navigation", () => {
   const html=render({round_robin_id:"rr-linked",roster_locked_at:"2099-11-06",status:"draft"});
-  expect(html).toContain("/round-robin/rr-linked?venueGroup=venue-group"); expect(html).toContain("Manage round robin"); expect(html).not.toContain("Set up round robin");
+  expect(html).toContain("/player/community/group/venue-group/competitions/round-robins/rr-linked"); expect(html).toContain("Manage round robin"); expect(html).not.toContain("Set up round robin");
 });
 it("warns about post-preparation withdrawals and makes canceled events read-only", () => {
   expect(render({round_robin_id:"rr-linked",roster_locked_at:"2099-11-06",roster_withdrawals:1,roster_additions:0})).toContain("Review the playing roster");

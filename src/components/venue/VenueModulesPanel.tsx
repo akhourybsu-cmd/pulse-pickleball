@@ -1,5 +1,5 @@
 import { lazy, Suspense, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { paymentApi, type PaymentConfig } from "@/lib/payments";
 import {
@@ -35,6 +35,7 @@ export function VenueModulesPanel({
   privateSample?: boolean;
   venueName?: string;
 }) {
+  const { groupId } = useParams();
   const [demo, setDemo] = useState<VenueDemoFeature | null>(null);
   const demoOpener = useRef<HTMLButtonElement | null>(null);
   const openDemo = (feature: VenueDemoFeature, opener: HTMLButtonElement) => {
@@ -352,7 +353,7 @@ export function VenueModulesPanel({
 
       {privateSample && testPayments && billing.data?.mode === 'test' && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <div className="min-w-0 max-w-xl"><h2 className="text-lg font-semibold">Your Stripe test workspace</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Test rental checkout and $10/month feature subscriptions with simulated payments. Only you can access this sample. Real charges stay blocked and your included features stay free.</p></div>
-        <Button asChild variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal rounded-xl py-3"><Link to={'/player/payments?venue=' + venueId}>Open sandbox payment setup</Link></Button>
+        <Button asChild variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal rounded-xl py-3"><Link to={groupId ? `/player/community/group/${groupId}/payments` : '/player/payments?venue=' + venueId}>Open sandbox payment setup</Link></Button>
       </section>}
       {!privateSample && <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
         <div className="min-w-0 max-w-xl">
@@ -368,7 +369,7 @@ export function VenueModulesPanel({
         </div>
         {canVerify && (
           <Button asChild variant="outline" className="h-auto min-h-11 w-full whitespace-normal rounded-xl py-3 sm:w-auto">
-            <Link to={"/player/payments?venue=" + venueId}>
+            <Link to={groupId ? `/player/community/group/${groupId}/payments` : "/player/payments?venue=" + venueId}>
               Set up venue payments
             </Link>
           </Button>

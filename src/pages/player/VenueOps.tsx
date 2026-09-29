@@ -1,21 +1,31 @@
-import { VenueTheme } from '@/components/venue/VenueTheme';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useGroupDetail } from '@/hooks/useGroupDetail';
-import { useVenueModules } from '@/hooks/useVenueModules';
-import { useVenueDay } from '@/hooks/useVenueDay';
-import { venueCalendarNow } from '@/lib/venues/timezone';
-import { venueChrome } from '@/lib/venues/branding';
-import { parseVenueHours, venueOperatingBounds } from '@/lib/venues/hours';
-import { useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
-import { courtStatuses, daySummary, upcomingGaps } from '@/lib/venues/ops';
-import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
-import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
-import { SessionSheet } from '@/components/venue/ops/SessionSheet';
-import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
-import { VenueLoadState } from '@/components/venue/VenueLoadState';
-import { availableBookingEnd } from '@/lib/venues/experience';
+import { useAuthState } from "@/hooks/useAuthState";
+import { Button } from "@/components/ui/button";
+import { Expand, Minimize, CalendarDays, UserCheck } from "lucide-react";
+import { AttendanceDesk } from "@/components/venue/ops/AttendanceDesk";
+import { useVenueAttendance } from "@/hooks/useVenueAttendance";
+import { parseVenueDay, venueDayKey } from "@/lib/venues/navigation";
+import { VenueTheme } from "@/components/venue/VenueTheme";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useGroupDetail } from "@/hooks/useGroupDetail";
+import { useVenueModules } from "@/hooks/useVenueModules";
+import { useVenueDay } from "@/hooks/useVenueDay";
+import { venueCalendarNow } from "@/lib/venues/timezone";
+import { venueChrome } from "@/lib/venues/branding";
+import { parseVenueHours, venueOperatingBounds } from "@/lib/venues/hours";
+import {
+  useMyVenueRole,
+  canOperateVenue,
+  canManageVenue,
+} from "@/components/venue/VenueStaffContext";
+import { courtStatuses, daySummary, upcomingGaps } from "@/lib/venues/ops";
+import { OpsDashboard } from "@/components/venue/ops/OpsDashboard";
+import { CloseCourtDialog } from "@/components/venue/ops/CloseCourtDialog";
+import { SessionSheet } from "@/components/venue/ops/SessionSheet";
+import { BookCourtDialog } from "@/components/venue/BookCourtDialog";
+import { VenueLoadState } from "@/components/venue/VenueLoadState";
+import { availableBookingEnd } from "@/lib/venues/experience";
 
 /**
  * Venue operations.
@@ -33,14 +43,52 @@ import { availableBookingEnd } from '@/lib/venues/experience';
 export default function VenueOps() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthState();
 
-  const { group, membership, loading, isError: groupError, refetch: refetchGroup } = useGroupDetail(groupId);
+  const {
+    group,
+    membership,
+    loading,
+    isError: groupError,
+    refetch: refetchGroup,
+  } = useGroupDetail(groupId);
   const modules = useVenueModules(group?.venue_id);
-  const [day, setDay] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [params, setParams] = useSearchParams();
+  const kiosk = params.get("kiosk") === "1";
+  const deskView = params.get("view") === "courts" ? "courts" : "attendance";
+  const setDeskView = (view: "attendance" | "courts") => {
+    const p = new URLSearchParams(params);
+    p.set("view", view);
+    setParams(p, { replace: true });
+  };
+  const day =
+    parseVenueDay(params.get("day")) ??
+    venueCalendarNow(group?.venue?.timezone);
+  day.setHours(0, 0, 0, 0);
+  const setDay = (next: Date) => {
+    const p = new URLSearchParams(params);
+    p.set("day", venueDayKey(next));
+    p.delete("event");
+    setParams(p);
+  };
+  const selectEvent = (id: string) => {
+    const p = new URLSearchParams(params);
+    p.set("event", id);
+    p.set("view", "attendance");
+    setParams(p, { replace: true });
+  };
+  const toggleKiosk = () => {
+    const p = new URLSearchParams(params);
+    if (kiosk) {
+      p.delete("kiosk");
+      if (document.fullscreenElement)
+        void document.exitFullscreen().catch(() => {});
+    } else {
+      p.set("kiosk", "1");
+      void document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+    setParams(p, { replace: true });
+  };
 
   // The board is a clock: without this it would silently go stale and show a
   // court as in play twenty minutes after it emptied.
@@ -58,45 +106,112 @@ export default function VenueOps() {
   const [bookMinutes, setBookMinutes] = useState<number | null>(null);
 
   const venue = group?.venue ?? null;
-  useEffect(() => { const today = venueCalendarNow(venue?.timezone); today.setHours(0, 0, 0, 0); setDay(today); }, [group?.venue_id, venue?.timezone]);
   const chrome = useMemo(() => venueChrome(venue), [venue]);
-  const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
+  const hours = useMemo(
+    () => parseVenueHours(venue?.hours_of_operation),
+    [venue]
+  );
 
-  const { role: venueRole, loading: roleLoading, error: roleError, refetch: refetchRole } = useMyVenueRole(group?.venue_id);
+  const {
+    role: venueRole,
+    loading: roleLoading,
+    error: roleError,
+    refetch: refetchRole,
+  } = useMyVenueRole(group?.venue_id);
 
-  const { courts, sessions, holds, grid, closed, slotMinutes, loading: dayLoading, error: dayError, refresh } =
-    useVenueDay(group?.venue_id, groupId, day, hours, venue?.timezone);
+  const {
+    courts,
+    sessions,
+    holds,
+    grid,
+    closed,
+    slotMinutes,
+    loading: dayLoading,
+    error: dayError,
+    refresh,
+  } = useVenueDay(group?.venue_id, groupId, day, hours, venue?.timezone);
 
   // Access is a venue role, not community moderation: a front-desk person can
   // run the day without being handed moderator powers over the conversation.
   // The group owner keeps access as a floor so a venue can never lock itself
   // out of its own operations.
-  const isStaff = modules.facility && (canOperateVenue(venueRole) || membership?.role === 'owner');
+  const isOwner =
+    (membership?.status === "active" && membership.role === "owner") ||
+    (!!user && group?.venue?.owner_id === user.id);
+  const isStaff = modules.facility && (canOperateVenue(venueRole) || isOwner);
   const canCreateProgram =
-    venueRole === 'owner' ||
-    venueRole === 'manager' ||
-    venueRole === 'organizer' ||
-    membership?.role === 'owner';
+    venueRole === "owner" ||
+    venueRole === "manager" ||
+    venueRole === "organizer" ||
+    isOwner;
 
-  const operatingWindow = useMemo(() => venueOperatingBounds(hours, day, venue?.timezone), [hours, day, venue?.timezone]);
+  const attendance = useVenueAttendance(groupId, venueDayKey(day), isStaff);
+  const operatingWindow = useMemo(
+    () => venueOperatingBounds(hours, day, venue?.timezone),
+    [hours, day, venue?.timezone]
+  );
   const occupancy = useMemo(() => [...sessions, ...holds], [sessions, holds]);
-  const statuses = useMemo(() => courtStatuses(courts, occupancy, now, operatingWindow), [courts, occupancy, now, operatingWindow]);
-  const summary = useMemo(() => daySummary(grid, statuses, now), [grid, statuses, now]);
-  const gaps = useMemo(() => upcomingGaps(grid, now, 60).slice(0, 4), [grid, now]);
+  const statuses = useMemo(
+    () => courtStatuses(courts, occupancy, now, operatingWindow),
+    [courts, occupancy, now, operatingWindow]
+  );
+  const summary = useMemo(
+    () => daySummary(grid, statuses, now),
+    [grid, statuses, now]
+  );
+  const gaps = useMemo(
+    () => upcomingGaps(grid, now, 60).slice(0, 4),
+    [grid, now]
+  );
 
-  const isToday = day.toDateString() === venueCalendarNow(venue?.timezone, now).toDateString();
+  const isToday =
+    day.toDateString() ===
+    venueCalendarNow(venue?.timezone, now).toDateString();
 
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
     // Wait for the role to resolve, or a staff member is bounced on first paint.
-    if (!loading && !roleLoading && !roleError && !modules.loading && !modules.isError && group && !isStaff) {
+    if (
+      !loading &&
+      !roleLoading &&
+      !roleError &&
+      !modules.loading &&
+      !modules.isError &&
+      group &&
+      !isStaff
+    ) {
       navigate(`/player/community/group/${groupId}`, { replace: true });
     }
-  }, [loading, roleLoading, roleError, modules.loading, modules.isError, group, isStaff, groupId, navigate]);
+  }, [
+    loading,
+    roleLoading,
+    roleError,
+    modules.loading,
+    modules.isError,
+    group,
+    isStaff,
+    groupId,
+    navigate,
+  ]);
 
-  if (!loading && (groupError || !group)) return <VenueLoadState fullPage onRetry={() => void refetchGroup()} />;
-  if (modules.isError) return <VenueLoadState fullPage title="Venue tools couldn’t load" onRetry={() => void modules.refetch()} />;
-  if (roleError) return <VenueLoadState fullPage title="Staff access couldn’t be checked" onRetry={() => void refetchRole()} />;
+  if (!loading && (groupError || !group))
+    return <VenueLoadState fullPage onRetry={() => void refetchGroup()} />;
+  if (modules.isError)
+    return (
+      <VenueLoadState
+        fullPage
+        title="Venue tools couldn’t load"
+        onRetry={() => void modules.refetch()}
+      />
+    );
+  if (roleError)
+    return (
+      <VenueLoadState
+        fullPage
+        title="Staff access couldn’t be checked"
+        onRetry={() => void refetchRole()}
+      />
+    );
 
   if (loading || roleLoading || !group || !isStaff) {
     return (
@@ -108,7 +223,15 @@ export default function VenueOps() {
     );
   }
 
-  if (dayError) return <VenueLoadState fullPage title="Court schedule couldn’t load" description="Availability has not been confirmed. Retry before making changes to the schedule." onRetry={refresh} />;
+  if (dayError)
+    return (
+      <VenueLoadState
+        fullPage
+        title="Court schedule couldn’t load"
+        description="Availability has not been confirmed. Retry before making changes to the schedule."
+        onRetry={refresh}
+      />
+    );
 
   const selectedSession = occupancy.find((s) => s.id === sessionId) ?? null;
   const selectedSessionCourt =
@@ -117,68 +240,148 @@ export default function VenueOps() {
   const dayStart = operatingWindow?.start ?? null;
   const dayEnd = operatingWindow?.end ?? null;
   const bookingEnd = availableBookingEnd(grid, bookCourtId, bookStart);
-  const manageEvent = (start?:Date,end?:Date,court?:string) => {
-    const params=new URLSearchParams({new:'1'});
-    if(start)params.set('start',start.toISOString());if(end)params.set('end',end.toISOString());if(court)params.set('court',court);
+  const manageEvent = (start?: Date, end?: Date, court?: string) => {
+    const params = new URLSearchParams({ new: "1" });
+    if (start) params.set("start", start.toISOString());
+    if (end) params.set("end", end.toISOString());
+    if (court) params.set("court", court);
     navigate(`/player/community/group/${groupId}/events/manage?${params}`);
   };
   const openSlot = (courtId: string, start: Date, minutes = slotMinutes) => {
     if (modules.booking) {
-      setBookCourtId(courtId); setBookStart(start); setBookMinutes(minutes);
+      setBookCourtId(courtId);
+      setBookStart(start);
+      setBookMinutes(minutes);
     } else if (canCreateProgram) {
-      manageEvent(start,new Date(start.getTime()+minutes*60_000),courtId);
+      manageEvent(start, new Date(start.getTime() + minutes * 60_000), courtId);
     }
   };
 
   return (
     <VenueTheme brand={venue}>
-      <OpsDashboard
-        timeZone={venue?.timezone}
-        venueName={venue?.name ?? group.name}
-        day={day}
-        now={now}
-        isToday={isToday}
-        loading={dayLoading}
-        closed={closed}
-        statuses={statuses}
-        summary={summary}
-        gaps={gaps}
-        grid={grid}
-        accent={chrome?.accentHex}
-        canManage={canManageVenue(venueRole) || membership?.role === 'owner'}
-        canCreateProgram={canCreateProgram}
-        canScheduleSlot={modules.booking || canCreateProgram}
-        onBack={() => navigate(`/player/community/group/${groupId}`)}
-        onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
-        onCloseCourt={() => {
-          setCloseCourtId(null);
-          setCloseOpen(true);
-        }}
-        onCreateProgram={() => navigate(`/player/community/group/${groupId}/events/manage`)}
-        onPickCourt={(courtId) => {
-          const status = statuses.find((s) => s.court.id === courtId);
-          // Tapping a live court goes to what's on it; tapping a free one is a
-          // request to put something there.
-          if (status?.current) {
-            setSessionId(status.current.id);
-          } else {
-            const nextSlot = grid.find((c) => c.court.id === courtId)?.slots.find((s) => s.bookable);
-            if (nextSlot) {
-              openSlot(courtId, nextSlot.start);
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2" aria-label="Operations workspace">
+          <Button
+            className="h-11"
+            variant={deskView === "attendance" ? "default" : "outline"}
+            aria-pressed={deskView === "attendance"}
+            onClick={() => setDeskView("attendance")}
+          >
+            <UserCheck className="mr-2 h-4 w-4" />
+            Check-in desk
+          </Button>
+          <Button
+            className="h-11"
+            variant={deskView === "courts" ? "default" : "outline"}
+            aria-pressed={deskView === "courts"}
+            onClick={() => setDeskView("courts")}
+          >
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Court calendar
+          </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          {kiosk && (
+            <span className="text-sm font-semibold">
+              {venue?.name ?? group.name} · Staff kiosk
+            </span>
+          )}
+          <Button className="h-11" variant="outline" onClick={toggleKiosk}>
+            {kiosk ? (
+              <Minimize className="mr-2 h-4 w-4" />
+            ) : (
+              <Expand className="mr-2 h-4 w-4" />
+            )}
+            {kiosk ? "Exit kiosk" : "Open staff kiosk"}
+          </Button>
+        </div>
+      </div>
+      {deskView === "attendance" && (
+        <AttendanceDesk
+          data={attendance.data}
+          day={day}
+          timeZone={venue?.timezone}
+          loading={attendance.isLoading}
+          failed={attendance.isError}
+          refreshing={attendance.isFetching}
+          updatedAt={attendance.dataUpdatedAt}
+          selectedId={params.get("event")}
+          onSelect={selectEvent}
+          onDayChange={setDay}
+          onRefresh={attendance.refresh}
+          kiosk={kiosk}
+        />
+      )}
+      {deskView === "courts" && (
+        <OpsDashboard
+          embedded
+          timeZone={venue?.timezone}
+          venueName={venue?.name ?? group.name}
+          day={day}
+          now={now}
+          isToday={isToday}
+          loading={dayLoading}
+          closed={closed}
+          statuses={statuses}
+          summary={summary}
+          gaps={gaps}
+          grid={grid}
+          accent={chrome?.accentHex}
+          canManage={canManageVenue(venueRole) || isOwner}
+          canCreateProgram={canCreateProgram}
+          canScheduleSlot={modules.booking || canCreateProgram}
+          onBack={() => navigate(`/player/community/group/${groupId}`)}
+          onSettings={() =>
+            navigate(`/player/community/group/${groupId}/manage`)
+          }
+          onCloseCourt={() => {
+            setCloseCourtId(null);
+            setCloseOpen(true);
+          }}
+          onCreateProgram={() =>
+            navigate(`/player/community/group/${groupId}/events/manage`)
+          }
+          onPickCourt={(courtId) => {
+            const status = statuses.find((s) => s.court.id === courtId);
+            // Tapping a live court goes to what's on it; tapping a free one is a
+            // request to put something there.
+            if (status?.current) {
+              const session = sessions.find((s) => s.id === status.current!.id);
+              if (session?.parent_event_id) {
+                selectEvent(session.parent_event_id);
+              } else setSessionId(status.current.id);
+            } else {
+              const nextSlot = grid
+                .find((c) => c.court.id === courtId)
+                ?.slots.find((s) => s.bookable);
+              if (nextSlot) {
+                openSlot(courtId, nextSlot.start);
+              }
             }
-          }
-        }}
-        onDayChange={setDay}
-        onPickSlot={openSlot}
-        onPickSession={setSessionId}
-        onFillGap={(gap) => {
-          if (canCreateProgram) {
-            manageEvent(gap.start,gap.end,gap.court.id);
-          } else {
-            openSlot(gap.court.id, gap.start);
-          }
-        }}
-      />
+          }}
+          onDayChange={setDay}
+          onPickSlot={openSlot}
+          onPickSession={(id) => {
+            const session = sessions.find((s) => s.id === id);
+            const eventId =
+              session?.parent_event_id ??
+              (session?.event_format !== "reservation" &&
+              session?.event_format !== "maintenance"
+                ? session?.id
+                : null);
+            if (eventId) {
+              selectEvent(eventId);
+            } else setSessionId(id);
+          }}
+          onFillGap={(gap) => {
+            if (canCreateProgram) {
+              manageEvent(gap.start, gap.end, gap.court.id);
+            } else {
+              openSlot(gap.court.id, gap.start);
+            }
+          }}
+        />
+      )}
 
       {group.venue_id && (
         <>
@@ -218,7 +421,14 @@ export default function VenueOps() {
       )}
 
       <SessionSheet
-        onManageEvent={canCreateProgram ? (id) => navigate(`/player/community/group/${groupId}/events/manage?event=${id}`) : undefined}
+        onManageEvent={
+          canCreateProgram
+            ? (id) =>
+                navigate(
+                  `/player/community/group/${groupId}/events/manage?event=${id}`
+                )
+            : undefined
+        }
         session={selectedSession}
         court={selectedSessionCourt}
         open={!!selectedSession}

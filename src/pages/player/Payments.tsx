@@ -42,12 +42,12 @@ import {
   type PaymentOrder,
 } from "@/lib/payments";
 
-export default function Payments() {
+export default function Payments({ venueId: scopedVenueId }: { venueId?: string } = {}) {
   const { user } = useAuthState();
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [params, setParams] = useSearchParams();
-  const venueId = params.get("venue") || stripeReturnVenue(params.get('state'));
+  const venueId = scopedVenueId || params.get("venue") || stripeReturnVenue(params.get('state'));
   const [invalidReturn, setInvalidReturn] = useState(false);
   const [page, setPage] = useState(0);
   const [merchant, setMerchant] = useState("");
@@ -134,15 +134,15 @@ export default function Payments() {
     }
   };
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 pb-24 font-sans sm:px-6 lg:py-9">
+    <div className={scopedVenueId ? "space-y-6 font-sans" : "mx-auto w-full max-w-6xl space-y-6 px-4 py-6 pb-24 font-sans sm:px-6 lg:py-9"}>
       <header>
-        <Link
+        {!scopedVenueId && <Link
           to="/player/profile"
           className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Profile
-        </Link>
+        </Link>}
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-sans text-3xl font-semibold tracking-tight sm:text-4xl">

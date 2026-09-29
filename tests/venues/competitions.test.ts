@@ -113,6 +113,7 @@ beforeAll(async () => {
     "GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO authenticated;"
   );
   await db.exec(read("20260928220000_venue_competitions.sql"));
+  await db.exec(read("20260929010000_venue_attendance.sql"));
 }, 30000);
 beforeEach(async () => {
   await db.exec(
@@ -533,4 +534,18 @@ it("applies the required MFA policy to both new tables and denies anonymous RPC 
   } finally {
     await db.exec("RESET ROLE");
   }
+});
+
+it("records front desk arrivals without rebuilding a linked round robin roster", async () => {
+  const e = await program();
+  for (const user of [player,id(5),id(6),id(7)]) await signup(e,user);
+  const rr = await setup(e);
+  await db.query("UPDATE venue_staff SET role='staff' WHERE user_id=$1",[staff]);
+  const r=(await db.query<any>("SELECT id FROM group_event_rsvps WHERE event_id=$1 AND user_id=$2",[e,player])).rows[0];
+  const before=(await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows;
+  await asUser(staff,"SELECT record_venue_attendance($1,$2,'checked_in',0)",[e,r.id]);
+  expect((await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows).toEqual(before);
+  await prepare(e);
+  await asUser(staff,"SELECT record_venue_attendance($1,$2,'expected',1)",[e,r.id]);
+  expect((await db.query("SELECT * FROM round_robin_players WHERE event_id=$1 ORDER BY id",[rr])).rows).toEqual(before);
 });

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { venueEventDatabase } from "../helpers/venueEventDatabase";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -99,6 +100,7 @@ async function apply(
 }
 beforeAll(async () => {
   db = await venueEventDatabase();
+  await db.exec(readFileSync('supabase/migrations/20260929010000_venue_attendance.sql', 'utf8'));
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 2);
   d.setUTCHours(10, 0, 0, 0);

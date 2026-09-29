@@ -1,3 +1,4 @@
+import { buildDayGrid } from '@/lib/venues/availability';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { VenueHoursEditor } from '@/components/community/admin/VenueHoursSection';
@@ -56,4 +57,12 @@ describe('venue management presentation', () => {
     expect(future).not.toContain('in play');
     expect(future).toContain('No bookable blocks remaining');
   });
+});
+
+it('labels an allocated event with its exact times inside larger calendar slots', () => {
+  const day = new Date(2026,8,28);
+  const grid = buildDayGrid([court],[{id:'event-hold',title:'Skills clinic',venue_court_id:'c1',event_format:'program_hold',start_time:'2026-09-28T21:30:00Z',end_time:'2026-09-28T22:45:00Z'}],day,{openHour:16,closeHour:20,slotMinutes:60,timeZone:'America/New_York',now:new Date('2026-09-28T18:00Z')});
+  const html = renderToStaticMarkup(<VenueBookingGrid grid={grid} day={day} timeZone="America/New_York" loading={false} canBook onDayChange={()=>{}} onPickSlot={()=>{}} onPickSession={()=>{}} />);
+  expect(html).toContain('5:30 PM–6:45 PM');
+  expect(html).not.toContain('Skills clinic · Championship court · Monday, Sep 28, 5:00 PM–7:00 PM');
 });

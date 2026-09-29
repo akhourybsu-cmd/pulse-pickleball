@@ -46,6 +46,8 @@ export interface EventAttendee {
   name: string;
   status: string;
   checked_in_at: string | null;
+  no_show_at: string | null;
+  attendance_version: number;
   order_id: string | null;
   payment_status: string | null;
   amount_cents: number | null;

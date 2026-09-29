@@ -27,6 +27,7 @@ export function VenueAdminShell({
   onOperations,
   showOperations = true,
   children,
+  kiosk = false,
 }: {
   venueName: string;
   verified: boolean;
@@ -40,11 +41,12 @@ export function VenueAdminShell({
   onOperations: () => void;
   showOperations?: boolean;
   children: ReactNode;
+  kiosk?: boolean;
 }) {
   const viewport = useVisualViewportPane();
   const activeItem = items.find((item) => item.value === activeTab) ?? items[0];
   const mobileNav = useRef<HTMLElement>(null);
-  const body = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLElement>(null);
   // A different settings section opens at its beginning; the toolbar stays put.
   useLayoutEffect(() => { body.current?.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab]);
   useEffect(() => {
@@ -69,8 +71,8 @@ export function VenueAdminShell({
       className="venue-management-frame bg-muted/[0.16] pb-[env(safe-area-inset-bottom)] font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans"
       style={{ '--venue-admin-accent': accent ?? 'hsl(var(--primary))', '--venue-pane-height': viewport.height, '--venue-pane-top': viewport.top ?? 0 } as CSSProperties}
     >
-      <header className="venue-brand-chrome shrink-0 border-b border-white/10 bg-[#151b24] text-white">
-        <div className="venue-management-toolbar mx-auto max-w-[1480px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
+      {!kiosk && <header className="venue-brand-chrome shrink-0 border-b border-white/10 bg-[#151b24] text-white">
+        <div className="venue-management-toolbar mx-auto max-w-[1920px] px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:pb-5 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
@@ -149,11 +151,11 @@ export function VenueAdminShell({
             </div>
           </nav>
         </div>
-      </header>
+      </header>}
 
-      <div ref={body} className="venue-management-body mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:py-8 xl:gap-8">
-        <aside className="hidden self-stretch lg:block">
-          <div className="sticky top-6 max-h-[calc(100dvh-3rem)] space-y-5 overflow-y-auto p-1">
+      <div className={cn("venue-management-body mx-auto w-full max-w-[1920px] lg:grid", !kiosk && "lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[272px_minmax(0,1fr)]")}>
+        {!kiosk && <aside aria-label="Venue administration" className="venue-management-sidebar hidden border-r border-border/70 p-4 lg:block">
+          <div className="space-y-5 p-1">
             {sections.map((section) => {
               const sectionItems = items.filter((item) => (item.section ?? 'venue') === section.value);
               if (!sectionItems.length) return null;
@@ -193,17 +195,17 @@ export function VenueAdminShell({
               );
             })}
           </div>
-        </aside>
+        </aside>}
 
-        <main className="min-w-0">
-          <p className="mb-4 text-sm leading-6 text-muted-foreground lg:hidden">{activeItem?.description}</p>
-          <div className="mb-6 hidden items-end justify-between gap-4 border-b border-border/70 pb-4 lg:flex">
+        <main ref={body} className="venue-management-content min-w-0 p-4 sm:p-6 lg:p-8">
+          {!kiosk && <p className="mb-4 text-sm leading-6 text-muted-foreground lg:hidden">{activeItem?.description}</p>}
+          {!kiosk && <div className="mb-6 hidden items-end justify-between gap-4 border-b border-border/70 pb-4 lg:flex">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Venue admin</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">{activeItem?.label}</h2>
             </div>
             <p className="max-w-sm text-right text-sm text-muted-foreground">{activeItem?.description}</p>
-          </div>
+          </div>}
           {children}
         </main>
       </div>
