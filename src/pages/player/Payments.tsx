@@ -29,11 +29,12 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { VenuePaymentsPanel } from "@/components/venue/VenuePaymentsPanel";
+import { VenuePaymentConnections } from '@/components/venue/VenuePaymentConnections';
+import { providerName, securePaymentUrl } from '@/lib/venues/paymentProviders';
 import { useAuthState } from "@/hooks/useAuthState";
 import { stripeReturnVenue } from '@/lib/venues/paymentReadiness';
 import {
   formatMoney,
-  openStripe,
   paymentApi,
   paymentStatus,
   refundNotice,
@@ -49,6 +50,7 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
   const [refreshing, setRefreshing] = useState(false);
   const [params, setParams] = useSearchParams();
   const venueId = scopedVenueId || params.get("venue") || stripeReturnVenue(params.get('state'));
+  const [venueTab,setVenueTab] = useState<'connections'|'activity'>(()=>params.get('payment_provider')==='square'?'connections':params.has('state')||params.has('connect')||params.has('order')?'activity':'connections');
   const [invalidReturn, setInvalidReturn] = useState(false);
   const [page, setPage] = useState(0);
   const [merchant, setMerchant] = useState("");
@@ -116,8 +118,12 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
     try {
       const result = await paymentApi<any>(name, values);
       if (currentScope.current !== scope) return;
-      if (['save_card', 'billing_portal', 'receipt', 'resume'].includes(name) && !result?.url) throw new Error('Stripe did not confirm a secure link. Check your purchase status before trying again.');
-      if (result?.url) openStripe(result.url);
+      if (['save_card', 'billing_portal', 'receipt', 'resume'].includes(name) && !result?.url) throw new Error('The payment provider did not confirm a secure link. Check your purchase status before trying again.');
+      if (result?.url) {
+        const url = new URL(result.url);
+        if (url.origin === window.location.origin && /^\/venue-payment\/[0-9a-f-]{36}$/.test(url.pathname)) window.location.assign(url.href);
+        else window.location.assign(securePaymentUrl(result.url));
+      }
       else {
         await history.refetch();
         toast.success(
@@ -174,8 +180,8 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
           {refreshAction}
         </div>
       </header>}
-      {invalidReturn && <p role="alert" className="rounded-xl border p-4 text-sm">This Stripe return could not be matched to a venue. Open that venue’s payment settings and start the connection again. No account has been changed here.</p>}
-      {config.data?.ready === false && config.data.mode !== 'off' && <p role="status" className="rounded-xl border p-4 text-sm">{config.data.setup_issues?.join(' ') || 'New payment setup is temporarily unavailable.'} Existing purchase records remain available.</p>}
+      {invalidReturn && <p role="alert" className="rounded-xl border p-4 text-sm">This payment connection return could not be matched to a venue. Open that venue’s payment settings and start the connection again. No account has been changed here.</p>}
+      {config.data?.ready === false && config.data.mode !== 'off' && <p role="status" className="rounded-xl border p-4 text-sm">{venueId ? 'Stripe setup: ' : ''}{config.data.setup_issues?.join(' ') || 'New payment setup is temporarily unavailable.'} Existing purchase records remain available.</p>}
       {config.data?.mode === "test" && (
         <div
           role="status"
@@ -199,8 +205,11 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
           </Button>
         </p>
       )}
-      {venueId && <VenuePaymentsPanel key={`${venueId}:${user?.id}`} venueId={venueId} />}
+      {venueId && <nav aria-label="Venue payment sections" className="flex flex-wrap gap-2 rounded-xl border bg-muted/20 p-1.5"><Button variant={venueTab==='connections'?'default':'ghost'} aria-pressed={venueTab==='connections'} onClick={()=>setVenueTab('connections')}>Connections</Button><Button variant={venueTab==='activity'?'default':'ghost'} aria-pressed={venueTab==='activity'} onClick={()=>setVenueTab('activity')}>Transactions, refunds & policies</Button></nav>}
+      {venueId && venueTab==='connections' && <VenuePaymentConnections key={`${venueId}:${user?.id}`} venueId={venueId} onStripe={()=>setVenueTab('activity')}/>}
+      {venueId && venueTab==='activity' && <VenuePaymentsPanel key={`${venueId}:${user?.id}`} venueId={venueId} />}
       <div
+        hidden={!!venueId && venueTab==='connections'}
         className={
           venueId
             ? ""
@@ -328,7 +337,7 @@ export default function Payments({ venueId: scopedVenueId }: { venueId?: string 
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-muted-foreground">
-                        {order.merchant_name}{" "}
+                        {order.merchant_name} · {providerName(order.provider || "stripe")}{" "}
                         {!order.livemode && (
                           <span className="ml-1 rounded bg-amber-500/15 px-2 py-0.5 text-amber-700 dark:text-amber-400">
                             Test

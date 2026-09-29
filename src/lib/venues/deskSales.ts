@@ -32,6 +32,7 @@ export interface VenueSale {
   amount_cents: number;
   refunded_cents: number;
   method: "cash" | "stripe";
+  payment_provider?: 'stripe' | 'square';
   status: string;
   billing_cadence: string;
   created_at: string;

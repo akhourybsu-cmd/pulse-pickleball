@@ -1438,7 +1438,7 @@ function CollectionForm({
                 <option value="free">Confirm with no deposit due</option>
               ) : (
                 <>
-                  <option value="stripe">Stripe payment link / QR</option>
+                  <option value="stripe">Secure payment link / QR</option>
                   <option value="cash">Cash received</option>
                   {a.kind === "lesson" && a.status === "draft" && (
                     <option value="pass">Lesson package</option>

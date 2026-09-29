@@ -5,7 +5,7 @@ import { reconcileRefundPayment } from "./payment-refunds.ts";
 import { uuid } from "./payment-contracts.ts";
 
 /** Called only after the payments handler authenticates the caller and verifies MFA. */
-async function desk(
+export async function desk(
   r: Runtime,
   userId: string,
   venueId: string,

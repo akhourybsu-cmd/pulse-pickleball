@@ -18,6 +18,7 @@ type Report = {
   net_cents: number;
   cash_cents: number;
   stripe_cents: number;
+  square_cents?: number;
   registrations: number;
   checked_in: number;
   no_shows: number;
@@ -209,7 +210,7 @@ export default function VenueReports() {
               Collections use payment dates. Refunds are amounts refunded to
               date against those sales; net is before processing fees. Cash:{" "}
               {formatMoney(Number(r.cash_cents))} · Stripe:{" "}
-              {formatMoney(Number(r.stripe_cents))}. Attendance includes
+              {formatMoney(Number(r.stripe_cents))} · Square: {formatMoney(Number(r.square_cents || 0))}. Attendance includes
               recorded event registrations and desk visits. Utilization compares
               confirmed court blocks with the current active courts, opening
               hours and holiday closures; pending checkouts are excluded.

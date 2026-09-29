@@ -423,7 +423,7 @@ export default function VenueWalkins({
                     value={method}
                     onChange={(e) => setMethod(e.target.value)}
                   >
-                    <option value="stripe">Stripe checkout link / QR</option>
+                    <option value="stripe">Secure payment link / QR</option>
                     <option value="cash">Cash received</option>
                     <option value="pass">Use a prepaid pass</option>
                   </select>
