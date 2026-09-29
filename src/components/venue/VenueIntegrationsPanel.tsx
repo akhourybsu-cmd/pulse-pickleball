@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthState } from '@/hooks/useAuthState';
+import { VenueEmailIntegration } from './VenueEmailIntegration';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { venuePublicUrl } from '@/lib/communityAccess';
 import { ADDRESS_STATUS, suggestedVenueAddress, venueAddressError, venueAddressUrl } from '@/lib/venues/address';
@@ -98,7 +99,8 @@ export function VenueIntegrationsPanel({ venueId, groupId, canManageCommunity }:
   const key = ['venue-integrations', user?.id, venueId];
   const query = useQuery({ queryKey: key, queryFn: () => getVenueAddressSetup(venueId), enabled: !!user, refetchInterval: 30_000 });
   return <div className="space-y-5">
-    <p className="text-sm leading-6 text-muted-foreground">Manage the services connected to your venue. Start with your PULSE address; more integrations will appear here as they become available.</p>
+    <p className="text-sm leading-6 text-muted-foreground">Connect your venue address and branded email in one place.</p>
+    <VenueEmailIntegration venueId={venueId} groupId={groupId} />
     {query.isPending ? <p role="status">Loading integrations…</p> : query.isError ? <div role="alert" className="space-y-3 rounded-2xl border p-5"><p>We couldn’t load your integrations. Please try again.</p><Button variant="outline" onClick={() => void query.refetch()}>Retry</Button></div> : <VenueAddressCard key={venueId} setup={query.data} onCheck={slug => checkVenueAddress(venueId, slug)} onRequest={async slug => { const setup = await requestVenueAddress(venueId, slug); client.setQueryData(key, setup); }} onRefresh={() => void query.refetch()} refreshing={query.isFetching} onOpenTab={tab => navigate(`/player/community/group/${groupId}/manage?tab=${tab}`)} canManageCommunity={canManageCommunity} />}
   </div>;
 }

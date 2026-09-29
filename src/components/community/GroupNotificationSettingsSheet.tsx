@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { VenueEmailPreference } from '@/components/venue/VenueEmailPreference';
 
 type Channel = 'all' | 'posts' | 'announcements' | 'events' | 'chat';
 
@@ -106,6 +107,7 @@ export function GroupNotificationSettingsSheet({ open, onOpenChange, groupId, gr
           </div>
         ) : (
           <div className="mt-4 space-y-2">
+            {open && <VenueEmailPreference groupId={groupId} />}
             {/* Mute all */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40">
               <div className="flex items-start gap-3">

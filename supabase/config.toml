@@ -104,3 +104,15 @@ verify_jwt = false
 [functions.venue-integrations]
 # Current session, MFA and platform-superadmin checks run inside the handler.
 verify_jwt = false
+
+[functions.venue-email]
+# Current user, live MFA and venue management authorization run inside the handler.
+verify_jwt = false
+
+[functions.venue-email-delivery]
+# Server-only scheduler, authenticated with the existing database dispatch secret.
+verify_jwt = false
+
+[functions.venue-email-unsubscribe]
+# Unpredictable recipient-specific token; GET is read-only, POST changes consent.
+verify_jwt = false
