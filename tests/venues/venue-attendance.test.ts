@@ -49,6 +49,7 @@ beforeAll(async () => {
       "utf8"
     )
   );
+  await db.exec(readFileSync("supabase/migrations/20260929011000_venue_attendance_mfa.sql", "utf8"));
 }, 30000);
 beforeEach(async () => {
   await db.exec(
@@ -300,4 +301,17 @@ describe("venue attendance authority and consistency", () => {
       ])
     ).rejects.toThrow(/access required/);
   });
+});
+
+it("keeps the audit table within the release-wide MFA policy and browser-grant invariants", async () => {
+  const [state] = (await db.query<any>(`SELECT c.relrowsecurity AND EXISTS (
+    SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polname='pulse_required_mfa'
+      AND NOT p.polpermissive AND p.polcmd='*'
+      AND pg_get_expr(p.polqual,p.polrelid) LIKE '%pulse_has_required_mfa%'
+      AND pg_get_expr(p.polwithcheck,p.polrelid) LIKE '%pulse_has_required_mfa%'
+  ) AS guarded, has_table_privilege('anon',c.oid,'SELECT') AS anon_read,
+    has_table_privilege('authenticated',c.oid,'SELECT') AS browser_read
+  FROM pg_class c WHERE c.oid='public.venue_attendance_audit'::regclass`)).rows;
+  expect(state).toEqual({guarded:true,anon_read:false,browser_read:false});
+  await expect(asUser(staff,'SELECT * FROM public.venue_attendance_audit')).rejects.toThrow(/permission denied/);
 });
