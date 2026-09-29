@@ -7,6 +7,7 @@ import { venueRpc as rpc, venueDate } from "@/lib/venues/customerRecords";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { VenueEmailComposer } from "@/components/venue/VenueEmailComposer";
 type Settings = {
   waitlist_offers: boolean;
   offer_minutes: number;
@@ -105,6 +106,7 @@ export default function VenueCommunications() {
       ) : (
         q.data && (
           <>
+            <VenueEmailComposer venueId={venue!} groupId={groupId} events={q.data.events} />
             <form
               className="space-y-4 rounded-2xl border bg-card p-5"
               onSubmit={(e) => {
