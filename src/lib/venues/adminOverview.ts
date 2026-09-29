@@ -18,7 +18,7 @@ export async function fetchVenueAdminCounts(venueId: string, groupId: string, ca
     supabase.from('venue_staff_public').select('user_id', counts).eq('venue_id', venueId),
     // A venue can host another community's programs; count the facility, not only its own group.
     supabase.from('group_events').select('id', counts).eq('venue_id', venueId)
-      .is('parent_event_id', null).in('event_format', [...PROGRAM_FORMATS]).gte('start_time', new Date().toISOString()),
+      .is('parent_event_id', null).is('canceled_at', null).in('event_format', [...PROGRAM_FORMATS]).gte('start_time', new Date().toISOString()),
     supabase.from('group_posts').select('id', counts).eq('group_id', groupId),
     supabase.from('group_members').select('id', counts).eq('group_id', groupId).eq('status', 'active'),
     canManageCommunity ? supabase.from('group_members').select('id', counts).eq('group_id', groupId).eq('status', 'pending') : Promise.resolve({ count: 0, error: null }),
