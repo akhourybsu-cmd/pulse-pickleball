@@ -43,6 +43,9 @@ export interface Group {
     surface_color?: string | null;
     text_color?: string | null;
     logo_background_color?: string | null;
+    chat_background_color?: string | null;
+    chat_incoming_color?: string | null;
+    chat_outgoing_color?: string | null;
     tagline: string | null;
     welcome_headline: string | null;
     welcome_message: string | null;

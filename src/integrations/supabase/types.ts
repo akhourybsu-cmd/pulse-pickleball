@@ -8626,6 +8626,9 @@ export type Database = {
           surface_color: string | null
           text_color: string | null
           logo_background_color: string | null
+          chat_background_color: string | null
+          chat_incoming_color: string | null
+          chat_outgoing_color: string | null
           show_pulse_branding: boolean | null
           slug: string | null
           social_facebook: string | null
@@ -8699,6 +8702,9 @@ export type Database = {
           surface_color?: string | null
           text_color?: string | null
           logo_background_color?: string | null
+          chat_background_color?: string | null
+          chat_incoming_color?: string | null
+          chat_outgoing_color?: string | null
           show_pulse_branding?: boolean | null
           slug?: string | null
           social_facebook?: string | null
@@ -8772,6 +8778,9 @@ export type Database = {
           surface_color?: string | null
           text_color?: string | null
           logo_background_color?: string | null
+          chat_background_color?: string | null
+          chat_incoming_color?: string | null
+          chat_outgoing_color?: string | null
           show_pulse_branding?: boolean | null
           slug?: string | null
           social_facebook?: string | null

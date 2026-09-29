@@ -1,6 +1,7 @@
-import { resolveVenuePalette, VENUE_BRAND_COLOR_FIELDS } from '@/lib/venues/palette';
+import { resolveVenuePalette, resolveVenueChatPalette, VENUE_BRAND_COLOR_FIELDS, VENUE_CHAT_COLOR_FIELDS } from '@/lib/venues/palette';
 import { useTheme } from 'next-themes';
 import { normalizeHex, type VenueBrand } from '@/lib/venues/branding';
+import { VenueChatPreview } from '@/components/venue/VenueChatPreview';
 import { VenuePalettePreview } from '@/components/venue/VenuePalettePreview';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X, BadgeCheck, ShieldQuestion } from 'lucide-react';
@@ -59,6 +60,9 @@ interface VenueForm {
   surface_color: string;
   text_color: string;
   logo_background_color: string;
+  chat_background_color: string;
+  chat_incoming_color: string;
+  chat_outgoing_color: string;
   logo_url: string | null;
   cover_image_url: string | null;
   logo_shape: 'circle' | 'square';
@@ -89,6 +93,9 @@ const EMPTY: VenueForm = {
   surface_color: '',
   text_color: '',
   logo_background_color: '',
+  chat_background_color: '',
+  chat_incoming_color: '',
+  chat_outgoing_color: '',
   logo_url: null,
   cover_image_url: null,
   logo_shape: 'square',
@@ -122,6 +129,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
   const [entrancePreview, setEntrancePreview] = useState(false);
   const { resolvedTheme } = useTheme();
   const palette = resolveVenuePalette(form, resolvedTheme === 'dark');
+  const chatPalette = resolveVenueChatPalette(form, resolvedTheme === 'dark');
+  const chatDefaults = { chat_background_color: chatPalette.background, chat_incoming_color: chatPalette.incoming, chat_outgoing_color: chatPalette.outgoing };
   const colorDefaults = { primary_color: palette.primary, secondary_color: palette.secondary, accent_color: palette.accent, background_color: palette.background, surface_color: palette.surface, text_color: palette.text, logo_background_color: palette.logoBackground };
 
   const logoInput = useRef<HTMLInputElement>(null);
@@ -137,7 +146,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('slug, name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
+          .select('slug, name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, chat_background_color, chat_incoming_color, chat_outgoing_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
           .eq('id', venueId)
           .single();
 
@@ -162,6 +171,9 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             surface_color: data.surface_color ?? '',
             text_color: data.text_color ?? '',
             logo_background_color: data.logo_background_color ?? '',
+            chat_background_color: data.chat_background_color ?? '',
+            chat_incoming_color: data.chat_incoming_color ?? '',
+            chat_outgoing_color: data.chat_outgoing_color ?? '',
             logo_url: data.logo_url ?? null,
             cover_image_url: data.cover_image_url ?? null,
             logo_shape: data.logo_shape === 'circle' ? 'circle' : 'square',
@@ -247,7 +259,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       toast({ title: 'Name required', description: 'Give your venue a name.', variant: 'destructive' });
       return;
     }
-    for (const { key } of VENUE_BRAND_COLOR_FIELDS) {
+    for (const { key } of [...VENUE_BRAND_COLOR_FIELDS, ...VENUE_CHAT_COLOR_FIELDS]) {
       if (form[key].trim() && !isHex(form[key])) {
         toast({
           title: 'Invalid colour',
@@ -275,6 +287,9 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
           secondary_color: normalizeHex(form.secondary_color),
           accent_color: normalizeHex(form.accent_color),
           logo_background_color: normalizeHex(form.logo_background_color),
+          chat_background_color: normalizeHex(form.chat_background_color),
+          chat_incoming_color: normalizeHex(form.chat_incoming_color),
+          chat_outgoing_color: normalizeHex(form.chat_outgoing_color),
           website_url: blankToNull(form.website_url),
           phone: blankToNull(form.phone),
           email: blankToNull(form.email),
@@ -297,7 +312,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       }
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       void queryClient.invalidateQueries({ queryKey: ['groups'] });
-      onBrandSaved?.({ name: form.name.trim(), ...Object.fromEntries(VENUE_BRAND_COLOR_FIELDS.map(({ key }) => [key, normalizeHex(form[key])])) });
+      onBrandSaved?.({ name: form.name.trim(), ...Object.fromEntries([...VENUE_BRAND_COLOR_FIELDS, ...VENUE_CHAT_COLOR_FIELDS].map(({ key }) => [key, normalizeHex(form[key])])) });
       toast({ title: 'Venue updated' });
       void queryClient.invalidateQueries({ queryKey: ['venue-admin-counts', venueId] });
     } catch (error) {
@@ -487,6 +502,19 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             </div>
             <VenuePalettePreview brand={form} identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit }} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Chat colors</CardTitle>
+          <CardDescription>Customize your venue’s conversation. Text adjusts automatically for readability. Use Auto to follow your venue colors and light or dark mode.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {VENUE_CHAT_COLOR_FIELDS.map(({ key, label, hint }) => <ColorField key={key} id={'venue-' + key.replace('_color', '').replace(/_/g, '-')} label={label} hint={hint} value={form[key]} fallbackColor={chatDefaults[key]} onChange={value => set(key, value)} />)}
+          </div>
+          <VenueChatPreview brand={form} />
         </CardContent>
       </Card>
 

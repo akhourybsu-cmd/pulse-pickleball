@@ -18,6 +18,9 @@ export interface VenueBrand {
   surface_color?: string | null;
   text_color?: string | null;
   logo_background_color?: string | null;
+  chat_background_color?: string | null;
+  chat_incoming_color?: string | null;
+  chat_outgoing_color?: string | null;
 }
 
 export interface VenueChrome {

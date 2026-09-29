@@ -491,7 +491,7 @@ export const GroupChat = memo(function GroupChat({
           aria-relevant="additions text"
           aria-label={`${title || 'Community chat'} messages`}
           tabIndex={0}
-          className="h-full touch-pan-y overflow-y-auto overscroll-contain bg-background px-3 py-4 [overflow-anchor:none] sm:px-5"
+          className="venue-chat-messages h-full touch-pan-y overflow-y-auto overscroll-contain bg-background px-3 py-4 [overflow-anchor:none] sm:px-5"
         >
           {messages.length > 0 && (
             <div className="flex min-h-7 items-center justify-center pb-3">
