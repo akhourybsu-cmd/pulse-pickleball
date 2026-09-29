@@ -300,6 +300,7 @@ export default function VenueCommunity() {
         <VenueMobileShell mobile={!isDesktopLayout} activeTab={activeTab} visited={visitedTabs} memoryKey={(membership?.user_id ?? 'guest') + ':' + groupId} identity={identity} hasBooking={bookingTabAvailable}
           onCommunity={() => openTab('feed')} onPlay={() => openTab('play')}
           onExit={() => (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox ? navigate(-1) : navigate('/player/community')}
+          onMyVisit={() => navigate(`/player/community/group/${groupId}/my-visit?venue=${group.venue_id}`)}
           onBookings={() => navigate('/player/bookings')}
           onTools={() => setFilesOpen(true)}
           onShare={onShare}
@@ -461,6 +462,7 @@ export default function VenueCommunity() {
                 <VenuePanel value="more" className="venue-panel-enter mt-0">
                   <div className="max-w-[820px] space-y-4">
                     <VenueClubAbout name={identity.name} description={venue?.welcome_message || venue?.welcome_headline} city={venue?.city} state={venue?.state} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone} phone={venue?.phone} email={venue?.email} websiteUrl={venue?.website_url} amenities={venue?.amenities} />
+                    <Button variant="outline" className="min-h-12 w-full justify-between rounded-2xl bg-card" onClick={() => navigate(`/player/community/group/${groupId}/my-visit?venue=${group.venue_id}`)}><span className="text-left"><span className="block font-semibold">My visit & coaching</span><span className="block text-xs font-normal text-muted-foreground">Your waiver, rental party, passes and assigned lessons</span></span><ChevronRight className="h-4 w-4" /></Button>
                     <button
                       type="button"
                       onClick={() => navigate('/player/bookings')}

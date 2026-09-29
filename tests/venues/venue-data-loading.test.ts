@@ -39,7 +39,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     chain.then = (resolve: (value: Result) => unknown, reject: (reason: unknown) => unknown) => Promise.resolve(result()).then(resolve, reject);
     return chain;
   },
-  rpc: (...args: unknown[]) => { state.calls.push({ table: 'rpc', method: 'rpc', args }); return Promise.resolve(state.responses.holds ?? { data: [], error: null }); },
+  rpc: (...args: unknown[]) => { state.calls.push({ table: 'rpc', method: 'rpc', args }); return Promise.resolve(state.responses[args[0] === 'venue_calendar_sessions' ? 'calendar' : 'holds'] ?? { data: [], error: null }); },
 } }));
 
 function captureGroup() {
@@ -153,7 +153,7 @@ describe('venue membership loading', () => {
 
 describe('shared player and operations calendar loading', () => {
   it('separates confirmed counts from the viewer’s waitlist or maybe response', async () => {
-    state.responses.group_events = { error: null, data: [{ id: 'program', event_format: 'open_play' }] };
+    state.responses.calendar = { error: null, data: [{ id: 'program', event_format: 'open_play' }] };
     state.responses.group_event_rsvps = { error: null, data: [
       { event_id: 'program', user_id: 'other', status: 'going' },
       { event_id: 'program', user_id: 'viewer-one', status: 'waitlist' },
@@ -171,7 +171,7 @@ describe('shared player and operations calendar loading', () => {
     const windows = [14, 21, 28].map(date => ({ start: new Date(2026, 8, date, 18), end: new Date(2026, 8, date, 20) }));
     state.responses.holds = { data: [{ venue_court_id: 'court-1', start_time: windows[1].start.toISOString(), end_time: windows[1].end.toISOString() }], error: null };
     const occupancy = await fetchProgramAvailability('venue-one', windows);
-    const reads = state.calls.filter(call => call.table === 'rpc');
+    const reads = state.calls.filter(call => call.table === 'rpc' && call.args[0] === 'venue_checkout_holds');
     expect(reads).toHaveLength(3);
     for (const [index, read] of reads.entries()) expect(read.args).toEqual(['venue_checkout_holds', { p_venue: 'venue-one', p_from: windows[index].start.toISOString(), p_to: windows[index].end.toISOString() }]);
     expect(occupancy.some(row => row.venue_court_id === 'court-1')).toBe(true);
@@ -185,20 +185,20 @@ describe('shared player and operations calendar loading', () => {
     expect(query.queryKey.at(-1)).toBe('viewer-one');
     await query.queryFn();
     const { from, to } = dayBounds(day);
-    expect(state.calls).toContainEqual({ table: 'group_events', method: 'lt', args: ['start_time', to] });
-    expect(state.calls).toContainEqual({ table: 'group_events', method: 'or', args: [`end_time.gt.${from},and(end_time.is.null,start_time.gte.${from})`] });
+    expect(state.calls).toContainEqual({table:'rpc',method:'rpc',args:['venue_calendar_sessions',{p_venue:'venue-one',p_from:from,p_to:to}]});
+    expect(state.calls.some(call=>call.table==='group_events')).toBe(false);
     expect(state.calls.filter(call => call.table === 'group_events' && call.method === 'gte')).toEqual([]);
   });
   it('labels each internal court allocation with the actual program name', async () => {
-    state.responses.group_events = { error: null, data: [
+    state.responses.calendar = { error: null, data: [
       { id: 'program', title: 'Evening open play', description: 'All levels welcome', event_format: 'open_play' },
       { id: 'hold', parent_event_id: 'program', title: 'Internal allocation', description: null, event_format: 'program_hold' },
     ] };
     const result = await captureDay().queryFn() as { sessions: { id: string; title: string; parent_event_id?: string }[] };
     expect(result.sessions[1]).toMatchObject({ id: 'hold', title: 'Evening open play', parent_event_id: 'program' });
   });
-  it.each(['venue_courts', 'group_events', 'holds', 'group_event_rsvps'])('does not report empty availability when %s fails', async (table) => {
-    state.responses.group_events = { error: null, data: [{ id: 'program', title: 'Open play', event_format: 'open_play' }] };
+  it.each(['venue_courts', 'calendar', 'holds', 'group_event_rsvps'])('does not report empty availability when %s fails', async (table) => {
+    state.responses.calendar = { error: null, data: [{ id: 'program', title: 'Open play', event_format: 'open_play' }] };
     state.responses[table] = { data: null, error: { message: `${table} unavailable` } };
     await expect(captureDay().queryFn()).rejects.toMatchObject({ message: `${table} unavailable` });
   });

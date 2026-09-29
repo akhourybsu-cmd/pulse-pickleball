@@ -13,7 +13,6 @@ import {
   type VenueHours,
 } from "@/lib/venues/hours";
 import { useAuthState } from "@/hooks/useAuthState";
-import { venueDayOverlapFilter } from "@/lib/venues/experience";
 import { isConfirmedVenueRsvp } from "@/lib/venues/experience";
 import type { GroupRsvpStatus } from "./useGroupEvents";
 import { venueCalendarBounds, venueCalendarNow } from "@/lib/venues/timezone";
@@ -26,7 +25,7 @@ import { venueCalendarBounds, venueCalendarNow } from "@/lib/venues/timezone";
  * views of exactly the same question — "what is happening at this venue today"
  * — and the fastest way to end up with two products that disagree is to let
  * each fetch and shape its own answer. Both read this hook; permissions decide
- * what they may do with it, not what they may see.
+ * actions and which booking details are visible; private bookings remain busy blocks.
  */
 
 export interface VenueDaySession extends Reservation {
@@ -41,7 +40,8 @@ export interface VenueDaySession extends Reservation {
   description: string | null;
   event_format: string;
   capacity: number | null;
-  created_by: string;
+  created_by: string | null;
+  private_booking?: boolean;
   waitlist_enabled: boolean;
   parent_event_id: string | null;
   rotation_style?: string | null;
@@ -63,7 +63,7 @@ export function isProgramHold(s: { event_format?: string | null }): boolean {
 /** Local midnight-to-midnight bounds for a day, as ISO strings. */
 export function dayBounds(
   day: Date,
-  timeZone?: string | null
+  timeZone?: string | null,
 ): { from: string; to: string } {
   return venueCalendarBounds(day, timeZone);
 }
@@ -80,7 +80,7 @@ export function useVenueDay(
   day: Date,
   /** The venue's own opening hours. Defaults only when none are stored. */
   hours: VenueHours = defaultVenueHours(),
-  timeZone?: string | null
+  timeZone?: string | null,
 ) {
   const queryClient = useQueryClient();
   const { user } = useAuthState();
@@ -104,29 +104,23 @@ export function useVenueDay(
           .select("id, name, court_number, is_active, is_premium, surface_type")
           .eq("venue_id", venueId!)
           .order("court_number", { ascending: true }),
-        // Scoped by venue rather than by group: a venue's courts can carry
-        // sessions from more than one group (a league using the facility), and
-        // the grid has to show every one of them or it will offer a slot that
-        // is already taken.
-        supabase
-          .from("group_events")
-          .select(
-            "id, group_id, title, description, event_format, capacity, created_by, waitlist_enabled, start_time, end_time, venue_court_id, parent_event_id, rotation_style, skill_level_min, skill_level_max, rr_courts, price_cents, currency, registration_paused, venue_visit_id, venue_appointment_id"
-          )
-          .eq("venue_id", venueId!)
-          .is("canceled_at", null)
-          .lt("start_time", to)
-          .or(venueDayOverlapFilter(from))
-          .order("start_time", { ascending: true }),
+        (supabase as any).rpc("venue_calendar_sessions", {
+          p_venue: venueId!,
+          p_from: from,
+          p_to: to,
+        }),
       ]);
 
       if (courtsRes.error) throw courtsRes.error;
       if (sessionsRes.error) throw sessionsRes.error;
 
-      const rawSessions = (sessionsRes.data ??
-        []) as unknown as VenueDaySession[];
+      if (!Array.isArray(sessionsRes.data))
+        throw new Error(
+          "Court availability could not be confirmed. Please retry.",
+        );
+      const rawSessions = sessionsRes.data as VenueDaySession[];
       const parents = new Map(
-        rawSessions.filter((s) => !isProgramHold(s)).map((s) => [s.id, s])
+        rawSessions.filter((s) => !isProgramHold(s)).map((s) => [s.id, s]),
       );
       const sessions = rawSessions.map((session) => {
         const parent = session.parent_event_id
@@ -154,7 +148,7 @@ export function useVenueDay(
         (s) =>
           !isReservation(s) &&
           !isProgramHold(s) &&
-          s.event_format !== "maintenance"
+          s.event_format !== "maintenance",
       );
       let going: Record<string, number> = {};
       const viewerRsvpByEvent: Record<string, GroupRsvpStatus> = {};
@@ -165,7 +159,7 @@ export function useVenueDay(
           .select("event_id,user_id,status")
           .in(
             "event_id",
-            joinable.map((s) => s.id)
+            joinable.map((s) => s.id),
           )
           .or(`status.eq.going,user_id.eq.${user!.id}`);
 
@@ -208,11 +202,11 @@ export function useVenueDay(
             courts,
             [...sessions, ...(query.data?.holds ?? [])],
             day,
-            { ...gridOptions, now, timeZone }
+            { ...gridOptions, now, timeZone },
           )
         : [],
     // `courts` is derived from query.data, so keying on it directly is stable.
-    [query.data, day, gridOptions, now, timeZone] // eslint-disable-line react-hooks/exhaustive-deps
+    [query.data, day, gridOptions, now, timeZone], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /**
@@ -226,9 +220,9 @@ export function useVenueDay(
         (s) =>
           !isReservation(s) &&
           !isProgramHold(s) &&
-          s.event_format !== "maintenance"
+          s.event_format !== "maintenance",
       ),
-    [sessions]
+    [sessions],
   );
 
   // A future day's schedule cannot answer how many courts are free right now.
@@ -251,7 +245,7 @@ export function useVenueDay(
     return courtsFreeAt(
       courts,
       [...sessions, ...(query.data?.holds ?? [])],
-      now
+      now,
     );
   }, [query.data, query.isError, query.isPending, day, now, hours, timeZone]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -281,7 +275,7 @@ export function useVenueDay(
           table: "group_events",
           filter: `venue_id=eq.${venueId}`,
         },
-        refresh
+        refresh,
       )
       .on(
         "postgres_changes",
@@ -291,7 +285,7 @@ export function useVenueDay(
           table: "venue_courts",
           filter: `venue_id=eq.${venueId}`,
         },
-        refresh
+        refresh,
       )
       .subscribe();
     return () => {

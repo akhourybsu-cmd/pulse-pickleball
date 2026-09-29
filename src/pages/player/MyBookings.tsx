@@ -1,14 +1,22 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { RentalParty } from "@/components/venue/RentalParty";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, CalendarX2, Clock, LayoutGrid, Loader2, MapPin, Ticket, Trash2,
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  ArrowLeft,
+  CalendarX2,
+  Clock,
+  LayoutGrid,
+  Loader2,
+  MapPin,
+  Ticket,
+  Trash2,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,11 +27,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
-import { useMyBookings } from '@/hooks/useMyBookings';
-import { formatDayLabel, groupByDay, type BookingEntry } from '@/lib/venues/bookings';
-import { formatSlotTime } from '@/lib/venues/availability';
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { useMyBookings } from "@/hooks/useMyBookings";
+import {
+  formatDayLabel,
+  groupByDay,
+  type BookingEntry,
+} from "@/lib/venues/bookings";
+import { formatSlotTime } from "@/lib/venues/availability";
 
 /**
  * Everything the player has booked.
@@ -52,7 +64,9 @@ export default function MyBookings() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="truncate text-lg font-bold leading-tight">My Bookings</h1>
+          <h1 className="truncate text-lg font-bold leading-tight">
+            My Bookings
+          </h1>
         </div>
       </header>
 
@@ -80,7 +94,7 @@ export default function MyBookings() {
             {loading ? (
               <BookingSkeleton />
             ) : upcoming.length === 0 ? (
-              <EmptyUpcoming onFind={() => navigate('/player/community')} />
+              <EmptyUpcoming onFind={() => navigate("/player/community")} />
             ) : (
               <BookingList entries={upcoming} onChanged={refresh} cancellable />
             )}
@@ -178,9 +192,10 @@ function BookingCard({
   const navigate = useNavigate();
   const { toast } = useToast();
   const [working, setWorking] = useState(false);
+  const [partyOpen, setPartyOpen] = useState(false);
 
-  const held = entry.kind === 'reservation';
-  const waitlisted = entry.rsvpStatus === 'waitlist';
+  const held = entry.kind === "reservation";
+  const waitlisted = entry.rsvpStatus === "waitlist";
 
   const cancel = async () => {
     setWorking(true);
@@ -192,23 +207,29 @@ function BookingCard({
     const userId = auth.user?.id;
 
     const { error } = held
-      ? await supabase.from('group_events').delete().eq('id', entry.id)
+      ? await supabase.from("group_events").delete().eq("id", entry.id)
       : await supabase
-          .from('group_event_rsvps')
+          .from("group_event_rsvps")
           .delete()
-          .eq('event_id', entry.id)
-          .eq('user_id', userId ?? '');
+          .eq("event_id", entry.id)
+          .eq("user_id", userId ?? "");
 
     setWorking(false);
 
     if (error) {
-      toast({ title: 'Could not cancel', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Could not cancel",
+        description: error.message,
+        variant: "destructive",
+      });
       return;
     }
 
     toast({
-      title: held ? 'Booking cancelled' : 'Left session',
-      description: held ? 'The court is free again.' : 'Your place has been given up.',
+      title: held ? "Booking cancelled" : "Left session",
+      description: held
+        ? "The court is free again."
+        : "Your place has been given up.",
     });
     onChanged();
   };
@@ -219,17 +240,18 @@ function BookingCard({
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           {formatSlotTime(entry.start)}
-          {entry.end ? ` – ${formatSlotTime(entry.end)}` : ''}
+          {entry.end ? ` – ${formatSlotTime(entry.end)}` : ""}
         </span>
 
         <Badge
           variant="outline"
           className={cn(
-            'shrink-0 text-[10px] font-bold uppercase tracking-[0.1em]',
-            waitlisted && 'border-amber-500/40 text-amber-600 dark:text-amber-400',
+            "shrink-0 text-[10px] font-bold uppercase tracking-[0.1em]",
+            waitlisted &&
+              "border-amber-500/40 text-amber-600 dark:text-amber-400",
           )}
         >
-          {held ? 'Court held' : waitlisted ? 'Waitlist' : 'Going'}
+          {held ? "Court held" : waitlisted ? "Waitlist" : "Going"}
         </Badge>
       </div>
 
@@ -256,29 +278,57 @@ function BookingCard({
         )}
       </div>
 
-      {cancellable && entry.paymentOrderId && <div className="mt-3 flex justify-end"><Button variant="outline" size="sm" onClick={() => navigate(`/player/payments?order=${entry.paymentOrderId}`)}>Payment & cancellation options</Button></div>}
+      {held && (
+        <details
+          className="mt-3"
+          onToggle={(e) => setPartyOpen(e.currentTarget.open)}
+        >
+          <summary className="cursor-pointer text-sm font-semibold">
+            Players & venue waiver
+          </summary>
+          {partyOpen && <RentalParty booking={entry.id} />}
+        </details>
+      )}
+      {cancellable && entry.paymentOrderId && (
+        <div className="mt-3 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              navigate(`/player/payments?order=${entry.paymentOrderId}`)
+            }
+          >
+            Payment & cancellation options
+          </Button>
+        </div>
+      )}
       {cancellable && !entry.paymentOrderId && (
         <div className="mt-2.5 flex justify-end">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-destructive" disabled={working}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-muted-foreground hover:text-destructive"
+                disabled={working}
+              >
                 {working ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                {held ? 'Cancel booking' : 'Leave session'}
+                {held ? "Cancel booking" : "Leave session"}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {held ? 'Cancel this booking?' : 'Leave this session?'}
+                  {held ? "Cancel this booking?" : "Leave this session?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {held
-                    ? 'The court goes back on the grid for anyone to take.'
-                    : 'Your place is given up, and someone on the waitlist may take it.'}
+                    ? "The court goes back on the grid for anyone to take."
+                    : "Your place is given up, and someone on the waitlist may take it."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -287,7 +337,7 @@ function BookingCard({
                   onClick={cancel}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {held ? 'Cancel booking' : 'Leave'}
+                  {held ? "Cancel booking" : "Leave"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

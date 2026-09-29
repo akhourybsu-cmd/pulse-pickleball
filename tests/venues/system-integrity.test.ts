@@ -84,7 +84,7 @@ it("executes the read-only integrity query against the deployed venue schema", a
   const db = await venueSuiteDatabase();
   try {
     await db.exec(
-      "ALTER TABLE venues ADD COLUMN is_published boolean; ALTER TABLE groups ADD COLUMN type text;"
+      "ALTER TABLE venues ADD COLUMN is_published boolean; ALTER TABLE groups ADD COLUMN IF NOT EXISTS type text;"
     );
     await db.query("INSERT INTO auth.users VALUES($1)", [venue]);
     await db.query(

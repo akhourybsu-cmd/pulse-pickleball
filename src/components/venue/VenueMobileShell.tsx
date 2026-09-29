@@ -12,10 +12,10 @@ const scrollPositions = new Map<string, number>();
 const usePanelLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /** One viewport owner: the venue bar and tabs never participate in page scrolling. */
-export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBooking, onCommunity, onPlay, onExit, onBookings, onTools, onSettings, onOperations, onShare, children, footer, memoryKey }: {
+export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBooking, onCommunity, onPlay, onExit, onBookings, onMyVisit, onTools, onSettings, onOperations, onShare, children, footer, memoryKey }: {
   mobile: boolean; activeTab: VenuePageTab; visited: Set<string>; identity: VenueIdentity; hasBooking: boolean;
   onPlay?: () => void; onCommunity: () => void; onExit: () => void; onBookings: () => void; onTools: () => void;
-  onSettings?: () => void; onOperations?: () => void; onShare?: () => void; children: ReactNode; footer?: ReactNode; memoryKey?: string;
+  onMyVisit?: () => void; onSettings?: () => void; onOperations?: () => void; onShare?: () => void; children: ReactNode; footer?: ReactNode; memoryKey?: string;
 }) {
   const viewport = useVisualViewportPane();
   return <ShellContext.Provider value={{ mobile, activeTab, visited, memoryKey }}>
@@ -29,6 +29,7 @@ export function VenueMobileShell({ mobile, activeTab, visited, identity, hasBook
           <DropdownMenuTrigger asChild><button type="button" className="venue-app-icon" aria-label="Venue menu"><MoreHorizontal className="h-5 w-5" /></button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)]">
             <DropdownMenuItem className="min-h-11" onSelect={onBookings}><Ticket className="mr-2 h-4 w-4" />My bookings</DropdownMenuItem>
+            {onMyVisit && <DropdownMenuItem className="min-h-11" onSelect={onMyVisit}><Ticket className="mr-2 h-4 w-4" />My visit & coaching</DropdownMenuItem>}
             <DropdownMenuItem className="min-h-11" onSelect={onTools}><FolderOpen className="mr-2 h-4 w-4" />Files & policies</DropdownMenuItem>
             {(onSettings || onOperations) && <DropdownMenuSeparator />}
             {onSettings && <DropdownMenuItem className="min-h-11" onSelect={onSettings}><Settings className="mr-2 h-4 w-4" />Manage venue</DropdownMenuItem>}

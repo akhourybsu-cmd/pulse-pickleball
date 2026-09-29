@@ -53,14 +53,22 @@ interface WalkinDay {
   courts: { id: string; name: string }[];
 }
 const selectClass = "h-11 w-full rounded-md border bg-background px-3 text-sm";
-export default function VenueWalkins() {
+export default function VenueWalkins({
+  embedded = false,
+}: { embedded?: boolean } = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
   const client = useQueryClient();
   const venue = group?.venue_id,
     tz = group?.venue?.timezone || "America/New_York";
-  const [params, setParams] = useSearchParams();
+  const [routeParams, setRouteParams] = useSearchParams();
+  const [localParams, setLocalParams] = useState(
+    () => new URLSearchParams(routeParams),
+  );
+  const params = embedded ? localParams : routeParams;
+  const setParams = (next: Record<string, string>) =>
+    embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
   const day = params.get("day") || localVenueDay(tz),
     customer = params.get("player") || "";
   const [kind, setKind] = useState(params.get("court") ? "court" : "event"),
@@ -173,7 +181,11 @@ export default function VenueWalkins() {
         title="Walk-ins & visits"
         description="Register guests, reserve their space and keep the day’s attendance current."
       >
-        <Button asChild variant="outline"><Link to={`/player/community/group/${groupId}/ops?day=${day}`}>Open operations calendar</Link></Button>
+        <Button asChild variant="outline">
+          <Link to={`/player/community/group/${groupId}/ops?day=${day}`}>
+            Open operations calendar
+          </Link>
+        </Button>
       </VenueAdminPageHeader>
       {(error || q.error || directory.error) && (
         <p

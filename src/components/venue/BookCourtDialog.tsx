@@ -1,3 +1,4 @@
+import { RentalParty } from "./RentalParty";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +82,7 @@ export function BookCourtDialog({
 }: BookCourtDialogProps) {
   const { toast } = useToast();
   const { user } = useAuthState();
+  const [booked, setBooked] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const lock = useRef(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export function BookCourtDialog({
   currentScope.current = scope;
   const [title, setTitle] = useState("");
   const [minutes, setMinutes] = useState(
-    presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes
+    presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes,
   );
   const [accepted, setAccepted] = useState(false);
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
@@ -98,7 +100,7 @@ export function BookCourtDialog({
     queryFn: () =>
       paymentApi<PaymentConfig & { paid: boolean; hourly_rate: number }>(
         "booking_details",
-        { court_id: court?.id, group_id: groupId }
+        { court_id: court?.id, group_id: groupId },
       ),
     enabled: open && !!court && !!user,
     staleTime: 0,
@@ -106,9 +108,10 @@ export function BookCourtDialog({
 
   useEffect(() => {
     if (open) {
+      setBooked(null);
       setTitle("");
       setMinutes(
-        presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes
+        presetMinutes && presetMinutes > 0 ? presetMinutes : slotMinutes,
       );
       setAccepted(false);
       setRequestKey(crypto.randomUUID());
@@ -132,7 +135,7 @@ export function BookCourtDialog({
     slotMinutes,
     maxMinutes,
     paid,
-    presetMinutes
+    presetMinutes,
   );
 
   const end = start ? new Date(start.getTime() + minutes * 60000) : null;
@@ -191,7 +194,7 @@ export function BookCourtDialog({
       try {
         if (!quote.data || !accepted || quote.isError || quote.isFetching)
           throw new Error(
-            "Review the confirmed total and cancellation policy first."
+            "Review the confirmed total and cancellation policy first.",
           );
         const result = await paymentApi<{ url: string }>("court_checkout", {
           court_id: court.id,
@@ -206,7 +209,7 @@ export function BookCourtDialog({
         if (currentScope.current !== scope) return;
         if (!result?.url)
           throw new Error(
-            "Checkout was not confirmed. Retry or check Payments & purchases before starting another booking."
+            "Checkout was not confirmed. Retry or check Payments & purchases before starting another booking.",
           );
         openStripe(result.url);
       } catch (error) {
@@ -234,17 +237,21 @@ export function BookCourtDialog({
         return;
       }
 
-      const { error } = await supabase.from("group_events").insert({
-        group_id: groupId,
-        venue_id: venueId,
-        venue_court_id: court.id,
-        title: title.trim() || `Court ${court.court_number ?? ""}`.trim(),
-        event_format: "reservation",
-        location_type: "venue",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        created_by: userId,
-      });
+      const { data: reservation, error } = await supabase
+        .from("group_events")
+        .insert({
+          group_id: groupId,
+          venue_id: venueId,
+          venue_court_id: court.id,
+          title: title.trim() || `Court ${court.court_number ?? ""}`.trim(),
+          event_format: "reservation",
+          location_type: "venue",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          created_by: userId,
+        })
+        .select("id")
+        .single();
 
       setSaving(false);
 
@@ -278,11 +285,11 @@ export function BookCourtDialog({
           court.name ?? `Court ${court.court_number}`
         } · ${formatSlotTime(start, timeZone)}–${formatSlotTime(
           end,
-          timeZone
+          timeZone,
         )}`,
       });
       onBooked();
-      onOpenChange(false);
+      setBooked(reservation!.id);
     } catch (error) {
       toast({
         title: "Could not book",
@@ -298,6 +305,22 @@ export function BookCourtDialog({
     }
   };
 
+  if (booked)
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Court booked</DialogTitle>
+            <DialogDescription>
+              Add the players joining you and review your venue waiver before
+              arriving.
+            </DialogDescription>
+          </DialogHeader>
+          <RentalParty booking={booked} timeZone={timeZone || undefined} />
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
+        </DialogContent>
+      </Dialog>
+    );
   return (
     <Dialog
       open={open}
@@ -330,6 +353,11 @@ export function BookCourtDialog({
         </DialogHeader>
 
         <div className="min-w-0 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Your rental is private. Add players after confirmation in My
+            bookings or My visit. Each player will be reminded to sign this
+            venue's waiver before arrival.
+          </p>
           {testCheckout && (
             <p
               role="note"
@@ -367,8 +395,8 @@ export function BookCourtDialog({
                     {m < 60
                       ? `${m} min`
                       : m % 60 === 0
-                      ? `${m / 60} hour${m === 60 ? "" : "s"}`
-                      : `${Math.floor(m / 60)}h ${m % 60}m`}
+                        ? `${m / 60} hour${m === 60 ? "" : "s"}`
+                        : `${Math.floor(m / 60)}h ${m % 60}m`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -553,20 +581,20 @@ export function BookCourtDialog({
                 ? "Opening secure checkout…"
                 : "Booking court…"
               : priceUnavailable
-              ? "Price unavailable"
-              : !detailsReady
-              ? "Checking price…"
-              : !validRange
-              ? "Choose an available duration"
-              : paid
-              ? quote.isError
-                ? "Checkout unavailable"
-                : !quote.data || quote.isPending || quote.isFetching
-                ? "Checking total…"
-                : testCheckout
-                ? `Test payment · ${formatMoney(quote.data.amount_cents)}`
-                : `Pay ${formatMoney(quote.data.amount_cents)} & reserve`
-              : "Book free court"}
+                ? "Price unavailable"
+                : !detailsReady
+                  ? "Checking price…"
+                  : !validRange
+                    ? "Choose an available duration"
+                    : paid
+                      ? quote.isError
+                        ? "Checkout unavailable"
+                        : !quote.data || quote.isPending || quote.isFetching
+                          ? "Checking total…"
+                          : testCheckout
+                            ? `Test payment · ${formatMoney(quote.data.amount_cents)}`
+                            : `Pay ${formatMoney(quote.data.amount_cents)} & reserve`
+                      : "Book free court"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,8 @@
 export interface VenueAttendee {
   walk_in?: boolean;
+  customer_id?: string;
+  pending_payment?: boolean;
+  waiver?: import("./customerRecords").VenueWaiverSummary;
   missing_documents?: number;
   id: string;
   name: string;
@@ -8,6 +11,7 @@ export interface VenueAttendee {
   version: number;
 }
 export interface AttendanceEvent {
+  activity_kind?: "program" | "rental";
   id: string;
   title: string;
   event_format: string;
@@ -33,12 +37,13 @@ export function attendanceStatus(a: VenueAttendee): AttendanceStatus {
 export function attendanceTotals(events: AttendanceEvent[]) {
   const players = events
     .filter((e) => !e.canceled_at)
-    .flatMap((e) => e.attendees);
+    .flatMap((e) => e.attendees)
+    .filter((a) => !a.pending_payment);
   const checkedIn = players.filter(
-    (a) => attendanceStatus(a) === "checked_in"
+    (a) => attendanceStatus(a) === "checked_in",
   ).length;
   const noShows = players.filter(
-    (a) => attendanceStatus(a) === "no_show"
+    (a) => attendanceStatus(a) === "no_show",
   ).length;
   return {
     registrations: players.length,

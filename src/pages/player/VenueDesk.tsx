@@ -35,7 +35,9 @@ import { formatMoney, paymentApi } from "@/lib/payments";
 import { VenueDeskFollowup } from "@/components/venue/VenueDeskFollowup";
 
 const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
-export default function VenueDesk() {
+export default function VenueDesk({
+  embedded = false,
+}: { embedded?: boolean } = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
@@ -43,7 +45,13 @@ export default function VenueDesk() {
   const venue = group?.venue_id;
   const timezone = group?.venue?.timezone || "America/New_York";
   const today = localVenueDay(timezone);
-  const [params, setParams] = useSearchParams();
+  const [routeParams, setRouteParams] = useSearchParams();
+  const [localParams, setLocalParams] = useState(
+    () => new URLSearchParams(routeParams),
+  );
+  const params = embedded ? localParams : routeParams;
+  const setParams = (next: Record<string, string>) =>
+    embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
   const tab = params.get("tab") || "sales";
   const customer = params.get("player") || "";
   const [day, setDay] = useState(params.get("day") || today),
@@ -120,7 +128,11 @@ export default function VenueDesk() {
         title="Front desk & memberships"
         description="Sell passes, manage member benefits and reconcile your cash day."
       >
-        <Button asChild variant="outline"><Link to={`/player/community/group/${groupId}/players`}>Player directory</Link></Button>
+        <Button asChild variant="outline">
+          <Link to={`/player/community/group/${groupId}/players`}>
+            Player directory
+          </Link>
+        </Button>
       </VenueAdminPageHeader>
       <VenueAdminSubnav
         label="Front desk"

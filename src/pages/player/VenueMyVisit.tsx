@@ -1,3 +1,5 @@
+import { MyCoachSchedule } from "@/components/venue/MyCoachSchedule";
+import { MyRentalParties } from "@/components/venue/RentalParty";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
@@ -70,6 +72,8 @@ export default function VenueMyVisit() {
             </section>
           )}
           <VenueVisitContent token={q.data.visit_token} />
+          <MyRentalParties venue={venue!} timeZone={q.data.timezone} />
+          <MyCoachSchedule venue={venue!} timeZone={q.data.timezone} />
         </>
       )}
     </>
