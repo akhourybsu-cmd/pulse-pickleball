@@ -162,6 +162,12 @@ it("restricts private party details and permits the renter to add registered pla
   const party = (
     await as(outsider, "SELECT venue_rental_party($1) data", [visit])
   )[0].data;
+  const bookings = (
+    await as(outsider, "SELECT venue_my_private_bookings() data")
+  )[0].data;
+  expect(
+    bookings.find((b: any) => b.private_booking_id === visit),
+  ).toMatchObject({ can_cancel: false, title: "Private rental" });
   expect(party.can_manage).toBe(false);
   expect(party.members).toHaveLength(2);
   expect(party.members.find((x: any) => x.is_you).name).toBe("Alex S.");
@@ -200,6 +206,7 @@ it("keeps private rental rows hidden but preserves a redacted occupied court blo
       reservation,
     ]),
   ).toEqual([{ title: "Private birthday" }]);
+  await expect(as(player,"INSERT INTO group_event_rsvps(event_id,user_id,status) VALUES($1,$2,'going')",[reservation,player])).rejects.toMatchObject({code:'42501'});
   const calendar = (
     await as(
       outsider,

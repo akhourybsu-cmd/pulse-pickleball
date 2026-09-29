@@ -85,7 +85,7 @@ BEGIN
  IF NOT venue_rental_access(p_booking) THEN RAISE EXCEPTION 'This private booking is unavailable' USING ERRCODE='42501'; END IF;
  lead:=venue_rental_lead(p_booking);
  RETURN jsonb_build_object('id',lead.id,'venue_id',lead.venue_id,'group_id',lead.group_id,'title',lead.title,
- 'start_time',lead.start_time,'end_time',lead.end_time,'status',lead.status,'can_manage',venue_rental_access(p_booking,true),
+ 'timezone',(SELECT coalesce(timezone,'America/New_York') FROM venues WHERE id=lead.venue_id),'start_time',lead.start_time,'end_time',lead.end_time,'status',lead.status,'can_manage',venue_rental_access(p_booking,true),
  'members',coalesce((SELECT jsonb_agg(jsonb_build_object('id',v.id,'name',c.first_name||CASE WHEN c.last_name<>'' THEN ' '||left(c.last_name,1)||'.' ELSE '' END,
  'lead',v.id=lead.id,'is_you',c.user_id=auth.uid()) ORDER BY v.id=lead.id DESC,c.first_name)
  FROM venue_visits v JOIN venue_customers c ON c.id=v.customer_id WHERE (v.id=lead.id OR v.party_booking_id=lead.id) AND v.status NOT IN ('canceled','expired')),'[]'::jsonb));
@@ -148,6 +148,30 @@ BEGIN
  SELECT DISTINCT coalesce(v.party_booking_id,v.id) id, v.start_time FROM venue_visits v JOIN venue_customers c ON c.id=v.customer_id
  WHERE c.user_id=auth.uid() AND v.venue_id=p_venue AND v.event_id IS NULL AND v.status IN ('expected','checked_in','no_show') AND v.end_time>now()-interval '1 day') x),'[]');
 END $$;
+CREATE FUNCTION venue_my_private_bookings() RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF auth.uid() IS NULL OR NOT pulse_has_required_mfa() THEN RAISE EXCEPTION 'Sign in to view your bookings' USING ERRCODE='42501'; END IF;
+ RETURN coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY start_time) FROM (
+ SELECT DISTINCT coalesce(lead.reservation_id,lead.appointment_id,lead.id) id,lead.id private_booking_id,lead.group_id,lead.title,'reservation'::text event_format,
+ lead.start_time,lead.end_time,v.name venue_name,false can_cancel,
+ coalesce((SELECT string_agg(c.name,', ' ORDER BY c.court_number) FROM venue_appointments ap JOIN venue_courts c ON c.id=ANY(ap.court_ids) WHERE ap.id=lead.appointment_id),(SELECT name FROM venue_courts WHERE id=lead.court_id)) court_name
+ FROM venue_visits mine JOIN venue_customers customer ON customer.id=mine.customer_id JOIN venue_visits lead ON lead.id=coalesce(mine.party_booking_id,mine.id) JOIN venues v ON v.id=lead.venue_id
+ WHERE customer.user_id=auth.uid() AND mine.event_id IS NULL AND mine.status IN ('expected','checked_in','no_show') AND lead.status IN ('expected','checked_in','no_show') AND mine.end_time>now()-interval '90 days'
+ AND (mine.party_booking_id IS NOT NULL OR lead.reservation_id IS NULL)
+ )x),'[]');
+END $$;
+REVOKE ALL ON FUNCTION venue_my_private_bookings() FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION venue_my_private_bookings() TO authenticated;
+-- Public event RSVP endpoints cannot be used to self-join a private rental.
+CREATE FUNCTION venue_guard_rental_rsvp() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF NEW.status IS DISTINCT FROM 'not_going' AND EXISTS(SELECT 1 FROM group_events WHERE id=NEW.event_id AND venue_id IS NOT NULL AND event_format='reservation') THEN
+  RAISE EXCEPTION 'Court rentals use a private player list. Ask the renter to add you to the booking.' USING ERRCODE='42501';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER venue_guard_rental_rsvp BEFORE INSERT OR UPDATE OF status,event_id,user_id ON group_event_rsvps FOR EACH ROW EXECUTE FUNCTION venue_guard_rental_rsvp();
+REVOKE ALL ON FUNCTION venue_guard_rental_rsvp() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION venue_rental_lead(uuid),venue_sync_rental_party(),venue_rental_access(uuid,boolean),venue_rental_event_visible(uuid),venue_calendar_sessions(uuid,timestamptz,timestamptz),venue_rental_party(uuid),venue_rental_player_search(uuid,text),venue_rental_party_add(uuid,uuid),venue_rental_party_remove(uuid,uuid),venue_my_rental_parties(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION venue_rental_event_visible(uuid) TO anon,authenticated;
 GRANT EXECUTE ON FUNCTION venue_calendar_sessions(uuid,timestamptz,timestamptz),venue_rental_party(uuid),venue_rental_player_search(uuid,text),venue_rental_party_add(uuid,uuid),venue_rental_party_remove(uuid,uuid),venue_my_rental_parties(uuid) TO authenticated;

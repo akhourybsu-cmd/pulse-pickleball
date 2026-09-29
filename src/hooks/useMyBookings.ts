@@ -54,7 +54,7 @@ export function useMyBookings() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("not-authenticated");
 
-      const [mine, rsvps] = await Promise.all([
+      const [mine, rsvps, privateBookings] = await Promise.all([
         // Courts held. Only sessions tied to an actual court — a group event
         // someone happened to create is not a booking of theirs.
         supabase
@@ -63,6 +63,8 @@ export function useMyBookings() {
           .eq("created_by", user.id)
           .not("venue_court_id", "is", null)
           .is("parent_event_id", null)
+          .is("venue_visit_id", null)
+          .is("venue_appointment_id", null)
           .neq("event_format", "maintenance")
           .order("start_time", { ascending: true }),
         supabase
@@ -70,12 +72,21 @@ export function useMyBookings() {
           .select(`status, group_events!inner (${EVENT_SELECT})`)
           .eq("user_id", user.id)
           .in("status", ["going", "waitlist"]),
+        (supabase as any).rpc("venue_my_private_bookings"),
       ]);
 
       if (mine.error) throw mine.error;
       if (rsvps.error) throw rsvps.error;
+      if (privateBookings.error) throw privateBookings.error;
+      if (!Array.isArray(privateBookings.data))
+        throw new Error(
+          "Your private bookings could not be confirmed. Please retry.",
+        );
 
-      const reservations = (mine.data ?? []).map((row) => shape(row));
+      const reservations = [
+        ...(mine.data ?? []).map((row) => shape(row)),
+        ...(privateBookings.data as BookingSource[]),
+      ];
       const signups = (rsvps.data ?? [])
         .filter((row: any) => !!row.group_events)
         .map((row: any) => shape(row.group_events, row.status));

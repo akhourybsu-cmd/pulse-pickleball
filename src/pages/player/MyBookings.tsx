@@ -251,7 +251,13 @@ function BookingCard({
               "border-amber-500/40 text-amber-600 dark:text-amber-400",
           )}
         >
-          {held ? "Court held" : waitlisted ? "Waitlist" : "Going"}
+          {held
+            ? entry.canCancel === false
+              ? "Private booking"
+              : "Court held"
+            : waitlisted
+              ? "Waitlist"
+              : "Going"}
         </Badge>
       </div>
 
@@ -278,7 +284,12 @@ function BookingCard({
         )}
       </div>
 
-      {held && (
+      {entry.canCancel === false && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Contact the renter or venue for booking changes.
+        </p>
+      )}
+      {held && entry.format === "reservation" && (
         <details
           className="mt-3"
           onToggle={(e) => setPartyOpen(e.currentTarget.open)}
@@ -286,10 +297,12 @@ function BookingCard({
           <summary className="cursor-pointer text-sm font-semibold">
             Players & venue waiver
           </summary>
-          {partyOpen && <RentalParty booking={entry.id} />}
+          {partyOpen && (
+            <RentalParty booking={entry.privateBookingId || entry.id} />
+          )}
         </details>
       )}
-      {cancellable && entry.paymentOrderId && (
+      {cancellable && entry.canCancel !== false && entry.paymentOrderId && (
         <div className="mt-3 flex justify-end">
           <Button
             variant="outline"
@@ -302,7 +315,7 @@ function BookingCard({
           </Button>
         </div>
       )}
-      {cancellable && !entry.paymentOrderId && (
+      {cancellable && entry.canCancel !== false && !entry.paymentOrderId && (
         <div className="mt-2.5 flex justify-end">
           <AlertDialog>
             <AlertDialogTrigger asChild>

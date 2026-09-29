@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 export interface RentalPartyData {
   id: string;
   venue_id: string;
+  timezone?: string;
   group_id: string;
   title: string;
   start_time: string;
@@ -65,7 +66,8 @@ export function RentalParty({
         q.data && (
           <>
             <p className="text-sm">
-              {q.data.title} · {venueDate(q.data.start_time, timeZone)}
+              {q.data.title} ·{" "}
+              {venueDate(q.data.start_time, q.data.timezone || timeZone)}
             </p>
             <p className="text-xs text-muted-foreground">
               Booking details are visible to the renter, assigned players and
