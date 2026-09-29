@@ -53,14 +53,34 @@ interface WalkinDay {
   courts: { id: string; name: string }[];
 }
 const selectClass = "h-11 w-full rounded-md border bg-background px-3 text-sm";
-export default function VenueWalkins() {
+export default function VenueWalkins({
+  embedded = false,
+  initialPlayer,
+  onOpenPlayers,
+  onOpenDesk,
+  onClose,
+}: {
+  embedded?: boolean;
+  initialPlayer?: string;
+  onOpenPlayers?: (player?: string) => void;
+  onOpenDesk?: (player?: string) => void;
+  onClose?: () => void;
+} = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
   const client = useQueryClient();
   const venue = group?.venue_id,
     tz = group?.venue?.timezone || "America/New_York";
-  const [params, setParams] = useSearchParams();
+  const [routeParams, setRouteParams] = useSearchParams();
+  const [localParams, setLocalParams] = useState(() => {
+    const next = new URLSearchParams(routeParams);
+    if (initialPlayer) next.set("player", initialPlayer);
+    return next;
+  });
+  const params = embedded ? localParams : routeParams;
+  const setParams = (next: Record<string, string>) =>
+    embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
   const day = params.get("day") || localVenueDay(tz),
     customer = params.get("player") || "";
   const [kind, setKind] = useState(params.get("court") ? "court" : "event"),
@@ -173,7 +193,21 @@ export default function VenueWalkins() {
         title="Walk-ins & visits"
         description="Register guests, reserve their space and keep the day’s attendance current."
       >
-        <Button asChild variant="outline"><Link to={`/player/community/group/${groupId}/ops?day=${day}`}>Open operations calendar</Link></Button>
+        <Button asChild variant="outline">
+          <Link
+            to={`/player/community/group/${groupId}/ops?day=${day}`}
+            onClick={
+              onClose
+                ? (e) => {
+                    e.preventDefault();
+                    onClose();
+                  }
+                : undefined
+            }
+          >
+            Open operations calendar
+          </Link>
+        </Button>
       </VenueAdminPageHeader>
       {(error || q.error || directory.error) && (
         <p
@@ -274,6 +308,14 @@ export default function VenueWalkins() {
               <Link
                 className="inline-block text-sm underline"
                 to={`/player/community/group/${groupId}/players`}
+                onClick={
+                  onOpenPlayers
+                    ? (e) => {
+                        e.preventDefault();
+                        onOpenPlayers();
+                      }
+                    : undefined
+                }
               >
                 Add a new guest or update contact details
               </Link>
@@ -538,6 +580,14 @@ export default function VenueWalkins() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
                       to={`/player/community/group/${groupId}/players?player=${v.customer_id}`}
+                      onClick={
+                        onOpenPlayers
+                          ? (e) => {
+                              e.preventDefault();
+                              onOpenPlayers(v.customer_id);
+                            }
+                          : undefined
+                      }
                     >
                       <Button variant="outline" size="sm">
                         Player & documents
@@ -546,6 +596,14 @@ export default function VenueWalkins() {
                     {v.method !== "free" && (
                       <Link
                         to={`/player/community/group/${groupId}/desk?player=${v.customer_id}&day=${day}`}
+                        onClick={
+                          onOpenDesk
+                            ? (e) => {
+                                e.preventDefault();
+                                onOpenDesk(v.customer_id);
+                              }
+                            : undefined
+                        }
                       >
                         <Button variant="outline" size="sm">
                           Payment / pass

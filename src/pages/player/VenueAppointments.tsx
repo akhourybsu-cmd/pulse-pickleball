@@ -32,6 +32,11 @@ type Coach = {
   id: string;
   name: string;
   bio: string;
+  user_id: string | null;
+  email: string | null;
+  phone: string | null;
+  specialties: string[] | null;
+  time_off: { start_time: string; end_time: string }[];
   hourly_cents: number;
   active: boolean;
   updated_at: string;
@@ -83,6 +88,7 @@ export default function VenueAppointments() {
         localVenueDay(tz, new Date(Date.now() + 30 * 86400000)),
     ),
     [tab, setTab] = useState("bookings");
+  const [coachFilter, setCoachFilter] = useState("");
   const [editing, setEditing] = useState<Appointment | true | null>(null),
     [coachEdit, setCoachEdit] = useState<Coach | true | null>(null),
     [collect, setCollect] = useState<Appointment | null>(null),
@@ -142,7 +148,7 @@ export default function VenueAppointments() {
         ]}
       >
         <Button asChild variant="outline">
-          <Link to={`${base}/walk-ins`}>Daily check-in</Link>
+          <Link to={`${base}/ops?view=attendance`}>Daily check-in</Link>
         </Button>
       </VenueAdminSubnav>
       {(error || q.error) && (
@@ -175,6 +181,21 @@ export default function VenueAppointments() {
                       onChange={(e) => setTo(e.target.value)}
                     />
                   </label>
+                  <label className="text-sm">
+                    Coach
+                    <select
+                      className={selectClass}
+                      value={coachFilter}
+                      onChange={(e) => setCoachFilter(e.target.value)}
+                    >
+                      <option value="">All coaches & private bookings</option>
+                      {q.data.coaches.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   {q.data.can_manage && (
                     <Button
                       onClick={() => {
@@ -187,135 +208,140 @@ export default function VenueAppointments() {
                   )}
                 </div>
                 <div className="grid gap-4 xl:grid-cols-2">
-                  {q.data.appointments.map((a) => {
-                    const { user } = useAuthState();
-                    const due =
-                      a.visit_method === "pass"
-                        ? 0
-                        : a.status === "draft"
-                          ? a.deposit_cents
-                          : Math.max(0, a.total_cents - Number(a.paid_cents));
-                    return (
-                      <article
-                        className="space-y-3 rounded-2xl border bg-card p-5"
-                        key={a.id}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                              {a.kind === "lesson" ? "Lesson" : "Private event"}
-                            </p>
-                            <h2 className="mt-1 text-lg font-semibold">
-                              {a.title}
-                            </h2>
+                  {q.data.appointments
+                    .filter((a) => !coachFilter || a.coach_id === coachFilter)
+                    .map((a) => {
+                      const due =
+                        a.visit_method === "pass"
+                          ? 0
+                          : a.status === "draft"
+                            ? a.deposit_cents
+                            : Math.max(0, a.total_cents - Number(a.paid_cents));
+                      return (
+                        <article
+                          className="space-y-3 rounded-2xl border bg-card p-5"
+                          key={a.id}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                {a.kind === "lesson"
+                                  ? "Lesson"
+                                  : "Private event"}
+                              </p>
+                              <h2 className="mt-1 text-lg font-semibold">
+                                {a.title}
+                              </h2>
+                            </div>
+                            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                              {a.status}
+                            </span>
                           </div>
-                          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                            {a.status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium">
-                          {venueDate(a.start_time, tz)} –{" "}
-                          {formatInTimeZone(a.end_time, tz, "h:mm a")}
-                        </p>
-                        <p className="text-sm">
-                          {a.first_name} {a.last_name} ·{" "}
-                          {a.court_ids
-                            .map(
-                              (id) =>
-                                q.data!.courts.find((c) => c.id === id)?.name ||
-                                "Court",
-                            )
-                            .join(", ")}
-                          {a.coach_id
-                            ? ` · ${
-                                q.data.coaches.find((c) => c.id === a.coach_id)
-                                  ?.name || "Coach"
-                              }`
-                            : ""}
-                        </p>
-                        <p className="text-sm">
-                          <strong>{formatMoney(a.total_cents)}</strong> total ·{" "}
-                          {a.visit_method === "pass"
-                            ? "Paid with lesson package"
-                            : `${formatMoney(
-                                Number(a.paid_cents),
-                              )} collected · ${formatMoney(due)} ${
-                                a.status === "draft"
-                                  ? "deposit due"
-                                  : "remaining"
-                              }`}
-                        </p>
-                        {a.status === "draft" && (
-                          <p className="text-xs text-muted-foreground">
-                            {a.agreed_at
-                              ? "Customer acknowledged this quote."
-                              : "Awaiting quote acknowledgment."}{" "}
-                            Courts are checked again when you confirm or start
-                            checkout.
+                          <p className="text-sm font-medium">
+                            {venueDate(a.start_time, tz)} –{" "}
+                            {formatInTimeZone(a.end_time, tz, "h:mm a")}
                           </p>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          {a.status === "draft" && q.data.can_manage && (
-                            <Button
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() => {
-                                setError("");
-                                setEditing(a);
-                              }}
-                            >
-                              Edit quote
-                            </Button>
+                          <p className="text-sm">
+                            {a.first_name} {a.last_name} ·{" "}
+                            {a.court_ids
+                              .map(
+                                (id) =>
+                                  q.data!.courts.find((c) => c.id === id)
+                                    ?.name || "Court",
+                              )
+                              .join(", ")}
+                            {a.coach_id
+                              ? ` · ${
+                                  q.data.coaches.find(
+                                    (c) => c.id === a.coach_id,
+                                  )?.name || "Coach"
+                                }`
+                              : ""}
+                          </p>
+                          <p className="text-sm">
+                            <strong>{formatMoney(a.total_cents)}</strong> total
+                            ·{" "}
+                            {a.visit_method === "pass"
+                              ? "Paid with lesson package"
+                              : `${formatMoney(
+                                  Number(a.paid_cents),
+                                )} collected · ${formatMoney(due)} ${
+                                  a.status === "draft"
+                                    ? "deposit due"
+                                    : "remaining"
+                                }`}
+                          </p>
+                          {a.status === "draft" && (
+                            <p className="text-xs text-muted-foreground">
+                              {a.agreed_at
+                                ? "Customer acknowledged this quote."
+                                : "Awaiting quote acknowledgment."}{" "}
+                              Courts are checked again when you confirm or start
+                              checkout.
+                            </p>
                           )}
-                          {a.status !== "canceled" && (
-                            <Button
-                              variant="outline"
-                              onClick={() => setShare(a)}
-                            >
-                              View / share quote
-                            </Button>
-                          )}
-                          {(a.status === "draft" ||
-                            (a.status === "confirmed" && due > 0)) &&
-                            !a.pending_sale_id && (
+                          <div className="flex flex-wrap gap-2">
+                            {a.status === "draft" && q.data.can_manage && (
                               <Button
+                                variant="outline"
                                 disabled={busy}
                                 onClick={() => {
                                   setError("");
-                                  setCheckout("");
-                                  setCollect(a);
+                                  setEditing(a);
                                 }}
                               >
-                                {due === 0
-                                  ? "Confirm booking"
-                                  : a.status === "draft"
-                                    ? "Collect deposit / confirm"
-                                    : "Collect balance"}
+                                Edit quote
                               </Button>
                             )}
-                          {a.pending_sale_id && (
-                            <Link to={`${base}/desk?player=${a.customer_id}`}>
-                              <Button variant="outline">
-                                Manage pending payment
+                            {a.status !== "canceled" && (
+                              <Button
+                                variant="outline"
+                                onClick={() => setShare(a)}
+                              >
+                                View / share quote
                               </Button>
-                            </Link>
-                          )}
-                          {a.status !== "canceled" && a.status !== "held" && (
-                            <Button
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() => {
-                                setError("");
-                                setCancel(a);
-                              }}
-                            >
-                              Cancel booking
-                            </Button>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
+                            )}
+                            {(a.status === "draft" ||
+                              (a.status === "confirmed" && due > 0)) &&
+                              !a.pending_sale_id && (
+                                <Button
+                                  disabled={busy}
+                                  onClick={() => {
+                                    setError("");
+                                    setCheckout("");
+                                    setCollect(a);
+                                  }}
+                                >
+                                  {due === 0
+                                    ? "Confirm booking"
+                                    : a.status === "draft"
+                                      ? "Collect deposit / confirm"
+                                      : "Collect balance"}
+                                </Button>
+                              )}
+                            {a.pending_sale_id && (
+                              <Link to={`${base}/desk?player=${a.customer_id}`}>
+                                <Button variant="outline">
+                                  Manage pending payment
+                                </Button>
+                              </Link>
+                            )}
+                            {a.status !== "canceled" && a.status !== "held" && (
+                              <Button
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => {
+                                  setError("");
+                                  setCancel(a);
+                                }}
+                              >
+                                Cancel booking
+                              </Button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                 </div>
                 {!q.data.appointments.length && (
                   <p className="rounded-2xl border p-8 text-center text-muted-foreground">
@@ -352,6 +378,30 @@ export default function VenueAppointments() {
                         {!c.active && " · Inactive"}
                       </h2>
                       <p className="text-sm">{c.bio}</p>
+                      {!!c.specialties?.length && (
+                        <p className="text-sm">{c.specialties.join(" · ")}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        {c.user_id
+                          ? "PULSE account linked · coach can view their teaching schedule in My visit"
+                          : "No PULSE account linked"}
+                      </p>
+                      {(c.email || c.phone) && (
+                        <p className="text-sm">
+                          {[c.email, c.phone].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      {!!c.time_off?.length && (
+                        <div className="text-sm">
+                          <strong>Time off</strong>
+                          {c.time_off.map((t, i) => (
+                            <p key={i}>
+                              {venueDate(t.start_time, tz)} ...{" "}
+                              {venueDate(t.end_time, tz)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       <p className="font-medium">
                         {formatMoney(c.hourly_cents)} / hour, including court
                       </p>
@@ -427,6 +477,8 @@ export default function VenueAppointments() {
             )}
             {coachEdit && (
               <CoachForm
+                venue={venue!}
+                tz={tz}
                 initial={coachEdit === true ? undefined : coachEdit}
                 busy={busy}
                 error={error}
@@ -605,18 +657,43 @@ const minutesTime = (n: number) =>
     "0",
   )}`;
 function CoachForm({
+  venue,
+  tz,
   initial,
   busy,
   error,
   close,
   save,
 }: {
+  venue: string;
+  tz: string;
   initial?: Coach;
   busy: boolean;
   error: string;
   close: () => void;
   save: (d: unknown) => void;
 }) {
+  const { user } = useAuthState();
+  const [account, setAccount] = useState(initial?.user_id || "");
+  const [accountName, setAccountName] = useState(
+    initial?.user_id ? "Linked PULSE account" : "",
+  );
+  const [accountSearch, setAccountSearch] = useState("");
+  const [timeOff, setTimeOff] = useState(
+    (initial?.time_off || []).map((t) => ({
+      start: formatInTimeZone(t.start_time, tz, "yyyy-MM-dd'T'HH:mm"),
+      end: formatInTimeZone(t.end_time, tz, "yyyy-MM-dd'T'HH:mm"),
+    })),
+  );
+  const accounts = useQuery({
+    queryKey: ["coach-player-search", venue, user?.id, accountSearch],
+    enabled: accountSearch.trim().length >= 2,
+    queryFn: () =>
+      rpc<{ id: string; name: string }[]>("venue_coach_player_search", {
+        p_venue: venue,
+        p_search: accountSearch,
+      }),
+  });
   const [slots, setSlots] = useState(initial?.availability || []);
   const [localError, setError] = useState("");
   return (
@@ -642,6 +719,29 @@ function CoachForm({
                 hourly_cents: priceCents(f.get("price")),
                 active: f.get("active") === "on",
                 availability: slots,
+                user_id: account || null,
+                email: f.get("email"),
+                phone: f.get("phone"),
+                specialties: String(f.get("specialties") || "")
+                  .split(",")
+                  .map((v) => v.trim())
+                  .filter(Boolean),
+                time_off: timeOff.map((t) => {
+                  const start = fromZonedTime(t.start, tz),
+                    end = fromZonedTime(t.end, tz);
+                  if (
+                    formatInTimeZone(start, tz, "yyyy-MM-dd'T'HH:mm") !==
+                      t.start ||
+                    formatInTimeZone(end, tz, "yyyy-MM-dd'T'HH:mm") !== t.end
+                  )
+                    throw new Error(
+                      "A time-off entry falls in a daylight-saving gap. Choose another time.",
+                    );
+                  return {
+                    start_time: start.toISOString(),
+                    end_time: end.toISOString(),
+                  };
+                }),
               });
             } catch (e) {
               setError(
@@ -663,6 +763,129 @@ function CoachForm({
             Bio
             <Textarea name="bio" maxLength={2000} defaultValue={initial?.bio} />
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              Coach email
+              <Input
+                type="email"
+                name="email"
+                maxLength={254}
+                defaultValue={initial?.email || ""}
+              />
+            </label>
+            <label className="text-sm">
+              Coach phone
+              <Input
+                name="phone"
+                maxLength={40}
+                defaultValue={initial?.phone || ""}
+              />
+            </label>
+          </div>
+          <label className="block text-sm">
+            Specialties (separated by commas)
+            <Input
+              name="specialties"
+              maxLength={900}
+              defaultValue={initial?.specialties?.join(", ")}
+            />
+          </label>
+          <div className="space-y-2 rounded-xl border p-3">
+            <label className="block text-sm">
+              Link coach's PULSE account
+              <Input
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                placeholder="Search the coach's player name"
+              />
+            </label>
+            {account && (
+              <p className="text-sm">
+                {accountName}{" "}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setAccount("");
+                    setAccountName("");
+                  }}
+                >
+                  Unlink
+                </Button>
+              </p>
+            )}
+            {accounts.data?.map((p) => (
+              <Button
+                key={p.id}
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setAccount(p.id);
+                  setAccountName(p.name);
+                  setAccountSearch("");
+                }}
+              >
+                {p.name}
+              </Button>
+            ))}
+            {accounts.error && <p role="alert">{accounts.error.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Linked coaches can see their assigned lessons in My visit.
+              Bookings also check their lessons at other PULSE venues.
+            </p>
+          </div>
+          <fieldset className="space-y-3">
+            <legend className="font-medium">Time off ({tz})</legend>
+            {timeOff.map((t, i) => (
+              <div key={i} className="space-y-2 rounded-xl border p-3">
+                <label className="block text-sm">
+                  Starts
+                  <Input
+                    type="datetime-local"
+                    required
+                    value={t.start}
+                    onChange={(e) =>
+                      setTimeOff(
+                        timeOff.map((v, j) =>
+                          j === i ? { ...v, start: e.target.value } : v,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label className="block text-sm">
+                  Ends
+                  <Input
+                    type="datetime-local"
+                    required
+                    value={t.end}
+                    onChange={(e) =>
+                      setTimeOff(
+                        timeOff.map((v, j) =>
+                          j === i ? { ...v, end: e.target.value } : v,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setTimeOff(timeOff.filter((_, j) => j !== i))}
+                >
+                  Remove time off
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTimeOff([...timeOff, { start: "", end: "" }])}
+            >
+              Add time off
+            </Button>
+          </fieldset>
           <label className="block text-sm">
             Lesson price per hour ($), including court
             <Input
@@ -807,6 +1030,46 @@ function AppointmentForm({
         p_page: 0,
       }),
   });
+  const availability = useQuery({
+    queryKey: [
+      "lesson-availability",
+      venue,
+      user?.id,
+      coach,
+      kind,
+      start,
+      duration,
+      initial?.id,
+    ],
+    enabled:
+      !!start &&
+      duration >= 30 &&
+      duration <= 720 &&
+      (kind !== "lesson" || !!coach),
+    refetchInterval: 15000,
+    queryFn: () => {
+      const date = fromZonedTime(start, tz);
+      if (formatInTimeZone(date, tz, "yyyy-MM-dd'T'HH:mm") !== start)
+        throw new Error("This local time is skipped by daylight saving.");
+      return rpc<{
+        available: boolean;
+        reason: string | null;
+        courts: { id: string; available: boolean }[];
+      }>("venue_lesson_availability", {
+        p_venue: venue,
+        p_coach: kind === "lesson" ? coach : null,
+        p_start: date.toISOString(),
+        p_end: new Date(date.getTime() + duration * 60000).toISOString(),
+        p_appointment: initial?.id || null,
+      });
+    },
+  });
+  const selectedAvailable =
+    !!availability.data?.available &&
+    courts.length > 0 &&
+    courts.every((id) =>
+      availability.data?.courts.some((c) => c.id === id && c.available),
+    );
   const lessonTotal = Math.round(
     ((workspace.coaches.find((c) => c.id === coach)?.hourly_cents || 0) *
       duration) /
@@ -982,6 +1245,12 @@ function AppointmentForm({
                   <input
                     type={kind === "lesson" ? "radio" : "checkbox"}
                     name="court"
+                    disabled={
+                      !availability.data?.available ||
+                      !availability.data?.courts.some(
+                        (x) => x.id === c.id && x.available,
+                      )
+                    }
                     checked={courts.includes(c.id)}
                     onChange={(e) =>
                       setCourts(
@@ -994,6 +1263,10 @@ function AppointmentForm({
                     }
                   />
                   {c.name}
+                  {availability.data?.courts.find((x) => x.id === c.id)
+                    ?.available === false
+                    ? " · Unavailable"
+                    : ""}
                 </label>
               ))}
             </div>
@@ -1045,7 +1318,19 @@ function AppointmentForm({
               {error || localError}
             </p>
           )}
-          <Button disabled={busy || !courts.length}>
+          <p role="status" className="text-sm">
+            {availability.isFetching
+              ? "Checking coach and court availability..."
+              : availability.error
+                ? availability.error.message
+                : availability.data?.reason ||
+                  (selectedAvailable
+                    ? "Coach and selected courts are available. Availability is checked again when you confirm."
+                    : "Choose an available court for this time.")}
+          </p>
+          <Button
+            disabled={busy || !selectedAvailable || availability.isFetching}
+          >
             Save & check availability
           </Button>
         </form>

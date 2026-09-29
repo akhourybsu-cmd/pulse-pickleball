@@ -1,3 +1,4 @@
+import { VenueWaiverStatus } from "@/components/venue/VenueWaiverStatus";
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useState } from "react";
@@ -30,7 +31,15 @@ import {
 } from "@/lib/venues/customerRecords";
 import { formatMoney } from "@/lib/payments";
 
-export default function VenuePlayers() {
+export default function VenuePlayers({
+  embedded = false,
+  initialPlayer,
+  onOpenDesk,
+}: {
+  embedded?: boolean;
+  initialPlayer?: string;
+  onOpenDesk?: (player?: string) => void;
+} = {}) {
   const { groupId = "" } = useParams();
   const { group } = useGroupDetail(groupId);
   const { user } = useAuthState();
@@ -39,7 +48,15 @@ export default function VenuePlayers() {
     group?.venue?.owner_id === user?.id || canManageVenue(role.role);
   const venue = group?.venue_id;
   const timezone = group?.venue?.timezone || "America/New_York";
-  const [params, setParams] = useSearchParams();
+  const [routeParams, setRouteParams] = useSearchParams();
+  const [localParams, setLocalParams] = useState(() => {
+    const next = new URLSearchParams(routeParams);
+    if (initialPlayer) next.set("player", initialPlayer);
+    return next;
+  });
+  const params = embedded ? localParams : routeParams;
+  const setParams = (next: Record<string, string>) =>
+    embedded ? setLocalParams(new URLSearchParams(next)) : setRouteParams(next);
   const documents = params.get("tab") === "documents";
   const selected = params.get("player");
   const [search, setSearch] = useState("");
@@ -98,6 +115,25 @@ export default function VenuePlayers() {
     }
   }
   const p = profile.data;
+  const [historySearch, setHistorySearch] = useState("");
+  const matchesHistory = (r: {
+    title?: string;
+    description?: string;
+    start_time?: string;
+    created_at?: string;
+    status?: string;
+  }) =>
+    [
+      r.title,
+      r.description,
+      r.status?.replace(/_/g, " "),
+      r.start_time,
+      r.created_at,
+      r.start_time ? venueDate(r.start_time, timezone) : "",
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(historySearch.trim().toLowerCase());
   const rows = directory.data?.players.slice(0, 50) || [];
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
@@ -251,6 +287,14 @@ export default function VenuePlayers() {
                       {c.user_id ? "PULSE player" : "Guest"}
                       {c.email ? ` · ${c.email}` : ""}
                     </span>
+                    <span className="mt-2 block">
+                      <VenueWaiverStatus waiver={c.waiver} />
+                    </span>
+                    {c.last_visit && (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Last check-in: {venueDate(c.last_visit, timezone)}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -334,7 +378,8 @@ export default function VenuePlayers() {
                 </article>
                 <article className="rounded-2xl border bg-card p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="font-semibold">First-visit requirements</h3>
+                    <h3 className="font-semibold">Venue waiver & documents</h3>
+                    <VenueWaiverStatus waiver={p.waiver} />
                     <Button
                       variant="outline"
                       disabled={working}
@@ -364,9 +409,9 @@ export default function VenuePlayers() {
                           }`}
                         >
                           {d.accepted_at
-                            ? `Accepted ${venueDate(d.accepted_at, timezone)}`
+                            ? `Signed ${venueDate(d.accepted_at, timezone)}`
                             : d.required
-                              ? "Needs acknowledgment"
+                              ? "Not signed · required before check-in"
                               : "Optional"}
                         </span>
                       </p>
@@ -452,9 +497,17 @@ export default function VenuePlayers() {
                   ))}
                 </article>
                 <article className="rounded-2xl border bg-card p-5">
+                  <label className="mb-4 block text-sm font-medium">
+                    Search this player's venue history
+                    <Input
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      placeholder="Activity, date or attendance status"
+                    />
+                  </label>
                   <h3 className="font-semibold">Events & attendance</h3>
                   {p.registrations.length ? (
-                    p.registrations.map((r) => (
+                    p.registrations.filter(matchesHistory).map((r) => (
                       <div key={r.id} className="mt-3 border-t pt-3 text-sm">
                         <strong>{r.title}</strong>
                         <p>{venueDate(r.start_time, timezone)}</p>
@@ -474,8 +527,10 @@ export default function VenuePlayers() {
                   )}
                 </article>
                 <article className="rounded-2xl border bg-card p-5">
-                  <h3 className="font-semibold">Front-desk visits & passes</h3>
-                  {p.visits?.map((v) => (
+                  <h3 className="font-semibold">
+                    Rental, lesson & front-desk visits
+                  </h3>
+                  {p.visits?.filter(matchesHistory).map((v) => (
                     <div key={v.id} className="mt-3 border-t pt-3 text-sm">
                       <strong>{v.title}</strong>
                       <p>{venueDate(v.start_time, timezone)}</p>
@@ -499,6 +554,14 @@ export default function VenuePlayers() {
                   <Link
                     className="mt-3 inline-block text-sm underline"
                     to={`/player/community/group/${groupId}/desk?player=${p.player.id}`}
+                    onClick={
+                      onOpenDesk
+                        ? (e) => {
+                            e.preventDefault();
+                            onOpenDesk(p.player.id);
+                          }
+                        : undefined
+                    }
                   >
                     Manage purchases and benefits
                   </Link>
@@ -506,7 +569,7 @@ export default function VenuePlayers() {
                 <article className="rounded-2xl border bg-card p-5">
                   <h3 className="font-semibold">Court bookings</h3>
                   {p.bookings.length ? (
-                    p.bookings.map((b) => (
+                    p.bookings.filter(matchesHistory).map((b) => (
                       <p key={b.id} className="mt-3 text-sm">
                         {b.court || b.title} ·{" "}
                         {venueDate(b.start_time, timezone)}
@@ -521,7 +584,7 @@ export default function VenuePlayers() {
                 <article className="rounded-2xl border bg-card p-5">
                   <h3 className="font-semibold">Purchases</h3>
                   {p.purchases.length ? (
-                    p.purchases.map((b) => (
+                    p.purchases.filter(matchesHistory).map((b) => (
                       <div
                         key={b.id}
                         className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm"

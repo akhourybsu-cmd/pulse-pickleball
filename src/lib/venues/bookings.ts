@@ -12,9 +12,11 @@
  * appear twice.
  */
 
-export type BookingKind = 'reservation' | 'signup';
+export type BookingKind = "reservation" | "signup";
 
 export interface BookingSource {
+  private_booking_id?: string;
+  can_cancel?: boolean;
   id: string;
   group_id: string;
   title: string | null;
@@ -29,6 +31,8 @@ export interface BookingSource {
 }
 
 export interface BookingEntry {
+  privateBookingId?: string;
+  canCancel?: boolean;
   id: string;
   groupId: string;
   kind: BookingKind;
@@ -43,7 +47,10 @@ export interface BookingEntry {
   paymentOrderId?: string;
 }
 
-function toEntry(source: BookingSource, kind: BookingKind): BookingEntry | null {
+function toEntry(
+  source: BookingSource,
+  kind: BookingKind,
+): BookingEntry | null {
   const start = new Date(source.start_time);
   if (Number.isNaN(start.getTime())) return null;
 
@@ -51,16 +58,24 @@ function toEntry(source: BookingSource, kind: BookingKind): BookingEntry | null 
 
   return {
     id: source.id,
+    ...(source.private_booking_id
+      ? { privateBookingId: source.private_booking_id }
+      : {}),
+    ...(source.can_cancel === false ? { canCancel: false } : {}),
     groupId: source.group_id,
     kind,
-    title: source.title?.trim() || (kind === 'reservation' ? 'Court booking' : 'Session'),
+    title:
+      source.title?.trim() ||
+      (kind === "reservation" ? "Court booking" : "Session"),
     start,
     end: end && !Number.isNaN(end.getTime()) ? end : null,
-    format: source.event_format ?? 'other',
+    format: source.event_format ?? "other",
     venueName: source.venue_name ?? null,
     courtName: source.court_name ?? null,
-    rsvpStatus: kind === 'signup' ? (source.rsvp_status ?? 'going') : null,
-    ...(source.payment_order_id ? { paymentOrderId: source.payment_order_id } : {}),
+    rsvpStatus: kind === "signup" ? (source.rsvp_status ?? "going") : null,
+    ...(source.payment_order_id
+      ? { paymentOrderId: source.payment_order_id }
+      : {}),
   };
 }
 
@@ -78,13 +93,13 @@ export function mergeBookings(
   const byId = new Map<string, BookingEntry>();
 
   for (const s of signups) {
-    const entry = toEntry(s, 'signup');
+    const entry = toEntry(s, "signup");
     if (entry) byId.set(entry.id, entry);
   }
 
   // Reservations second so they overwrite a sign-up to the same event.
   for (const r of reservations) {
-    const entry = toEntry(r, 'reservation');
+    const entry = toEntry(r, "reservation");
     if (entry) byId.set(entry.id, entry);
   }
 
@@ -123,7 +138,9 @@ export function splitBookings(
 }
 
 /** Calendar-day buckets, in list order, for date headers. */
-export function groupByDay(entries: BookingEntry[]): Array<{ day: Date; entries: BookingEntry[] }> {
+export function groupByDay(
+  entries: BookingEntry[],
+): Array<{ day: Date; entries: BookingEntry[] }> {
   const groups: Array<{ day: Date; entries: BookingEntry[] }> = [];
 
   for (const entry of entries) {
@@ -147,14 +164,14 @@ export function formatDayLabel(day: Date, now: Date = new Date()): string {
   today.setHours(0, 0, 0, 0);
 
   const diffDays = Math.round((day.getTime() - today.getTime()) / 86_400_000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays === -1) return 'Yesterday';
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
 
   return day.toLocaleDateString([], {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    ...(day.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(day.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
   });
 }

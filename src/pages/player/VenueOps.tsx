@@ -1,3 +1,14 @@
+import { VenueAdminPageContext } from "@/components/venue/VenueAdminPageHeader";
+import VenuePlayers from "./VenuePlayers";
+import VenueWalkins from "./VenueWalkins";
+import VenueDesk from "./VenueDesk";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useAuthState } from "@/hooks/useAuthState";
 import { VenueOpsHeader } from "@/components/venue/ops/VenueOpsHeader";
 import { AttendanceDesk } from "@/components/venue/ops/AttendanceDesk";
@@ -55,6 +66,17 @@ export default function VenueOps() {
   } = useGroupDetail(groupId);
   const modules = useVenueModules(group?.venue_id);
   const [params, setParams] = useSearchParams();
+  const [deskTool, setDeskTool] = useState<
+    "walkins" | "payments" | "players" | null
+  >(null);
+  const [deskPlayer, setDeskPlayer] = useState<string | undefined>();
+  const openDeskTool = (
+    tool: "walkins" | "players" | "payments",
+    player?: string,
+  ) => {
+    setDeskPlayer(player);
+    setDeskTool(tool);
+  };
   const kiosk = params.get("kiosk") === "1";
   const deskView = params.get("view") === "courts" ? "courts" : "attendance";
   const setDeskView = (view: "attendance" | "courts") => {
@@ -110,7 +132,7 @@ export default function VenueOps() {
   const chrome = useMemo(() => venueChrome(venue), [venue]);
   const hours = useMemo(
     () => parseVenueHours(venue?.hours_of_operation),
-    [venue]
+    [venue],
   );
 
   const {
@@ -153,20 +175,20 @@ export default function VenueOps() {
   const attendance = useVenueAttendance(groupId, venueDayKey(day), isStaff);
   const operatingWindow = useMemo(
     () => venueOperatingBounds(hours, day, venue?.timezone),
-    [hours, day, venue?.timezone]
+    [hours, day, venue?.timezone],
   );
   const occupancy = useMemo(() => [...sessions, ...holds], [sessions, holds]);
   const statuses = useMemo(
     () => courtStatuses(courts, occupancy, now, operatingWindow),
-    [courts, occupancy, now, operatingWindow]
+    [courts, occupancy, now, operatingWindow],
   );
   const summary = useMemo(
     () => daySummary(grid, statuses, now),
-    [grid, statuses, now]
+    [grid, statuses, now],
   );
   const gaps = useMemo(
     () => upcomingGaps(grid, now, 60).slice(0, 4),
-    [grid, now]
+    [grid, now],
   );
 
   const isToday =
@@ -260,7 +282,7 @@ export default function VenueOps() {
         start: formatInTimeZone(
           start,
           venue?.timezone || "America/New_York",
-          "yyyy-MM-dd'T'HH:mm"
+          "yyyy-MM-dd'T'HH:mm",
         ),
         minutes: String(minutes),
       });
@@ -292,27 +314,18 @@ export default function VenueOps() {
         onViewChange={setDeskView}
         onToggleKiosk={toggleKiosk}
       />
-      {!kiosk && canDesk && (
+      {canDesk && (
         <nav
           aria-label="Daily desk shortcuts"
           className="flex flex-wrap gap-2 px-4 py-3"
         >
-          <Button
-            variant="outline"
-            onClick={() =>
-              navigate(
-                `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
-                  day
-                )}`
-              )
-            }
-          >
+          <Button variant="outline" onClick={() => openDeskTool("walkins")}>
             Walk-ins & guest check-in
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/player/community/group/${groupId}/desk`)}
-          >
+          <Button variant="outline" onClick={() => openDeskTool("players")}>
+            Players & waivers
+          </Button>
+          <Button variant="outline" onClick={() => openDeskTool("payments")}>
             Collect payment
           </Button>
           <Button
@@ -382,13 +395,13 @@ export default function VenueOps() {
               // request to put something there.
               if (status?.current) {
                 const session = sessions.find(
-                  (s) => s.id === status.current!.id
+                  (s) => s.id === status.current!.id,
                 );
                 if (session?.venue_appointment_id && canDesk) {
                   navigate(
                     `/player/community/group/${groupId}/appointments?day=${venueDayKey(
-                      day
-                    )}`
+                      day,
+                    )}`,
                   );
                 } else if (
                   (session?.venue_visit_id ||
@@ -397,8 +410,8 @@ export default function VenueOps() {
                 ) {
                   navigate(
                     `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
-                      day
-                    )}`
+                      day,
+                    )}`,
                   );
                 } else if (session?.parent_event_id) {
                   selectEvent(session.parent_event_id);
@@ -425,8 +438,8 @@ export default function VenueOps() {
               if (session?.venue_appointment_id && canDesk) {
                 navigate(
                   `/player/community/group/${groupId}/appointments?day=${venueDayKey(
-                    day
-                  )}`
+                    day,
+                  )}`,
                 );
               } else if (
                 (session?.venue_visit_id ||
@@ -435,8 +448,8 @@ export default function VenueOps() {
               ) {
                 navigate(
                   `/player/community/group/${groupId}/walk-ins?day=${venueDayKey(
-                    day
-                  )}`
+                    day,
+                  )}`,
                 );
               } else if (eventId) {
                 selectEvent(eventId);
@@ -494,7 +507,7 @@ export default function VenueOps() {
           canCreateProgram
             ? (id) =>
                 navigate(
-                  `/player/community/group/${groupId}/events/manage?event=${id}`
+                  `/player/community/group/${groupId}/events/manage?event=${id}`,
                 )
             : undefined
         }
@@ -506,6 +519,60 @@ export default function VenueOps() {
         }}
         onChanged={refresh}
       />
+      {canDesk && deskTool && (
+        <Dialog
+          open
+          onOpenChange={(o) => {
+            if (!o) {
+              setDeskTool(null);
+              void attendance.refresh();
+              refresh();
+            }
+          }}
+        >
+          <DialogContent className="max-h-[94dvh] overflow-y-auto sm:max-w-6xl">
+            <DialogHeader>
+              <DialogTitle>
+                {deskTool === "walkins"
+                  ? "Walk-ins & rentals"
+                  : deskTool === "players"
+                    ? "Players & waivers"
+                    : "Front-desk payments"}
+              </DialogTitle>
+              <DialogDescription>
+                Complete this task, then close to return to the same operations
+                kiosk.
+              </DialogDescription>
+            </DialogHeader>
+            <VenueAdminPageContext.Provider value={null}>
+              {deskTool === "walkins" ? (
+                <VenueWalkins
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenPlayers={(id) => openDeskTool("players", id)}
+                  onOpenDesk={(id) => openDeskTool("payments", id)}
+                  onClose={() => setDeskTool(null)}
+                />
+              ) : deskTool === "players" ? (
+                <VenuePlayers
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenDesk={(id) => openDeskTool("payments", id)}
+                />
+              ) : (
+                <VenueDesk
+                  key={deskPlayer}
+                  embedded
+                  initialPlayer={deskPlayer}
+                  onOpenPlayers={(id) => openDeskTool("players", id)}
+                />
+              )}
+            </VenueAdminPageContext.Provider>
+          </DialogContent>
+        </Dialog>
+      )}
     </VenueTheme>
   );
 }

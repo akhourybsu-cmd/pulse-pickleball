@@ -61,7 +61,7 @@ const render = (props: Partial<AttendanceDeskProps> = {}) =>
       onDayChange={() => {}}
       onRefresh={async () => {}}
       {...props}
-    />
+    />,
   );
 describe("front desk presentation", () => {
   it("shows exact venue-local times, courts, initials and attendance controls", () => {
@@ -89,13 +89,13 @@ describe("front desk presentation", () => {
   });
   it("does not offer event close before the event ends", () => {
     expect(
-      render({ data: { ...data, server_now: "2026-09-28T12:30:00Z" } })
+      render({ data: { ...data, server_now: "2026-09-28T12:30:00Z" } }),
     ).not.toContain("Close attendance");
   });
   it("keeps kiosk controls focused and handles an empty day honestly", () => {
     expect(render({ kiosk: true })).not.toContain("Daily report");
     const html = render({ data: { ...data, events: [] } });
-    expect(html).toContain("No events scheduled");
+    expect(html).toContain("No programs, rentals or lessons scheduled");
     expect(html).not.toContain("Alex S.");
   });
   it("counts registrations once per event, excludes cancellations and distinguishes unmarked from no-shows", () => {
@@ -104,7 +104,7 @@ describe("front desk presentation", () => {
         ...data.events,
         { ...data.events[0], id: "second" },
         { ...data.events[0], id: "canceled", canceled_at: "2026-09-28" },
-      ])
+      ]),
     ).toEqual({ registrations: 4, checkedIn: 2, noShows: 0, expected: 2 });
   });
   it("exports date, time zone and event totals without player data or spreadsheet formulas", () => {
@@ -125,7 +125,7 @@ describe("front desk presentation", () => {
         operate: true,
         community: false,
         facility: true,
-      }).map((i) => i.value)
+      }).map((i) => i.value),
     ).toEqual(["ops"]);
     const items = venueAdminItems({
       manage: true,
@@ -136,7 +136,7 @@ describe("front desk presentation", () => {
     });
     for (const item of items)
       expect(venueAdminHref("g", item.value)).toMatch(
-        /^\/player\/community\/group\/g\//
+        /^\/player\/community\/group\/g\//,
       );
     expect(items.map((i) => i.value)).toEqual(
       expect.arrayContaining([
@@ -146,7 +146,36 @@ describe("front desk presentation", () => {
         "profile",
         "staff",
         "integrations",
-      ])
+      ]),
     );
   });
+});
+
+it("keeps unpaid rental arrivals visible without counting them as confirmed attendance", () => {
+  const rental = {
+    ...data.events[0],
+    activity_kind: "rental" as const,
+    event_format: "reservation",
+    waitlisted: 0,
+    attendees: [
+      ...data.events[0].attendees,
+      {
+        id: "pending",
+        name: "Taylor B.",
+        pending_payment: true,
+        checked_in_at: null,
+        no_show_at: null,
+        version: 0,
+      },
+    ],
+  };
+  expect(attendanceTotals([rental])).toMatchObject({
+    registrations: 2,
+    checkedIn: 1,
+    expected: 1,
+  });
+  const html = render({ data: { ...data, events: [rental] } });
+  expect(html).toContain("Payment required before check-in");
+  expect(html).toContain("Manage booking party");
+  expect(html).toContain("1 of 2 checked in");
 });

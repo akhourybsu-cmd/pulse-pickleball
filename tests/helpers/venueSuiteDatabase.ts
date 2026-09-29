@@ -2,12 +2,25 @@ import { readFileSync } from "node:fs";
 import { venueEventDatabase } from "./venueEventDatabase";
 import type { PGlite } from "@electric-sql/pglite";
 export async function venueSuiteDatabase(
-  beforeMigrations?: (db: PGlite) => Promise<void>
+  beforeMigrations?: (db: PGlite) => Promise<void>,
 ) {
   const db = await venueEventDatabase();
+  await db.exec(
+    "ALTER TABLE groups ADD COLUMN type text DEFAULT 'venue_official'",
+  );
+  const privacy = readFileSync(
+    "supabase/migrations/20260920100000_private_venue_sandboxes.sql",
+    "utf8",
+  );
+  await db.exec(
+    privacy.slice(
+      privacy.indexOf("CREATE FUNCTION public.can_access_private_venue"),
+      privacy.indexOf("CREATE FUNCTION public.can_access_private_group"),
+    ),
+  );
   await beforeMigrations?.(db);
   await db.exec(
-    "CREATE TABLE IF NOT EXISTS notification_preferences(user_id uuid,category text,in_app_enabled boolean)"
+    "CREATE TABLE IF NOT EXISTS notification_preferences(user_id uuid,category text,in_app_enabled boolean)",
   );
   for (const file of [
     "20260928200000_venue_program_roster.sql",
@@ -28,6 +41,9 @@ export async function venueSuiteDatabase(
     "20260929210000_venue_desk_completion.sql",
     "20260929220000_venue_player_visit_portal.sql",
     "20260929233000_venue_appointment_reports.sql",
+    "20260930100000_venue_arrivals_and_waivers.sql",
+    "20260930101000_private_rental_parties.sql",
+    "20260930102000_venue_coach_scheduling.sql",
   ])
     await db.exec(readFileSync("supabase/migrations/" + file, "utf8"));
   return db;

@@ -1,5 +1,14 @@
+export interface VenueWaiverSummary {
+  required: number;
+  signed: number;
+  missing: number;
+  status: "not_required" | "signed" | "update_required" | "not_signed";
+  signed_at?: string | null;
+}
 export { eventManagementRpc as venueRpc } from "./eventManagement";
 export interface VenueCustomer {
+  waiver?: VenueWaiverSummary;
+  last_visit?: string | null;
   id: string;
   venue_id: string;
   user_id: string | null;
@@ -22,6 +31,7 @@ export interface VenueDocument {
   signer_name?: string | null;
 }
 export interface VenueCustomerProfile {
+  waiver?: VenueWaiverSummary;
   visits?: {
     id: string;
     title: string;

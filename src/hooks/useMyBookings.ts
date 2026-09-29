@@ -1,7 +1,12 @@
-import { useCallback, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { mergeBookings, splitBookings, type BookingSource } from '@/lib/venues/bookings';
+import { useAuthState } from "./useAuthState";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  mergeBookings,
+  splitBookings,
+  type BookingSource,
+} from "@/lib/venues/bookings";
 
 /**
  * Everything the signed-in player has booked, across every venue.
@@ -13,8 +18,8 @@ import { mergeBookings, splitBookings, type BookingSource } from '@/lib/venues/b
  */
 
 const EVENT_SELECT =
-  'id, group_id, title, event_format, start_time, end_time, payment_order_id, ' +
-  'venues:venue_id (name), venue_courts:venue_court_id (name, court_number)';
+  "id, group_id, title, event_format, start_time, end_time, payment_order_id, " +
+  "venues:venue_id (name), venue_courts:venue_court_id (name, court_number)";
 
 /** Flatten the joined venue/court names onto the row. */
 function shape(row: any, rsvpStatus?: string | null): BookingSource {
@@ -33,42 +38,55 @@ function shape(row: any, rsvpStatus?: string | null): BookingSource {
   };
 }
 
-export const MY_BOOKINGS_KEY = ['my-bookings'] as const;
+export const MY_BOOKINGS_KEY = ["my-bookings"] as const;
 
 export function useMyBookings() {
   const queryClient = useQueryClient();
+  const { user: viewer } = useAuthState();
 
   const query = useQuery({
-    queryKey: MY_BOOKINGS_KEY,
+    queryKey: [...MY_BOOKINGS_KEY, viewer?.id],
+    enabled: !!viewer,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('not-authenticated');
+      if (!user) throw new Error("not-authenticated");
 
-      const [mine, rsvps] = await Promise.all([
+      const [mine, rsvps, privateBookings] = await Promise.all([
         // Courts held. Only sessions tied to an actual court — a group event
         // someone happened to create is not a booking of theirs.
         supabase
-          .from('group_events')
+          .from("group_events")
           .select(EVENT_SELECT)
-          .eq('created_by', user.id)
-          .not('venue_court_id', 'is', null)
-          .is('parent_event_id', null)
-          .neq('event_format', 'maintenance')
-          .order('start_time', { ascending: true }),
+          .eq("created_by", user.id)
+          .not("venue_court_id", "is", null)
+          .is("parent_event_id", null)
+          .is("venue_visit_id", null)
+          .is("venue_appointment_id", null)
+          .neq("event_format", "maintenance")
+          .order("start_time", { ascending: true }),
         supabase
-          .from('group_event_rsvps')
+          .from("group_event_rsvps")
           .select(`status, group_events!inner (${EVENT_SELECT})`)
-          .eq('user_id', user.id)
-          .in('status', ['going', 'waitlist']),
+          .eq("user_id", user.id)
+          .in("status", ["going", "waitlist"]),
+        (supabase as any).rpc("venue_my_private_bookings"),
       ]);
 
       if (mine.error) throw mine.error;
       if (rsvps.error) throw rsvps.error;
+      if (privateBookings.error) throw privateBookings.error;
+      if (!Array.isArray(privateBookings.data))
+        throw new Error(
+          "Your private bookings could not be confirmed. Please retry.",
+        );
 
-      const reservations = (mine.data ?? []).map((row) => shape(row));
+      const reservations = [
+        ...(mine.data ?? []).map((row) => shape(row)),
+        ...(privateBookings.data as BookingSource[]),
+      ];
       const signups = (rsvps.data ?? [])
         .filter((row: any) => !!row.group_events)
         .map((row: any) => shape(row.group_events, row.status));
