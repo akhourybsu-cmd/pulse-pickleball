@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useGroups } from "@/hooks/useGroups";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CommunityBrandMark } from "@/components/community/CommunityBrandMark";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -49,12 +49,6 @@ export function MyCommunitiesRail() {
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-none">
       {visible.map((g) => {
-        const initials = g.name
-          .split(" ")
-          .map((w) => w[0])
-          .slice(0, 2)
-          .join("")
-          .toUpperCase();
         const hasUnread = (g.unread_count ?? 0) > 0;
         return (
           <Link
@@ -63,12 +57,7 @@ export function MyCommunitiesRail() {
             className="group relative flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-transparent bg-card p-3 transition-[transform,background-color,border-color] hover:-translate-y-0.5 hover:border-primary/20 hover:bg-card/80 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
           >
             <div className="relative">
-              <Avatar className="h-14 w-14 rounded-2xl">
-                <AvatarImage src={g.icon_url || g.cover_url || undefined} alt={g.name} />
-                <AvatarFallback className="rounded-2xl bg-primary/15 text-primary font-semibold">
-                  {initials || <Users className="h-5 w-5" />}
-                </AvatarFallback>
-              </Avatar>
+              <CommunityBrandMark group={g} className="h-14 w-14 text-[56px]" />
               {hasUnread && (
                 <span
                   className={cn(

@@ -10,7 +10,18 @@
  * falls back to standard Pulse styling.
  */
 
+export interface VenueContact {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  group_id?: string | null;
+}
 export interface VenueBrand {
+  logo_crop?: unknown;
+  cover_crop?: unknown;
+  logo_url?: string | null;
+  logo_shape?: "circle" | "square" | null;
+  logo_image_fit?: "cover" | "contain" | null;
   primary_color?: string | null;
   secondary_color?: string | null;
   accent_color?: string | null;

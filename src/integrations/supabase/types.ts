@@ -8610,6 +8610,8 @@ export type Database = {
           is_active: boolean | null
           is_published: boolean | null
           is_searchable: boolean | null
+          logo_crop: Json | null
+          cover_crop: Json | null
           logo_image_fit: string
           logo_shape: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url: string | null
@@ -8686,6 +8688,8 @@ export type Database = {
           is_active?: boolean | null
           is_published?: boolean | null
           is_searchable?: boolean | null
+          logo_crop?: Json | null
+          cover_crop?: Json | null
           logo_image_fit?: string
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url?: string | null
@@ -8762,6 +8766,8 @@ export type Database = {
           is_active?: boolean | null
           is_published?: boolean | null
           is_searchable?: boolean | null
+          logo_crop?: Json | null
+          cover_crop?: Json | null
           logo_image_fit?: string
           logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url?: string | null

@@ -16,7 +16,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 export const GROUP_DETAIL_KEY = (groupId: string | undefined) => ['group-detail', groupId] as const;
 
 export const GROUP_VENUE_SELECT =
-  '*, venues:venue_id (id, owner_id, name, slug, logo_url, cover_image_url, logo_image_fit, ' +
+  '*, venues:venue_id (id, owner_id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, ' +
   'cover_image_fit, logo_shape, cover_focal_point, primary_color, ' +
   'secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, chat_background_color, chat_incoming_color, chat_outgoing_color, tagline, welcome_headline, welcome_message, city, state, phone, ' +
   'email, website_url, hours_of_operation, timezone, amenities)';

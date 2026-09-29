@@ -58,7 +58,7 @@ export default function VenuePlayerCheckin({
             name={data.venue_name}
             logoUrl={data.brand.logo_url}
             logoShape={data.brand.logo_shape}
-            logoImageFit={data.brand.logo_image_fit}
+            logoCrop={data.brand.logo_crop} logoImageFit={data.brand.logo_image_fit}
             secondaryColor={data.brand.secondary_color}
             logoBackgroundColor={data.brand.logo_background_color}
             className="mb-6 h-28 w-28 text-[96px] sm:h-36 sm:w-36"

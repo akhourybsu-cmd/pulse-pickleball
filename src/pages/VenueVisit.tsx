@@ -1,3 +1,5 @@
+import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
+import { VenueServiceContact } from '@/components/venue/VenueServiceContact';
 import { VenueTheme } from "@/components/venue/VenueTheme";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -32,6 +34,7 @@ export function VenueVisitContent({ token }: { token: string }) {
       <main className="min-h-dvh bg-background px-4 py-8 text-foreground">
         <div className="mx-auto max-w-2xl space-y-6">
           <header>
+            {data && <VenueBrandMark name={data.venue_name} logoUrl={data.brand?.logo_url} logoCrop={data.brand?.logo_crop} logoShape={data.brand?.logo_shape} logoImageFit={data.brand?.logo_image_fit} logoBackgroundColor={data.brand?.logo_background_color} secondaryColor={data.brand?.secondary_color} className="mb-4 h-16 w-16 text-[64px]"/>}
             <p className="text-sm font-medium text-muted-foreground">
               Welcome to
             </p>
@@ -54,9 +57,10 @@ export function VenueVisitContent({ token }: { token: string }) {
           {data && !q.isError && (
             <>
               <p className="text-sm text-muted-foreground">
-                Review the venue’s documents below. Your acknowledgment is saved
+                These documents are provided and managed by {data.venue_name}. Review the venue’s documents below. Your acknowledgment is saved
                 with the exact version shown.
               </p>
+              <VenueServiceContact contact={data.venue_contact} topic="waivers, check-in or venue policies"/>
               {data.documents.map((d) => (
                 <article
                   key={d.id}

@@ -36,7 +36,7 @@ describe('venue image presentation', () => {
   });
   it('uses contain or cover without permitting intrinsic image dimensions to stretch the frame', () => {
     const html = renderToStaticMarkup(<VenueCoverImage src="/cover.png" fit="contain" focalPoint="top" />);
-    expect(html).toContain('object-fit:contain'); expect(html).toContain('object-position:center top'); expect(html).toContain('absolute inset-0 h-full w-full');
+    expect(html).toContain('object-fit:contain'); expect(html).toContain('object-position:50% 0%'); expect(html).toContain('absolute inset-0 h-full w-full');
     expect(renderToStaticMarkup(<VenueCoverImage src="/cover.png" />)).toContain('object-fit:cover');
     expect(renderToStaticMarkup(<VenueCoverImage />)).toBe('');
   });
@@ -51,7 +51,7 @@ describe('venue image presentation', () => {
   });
   it('previews distinct phone and desktop banner proportions with the same saved settings', () => {
     const html = renderToStaticMarkup(<VenueImagePreview identity={identity} cover={{ src: '/cover.png', fit: 'contain', focalPoint: 'top' }} />);
-    expect(html).toContain('390 / 100'); expect(html).toContain('1440 / 112'); expect(html.match(/object-position:center top/g)).toHaveLength(2);
+    expect(html).toContain('390 / 100'); expect(html).toContain('1440 / 112'); expect(html.match(/object-position:50% 0%/g)).toHaveLength(2);
     expect(html).toContain('Phone banner preview'); expect(html).toContain('Desktop banner preview');
   });
   it('uses the venue logo and saved fit/shape instead of a stale community icon in both lists', () => {

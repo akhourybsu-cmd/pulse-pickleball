@@ -1,3 +1,5 @@
+import { imageCrop, type ImageCrop } from '@/lib/venues/imageCrop';
+import { VenueImagePositionEditor } from '@/components/venue/VenueImagePositionEditor';
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { resolveVenuePalette, resolveVenueChatPalette, VENUE_BRAND_COLOR_FIELDS, VENUE_CHAT_COLOR_FIELDS } from '@/lib/venues/palette';
 import { useTheme } from 'next-themes';
@@ -64,6 +66,8 @@ interface VenueForm {
   chat_background_color: string;
   chat_incoming_color: string;
   chat_outgoing_color: string;
+  logo_crop: ImageCrop;
+  cover_crop: ImageCrop;
   logo_url: string | null;
   cover_image_url: string | null;
   logo_shape: 'circle' | 'square';
@@ -97,6 +101,8 @@ const EMPTY: VenueForm = {
   chat_background_color: '',
   chat_incoming_color: '',
   chat_outgoing_color: '',
+  logo_crop: imageCrop(),
+  cover_crop: imageCrop(),
   logo_url: null,
   cover_image_url: null,
   logo_shape: 'square',
@@ -148,7 +154,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('slug, name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, chat_background_color, chat_incoming_color, chat_outgoing_color, logo_url, cover_image_url, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
+          .select('slug, name, tagline, welcome_headline, welcome_message, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, chat_background_color, chat_incoming_color, chat_outgoing_color, logo_url, cover_image_url, logo_crop, cover_crop, logo_shape, cover_focal_point, logo_image_fit, cover_image_fit, website_url, phone, email, city, state, instagram_url, facebook_url')
           .eq('id', venueId)
           .single();
 
@@ -176,6 +182,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             chat_background_color: data.chat_background_color ?? '',
             chat_incoming_color: data.chat_incoming_color ?? '',
             chat_outgoing_color: data.chat_outgoing_color ?? '',
+            logo_crop: imageCrop(data.logo_crop),
+            cover_crop: imageCrop(data.cover_crop, data.cover_focal_point === 'top'),
             logo_url: data.logo_url ?? null,
             cover_image_url: data.cover_image_url ?? null,
             logo_shape: data.logo_shape === 'circle' ? 'circle' : 'square',
@@ -220,7 +228,10 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       const column = kind === 'logo' ? 'logo_url' : 'cover_image_url';
       const prepared = await uploadVenueImage(venueId, kind, file, form[column]);
       set(column, prepared.publicUrl);
+      set(kind === 'logo' ? 'logo_crop' : 'cover_crop', imageCrop());
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['public-community'] });
+      void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
       toast({
         title: kind === 'logo' ? 'Logo updated' : 'Cover updated',
         description: `Optimized at ${prepared.width}×${prepared.height}px.`,
@@ -246,6 +257,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       await removeVenueImage(venueId, kind, form[column]);
       set(column, null);
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['public-community'] });
+      void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
       toast({ title: kind === 'logo' ? 'Logo removed' : 'Cover removed' });
     } catch (error) {
       toast({ title: 'Could not remove image', description: getErrorMessage(error, 'Your saved image is unchanged.'), variant: 'destructive' });
@@ -299,6 +312,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
           state: blankToNull(form.state),
           instagram_url: blankToNull(form.instagram_url),
           facebook_url: blankToNull(form.facebook_url),
+          logo_crop: { ...form.logo_crop },
+          cover_crop: { ...form.cover_crop },
           logo_shape: form.logo_shape,
           cover_focal_point: form.cover_focal_point,
           logo_image_fit: form.logo_image_fit,
@@ -313,6 +328,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         return;
       }
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['public-community'] });
+      void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
       void queryClient.invalidateQueries({ queryKey: ['groups'] });
       onBrandSaved?.({ name: form.name.trim(), ...Object.fromEntries([...VENUE_BRAND_COLOR_FIELDS, ...VENUE_CHAT_COLOR_FIELDS].map(({ key }) => [key, normalizeHex(form[key])])) });
       toast({ title: 'Venue updated' });
@@ -388,7 +405,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="min-w-0 space-y-4">
-            <VenueImagePreview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} cover={{ src: form.cover_image_url, fit: form.cover_image_fit, focalPoint: form.cover_focal_point }} />
+            <VenueImagePreview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoCrop: form.logo_crop, logoImageFit: form.logo_image_fit, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} cover={{ src: form.cover_image_url, fit: form.cover_image_fit, crop: form.cover_crop, focalPoint: form.cover_focal_point }} />
             <div className="flex flex-wrap gap-2" aria-busy={uploading !== null}>
               <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => coverInput.current?.click()} disabled={uploading !== null || saving}>
                 {uploading === 'cover' ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Camera className="mr-2 h-4 w-4 shrink-0" />}
@@ -419,14 +436,6 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
                       choices={[['cover', 'Fill frame'], ['contain', 'Show full photo']]}
                       onChange={(value) => set('cover_image_fit', value as ImageFit)}
                     />
-                    {form.cover_image_fit === 'cover' && (
-                      <ChoiceButtons
-                        label="Cover focus"
-                        value={form.cover_focal_point}
-                        choices={[['center', 'Center'], ['top', 'Top']]}
-                        onChange={(value) => set('cover_focal_point', value as 'top' | 'center')}
-                      />
-                    )}
                   </div>
                 )}
                 {form.logo_url && (
@@ -452,6 +461,10 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
               </div>
             )}
 
+            <div className="grid gap-4 xl:grid-cols-2">
+              {form.cover_image_url && <VenueImagePositionEditor label="Banner framing" src={form.cover_image_url} kind="cover" fit={form.cover_image_fit} value={form.cover_crop} onChange={value=>set('cover_crop',value)} disabled={saving||uploading!==null}/>}
+              {form.logo_url && <VenueImagePositionEditor label="Profile image framing" src={form.logo_url} kind="logo" backgroundColor={palette.logoBackground} shape={form.logo_shape} fit={form.logo_image_fit} value={form.logo_crop} onChange={value=>set('logo_crop',value)} disabled={saving||uploading!==null}/>}
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {form.logo_url && (
                 <Button variant="ghost" size="sm" disabled={uploading !== null || saving} onClick={() => removeImage('logo')}>
@@ -470,7 +483,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
                 <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Your venue’s entrance</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Members see a brief welcome animation using your logo, shape and brand colors. Without a logo, we show your venue’s initials. No paid feature is required.</p></div>
                 <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" aria-expanded={entrancePreview} aria-controls="venue-entrance-preview" onClick={() => setEntrancePreview(value => !value)}>{entrancePreview ? 'Hide preview' : 'Preview entrance'}</Button>
               </div>
-              {entrancePreview && <div id="venue-entrance-preview" className="min-w-0"><VenueLoadingScreen preview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit, primaryColor: form.primary_color, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} /><p className="mt-2 text-xs leading-5 text-muted-foreground">Preview of your current form. Save changes to apply updated colors and display settings.</p></div>}
+              {entrancePreview && <div id="venue-entrance-preview" className="min-w-0"><VenueLoadingScreen preview identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoCrop: form.logo_crop, logoImageFit: form.logo_image_fit, primaryColor: form.primary_color, secondaryColor: form.secondary_color, logoBackgroundColor: form.logo_background_color }} /><p className="mt-2 text-xs leading-5 text-muted-foreground">Preview of your current form. Save changes to apply updated colors and display settings.</p></div>}
             </div>
 
             <input
@@ -523,7 +536,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
             <div className="grid gap-4 sm:grid-cols-2">
               {VENUE_BRAND_COLOR_FIELDS.map(({ key, label, hint }) => <ColorField key={key} id={'venue-' + key.replace('_color', '').replace(/_/g, '-')} label={label} hint={hint} value={form[key]} fallbackColor={colorDefaults[key]} onChange={value => set(key, value)} />)}
             </div>
-            <VenuePalettePreview brand={form} identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoImageFit: form.logo_image_fit }} />
+            <VenuePalettePreview brand={form} identity={{ name: form.name.trim() || 'Your venue', logoUrl: form.logo_url, logoShape: form.logo_shape, logoCrop: form.logo_crop, logoImageFit: form.logo_image_fit }} />
           </div>
         </CardContent>
       </Card>

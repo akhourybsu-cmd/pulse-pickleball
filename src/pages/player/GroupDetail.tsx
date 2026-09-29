@@ -36,7 +36,7 @@ import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 import { VenueWelcome } from '@/components/community/VenueWelcome';
-import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
+import { CommunityBrandMark } from '@/components/community/CommunityBrandMark';
 import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
 import { parseGroupSettings } from '@/types/groupSettings';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
@@ -232,7 +232,7 @@ export default function GroupDetail() {
           Community
         </Button>
         <div className="rounded-2xl border border-border/60 bg-card p-6 text-center space-y-3">
-          <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} logoBackgroundColor={group.venue?.logo_background_color} secondaryColor={group.venue?.secondary_color} className="mx-auto h-20 w-20 bg-secondary text-[80px]" />
+          <CommunityBrandMark group={group} className="mx-auto h-20 w-20 bg-secondary text-[80px]" />
           <div>
             <h1 className="font-sans text-2xl font-semibold [overflow-wrap:anywhere]">{group.name}</h1>
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
@@ -256,7 +256,7 @@ export default function GroupDetail() {
       } as React.CSSProperties : undefined}
     >
       {isVenueGroup && group.venue?.cover_image_url && activeTab !== 'chat' && <div className="hidden relative h-[clamp(7rem,20vw,12rem)] w-full shrink-0 overflow-hidden bg-[#171a1f] lg:block lg:h-24 xl:h-28">
-        <VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} />
+        <VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} crop={group.venue.cover_crop} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} />
       </div>}
       {/* Community header — a compact dark-ink banner. The ink is the app's
           own charcoal (hue 220 @ ~10% saturation → reads gray, not blue) so
@@ -321,7 +321,7 @@ export default function GroupDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {isVenueGroup && <VenueBrandMark name={group.name} logoUrl={group.venue?.logo_url || group.icon_url} logoImageFit={group.venue?.logo_image_fit} logoShape={group.venue?.logo_shape} secondaryColor={group.venue?.secondary_color} logoBackgroundColor={group.venue?.logo_background_color} className="h-8 w-8 text-[32px] ring-1 ring-white/20 lg:h-9 lg:w-9 lg:text-[36px]" />}
+          <CommunityBrandMark group={group} className="h-8 w-8 text-[32px] ring-1 ring-white/20 lg:h-9 lg:w-9 lg:text-[36px]" />
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
@@ -489,7 +489,7 @@ export default function GroupDetail() {
           >
             {visitedTabs.has('feed') && (
               <div className="space-y-4">
-                {isVenueGroup && group.venue?.cover_image_url && <div className="relative h-[6.25rem] overflow-hidden rounded-xl bg-[#171a1f] lg:hidden"><VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} /></div>}
+                {isVenueGroup && group.venue?.cover_image_url && <div className="relative h-[6.25rem] overflow-hidden rounded-xl bg-[#171a1f] lg:hidden"><VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} crop={group.venue.cover_crop} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} /></div>}
                 {membership && (
                   <EnablePushBanner
                     dismissKey={`pulse.enablePushBanner.group.${groupId}`}

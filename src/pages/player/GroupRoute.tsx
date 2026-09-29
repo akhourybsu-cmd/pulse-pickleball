@@ -54,7 +54,7 @@ export default function GroupRoute() {
     name: group?.venue?.name || group?.name || 'Your venue',
     logoUrl: group?.venue?.logo_url || group?.icon_url,
     logoShape: group?.venue?.logo_shape,
-    logoImageFit: group?.venue?.logo_image_fit,
+    logoCrop: group?.venue?.logo_crop, logoImageFit: group?.venue?.logo_image_fit,
     primaryColor: group?.venue?.primary_color,
     secondaryColor: group?.venue?.secondary_color,
     logoBackgroundColor: group?.venue?.logo_background_color,

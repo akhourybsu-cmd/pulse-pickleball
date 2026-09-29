@@ -30,6 +30,8 @@ export interface Group {
     id: string;
     name: string;
     slug: string | null;
+    logo_crop?: unknown;
+    cover_crop?: unknown;
     logo_url: string | null;
     cover_image_url: string | null;
     logo_image_fit: 'cover' | 'contain' | null;
@@ -124,7 +126,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
           *,
           groups (
             *,
-            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)
+            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)
           )
         `)
         .eq('user_id', currentUserId)
@@ -198,7 +200,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
     try {
       const { data, error } = await supabase
         .from('groups')
-        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)')
+        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)')
         .eq('visibility', 'public')
         .order('member_count', { ascending: false })
         .limit(20);

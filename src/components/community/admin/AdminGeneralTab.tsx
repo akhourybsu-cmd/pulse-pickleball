@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { CommunityBrandMark } from '../CommunityBrandMark';
 import { Button } from '@/components/ui/button';
 import { Camera, Loader2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -147,10 +147,6 @@ export function AdminGeneralTab({
     }
   };
 
-  const getInitials = (groupName: string) => {
-    return groupName.slice(0, 2).toUpperCase();
-  };
-
   return (
     <div className="space-y-5">
       {/* Avatar Upload Card */}
@@ -170,13 +166,7 @@ export function AdminGeneralTab({
               className="group relative h-28 w-28 shrink-0 rounded-2xl overflow-hidden ring-1 ring-border bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
               aria-label="Upload group avatar"
             >
-              {iconUrl ? (
-                <img src={iconUrl} alt={name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-2xl font-semibold text-muted-foreground">
-                  {getInitials(name || 'GR')}
-                </div>
-              )}
+              <CommunityBrandMark group={{name: name || 'Your community', icon_url: iconUrl}} className="h-full w-full text-[112px]" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>

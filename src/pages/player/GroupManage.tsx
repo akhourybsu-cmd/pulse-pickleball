@@ -106,7 +106,7 @@ export default function GroupManage() {
         supabase
           .from('groups')
           .select(
-            '*, venues:venue_id (id, owner_id, verification_approved_at, name, slug, logo_url, cover_image_url, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
+            '*, venues:venue_id (id, owner_id, verification_approved_at, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message, city, state, phone, email, website_url, hours_of_operation)',
           )
           .eq('id', groupId)
           .single(),

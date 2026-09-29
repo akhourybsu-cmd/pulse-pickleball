@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import type { GroupWithMembership } from '@/hooks/useGroups';
 import { fetchGroupPosts } from '@/hooks/useGroupPosts';
 import { fetchGroupEvents } from '@/hooks/useGroupEvents';
-import { VenueBrandMark } from '@/components/venue/VenueBrandMark';
+import { CommunityBrandMark } from './CommunityBrandMark';
 
 interface GroupCardProps {
   group: GroupWithMembership;
@@ -54,25 +54,6 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
 
   const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
 
-  // Generate initials for avatar
-  const initials = group.name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
-  // Generate a consistent color based on group name
-  const colorIndex = group.name.charCodeAt(0) % 6;
-  const avatarColors = [
-    'bg-primary/15 text-primary',
-    'bg-blue-500/15 text-blue-600',
-    'bg-green-500/15 text-green-600',
-    'bg-amber-500/15 text-amber-600',
-    'bg-purple-500/15 text-purple-600',
-    'bg-rose-500/15 text-rose-600',
-  ];
-
   // Prefetch group data on hover for instant navigation
   const handleMouseEnter = () => {
     // Prefetch posts
@@ -99,15 +80,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
     >
       <div className="flex items-center gap-3">
         {/* Avatar - smaller, more refined */}
-        {group.venue ? <VenueBrandMark name={group.venue.name || group.name} logoUrl={group.venue.logo_url || group.icon_url} logoImageFit={group.venue.logo_image_fit} logoShape={group.venue.logo_shape} secondaryColor={group.venue.secondary_color} className="h-11 w-11 bg-muted text-[44px] text-foreground ring-1 ring-border/40" /> : <div
-          className={cn(
-            'h-11 w-11 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0',
-            group.icon_url ? '' : avatarColors[colorIndex]
-          )}
-          style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
-        >
-          {!group.icon_url && initials}
-        </div>}
+        <CommunityBrandMark group={group} className="h-11 w-11 text-[44px] ring-1 ring-border/40" />
 
         {/* Content */}
         <div className="flex-1 min-w-0">

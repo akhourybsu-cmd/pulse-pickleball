@@ -1,3 +1,4 @@
+import { VenueTheme } from '@/components/venue/VenueTheme';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -169,7 +170,7 @@ export function CommunityInvitation({ code }: { code: string }) {
   const name = detail?.venue?.name || group.name;
   const pending = result?.status === "pending";
   return (
-    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5">
+    <VenueTheme brand={detail?.venue} className="mx-auto w-full min-w-0 max-w-6xl space-y-5">
       <CommunityHero
         group={{
           ...group,
@@ -268,6 +269,6 @@ export function CommunityInvitation({ code }: { code: string }) {
           </div>
         ))}
       </section>
-    </div>
+    </VenueTheme>
   );
 }
