@@ -5,6 +5,7 @@ import { accessChangeError, tierLabel, type PlatformVenue } from '@/lib/admin/pl
 import { ADMIN_NAVIGATION } from '@/components/admin/adminNavigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import AdminDashboard from '@/pages/AdminDashboard';
+import { VenueVerificationDialog } from '@/components/admin/VenueVerificationDialog';
 import { VenueAccessEditor } from '@/pages/AdminVenues';
 
 const state=vi.hoisted(()=>({access:true,isError:false,user:'admin',overview:{account_email:'admin@example.com',pending_requests:3,needs_info:2,venues:12,unverified_venues:4,recent_actions:[]}}));
@@ -54,8 +55,10 @@ describe('feature access validation',()=>{
  it('maps only the established venue features to readable access levels',()=>{
    expect(tierLabel(false,false)).toBe('Free community');expect(tierLabel(true,false)).toBe('Court booking');expect(tierLabel(false,true)).toBe('Facility tools');expect(tierLabel(true,true)).toBe('Both features');
  });
- it('requires a meaningful reason and future finite expiry',()=>{
-   expect(accessChangeError(venue,['court_booking'],'no','')).toContain('reason');
+ it('permits optional short notes and requires a future finite expiry',()=>{
+   expect(accessChangeError(venue,['court_booking'],'','')).toBeNull();
+   expect(accessChangeError(venue,['court_booking'],'OK','')).toBeNull();
+   expect(accessChangeError(venue,['court_booking'],'x'.repeat(2001),'')).toContain('2,000');
    expect(accessChangeError(venue,['court_booking'],note,'invalid')).toContain('future');
    expect(accessChangeError(venue,['court_booking'],note,'2020-01-01')).toContain('future');
    expect(accessChangeError(venue,['court_booking'],note,'2099-01-01')).toBeNull();
@@ -73,3 +76,9 @@ describe('feature access validation',()=>{
  });
 });
 
+
+it('shows existing owner verification with an optional note and one confirmation',()=>{
+ const html=renderToStaticMarkup(<VenueVerificationDialog venue={venue} onClose={vi.fn()} onSaved={async()=>{}}/>);
+ expect(html).toContain('Venue Owner');expect(html).toContain('Decision note (optional)');expect(html).toContain('No new application or contact fields');
+ expect(html).toMatch(/disabled=""[^>]*>Verify ownership/);expect(html).not.toContain('minLength');
+});
