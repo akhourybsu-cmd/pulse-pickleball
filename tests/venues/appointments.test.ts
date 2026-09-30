@@ -412,8 +412,10 @@ it("tracks physical equipment returns independently of cash refunds and prevents
   ).rejects.toThrow(/physically returned/);
 });
 it("projects an online court reservation into the player own check-in and preserves cancellation boundaries", async () => {
+  // This tests arrival integration, not overnight rentals. Keep the 100-minute
+  // booking on one venue-local day even when CI runs close to UTC midnight.
   await db.exec(
-    "UPDATE venue_courts SET hourly_rate=0; UPDATE venues SET hours_of_operation=jsonb_build_object('days',(SELECT jsonb_object_agg(d::text,jsonb_build_object('open','00:00','close','24:00')) FROM generate_series(0,6)d))"
+    "UPDATE venue_courts SET hourly_rate=0; UPDATE venues SET timezone=CASE WHEN extract(hour FROM now() AT TIME ZONE 'UTC')>=22 THEN 'Etc/GMT+12' ELSE 'UTC' END,hours_of_operation=jsonb_build_object('days',(SELECT jsonb_object_agg(d::text,jsonb_build_object('open','00:00','close','24:00')) FROM generate_series(0,6)d))"
   );
   const booking = (
     await as(

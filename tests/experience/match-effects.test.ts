@@ -46,7 +46,7 @@ async function seedMatch(n = 10, ranked = true, date = "2026-09-01") {
 }
 beforeAll(async () => {
   db = new PGlite();
-  await db.exec(`CREATE ROLE authenticated;
+  await db.exec(`CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role BYPASSRLS;
  CREATE TABLE profiles(id uuid PRIMARY KEY,initial_self_rating numeric DEFAULT 3.5,current_rating numeric DEFAULT 3.5,week_start_rating numeric,week_start_date date,total_matches integer DEFAULT 0,wins integer DEFAULT 0,losses integer DEFAULT 0,total_points_for integer DEFAULT 0,total_points_against integer DEFAULT 0,updated_at timestamptz);
  CREATE TABLE matches(id uuid PRIMARY KEY,status text,verification_status text,voided boolean DEFAULT false,count_for_rating boolean DEFAULT true,team1_score integer,team2_score integer,match_date timestamptz,created_at timestamptz DEFAULT now(),week_start date DEFAULT '2026-08-31',match_type text DEFAULT 'league');
  CREATE TABLE match_participants(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),match_id uuid REFERENCES matches ON DELETE CASCADE,player_id uuid REFERENCES profiles,team integer,rating_before numeric,rating_after numeric,rating_change numeric);
@@ -184,7 +184,7 @@ it("produces the same final ratings for chronological and backdated approvals", 
 });
 it("detects historical record drift without changing player data or exposing identities", async () => {
   await approve();
-  expect((await db.query(matchIntegrityQuery)).rows[0].checks).toEqual({
+  expect((await db.query(matchIntegrityQuery)).rows[0].checks).toMatchObject({
     record_mismatches: 0,
     ranked_rating_mismatches: 0,
   });
@@ -192,11 +192,94 @@ it("detects historical record drift without changing player data or exposing ide
     "UPDATE profiles SET wins=99,current_rating=3.00 WHERE id=$1",
     [id(1)],
   );
-  expect((await db.query(matchIntegrityQuery)).rows[0].checks).toEqual({
+  expect((await db.query(matchIntegrityQuery)).rows[0].checks).toMatchObject({
     record_mismatches: 1,
     ranked_rating_mismatches: 1,
+    mismatches_with_ranked_history: 1,
+    mismatches_without_ranked_history: 0,
+    mismatches_without_playing_record: 0,
   });
   expect((await stats())[0].wins).toBe(99);
+});
+it("repairs only recorded rating caches, preserves history and audits each correction once", async () => {
+  await approve();
+  const original = await stats();
+  const matches = (await db.query("SELECT * FROM matches ORDER BY id")).rows;
+  const snapshots = (
+    await db.query("SELECT * FROM match_participants ORDER BY id")
+  ).rows;
+  await db.query("UPDATE profiles SET current_rating=3 WHERE id=$1", [id(1)]);
+  await db.query(
+    "INSERT INTO profiles(id,initial_self_rating,current_rating) VALUES($1,4,4.25)",
+    [id(5)],
+  );
+  const repair = read("20260930180000_reconcile_recorded_rating_cache.sql");
+  await db.exec(repair);
+  expect((await stats()).slice(0, 4)).toEqual(original);
+  expect((await stats())[4].current_rating).toBe("4.25");
+  expect((await db.query("SELECT * FROM matches ORDER BY id")).rows).toEqual(
+    matches,
+  );
+  expect(
+    (await db.query("SELECT * FROM match_participants ORDER BY id")).rows,
+  ).toEqual(snapshots);
+  const audit = (await db.query("SELECT * FROM rating_cache_repair_audit"))
+    .rows;
+  expect(audit).toHaveLength(1);
+  expect(audit[0]).toMatchObject({
+    player_id: id(1),
+    previous_rating: "3",
+    corrected_rating: original[0].current_rating,
+    source_match_id: id(10),
+  });
+  await db.exec(repair);
+  expect(
+    (await db.query("SELECT * FROM rating_cache_repair_audit")).rows,
+  ).toEqual(audit);
+  for (const role of ["anon", "authenticated"]) {
+    await db.exec(`SET ROLE ${role}`);
+    await expect(
+      db.query("SELECT * FROM rating_cache_repair_audit"),
+    ).rejects.toThrow(/permission denied/);
+    await db.exec("RESET ROLE");
+  }
+  await db.exec("SET ROLE service_role");
+  expect(
+    (await db.query("SELECT * FROM rating_cache_repair_audit")).rows,
+  ).toEqual(audit);
+  await db.exec("RESET ROLE");
+});
+it("restores a player's own starting rating when their only approved history is unranked", async () => {
+  await db.exec("UPDATE matches SET count_for_rating=false");
+  await approve();
+  await db.query(
+    "UPDATE profiles SET initial_self_rating=4.25,current_rating=3 WHERE id=$1",
+    [id(1)],
+  );
+  await db.exec(read("20260930180000_reconcile_recorded_rating_cache.sql"));
+  expect((await stats())[0]).toMatchObject({
+    current_rating: "4.25",
+    total_matches: 1,
+    wins: 1,
+  });
+  expect(
+    (await db.query("SELECT * FROM rating_cache_repair_audit")).rows,
+  ).toEqual([
+    expect.objectContaining({
+      player_id: id(1),
+      previous_rating: "3",
+      corrected_rating: "4.25",
+      source_match_id: null,
+    }),
+  ]);
+  expect(
+    Object.values((await db.query(matchIntegrityQuery)).rows[0].checks),
+  ).toEqual(expect.arrayContaining([0]));
+  expect(
+    Object.values((await db.query(matchIntegrityQuery)).rows[0].checks).every(
+      (value) => value === 0,
+    ),
+  ).toBe(true);
 });
 it("runs the deployed audit in read-only mode and keeps provider error details private", async () => {
   const env = {
