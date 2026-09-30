@@ -1,22 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import type { Json } from '@/integrations/supabase/types';
-import { useAuthState } from '@/hooks/useAuthState';
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { Json } from "@/integrations/supabase/types";
+import { useAuthState } from "@/hooks/useAuthState";
 
 export interface Group {
   id: string;
   name: string;
   description: string | null;
-  type: 'crew' | 'league' | 'open_play' | 'venue_official' | 'tournament' | 'club';
-  visibility: 'public' | 'unlisted' | 'private';
-  join_method: 'open' | 'request_to_join' | 'invite_only';
+  type:
+    | "crew"
+    | "league"
+    | "open_play"
+    | "venue_official"
+    | "tournament"
+    | "club";
+  visibility: "public" | "unlisted" | "private";
+  join_method: "open" | "request_to_join" | "invite_only";
   invite_code: string | null;
   /** When set, the invite_code is rejected after this timestamp. NULL = never expires. */
   invite_code_expires_at: string | null;
   cover_url: string | null;
   icon_url: string | null;
+  city?: string | null;
+  state?: string | null;
   venue_id: string | null;
   court_id: string | null;
   created_by: string;
@@ -34,10 +42,10 @@ export interface Group {
     cover_crop?: unknown;
     logo_url: string | null;
     cover_image_url: string | null;
-    logo_image_fit: 'cover' | 'contain' | null;
-    cover_image_fit: 'cover' | 'contain' | null;
-    logo_shape: 'circle' | 'square' | null;
-    cover_focal_point: 'top' | 'center' | null;
+    logo_image_fit: "cover" | "contain" | null;
+    cover_image_fit: "cover" | "contain" | null;
+    logo_shape: "circle" | "square" | null;
+    cover_focal_point: "top" | "center" | null;
     primary_color: string | null;
     secondary_color: string | null;
     accent_color?: string | null;
@@ -66,7 +74,7 @@ export interface GroupMember {
   id: string;
   group_id: string;
   user_id: string;
-  role: 'owner' | 'moderator' | 'member';
+  role: "owner" | "moderator" | "member";
   status: string;
   last_read_at: string | null;
   last_chat_read_at?: string | null;
@@ -90,156 +98,159 @@ interface UseGroupsOptions {
 }
 
 export function useGroups(options: UseGroupsOptions = {}) {
-  const { includePublic = true, includeUnreadCounts = true } = options;
+  const { includePublic = false, includeUnreadCounts = true } = options;
   const { user } = useAuthState();
-  const [myGroups, setMyGroups] = useState<GroupWithMembership[]>([]);
   const [publicGroups, setPublicGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
   const currentUserId = user?.id ?? null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const groupsKey = [
+    "groups",
+    "joined",
+    currentUserId,
+    includeUnreadCounts,
+  ] as const;
+  const joined = useQuery({
+    queryKey: groupsKey,
+    enabled: !!currentUserId,
+    staleTime: 0,
+    queryFn: loadMyGroups,
+  });
+  const myGroups = joined.data ?? [];
+  const loading = !!currentUserId && joined.isPending;
+  const setMyGroups = (
+    value:
+      | GroupWithMembership[]
+      | ((groups: GroupWithMembership[]) => GroupWithMembership[]),
+  ) =>
+    queryClient.setQueryData<GroupWithMembership[]>(groupsKey, (old) =>
+      typeof value === "function" ? value(old ?? []) : value,
+    );
+  const fetchMyGroups = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["groups", "joined", currentUserId],
+    });
   useEffect(() => {
-    if (currentUserId) {
-      void fetchMyGroups();
-      if (includePublic) void fetchPublicGroups();
-      else setPublicGroups([]);
-    } else {
-      setMyGroups([]);
-      setPublicGroups([]);
-      setLoading(false);
-    }
-    // The fetch functions intentionally remain imperative because mutations
-    // below reuse them for reconciliation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, includePublic, includeUnreadCounts]);
+    if (currentUserId && includePublic) void fetchPublicGroups();
+    else setPublicGroups([]);
+  }, [currentUserId, includePublic]);
 
-  const fetchMyGroups = async () => {
-    if (!currentUserId) return;
-    
-    setLoading(true);
-    try {
-      // Get groups where user is a member (with venue data for venue_official groups)
-      const { data: memberships, error: memberError } = await supabase
-        .from('group_members')
-        .select(`
+  async function loadMyGroups() {
+    if (!currentUserId) return [];
+    // Get groups where user is a member (with venue data for venue_official groups)
+    const { data: memberships, error: memberError } = await supabase
+      .from("group_members")
+      .select(
+        `
           *,
           groups (
             *,
-            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)
+            venues:venue_id (id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message, city, state)
           )
-        `)
-        .eq('user_id', currentUserId)
-        .eq('status', 'active');
+        `,
+      )
+      .eq("user_id", currentUserId)
+      .eq("status", "active");
 
-      if (memberError) throw memberError;
+    if (memberError) throw memberError;
 
-      const groups: GroupWithMembership[] = (memberships || [])
-        .filter((m: any) => m.groups)
-        .map((m: any) => ({
-          ...m.groups,
-          venue: m.groups.venues || null,
-          membership: {
-            id: m.id,
-            group_id: m.group_id,
-            user_id: m.user_id,
-            role: m.role,
-            status: m.status,
-            last_read_at: m.last_read_at,
-            last_chat_read_at: m.last_chat_read_at ?? m.last_read_at,
-            joined_at: m.joined_at,
-            display_order: m.display_order ?? 0,
-          },
-        }));
+    const groups: GroupWithMembership[] = (memberships || [])
+      .filter((m: any) => m.groups)
+      .map((m: any) => ({
+        ...m.groups,
+        venue: m.groups.venues || null,
+        membership: {
+          id: m.id,
+          group_id: m.group_id,
+          user_id: m.user_id,
+          role: m.role,
+          status: m.status,
+          last_read_at: m.last_read_at,
+          last_chat_read_at: m.last_chat_read_at ?? m.last_read_at,
+          joined_at: m.joined_at,
+          display_order: m.display_order ?? 0,
+        },
+      }));
 
-      // Calculate unread counts in parallel — the sequential loop was an
-      // N+1 that added one round-trip of latency per joined group.
-      if (includeUnreadCounts) {
-        await Promise.all(
-          groups.map(async (group) => {
-            if (!group.membership?.last_read_at) return;
-            const { count } = await supabase
-              .from('group_posts')
-              .select('*', { count: 'exact', head: true })
-              .eq('group_id', group.id)
-              .gt('created_at', group.membership.last_read_at);
+    // Calculate unread counts in parallel — the sequential loop was an
+    // N+1 that added one round-trip of latency per joined group.
+    if (includeUnreadCounts) {
+      await Promise.all(
+        groups.map(async (group) => {
+          if (!group.membership) return;
+          const { count, error } = await supabase
+            .from("group_posts")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id)
+            .neq("user_id", currentUserId)
+            .gt(
+              "created_at",
+              group.membership.last_read_at ?? group.membership.joined_at,
+            );
+          if (error) throw error;
 
-            group.unread_count = count || 0;
-          })
-        );
-      }
-
-      // Any group with unread activity floats to the very top — a group
-      // "with a notification" should always be the first thing you see.
-      // Below that, honor any custom display_order, then most-recent
-      // activity as the final tiebreaker.
-      groups.sort((a, b) => {
-        const aUnread = (a.unread_count || 0) > 0;
-        const bUnread = (b.unread_count || 0) > 0;
-        if (aUnread !== bUnread) return aUnread ? -1 : 1;
-        const orderA = a.membership?.display_order ?? 999;
-        const orderB = b.membership?.display_order ?? 999;
-        if (orderA !== orderB) return orderA - orderB;
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-      });
-
-      setMyGroups(groups);
-    } catch (error) {
-      console.error('Error fetching groups:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load your groups',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+          group.unread_count = count || 0;
+        }),
+      );
     }
-  };
+
+    // Any group with unread activity floats to the very top — a group
+    // "with a notification" should always be the first thing you see.
+    // Below that, honor any custom display_order, then most-recent
+    // activity as the final tiebreaker.
+    groups.sort((a, b) => {
+      const aUnread = (a.unread_count || 0) > 0;
+      const bUnread = (b.unread_count || 0) > 0;
+      if (aUnread !== bUnread) return aUnread ? -1 : 1;
+      const orderA = a.membership?.display_order ?? 999;
+      const orderB = b.membership?.display_order ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return (
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
+
+    return groups;
+  }
 
   const fetchPublicGroups = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('groups')
-        .select('*, venue:venue_id (id, name, slug, logo_url, cover_image_url, logo_crop, cover_crop, logo_image_fit, cover_image_fit, logo_shape, cover_focal_point, primary_color, secondary_color, accent_color, background_color, surface_color, text_color, logo_background_color, tagline, welcome_headline, welcome_message)')
-        .eq('visibility', 'public')
-        .order('member_count', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setPublicGroups((data || []).map((row): Group => ({
-        ...row,
-        venue: row.venue ? {
-          ...row.venue,
-          logo_image_fit: row.venue.logo_image_fit === 'cover' ? 'cover' : 'contain',
-          cover_image_fit: row.venue.cover_image_fit === 'contain' ? 'contain' : 'cover',
-          logo_shape: row.venue.logo_shape === 'circle' ? 'circle' : 'square',
-          cover_focal_point: row.venue.cover_focal_point === 'top' ? 'top' : 'center',
-        } : null,
-      })));
-    } catch (error) {
-      console.error('Error fetching public groups:', error);
+    if (!includePublic) return;
+    const { data, error } = await supabase.rpc("discover_communities", {});
+    if (error) {
+      console.error("Error fetching public groups", error);
+      return;
     }
+    setPublicGroups((data as unknown as { items: Group[] })?.items ?? []);
   };
 
   const createGroup = async (groupData: {
     name: string;
     description?: string;
-    type: Group['type'];
-    visibility: Group['visibility'];
-    join_method: Group['join_method'];
+    type: Group["type"];
+    visibility: Group["visibility"];
+    join_method: Group["join_method"];
     venue_id?: string;
+    city?: string;
+    state?: string;
   }) => {
     if (!currentUserId) {
-      toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "You must be logged in",
+        variant: "destructive",
+      });
       return null;
     }
 
     try {
       const { data, error } = await supabase
-        .from('groups')
+        .from("groups")
         .insert({
           name: groupData.name,
           description: groupData.description,
+          city: groupData.city?.trim() || null,
+          state: groupData.state?.trim() || null,
           type: groupData.type,
           visibility: groupData.visibility,
           join_method: groupData.join_method,
@@ -251,15 +262,18 @@ export function useGroups(options: UseGroupsOptions = {}) {
 
       if (error) throw error;
 
-      toast({ title: 'Success', description: `${groupData.name} has been created!` });
+      toast({
+        title: "Success",
+        description: `${groupData.name} has been created!`,
+      });
       await fetchMyGroups();
       return data;
     } catch (error: any) {
-      console.error('Error creating group:', error);
+      console.error("Error creating group:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to create group',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to create group",
+        variant: "destructive",
       });
       return null;
     }
@@ -267,18 +281,28 @@ export function useGroups(options: UseGroupsOptions = {}) {
 
   const joinGroupByCode = async (code: string) => {
     if (!currentUserId) {
-      toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "You must be logged in",
+        variant: "destructive",
+      });
       return null;
     }
 
-    const trimmed = (code || '').trim();
+    const trimmed = (code || "").trim();
     if (!trimmed) {
-      toast({ title: 'Code Required', description: 'Enter an invite code', variant: 'destructive' });
+      toast({
+        title: "Code Required",
+        description: "Enter an invite code",
+        variant: "destructive",
+      });
       return null;
     }
 
     try {
-      const { data, error } = await supabase.rpc('join_group_by_code' as any, { p_code: trimmed });
+      const { data, error } = await supabase.rpc("join_group_by_code" as any, {
+        p_code: trimmed,
+      });
       if (error) throw error;
 
       const result = (data ?? {}) as {
@@ -289,33 +313,55 @@ export function useGroups(options: UseGroupsOptions = {}) {
       };
 
       switch (result.status) {
-        case 'joined':
-          toast({ title: 'Joined!', description: `Welcome to ${result.group_name}!` });
+        case "joined":
+          toast({
+            title: "Joined!",
+            description: `Welcome to ${result.group_name}!`,
+          });
           void fetchMyGroups();
           return { id: result.group_id, name: result.group_name } as any;
-        case 'pending':
-          toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
+        case "pending":
+          toast({
+            title: "Request Sent",
+            description: "Your join request has been sent to the group admins",
+          });
           return { id: result.group_id, name: result.group_name } as any;
-        case 'already_member':
-          toast({ title: 'Already a Member', description: 'You are already in this group' });
+        case "already_member":
+          toast({
+            title: "Already a Member",
+            description: "You are already in this group",
+          });
           return { id: result.group_id, name: result.group_name } as any;
-        case 'banned':
-          toast({ title: 'Access Denied', description: result.message || 'You have been banned from this group', variant: 'destructive' });
+        case "banned":
+          toast({
+            title: "Access Denied",
+            description:
+              result.message || "You have been banned from this group",
+            variant: "destructive",
+          });
           return null;
-        case 'expired':
-          toast({ title: 'Code Expired', description: result.message || 'This invite code has expired', variant: 'destructive' });
+        case "expired":
+          toast({
+            title: "Code Expired",
+            description: result.message || "This invite code has expired",
+            variant: "destructive",
+          });
           return null;
-        case 'not_found':
+        case "not_found":
         default:
-          toast({ title: 'Not Found', description: result.message || 'Invalid invite code', variant: 'destructive' });
+          toast({
+            title: "Not Found",
+            description: result.message || "Invalid invite code",
+            variant: "destructive",
+          });
           return null;
       }
     } catch (error: any) {
-      console.error('Error joining group:', error);
+      console.error("Error joining group:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to join group',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to join group",
+        variant: "destructive",
       });
       return null;
     }
@@ -331,10 +377,10 @@ export function useGroups(options: UseGroupsOptions = {}) {
 
     try {
       const { error } = await supabase
-        .from('group_members')
+        .from("group_members")
         .delete()
-        .eq('group_id', groupId)
-        .eq('user_id', currentUserId);
+        .eq("group_id", groupId)
+        .eq("user_id", currentUserId);
 
       if (error) throw error;
 
@@ -343,21 +389,21 @@ export function useGroups(options: UseGroupsOptions = {}) {
       // if the user still has those tabs mounted (multi-tab is the
       // main offender, but a back-nav after leaving from GroupDetail
       // hits the same staleness).
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
-      queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
-      queryClient.invalidateQueries({ queryKey: ['group-chat', groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-members", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-posts", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-events", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-chat", groupId] });
 
-      toast({ title: 'Left Group', description: 'You have left the group' });
+      toast({ title: "Left Group", description: "You have left the group" });
       void fetchMyGroups();
       return true;
     } catch (error: any) {
       setMyGroups(prevGroups);
-      console.error('Error leaving group:', error);
+      console.error("Error leaving group:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to leave group',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to leave group",
+        variant: "destructive",
       });
       return false;
     }
@@ -365,44 +411,59 @@ export function useGroups(options: UseGroupsOptions = {}) {
 
   const joinPublicGroup = async (groupId: string) => {
     if (!currentUserId) {
-      toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "You must be logged in",
+        variant: "destructive",
+      });
       return null;
     }
 
     try {
       // Find the group
       const { data: group, error: findError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('id', groupId)
+        .from("groups")
+        .select("*")
+        .eq("id", groupId)
         .single();
 
       if (findError || !group) {
-        toast({ title: 'Error', description: 'Group not found', variant: 'destructive' });
+        toast({
+          title: "Error",
+          description: "Group not found",
+          variant: "destructive",
+        });
         return null;
       }
 
       // maybeSingle() — `single()` errors on zero rows and crashes the
       // try block; non-members aren't an error.
       const { data: existingMember } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('group_id', groupId)
-        .eq('user_id', currentUserId)
+        .from("group_members")
+        .select("*")
+        .eq("group_id", groupId)
+        .eq("user_id", currentUserId)
         .maybeSingle();
 
       if (existingMember) {
-        if (existingMember.status === 'active') {
-          toast({ title: 'Already a Member', description: 'You are already in this group' });
+        if (existingMember.status === "active") {
+          toast({
+            title: "Already a Member",
+            description: "You are already in this group",
+          });
           return group;
         }
-        if (existingMember.status === 'pending') {
-          toast({ title: 'Pending', description: 'Your join request is still pending' });
+        if (existingMember.status === "pending") {
+          toast({
+            title: "Pending",
+            description: "Your join request is still pending",
+          });
           return group;
         }
       }
 
-      const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
+      const status =
+        group.join_method === "request_to_join" ? "pending" : "active";
 
       // Race-safe insert: two rapid join clicks (or two browser tabs)
       // can both pass the "not a member" check above and race to insert.
@@ -410,38 +471,42 @@ export function useGroups(options: UseGroupsOptions = {}) {
       // second insert fails with 23505 — translate that into the same
       // "already a member" UX as the pre-check, rather than a generic
       // error toast.
-      const { error: joinError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: groupId,
-          user_id: currentUserId,
-          role: 'member',
-          status,
-        });
+      const { error: joinError } = await supabase.from("group_members").insert({
+        group_id: groupId,
+        user_id: currentUserId,
+        role: "member",
+        status,
+      });
 
       if (joinError) {
-        if (joinError.code === '23505') {
-          toast({ title: 'Already a Member', description: 'You are already in this group' });
+        if (joinError.code === "23505") {
+          toast({
+            title: "Already a Member",
+            description: "You are already in this group",
+          });
           return group;
         }
         throw joinError;
       }
 
-      if (status === 'pending') {
-        toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
+      if (status === "pending") {
+        toast({
+          title: "Request Sent",
+          description: "Your join request has been sent to the group admins",
+        });
       } else {
-        toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
+        toast({ title: "Joined!", description: `Welcome to ${group.name}!` });
         void fetchMyGroups();
         void fetchPublicGroups();
       }
 
       return group;
     } catch (error: any) {
-      console.error('Error joining group:', error);
+      console.error("Error joining group:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to join group',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to join group",
+        variant: "destructive",
       });
       return null;
     }
@@ -465,15 +530,15 @@ export function useGroups(options: UseGroupsOptions = {}) {
       const results = await Promise.all(
         updates.map((update) =>
           supabase
-            .from('group_members')
+            .from("group_members")
             .update({ display_order: update.display_order })
-            .eq('id', update.id)
-        )
+            .eq("id", update.id),
+        ),
       );
       const failed = results.find((r) => r.error);
       if (failed?.error) throw failed.error;
     } catch (error) {
-      console.error('Error updating group order:', error);
+      console.error("Error updating group order:", error);
       // Revert on error
       await fetchMyGroups();
     }
@@ -484,6 +549,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
     publicGroups,
     loading,
     currentUserId,
+    error: joined.error,
     createGroup,
     joinGroupByCode,
     joinPublicGroup,

@@ -1,3 +1,4 @@
+import { useMarkCommunityRead } from '@/hooks/useMarkCommunityRead';
 import { VenueTheme } from '@/components/venue/VenueTheme';
 import { lazy, Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -27,7 +28,8 @@ const VenueCommunity = lazy(() => import('./VenueCommunity'));
  */
 export default function GroupRoute() {
   const { groupId } = useParams<{ groupId: string }>();
-  const { group, loading, isError, refetch } = useGroupDetail(groupId);
+  const { group, membership, loading, isError, refetch } = useGroupDetail(groupId);
+  useMarkCommunityRead(groupId, membership);
   const [params, setParams] = useSearchParams();
   const communityView = params.get('view') === 'community';
   const isVenue = isVenueCommunitiesEnabled() && !!group?.venue_id;

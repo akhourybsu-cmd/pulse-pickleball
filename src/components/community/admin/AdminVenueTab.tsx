@@ -232,6 +232,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       void queryClient.invalidateQueries({ queryKey: ['public-community'] });
       void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-discovery'] });
       toast({
         title: kind === 'logo' ? 'Logo updated' : 'Cover updated',
         description: `Optimized at ${prepared.width}×${prepared.height}px.`,
@@ -259,6 +260,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       void queryClient.invalidateQueries({ queryKey: ['public-community'] });
       void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-discovery'] });
       toast({ title: kind === 'logo' ? 'Logo removed' : 'Cover removed' });
     } catch (error) {
       toast({ title: 'Could not remove image', description: getErrorMessage(error, 'Your saved image is unchanged.'), variant: 'destructive' });
@@ -330,6 +332,7 @@ export function AdminVenueTab({ groupId, venueId, isVerified, mode = 'all', onBr
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
       void queryClient.invalidateQueries({ queryKey: ['public-community'] });
       void queryClient.invalidateQueries({ queryKey: ['public-communities'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-discovery'] });
       void queryClient.invalidateQueries({ queryKey: ['groups'] });
       onBrandSaved?.({ name: form.name.trim(), ...Object.fromEntries([...VENUE_BRAND_COLOR_FIELDS, ...VENUE_CHAT_COLOR_FIELDS].map(({ key }) => [key, normalizeHex(form[key])])) });
       toast({ title: 'Venue updated' });

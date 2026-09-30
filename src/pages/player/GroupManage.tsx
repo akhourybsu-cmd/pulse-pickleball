@@ -78,6 +78,8 @@ export default function GroupManage() {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [type, setType] = useState<GroupType>('crew');
   const [visibility, setVisibility] = useState<Group['visibility']>('unlisted');
   const [joinMethod, setJoinMethod] = useState<Group['join_method']>('open');
@@ -160,6 +162,8 @@ export default function GroupManage() {
       setGroup(normalizedGroup);
       setName(groupData.name);
       setDescription(groupData.description || '');
+      setCity(groupData.city || '');
+      setState(groupData.state || '');
       setType((groupData.type as GroupType) || 'crew');
       setVisibility(groupData.visibility);
       setJoinMethod(groupData.join_method);
@@ -187,6 +191,8 @@ export default function GroupManage() {
         .update({
           name: name.trim(),
           description: description.trim() || null,
+          city: city.trim() || null,
+          state: state.trim() || null,
           type,
           visibility,
           join_method: joinMethod,
@@ -196,6 +202,8 @@ export default function GroupManage() {
       if (error) throw error;
 
       toast({ title: 'Saved', description: 'Group settings updated' });
+      void queryClient.invalidateQueries({queryKey:['groups']});
+      void queryClient.invalidateQueries({queryKey:['community-discovery']});
       void queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
     } catch (error: unknown) {
       console.error('Error saving group:', error);
@@ -505,6 +513,7 @@ export default function GroupManage() {
               type={type}
               groupId={groupId!}
               iconUrl={iconUrl}
+              city={city} state={state} onCityChange={setCity} onStateChange={setState}
               onNameChange={setName}
               onDescriptionChange={setDescription}
               onTypeChange={setType}

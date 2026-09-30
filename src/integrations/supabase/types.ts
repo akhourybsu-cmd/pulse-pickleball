@@ -2254,6 +2254,8 @@ export type Database = {
       }
       groups: {
         Row: {
+          city: string | null
+          state: string | null
           court_id: string | null
           cover_url: string | null
           created_at: string | null
@@ -2274,6 +2276,8 @@ export type Database = {
           visibility: Database["public"]["Enums"]["group_visibility"]
         }
         Insert: {
+          city?: string | null
+          state?: string | null
           court_id?: string | null
           cover_url?: string | null
           created_at?: string | null
@@ -2294,6 +2298,8 @@ export type Database = {
           visibility?: Database["public"]["Enums"]["group_visibility"]
         }
         Update: {
+          city?: string | null
+          state?: string | null
           court_id?: string | null
           cover_url?: string | null
           created_at?: string | null
@@ -9305,6 +9311,9 @@ export type Database = {
       }
     }
     Functions: {
+      discover_communities: { Args: { p_search?: string; p_city?: string; p_state?: string; p_offset?: number }; Returns: Json }
+      mark_community_read: { Args: { p_group_id: string }; Returns: string }
+
       get_venue_program_roster: {
         Args: { p_event_id: string }
         Returns: { name: string }[]
