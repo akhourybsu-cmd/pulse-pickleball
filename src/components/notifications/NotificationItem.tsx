@@ -99,6 +99,7 @@ const typeIcons: Record<string, React.ElementType> = {
   payment_reminder: CreditCard,
   
   // Community notifications
+  venue_address_live: CheckCircle,
   group_post_new: MessageCircle,
   group_lfg_new: Users,
   group_lfg_joined: UserPlus,

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { RESERVED_VENUE_HOSTS } from '@/lib/venues/address';
+import { checkVenueAddress, venueAddressStatusQuery } from '../../scripts/check-venue-address.mjs';
 
 let db: PGlite;
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -33,6 +34,8 @@ beforeAll(async () => {
     CREATE TABLE platform_admin_identity(user_id uuid);
     INSERT INTO platform_admin_identity VALUES('${id(99)}');
     CREATE TABLE platform_admin_audit(actor_id uuid,venue_id uuid,action text,note text,before_state jsonb,after_state jsonb);
+    CREATE TABLE notification_preferences(user_id uuid,category text,in_app_enabled boolean);
+    CREATE TABLE user_notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,notification_type text,category text,title text,message text,link text,priority text,metadata jsonb,actor_id uuid,expires_at timestamptz,read boolean,dismissed_at timestamptz);
     CREATE TABLE venue_staff(venue_id uuid,user_id uuid,role text,is_active bool,status text);
     CREATE TABLE venues(id uuid PRIMARY KEY, slug text UNIQUE, name text, address text, city text, state text, phone text, email text, website_url text,
       logo_url text, cover_image_url text, logo_image_fit text, cover_image_fit text, logo_shape text, cover_focal_point text,
@@ -74,6 +77,9 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260930121000_public_venue_branding.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930130000_community_discovery.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930190000_public_community_schedule.sql', 'utf8'));
+  const notificationSql=readFileSync('supabase/migrations/20260102134430_c8bd0f47-13fd-4a59-a4bd-ac266f4bb85a.sql','utf8');
+  await db.exec(notificationSql.slice(notificationSql.indexOf('CREATE OR REPLACE FUNCTION public.create_notification('),notificationSql.indexOf('-- 9. Trigger')));
+  await db.exec(readFileSync('supabase/migrations/20260930200000_venue_address_live_notification.sql','utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
@@ -318,4 +324,71 @@ describe('community discovery',()=>{
    expect(await preview(1)).not.toBeNull();
   }finally{await db.exec('ROLLBACK');}
  });
+});
+
+
+describe('venue website live confirmation', () => {
+  const ready={host:'HOST_ACTIVE',ownership:'OWNERSHIP_ACTIVE',certificate:'CERT_ACTIVE',dns:[],issues:[]};
+  const notificationMigration=readFileSync('supabase/migrations/20260930200000_venue_address_live_notification.sql','utf8');
+  const backfill=notificationMigration.slice(notificationMigration.lastIndexOf('UPDATE public.venue_address_connections'),notificationMigration.indexOf('COMMIT;'));
+  const connect=async(n=1)=>{
+    await db.query("UPDATE venue_address_connections SET status='connected',provider_details=$2 WHERE venue_id=$1",[id(n),JSON.stringify(ready)]);
+  };
+  const notes=async()=> (await db.query<any>('SELECT * FROM user_notifications')).rows;
+  beforeEach(async()=>{
+    await db.exec('DELETE FROM venue_address_connections; DELETE FROM user_notifications; DELETE FROM notification_preferences; DELETE FROM venue_staff;');
+    await db.query("UPDATE venues SET is_active=true,is_published=true,verification_approved_at=now(),verification_approved_by=$2 WHERE id=$1",[id(1),id(99)]);
+    await db.query("UPDATE groups SET visibility='public' WHERE id=$1",[id(1)]);
+    await db.query("INSERT INTO venue_address_connections(venue_id,slug) VALUES($1,'live-venue'),($2,'private-venue'),($3,'sample-venue')",[id(1),id(3),id(6)]);
+  });
+  it('notifies each active owner once with the exact address and venue integrations link',async()=>{
+    await db.query("INSERT INTO venue_staff VALUES($1,$1,'owner',true,'active'),($1,$2,'owner',true,'active'),($1,$3,'manager',true,'active'),($1,$4,'owner',false,'active')",[id(1),id(2),id(3),id(4)]);
+    await connect();
+    const rows=await notes(); expect(rows.map(n=>n.user_id).sort()).toEqual([id(1),id(2)]);
+    expect(rows[0]).toMatchObject({notification_type:'venue_address_live',title:'Your venue website is live',link:`/player/community/group/${id(1)}/manage?tab=integrations`,read:false,metadata:expect.objectContaining({venue_id:id(1),url:'https://live-venue.pulsepb.com'})});
+    expect(rows[0].message).toContain('https://live-venue.pulsepb.com');
+    await db.exec('UPDATE user_notifications SET read=true,dismissed_at=now()');
+    await connect(); await db.exec(backfill);
+    await db.query("UPDATE venue_address_connections SET status='provisioning' WHERE venue_id=$1",[id(1)]); await connect();
+    expect(await notes()).toHaveLength(2); expect((await notes())[0].read).toBe(true);
+  });
+  it('does not announce pending HTTPS, private pages, inactive venues or samples',async()=>{
+    await db.query("UPDATE venue_address_connections SET status='connected',provider_details=$2 WHERE venue_id=$1",[id(1),JSON.stringify({...ready,certificate:'CERT_VALIDATING'})]);
+    await connect(3); await connect(6);
+    await db.query('UPDATE venues SET is_active=false WHERE id=$1',[id(1)]); await connect();
+    expect(await notes()).toEqual([]);
+    await db.query('UPDATE venues SET is_active=true WHERE id=$1',[id(1)]);
+    expect(await notes()).toHaveLength(1);
+  });
+  it('notifies when a connected venue becomes public, including after publication',async()=>{
+    await db.query("UPDATE groups SET visibility='private' WHERE id=$1",[id(1)]);
+    await db.query('UPDATE venues SET is_published=false WHERE id=$1',[id(1)]); await connect();
+    await db.query("UPDATE groups SET visibility='public' WHERE id=$1",[id(1)]); expect(await notes()).toEqual([]);
+    await db.query('UPDATE venues SET is_published=true WHERE id=$1',[id(1)]); expect(await notes()).toHaveLength(1);
+    await db.query("UPDATE groups SET visibility='private' WHERE id=$1",[id(1)]);
+    await db.query("UPDATE groups SET visibility='public' WHERE id=$1",[id(1)]); expect(await notes()).toHaveLength(1);
+  });
+  it('respects notification preferences without retrying the announcement on every check',async()=>{
+    await db.query("INSERT INTO notification_preferences VALUES($1,'community',false)",[id(1)]); await connect();
+    expect(await notes()).toEqual([]);
+    await db.exec('DELETE FROM notification_preferences'); await connect(); expect(await notes()).toEqual([]);
+  });
+  it('backfills existing live addresses once and keeps trigger functions private',async()=>{
+    await db.exec('ALTER TABLE venue_address_connections DISABLE TRIGGER notify_venue_address_live'); await connect();
+    await db.exec('ALTER TABLE venue_address_connections ENABLE TRIGGER notify_venue_address_live');
+    expect(await notes()).toEqual([]); await db.exec(backfill); expect(await notes()).toHaveLength(1);
+    await db.exec(backfill); expect(await notes()).toHaveLength(1);
+    await expect(guest('SELECT notify_venue_address_live()')).rejects.toThrow(/permission denied/);
+    await expect(manager(1,'SELECT recheck_public_venue_address_notification()')).rejects.toThrow(/permission denied/);
+  });
+  it('reads only safe readiness fields and notification counts in deployment diagnostics',async()=>{
+    await connect();
+    const result=await checkVenueAddress({SUPABASE_PROJECT_REF:'rqfqwavhtfwwtmfjnxkx',SUPABASE_ACCESS_TOKEN:'sbp_fixture',VENUE_ID:id(1)},async(_url:any,options:any)=>{
+      const body=JSON.parse(options.body); expect(body.read_only).toBe(true);
+      return {ok:true,json:async()=> (await db.query(body.query)).rows};
+    });
+    expect(result).toMatchObject({status:'connected',live_confirmation_count:1,public_ready:true,public_url:'https://live-venue.pulsepb.com'});
+    expect(JSON.stringify(result)).not.toMatch(/check_token|requested_by|user_id|SECRET/);
+    expect(()=>venueAddressStatusQuery("'; DELETE FROM venues; --")).toThrow(/UUID/);
+  });
 });

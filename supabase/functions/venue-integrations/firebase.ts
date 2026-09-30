@@ -12,7 +12,12 @@ export interface HostingDomain {
   cert?: { state?: string; issues?: { message?: string }[]; verification?: { dns?: DnsUpdates } };
 }
 export function hostingResult(domain: HostingDomain) {
-  const dns = [...(domain.requiredDnsUpdates?.desired ?? []), ...(domain.cert?.verification?.dns?.desired ?? [])]
+  // Certificate verification describes optional pre-traffic ACME challenges,
+  // not pending work once Firebase has issued an active certificate. Firebase
+  // can retain these instructions after HTTPS is already serving successfully.
+  // https://firebase.google.com/docs/reference/hosting/rest/v1beta1/projects.sites.customDomains#CertVerification
+  const certificateDns = domain.cert?.state === 'CERT_ACTIVE' ? [] : domain.cert?.verification?.dns?.desired ?? [];
+  const dns = [...(domain.requiredDnsUpdates?.desired ?? []), ...certificateDns]
     .flatMap(set => set.records ?? []).filter(record => ['ADD', 'REMOVE'].includes(record.requiredAction));
   const records = [...new Map(dns.map(record => [JSON.stringify(record), record])).values()];
   const issues = [...(domain.issues ?? []), ...(domain.cert?.issues ?? [])].map(issue => issue.message).filter(Boolean);

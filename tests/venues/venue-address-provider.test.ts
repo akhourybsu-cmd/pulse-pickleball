@@ -34,6 +34,16 @@ describe('Firebase venue address adapter', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0][0]).toMatch(/projects\/pulse-pickleball-c60e1\/sites\/pulse-pickleball-c60e1\/customDomains\/palace.pulsepb.com$/);
   });
+  it('does not keep an active website pending on retained certificate challenge instructions', () => {
+    const record={domainName:'_acme-challenge.palace.pulsepb.com',type:'TXT',rdata:'certificate-proof',requiredAction:'ADD'};
+    const cert={state:'CERT_ACTIVE',verification:{dns:{desired:[{records:[record]}]}}};
+    expect(hostingResult({...ready,cert})).toMatchObject({status:'connected',provider_details:{dns:[],issues:[]}});
+    // Real hosting DNS work and provider issues remain blockers even when an
+    // old certificate is already active; never suppress those requirements.
+    expect(hostingResult({...ready,cert,requiredDnsUpdates:{desired:[{records:[record]}]}}).status).toBe('action_required');
+    expect(hostingResult({...ready,cert:{...cert,issues:[{message:'Domain issue'}]}}).status).toBe('action_required');
+    expect(hostingResult({...ready,cert:{...cert,state:'CERT_VALIDATING'}}).status).toBe('action_required');
+  });
   it('handles asynchronous create and duplicate-create races without claiming success', async () => {
     for (const status of [200,409]) {
       const fetcher=vi.fn().mockResolvedValueOnce(response({},404)).mockResolvedValueOnce(response({name:'operation'},status)).mockResolvedValueOnce(response({},404));

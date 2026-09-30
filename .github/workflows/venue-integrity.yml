@@ -7,6 +7,7 @@ on:
     paths:
       - scripts/check-venue-system.mjs
       - scripts/check-match-system.mjs
+      - scripts/check-venue-address.mjs
       - tests/venues/system-integrity.test.ts
       - .github/workflows/venue-integrity.yml
 
@@ -35,3 +36,11 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
+
+      - name: Read venue address readiness and confirmation count
+        if: ${{ !cancelled() }}
+        run: node scripts/check-venue-address.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
+          VENUE_ID: d99d7de3-2431-4ee2-a826-04cc293da1cd
