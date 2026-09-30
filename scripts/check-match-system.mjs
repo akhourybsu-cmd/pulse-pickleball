@@ -18,7 +18,10 @@ export const matchIntegrityQuery = `WITH records AS (
  ) SELECT jsonb_build_object(
  'record_mismatches',count(*) FILTER(WHERE (coalesce(p.total_matches,0),coalesce(p.wins,0),coalesce(p.losses,0),coalesce(p.total_points_for,0),coalesce(p.total_points_against,0))
  IS DISTINCT FROM (coalesce(r.played,0),coalesce(r.won,0),coalesce(r.played-r.won,0),coalesce(r.points_for,0),coalesce(r.points_against,0))),
- 'ranked_rating_mismatches',count(*) FILTER(WHERE abs(p.current_rating-coalesce(t.rating_after,p.initial_self_rating,3.00))>0.0001)
+ 'ranked_rating_mismatches',count(*) FILTER(WHERE abs(p.current_rating-coalesce(t.rating_after,p.initial_self_rating,3.00))>0.0001),
+ 'mismatches_with_ranked_history',count(*) FILTER(WHERE t.player_id IS NOT NULL AND abs(p.current_rating-t.rating_after)>0.0001),
+ 'mismatches_without_ranked_history',count(*) FILTER(WHERE t.player_id IS NULL AND abs(p.current_rating-coalesce(p.initial_self_rating,3.00))>0.0001),
+ 'mismatches_with_unranked_history',count(*) FILTER(WHERE abs(p.current_rating-coalesce(t.rating_after,p.initial_self_rating,3.00))>0.0001 AND EXISTS(SELECT 1 FROM public.match_participants mp JOIN public.matches m ON m.id=mp.match_id WHERE mp.player_id=p.id AND m.status='approved' AND NOT coalesce(m.voided,false) AND m.count_for_rating=false))
  ) AS checks FROM public.profiles p LEFT JOIN records r ON r.player_id=p.id LEFT JOIN ratings t ON t.player_id=p.id;`;
 
 export async function checkMatchSystem(env = process.env, request = fetch) {
