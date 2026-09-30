@@ -17,6 +17,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
     CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role; CREATE SCHEMA auth;
+    CREATE FUNCTION public.pulse_has_required_mfa() RETURNS boolean LANGUAGE sql AS $$ SELECT coalesce(current_setting('test.mfa',true),'yes')<>'no' $$;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     GRANT USAGE ON SCHEMA auth,public TO authenticated,anon,service_role;
     CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
@@ -54,9 +55,10 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260618030100_user_roles_last_admin_guard.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20260917100000_verified_free_venues.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20260922100000_platform_admin_venue_control.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260930150000_streamlined_superadmin_venue_review.sql','utf8'));
 },30_000);
 beforeEach(async () => {
-  await db.exec("SELECT set_config('request.jwt.claim.sub','',false); TRUNCATE platform_admin_audit,venue_application_history,venue_applications,venue_module_access,private_venue_sandboxes,payment_orders,payment_subscriptions,groups,group_members,venue_staff,venue_courts,group_events,notifications,venues CASCADE;");
+  await db.exec("SELECT set_config('test.mfa','yes',false); SELECT set_config('request.jwt.claim.sub','',false); TRUNCATE platform_admin_audit,venue_application_history,venue_applications,venue_module_access,private_venue_sandboxes,payment_orders,payment_subscriptions,groups,group_members,venue_staff,venue_courts,group_events,notifications,venues CASCADE;");
   await db.query("INSERT INTO venues(id,name,owner_id,city,is_active,is_published,verification_approved_at,verification_approved_by) VALUES($1,'Verified Palace',$2,'Boston',true,true,now(),$3),($4,'Free Club',$2,'Boston',true,true,NULL,NULL)",[venue,owner,admin,otherVenue]);
   await db.query("INSERT INTO groups(id,name,type,venue_id,created_by) VALUES($1,'Verified Palace','venue_official',$2,$3)",[group,venue,owner]);
   await db.query("INSERT INTO venue_staff VALUES($1,$2,'owner',now(),true,'active')",[venue,owner]);
@@ -121,12 +123,12 @@ describe('venue platform controls', () => {
     expect((await db.query('SELECT * FROM venue_staff')).rows).toHaveLength(1);
     expect((await db.query('SELECT * FROM venue_module_access WHERE venue_id=$1',[otherVenue])).rows).toHaveLength(0);
   });
-  it('blocks stale decisions, invalid modules, missing notes and past expiries',async () => {
+  it('blocks stale decisions, invalid modules, oversized notes and past expiries',async () => {
     const old=await snapshot(); await grant();
     await expect(grant([],admin,null,old)).rejects.toThrow('changed');
     await expect(grant(['court_booking','court_booking'])).rejects.toThrow('valid');
     await expect(grant(['unknown'])).rejects.toThrow('valid');
-    await expect(grant([],admin,null,undefined,'short')).rejects.toThrow('reason');
+    await expect(grant([],admin,null,undefined,'x'.repeat(2001))).rejects.toThrow('2000');
     await expect(grant(['court_booking'],admin,'2020-01-01T00:00:00Z')).rejects.toThrow('future');
   });
   it('does not grant commercial tools to unverified venues or touch private samples',async () => {
@@ -182,11 +184,62 @@ describe('venue platform controls', () => {
   });
   it('records transparent sole-admin self-review while retaining validation and stale-review guards',async () => {
     const req=(await asUser(admin,'SELECT submit_venue_application($1) AS id',[details])).rows[0].id;
-    await expect(asUser(admin,"SELECT review_venue_application($1,'approved',$2,false)",[req,'Business authority documented with registration records.'])).rejects.toThrow('verify');
+    await expect(asUser(admin,"SELECT review_venue_application($1,'approved',$2,false)",[req,'Business authority documented with registration records.'])).rejects.toThrow('Confirm');
     await asUser(admin,"SELECT review_venue_application($1,'approved',$2,true)",[req,'Business authority documented with registration records.']);
     const history=(await db.query("SELECT details FROM venue_application_history WHERE action='approved'")).rows[0].details as any;
     expect(history.superadmin_self_review).toBe(true);
     expect((await db.query("SELECT * FROM platform_admin_audit WHERE action='venue_request_approved'")).rows).toHaveLength(1);
     await expect(asUser(admin,"SELECT review_venue_application($1,'approved',$2,true)",[req,'Business authority documented with registration records.'])).rejects.toThrow('no longer');
   });
+});
+
+describe('streamlined superadmin verification',()=>{
+ const verify=(user:string|null=admin,expected=owner,note='',confirmed=true)=>asUser(user,'SELECT platform_verify_venue($1,$2,$3,$4) AS value',[otherVenue,expected,note,confirmed]);
+ it('allows blank feature notes and generates an honest audit summary',async()=>{
+  await grant(['court_booking'],admin,null,undefined,'  ');
+  expect((await db.query("SELECT note FROM platform_admin_audit WHERE action='venue_access_changed'")).rows[0].note).toContain('platform superadmin');
+ });
+ it('verifies the existing owner without application fields, preserving venue settings and billing',async()=>{
+  await db.query("UPDATE venues SET address=NULL,state=NULL,is_published=false WHERE id=$1",[otherVenue]);
+  await db.query("UPDATE venues SET verification_approved_at=now(),verification_approved_by=$2 WHERE id=$1",[otherVenue,admin]);
+  await db.query("INSERT INTO groups(name,type,venue_id,created_by) VALUES('Free Club','venue_official',$1,$2)",[otherVenue,owner]);
+  await db.query('UPDATE venues SET verification_approved_at=NULL,verification_approved_by=NULL WHERE id=$1',[otherVenue]);
+  await verify();
+  const v=(await db.query('SELECT * FROM venues WHERE id=$1',[otherVenue])).rows[0];
+  expect(v).toMatchObject({owner_id:owner,address:null,state:null,is_published:false,verification_approved_by:admin});
+  expect(v.verification_approved_at).toBeTruthy();
+  expect((await db.query('SELECT is_venue_verified FROM groups WHERE venue_id=$1',[otherVenue])).rows[0].is_venue_verified).toBe(true);
+  expect((await db.query('SELECT * FROM venue_applications')).rows).toHaveLength(0);
+  expect((await db.query('SELECT * FROM venue_module_access')).rows).toHaveLength(0);
+  expect((await db.query('SELECT * FROM payment_orders')).rows).toHaveLength(0);
+  const audit=(await db.query("SELECT * FROM platform_admin_audit WHERE action='venue_ownership_verified'")).rows[0];
+  expect(audit).toMatchObject({actor_id:admin,venue_id:otherVenue});
+  expect(audit.after_state).toMatchObject({owner_id:owner,source:'direct_superadmin_review',self_review:false});
+  await verify();expect((await db.query('SELECT * FROM platform_admin_audit')).rows).toHaveLength(1);
+ });
+ it('denies non-superadmins, missing confirmation, stale owners, sample venues and insufficient MFA',async()=>{
+  for(const user of [owner,former,null])await expect(verify(user)).rejects.toThrow('superadmin');
+  await expect(verify(admin,owner,'',false)).rejects.toThrow('Confirm');
+  await expect(verify(admin,former)).rejects.toThrow('owner changed');
+  await expect(verify(admin,owner,'x'.repeat(2001))).rejects.toThrow('2000');
+  await db.exec("SELECT set_config('test.mfa','no',false)");await expect(verify()).rejects.toThrow('superadmin');
+  await db.exec("SELECT set_config('test.mfa','yes',false)");
+  await db.query('INSERT INTO private_venue_sandboxes VALUES($1,NULL,$2)',[otherVenue,owner]);await expect(verify()).rejects.toThrow('samples');
+  expect((await db.query('SELECT * FROM platform_admin_audit')).rows).toHaveLength(0);
+  expect((await db.query("SELECT has_function_privilege('anon','platform_verify_venue(uuid,uuid,text,boolean)','EXECUTE') AS allowed")).rows[0].allowed).toBe(false);
+ });
+ it('approves an existing needs-info request without making the owner refill the application',async()=>{
+  const req=(await asUser(owner,'SELECT submit_venue_application($1,NULL,$2) AS id',[details,otherVenue])).rows[0].id;
+  await asUser(admin,"SELECT review_venue_application($1,'needs_info','Website?',false)",[req]);
+  await verify();
+  expect((await db.query('SELECT status FROM venue_applications WHERE id=$1',[req])).rows[0].status).toBe('approved');
+  expect((await db.query("SELECT * FROM platform_admin_audit WHERE action='venue_request_approved'")).rows).toHaveLength(1);
+ });
+ it('accepts optional approval notes while still requiring useful instructions for returned requests',async()=>{
+  const req=(await asUser(owner,'SELECT submit_venue_application($1) AS id',[details])).rows[0].id;
+  await expect(asUser(admin,"SELECT review_venue_application($1,'needs_info','',false)",[req])).rejects.toThrow('Tell the applicant');
+  await expect(asUser(admin,"SELECT review_venue_application($1,'rejected','',false)",[req])).rejects.toThrow('Tell the applicant');
+  await asUser(admin,"SELECT review_venue_application($1,'approved','',true)",[req]);
+  expect((await db.query('SELECT review_note FROM venue_applications WHERE id=$1',[req])).rows[0].review_note).toBe('Approved by the platform superadmin.');
+ });
 });

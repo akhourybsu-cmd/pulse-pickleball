@@ -2,7 +2,7 @@
 export const useAuthState=()=>({user:{id:'sample-admin',email:'admin@example.com'},isAuthenticated:true,loading:false});
 const params=new URLSearchParams(location.search);
 const long=params.has('long');
-const venue={id:'venue-sample',name:long?'PickleballPalaceWithAnUnusuallyLongUnbrokenVenueNameForLayoutChecks':'Pickleball Palace (local preview)',city:'Boston',state:'MA',owner_id:'sample-owner',owner_name:'Venue Owner',owner_email:long?'an.unusually.long.business.contact.email@example.com':'owner@example.com',group_id:'group-sample',is_active:true,is_published:true,verification_approved_at:'2026-09-01T00:00:00Z',verification_approved_by:'sample-admin',private_sample:false,modules:[],booking:false,facility:false};
+const venue={id:'venue-sample',name:long?'PickleballPalaceWithAnUnusuallyLongUnbrokenVenueNameForLayoutChecks':'Pickleball Palace (local preview)',city:'Boston',state:'MA',owner_id:'sample-owner',owner_name:'Venue Owner',owner_email:long?'an.unusually.long.business.contact.email@example.com':'owner@example.com',group_id:'group-sample',is_active:true,is_published:true,verification_approved_at:params.has('unverified')?null:'2026-09-01T00:00:00Z',verification_approved_by:params.has('unverified')?null:'sample-admin',private_sample:false,modules:[],booking:false,facility:false};
 let actions:any[]=[];
 export const supabase={
   auth:{getUser:async()=>({data:{user:{id:'sample-admin'}}})},
@@ -15,6 +15,10 @@ export const supabase={
     if(params.has('error'))return {error:new Error('Local preview connection error'),data:null};
     if(name==='platform_admin_overview')return {data:{account_email:'admin@example.com',pending_requests:3,needs_info:2,venues:12,unverified_venues:4,recent_actions:actions},error:null};
     if(name==='platform_admin_venues')return {data:{total:1,rows:[venue]},error:null};
+    if(name==='platform_verify_venue') {
+      if(!args.p_confirmed || args.p_expected_owner!==venue.owner_id)return {error:new Error('Check owner and confirmation'),data:null};
+      venue.verification_approved_at=new Date().toISOString();venue.verification_approved_by='sample-admin';return {error:null,data:{venue_id:venue.id}};
+    }
     if(name==='platform_set_venue_access') {
       venue.booking=args.p_modules.includes('court_booking');venue.facility=args.p_modules.includes('facility_tools');
       (venue as any).modules=args.p_modules.map((key:string)=>({module_key:key,source:'staff_grant',enabled:true,expires_at:args.p_expires,updated_at:new Date().toISOString()}));

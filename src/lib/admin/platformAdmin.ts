@@ -16,11 +16,11 @@ export const VENUE_FEATURES: { key: VenueModuleKey; title: string; detail: strin
 export const tierLabel = (booking: boolean, facility: boolean) => booking && facility ? 'Both features' : booking ? 'Court booking' : facility ? 'Facility tools' : 'Free community';
 export const actionLabel = (action: string) => ({
   superadmin_configured: 'Superadmin configured', venue_access_changed: 'Venue access updated',
-  venue_request_approved: 'Venue approved', venue_request_needs_info: 'Information requested', venue_request_rejected: 'Venue request declined',
+  venue_ownership_verified: 'Venue ownership verified', venue_request_approved: 'Venue approved', venue_request_needs_info: 'Information requested', venue_request_rejected: 'Venue request declined',
 }[action] ?? action.replace(/_/g, ' '));
 export function accessChangeError(venue: PlatformVenue, modules: VenueModuleKey[], note: string, expires: string, now = Date.now()): string | null {
   if (venue.private_sample) return 'Private sample features stay included.';
-  if (note.trim().length < 20 || note.trim().length > 2000) return 'Add a reason between 20 and 2,000 characters.';
+  if (note.length > 2000) return 'Keep the note under 2,000 characters.';
   if (expires && (!Number.isFinite(Date.parse(expires)) || Date.parse(expires) <= now)) return 'Choose a future expiry.';
   for (const feature of VENUE_FEATURES) {
     const row = venue.modules.find(r => r.module_key === feature.key);
@@ -46,3 +46,6 @@ export async function getPlatformActivity(page = 0, venueId?: string) {
   const { data, error } = await query; if (error) throw error; return (data ?? []) as PlatformAction[];
 }
 
+
+export const verifyVenueOwnership = (venue: PlatformVenue, note: string, confirmed: boolean) =>
+  rpc('platform_verify_venue', { p_venue: venue.id, p_expected_owner: venue.owner_id, p_note: note.trim(), p_confirmed: confirmed });
