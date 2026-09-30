@@ -2,12 +2,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   communityInvitePath,
   communityInviteUrl,
+  communityShareTarget,
   communityShareData,
   communityUrl,
   shareCommunity,
 } from "@/lib/communityShare";
 afterEach(() => vi.unstubAllGlobals());
 describe("community invitations", () => {
+  it('shares public overviews while retaining private invitation links', () => {
+    expect(communityShareTarget(communityUrl('venue'), 'CODE')).toBe(communityUrl('venue'));
+    expect(communityShareTarget(undefined, 'CODE')).toBe(communityInviteUrl('CODE'));
+    expect(communityShareTarget()).toBeUndefined();
+  });
   it("creates branded external links even inside a native WebView", () => {
     vi.stubGlobal("window", { location: { origin: "capacitor://localhost" } });
     expect(communityInviteUrl(" A/B # ")).toBe(

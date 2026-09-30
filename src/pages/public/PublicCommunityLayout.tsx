@@ -25,7 +25,6 @@ const PlayerAppShell = lazy(() => import("@/components/layout/PlayerAppShell"));
 const Community = lazy(() => import("@/pages/player/Community"));
 const GroupRoute = lazy(() => import("@/pages/player/GroupRoute"));
 const PublicCommunity = lazy(() => import("./PublicCommunity"));
-const PublicCommunities = lazy(() => import("./PublicCommunities"));
 
 export default function PublicCommunityLayout() {
   const { isAuthenticated, loading } = useAuthState();
@@ -61,18 +60,18 @@ export default function PublicCommunityLayout() {
     <div className="flex min-h-[100dvh] min-w-0 flex-col bg-background font-sans text-foreground [&_h1]:font-sans [&_h2]:font-sans">
       <header className="border-b bg-background px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-          {venue && group ? (
+          {group ? (
             <Link
               to={location.pathname}
               className="flex min-h-11 min-w-0 items-center gap-3"
-              aria-label={venue.name + " home"}
+              aria-label={(venue?.name || group.name) + " home"}
             >
               <CommunityBrandMark
                 group={group}
                 className="h-10 w-10 text-[40px]"
               />
               <span className="max-w-48 truncate font-semibold">
-                {venue.name}
+                {venue?.name || group.name}
               </span>
             </Link>
           ) : (
@@ -88,9 +87,6 @@ export default function PublicCommunityLayout() {
             className="flex items-center gap-3 text-sm"
             aria-label="Guest navigation"
           >
-            <Link to="/player/community" className="py-3 hover:underline">
-              Explore
-            </Link>
             <Button asChild variant="outline" className="min-h-11">
               <Link
                 to={communityAuthUrl(target, "signin")}
@@ -119,7 +115,7 @@ export function CommunityDirectoryRoute() {
   const legacyCode = params.get("join")?.trim();
   if (legacyCode)
     return <Navigate to={communityInvitePath(legacyCode)} replace />;
-  return isAuthenticated ? <Community /> : <PublicCommunities />;
+  return isAuthenticated ? <Community /> : <Navigate to={communityAuthUrl('/player/community', 'signin')} replace />;
 }
 
 export function CommunityDetailRoute() {

@@ -129,6 +129,7 @@ export default function VenueEventManagement() {
       "group-events",
       "venue-upcoming-programs",
       "venue-occasions",
+      "public-community-programs",
     ])
       void client.invalidateQueries({ queryKey: [key] });
   }

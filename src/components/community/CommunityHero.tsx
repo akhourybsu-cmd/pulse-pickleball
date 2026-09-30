@@ -94,7 +94,7 @@ export function CommunityHero({
         open={sharing}
         onOpenChange={setSharing}
         inviteCode={inviteCode || null}
-        shareUrl={communityUrl(group.id)}
+        shareUrl={inviteCode ? undefined : communityUrl(group.id)}
         groupName={name}
       />
     </>

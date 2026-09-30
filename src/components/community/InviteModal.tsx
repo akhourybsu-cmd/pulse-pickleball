@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
-  communityInviteUrl,
+  communityShareTarget,
   communityShareData,
   copyCommunityText,
   shareCommunity,
@@ -34,7 +34,8 @@ export function InviteModal({
 }: InviteModalProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  const url = inviteCode ? communityInviteUrl(inviteCode) : shareUrl;
+  // Public shares open the overview. Private communities still use an invitation.
+  const url = communityShareTarget(shareUrl, inviteCode);
   if (!url) return null;
   const data = communityShareData(groupName, url);
   const copy = async (text: string, label: string) => {

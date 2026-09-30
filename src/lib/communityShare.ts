@@ -8,6 +8,9 @@ export const communityUrl = (id: string) =>
 export const communityInviteUrl = (code: string) =>
   `https://pulsepb.com${communityInvitePath(code)}`;
 
+export const communityShareTarget = (shareUrl?: string, inviteCode?: string | null) =>
+  shareUrl || (inviteCode ? communityInviteUrl(inviteCode) : undefined);
+
 export function communityShareData(name: string, url: string): ShareData {
   return {
     title: `Join ${name}`,
