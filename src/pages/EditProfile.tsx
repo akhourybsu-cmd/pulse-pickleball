@@ -1,3 +1,6 @@
+import { useAuthState } from '@/hooks/useAuthState';
+import { useQueryClient } from '@tanstack/react-query';
+import { saveProfileChange } from '@/lib/saveProfileChange';
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +70,16 @@ const focusToSection = (focus: string | null): SectionKey | null => {
 };
 
 const EditProfile = () => {
+  const { refresh: refreshAuthProfile } = useAuthState();
+  const queryClient = useQueryClient();
+  const refreshProfileViews = async () => {
+    await Promise.all([
+      refreshAuthProfile(),
+      ...['view-profile', 'nearby-players', 'group-members', 'group-posts'].map(
+        key => queryClient.invalidateQueries({ queryKey: [key] })
+      ),
+    ]);
+  };
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -198,15 +211,13 @@ const EditProfile = () => {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      // Persist avatar immediately
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
-      if (updateError) {
+      try {
+        await saveProfileChange(user.id, { avatar_url: publicUrl });
+      } catch (error) {
         await supabase.storage.from('avatars').remove([filePath]);
-        throw updateError;
+        throw error;
       }
+      await refreshProfileViews();
 
       const previousPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
       setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
@@ -228,12 +239,14 @@ const EditProfile = () => {
   const handleRemoveAvatar = async () => {
     if (!user?.id || !formData.avatar_url) return;
     try {
-      const oldPath = formData.avatar_url.split("/").pop();
+      const oldPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
+      await saveProfileChange(user.id, { avatar_url: null });
+      setFormData(prev => ({ ...prev, avatar_url: null }));
+      await refreshProfileViews();
       if (oldPath) {
-        await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`]);
+        void supabase.storage.from('avatars').remove([oldPath])
+          .catch(error => console.warn('Old avatar cleanup failed', error));
       }
-      setFormData((prev) => ({ ...prev, avatar_url: null }));
-      await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
       toast.success("Profile picture removed");
     } catch (error) {
       console.error("Error removing avatar:", error);
@@ -274,8 +287,8 @@ const EditProfile = () => {
 
     setSavingSection(section);
     try {
-      const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
-      if (error) throw error;
+      await saveProfileChange(user.id, payload);
+      await refreshProfileViews();
       toast.success("Saved");
     } catch (error) {
       console.error("Error saving section:", error);
@@ -299,18 +312,13 @@ const EditProfile = () => {
 
     setConfirmingName(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        // Keep full_name (read by ProfileHero, match displays) in sync with
-        // the canonical first/last we're locking in.
-        .update({
-          first_name: first,
-          last_name: last,
-          full_name: `${first} ${last}`,
-          name_locked: true,
-        })
-        .eq("id", user.id);
-      if (error) throw error;
+      await saveProfileChange(user.id, {
+        first_name: first,
+        last_name: last,
+        full_name: `${first} ${last}`,
+        name_locked: true,
+      });
+      await refreshProfileViews();
       setFormData((prev) => ({
         ...prev,
         first_name: first,

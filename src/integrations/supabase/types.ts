@@ -7567,6 +7567,7 @@ export type Database = {
           created_at: string
           event_id: string | null
           event_type: string | null
+          dismissed_at: string | null
           expires_at: string | null
           id: string
           link: string | null
@@ -7584,6 +7585,7 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_type?: string | null
+          dismissed_at?: string | null
           expires_at?: string | null
           id?: string
           link?: string | null
@@ -7601,6 +7603,7 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_type?: string | null
+          dismissed_at?: string | null
           expires_at?: string | null
           id?: string
           link?: string | null
@@ -9311,6 +9314,8 @@ export type Database = {
       }
     }
     Functions: {
+      patch_group_settings: { Args: { p_group_id: string; p_patch: Json }; Returns: Json }
+
       discover_communities: { Args: { p_search?: string; p_city?: string; p_state?: string; p_offset?: number }; Returns: Json }
       mark_community_read: { Args: { p_group_id: string }; Returns: string }
 

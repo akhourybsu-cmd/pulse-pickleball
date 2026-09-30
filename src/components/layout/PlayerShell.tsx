@@ -124,6 +124,7 @@ function PlayerShellContent() {
     markAllAsRead,
     deleteNotification,
     clearAll,
+    restoreNotification,
     groupedByTime,
   } = useNotifications(user?.id, { loadDetails: isNotificationCenterOpen });
 
@@ -318,6 +319,7 @@ function PlayerShellContent() {
             onMarkAllAsRead={markAllAsRead}
             onDelete={deleteNotification}
             onClearAll={clearAll}
+            onUndo={restoreNotification}
             groupedByTime={groupedByTime}
           />
         </Suspense>

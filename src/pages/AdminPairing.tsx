@@ -97,11 +97,6 @@ export default function AdminPairing() {
 
   const generateBalancedPairings = () => {
     if (queueEntries.length < 4) {
-      toast({
-        title: "Not Enough Players",
-        description: "Need at least 4 players in queue",
-        variant: "destructive",
-      });
       return [];
     }
 
@@ -243,6 +238,8 @@ export default function AdminPairing() {
     }
   };
 
+  const pairings = useMemo(() => generateBalancedPairings(), [queueEntries, session]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -255,7 +252,6 @@ export default function AdminPairing() {
     return null;
   }
 
-  const pairings = useMemo(() => generateBalancedPairings(), [queueEntries, session]);
 
   return (
     <div className="min-h-screen flex flex-col">

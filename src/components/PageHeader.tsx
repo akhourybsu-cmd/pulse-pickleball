@@ -25,6 +25,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
     markAllAsRead,
     deleteNotification,
     clearAll,
+    restoreNotification,
     groupedByTime,
   } = useNotifications(userId, { showToasts: true });
 
@@ -75,6 +76,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
         onMarkAllAsRead={markAllAsRead}
         onDelete={deleteNotification}
         onClearAll={clearAll}
+            onUndo={restoreNotification}
       />
     </nav>
   );

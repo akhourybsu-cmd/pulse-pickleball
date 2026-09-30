@@ -244,7 +244,8 @@ export function useGroupEvents(groupId: string | undefined) {
       // Recurring occurrences share one series_id so the series can be
       // identified (and bulk-managed) without a separate table.
       const seriesId = isSeries
-        ? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+        ? (globalThis.crypto?.randomUUID?.() ??
+          `${Date.now()}-${Math.random()}`)
         : null;
 
       const baseRow = {
@@ -278,7 +279,7 @@ export function useGroupEvents(groupId: string | undefined) {
           rows.some((event) => !event.end_time)
         ) {
           throw new Error(
-            "Venue programs require a duration and dedicated courts."
+            "Venue programs require a duration and dedicated courts.",
           );
         }
         const { data, error } = await supabase.rpc("create_venue_program", {
@@ -289,7 +290,7 @@ export function useGroupEvents(groupId: string | undefined) {
         });
         if (error?.code === "23P01")
           throw new Error(
-            "A selected court was just booked. Choose available courts and try again."
+            "A selected court was just booked. Choose available courts and try again.",
           );
         if (error) throw error;
         return data;
@@ -328,12 +329,18 @@ export function useGroupEvents(groupId: string | undefined) {
 
   const deleteEventMutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("group_events")
         .delete()
-        .eq("id", eventId);
+        .eq("id", eventId)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data)
+        throw new Error(
+          "The event was not deleted. Refresh and check your access.",
+        );
     },
     onSuccess: () => {
       toast({ title: "Deleted", description: "Event has been removed" });
@@ -370,15 +377,28 @@ export function useGroupEvents(groupId: string | undefined) {
         rr_games_per_player: number | null;
       }>;
     }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("group_events")
         .update(updates)
-        .eq("id", eventId);
+        .eq("id", eventId)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error(
+          "The event was not updated. Refresh and check your access.",
+        );
       // Loosening capacity can free spots — promote whoever is queued.
-      await supabase.rpc("promote_group_event_waitlist", {
-        p_event_id: eventId,
-      });
+      const { error: waitlistError } = await supabase.rpc(
+        "promote_group_event_waitlist",
+        {
+          p_event_id: eventId,
+        },
+      );
+      if (waitlistError)
+        throw new Error(
+          "Event settings were saved, but the waitlist could not be processed. Please retry the save.",
+        );
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Event settings updated" });
@@ -391,11 +411,16 @@ export function useGroupEvents(groupId: string | undefined) {
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["group-events", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["venue-day"] });
+      queryClient.invalidateQueries({ queryKey: ["venue-event-conflicts"] });
+    },
   });
 
   const updateRsvp = async (
     eventId: string,
-    status: "going" | "maybe" | "not_going"
+    status: "going" | "maybe" | "not_going",
   ) => {
     // Optimistic: flip the user's RSVP and adjust the counts in the cached
     // events immediately so the pill responds on tap, then write + reconcile.
@@ -426,7 +451,7 @@ export function useGroupEvents(groupId: string | undefined) {
             waitlist: counts.waitlist,
           },
         };
-      })
+      }),
     );
 
     try {
@@ -437,7 +462,7 @@ export function useGroupEvents(groupId: string | undefined) {
         {
           p_event_id: eventId,
           p_status: status,
-        }
+        },
       );
       if (error) throw error;
 
@@ -453,7 +478,14 @@ export function useGroupEvents(groupId: string | undefined) {
       return finalStatus as GroupRsvpStatus;
     } catch (error: unknown) {
       // Roll back the optimistic change to the last known-good snapshot.
-      if (prev) queryClient.setQueryData(key, prev);
+      if (prev)
+        queryClient.setQueryData<GroupEvent[]>(key, (current) =>
+          current?.map((event) =>
+            event.id === eventId
+              ? (prev.find((previous) => previous.id === eventId) ?? event)
+              : event,
+          ),
+        );
       console.error("Error updating RSVP:", error);
       toast({
         title: "Error",
@@ -461,6 +493,8 @@ export function useGroupEvents(groupId: string | undefined) {
         variant: "destructive",
       });
       return undefined;
+    } finally {
+      queryClient.invalidateQueries({ queryKey: key });
     }
   };
 

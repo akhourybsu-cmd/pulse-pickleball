@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveView } from "@/contexts/ActiveViewContext";
-
 
 export interface Notification {
   id: string;
@@ -17,6 +16,7 @@ export interface Notification {
   metadata: Record<string, unknown>;
   actor_id: string | null;
   expires_at: string | null;
+  dismissed_at?: string | null;
   created_at: string;
   event_id?: string | null;
   event_type?: string | null;
@@ -40,295 +40,222 @@ interface UseNotificationsOptions {
   loadDetails?: boolean;
 }
 
-export function useNotifications(userId: string | null | undefined, options: UseNotificationsOptions = {}) {
-  const { showToasts = true, categories, loadDetails = true } = options;
+export function useNotifications(
+  userId: string | null | undefined,
+  options: UseNotificationsOptions = {},
+) {
+  const { showToasts = true, loadDetails = true } = options;
+  const categoryKey = JSON.stringify([...(options.categories ?? [])].sort());
   const { isContextActive } = useActiveView();
-
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const channelId = useId();
+  const sequence = useRef(0);
+  const scope = JSON.stringify([userId, categoryKey, loadDetails]);
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+  const [state, setState] = useState<{
+    userId: typeof userId;
+    rows: Notification[];
+    count: number;
+  }>({ userId, rows: [], count: 0 });
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // Fetch notifications
+  const notifications = state.userId === userId ? state.rows : [];
+  const unreadCount = state.userId === userId ? state.count : 0;
   const fetchNotifications = useCallback(async () => {
+    if (currentScope.current !== scope) return;
+    const request = ++sequence.current;
     if (!userId) {
-      setNotifications([]);
+      setState({ userId, rows: [], count: 0 });
       setLoading(false);
       return;
     }
-
-    if (loadDetails) setLoading(true);
-    try {
-      if (!loadDetails) {
-        let countQuery = supabase
-          .from("user_notifications")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .eq("read", false);
-
-        if (categories && categories.length > 0) {
-          countQuery = countQuery.in("category", categories);
-        }
-
-        const { count, error } = await countQuery;
-        if (error) throw error;
-        setNotifications([]);
-        setUnreadCount(count || 0);
-        return;
-      }
-
-      let query = supabase
+    const categories = JSON.parse(categoryKey) as string[];
+    const selectNotifications = (head = false) =>
+      supabase
         .from("user_notifications")
-        .select("*")
+        .select("*", { count: head ? "exact" : undefined, head });
+    const visible = (query: ReturnType<typeof selectNotifications>) => {
+      query = query
         .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (categories && categories.length > 0) {
-        query = query.in("category", categories);
+        .is("dismissed_at", null)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+      return categories.length ? query.in("category", categories) : query;
+    };
+    try {
+      let rows: Notification[] = [];
+      if (loadDetails) {
+        const { data, error } = await visible(selectNotifications())
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        rows = (data ?? []).map((n) => ({
+          ...n,
+          category: n.category || "system",
+          priority: n.priority || "normal",
+          metadata: (n.metadata || {}) as Record<string, unknown>,
+        }));
+        const ids = rows
+          .filter((n) => !n.read && isContextActive(n))
+          .map((n) => n.id);
+        if (ids.length) {
+          const { data: readRows, error: readError } = await supabase
+            .from("user_notifications")
+            .update({ read: true })
+            .eq("user_id", userId)
+            .eq("read", false)
+            .in("id", ids)
+            .select("id");
+          if (!readError) {
+            const saved = new Set(readRows?.map((n) => n.id));
+            rows = rows.map((n) =>
+              saved.has(n.id) ? { ...n, read: true } : n,
+            );
+          }
+        }
       }
-
-      const { data, error } = await query;
-
+      const { count, error } = await visible(selectNotifications(true)).eq(
+        "read",
+        false,
+      );
       if (error) throw error;
-
-      const mapped = (data || []).map((n): Notification => ({
-        id: n.id,
-        user_id: n.user_id,
-        notification_type: n.notification_type,
-        category: n.category || 'system',
-        priority: n.priority || 'normal',
-        title: n.title,
-        message: n.message,
-        link: n.link,
-        read: n.read,
-        metadata: (n.metadata as Record<string, unknown>) || {},
-        actor_id: n.actor_id,
-        expires_at: n.expires_at,
-        created_at: n.created_at,
-        event_id: n.event_id,
-        event_type: n.event_type,
-      }));
-
-      // Anything already unread for the context the user is currently
-      // engaging with (open chat/event) is cleared on the spot.
-      const stale = mapped.filter(n => !n.read && isContextActive(n));
-      if (stale.length > 0) {
-        const staleIds = new Set(stale.map(n => n.id));
-        const cleared = mapped.map(n => (staleIds.has(n.id) ? { ...n, read: true } : n));
-        setNotifications(cleared);
-        setUnreadCount(cleared.filter(n => !n.read).length);
-        void supabase
-          .from("user_notifications")
-          .update({ read: true })
-          .in("id", [...staleIds]);
-        return;
-      }
-
-      setNotifications(mapped);
-      setUnreadCount(mapped.filter(n => !n.read).length);
+      if (request === sequence.current && currentScope.current === scope)
+        setState({ userId, rows, count: count ?? 0 });
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
-      setLoading(false);
+      if (request === sequence.current && currentScope.current === scope)
+        setLoading(false);
     }
-  }, [userId, categories, isContextActive, loadDetails]);
-
-
-  // Real-time subscription
+  }, [userId, categoryKey, isContextActive, loadDetails, scope]);
   useEffect(() => {
+    setLoading(true);
+    void fetchNotifications();
     if (!userId) return;
-
-    fetchNotifications();
-
     const channel = supabase
-      .channel(`notifications-${userId}`)
+      .channel(`notifications-${channelId}-${userId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'user_notifications',
+          event: "*",
+          schema: "public",
+          table: "user_notifications",
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          const newNotif = payload.new as Notification;
-
-          // If the user is already looking at whatever this notification is
-          // about (open DM thread, group chat, event page…), clear it silently
-          // instead of surfacing a new-unread badge/toast.
-          const alreadyEngaged = isContextActive({
-            link: newNotif.link,
-            metadata: (newNotif.metadata as Record<string, unknown>) || {},
-            event_id: newNotif.event_id,
-          });
-
-          if (loadDetails) {
-            setNotifications(prev => [
-              {
-                ...newNotif,
-                category: newNotif.category || 'system',
-                priority: newNotif.priority || 'normal',
-                metadata: (newNotif.metadata as Record<string, unknown>) || {},
-                read: alreadyEngaged ? true : newNotif.read,
-              },
-              ...prev
-            ]);
-          }
-
-          if (alreadyEngaged) {
-            void supabase
-              .from("user_notifications")
-              .update({ read: true })
-              .eq("id", newNotif.id);
-            return;
-          }
-
-          setUnreadCount(prev => prev + 1);
-
-          // Show toast for high priority notifications
-          if (showToasts && (newNotif.priority === 'urgent' || newNotif.priority === 'high')) {
-            toast(newNotif.title, {
-              description: newNotif.message,
-              action: newNotif.link ? {
-                label: "View",
-                onClick: () => window.location.href = newNotif.link!,
-              } : undefined,
-            });
-          }
-        }
-
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'user_notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const updated = payload.new as Notification;
-          if (!loadDetails) {
+          const n = payload.new as Notification;
+          const categories = JSON.parse(categoryKey) as string[];
+          const visible =
+            payload.eventType === "INSERT" &&
+            !n.read &&
+            !n.dismissed_at &&
+            (!n.expires_at || Date.parse(n.expires_at) > Date.now()) &&
+            (!categories.length || categories.includes(n.category));
+          if (visible && isContextActive(n)) {
+            // Supabase query builders are lazy: execute and observe the write.
+            void (async () => {
+              const { error } = await supabase
+                .from("user_notifications")
+                .update({ read: true })
+                .eq("user_id", userId)
+                .eq("id", n.id)
+                .eq("read", false);
+              if (error)
+                console.warn("Notification acknowledgement failed", error);
+              await fetchNotifications();
+            })();
+          } else {
+            if (
+              visible &&
+              showToasts &&
+              ["urgent", "high"].includes(n.priority)
+            )
+              toast(n.title, {
+                description: n.message,
+                action: n.link
+                  ? {
+                      label: "View",
+                      onClick: () => {
+                        window.location.href = n.link!;
+                      },
+                    }
+                  : undefined,
+              });
             void fetchNotifications();
-            return;
           }
-          setNotifications(prev => 
-            prev.map(n => n.id === updated.id ? {
-              ...updated,
-              category: updated.category || 'system',
-              priority: updated.priority || 'normal',
-              metadata: (updated.metadata as Record<string, unknown>) || {},
-            } : n)
-          );
-          // Recalculate unread count
-          setNotifications(prev => {
-            setUnreadCount(prev.filter(n => !n.read).length);
-            return prev;
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'user_notifications',
-          filter: `user_id=eq.${userId}`,
         },
-        (payload) => {
-          if (!loadDetails) {
-            void fetchNotifications();
-            return;
-          }
-          const deleted = payload.old as { id: string };
-          setNotifications(prev => prev.filter(n => n.id !== deleted.id));
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
       )
       .subscribe();
-
+    const refresh = () => void fetchNotifications();
+    window.addEventListener("focus", refresh);
     return () => {
-      supabase.removeChannel(channel);
+      sequence.current++;
+      window.removeEventListener("focus", refresh);
+      void supabase.removeChannel(channel);
     };
-  }, [userId, fetchNotifications, showToasts, isContextActive, loadDetails]);
-
-  // Mark as read
-  const markAsRead = useCallback(async (notificationId: string) => {
-    const { error } = await supabase
-      .from("user_notifications")
-      .update({ read: true })
-      .eq("id", notificationId);
-
-    if (!error) {
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    }
-  }, []);
-
-  // Mark all as read
-  const markAllAsRead = useCallback(async () => {
-    if (!userId) return;
-
-    const { error } = await supabase
-      .from("user_notifications")
-      .update({ read: true })
-      .eq("user_id", userId)
-      .eq("read", false);
-
-    if (!error) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
-    }
-  }, [userId]);
-
-  // Delete notification
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    const notif = notifications.find(n => n.id === notificationId);
-    
-    const { error } = await supabase
-      .from("user_notifications")
-      .delete()
-      .eq("id", notificationId);
-
-    if (!error) {
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      if (notif && !notif.read) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+  }, [
+    userId,
+    channelId,
+    categoryKey,
+    fetchNotifications,
+    isContextActive,
+    showToasts,
+  ]);
+  const change = useCallback(
+    async (
+      updates: { read?: boolean; dismissed_at?: string | null },
+      id?: string,
+      unreadOnly = false,
+    ) => {
+      if (!userId) return false;
+      try {
+        let query = supabase
+          .from("user_notifications")
+          .update(updates)
+          .eq("user_id", userId);
+        if (id) query = query.eq("id", id);
+        else query = query.is("dismissed_at", null);
+        if (unreadOnly) query = query.eq("read", false);
+        const { data, error } = await query.select("id");
+        if (error) throw error;
+        if (id && !data?.length)
+          throw new Error("This notification is no longer available.");
+        await fetchNotifications();
+        return true;
+      } catch (error) {
+        toast.error("Notification change was not saved. Please try again.");
+        console.error(error);
+        return false;
       }
-    }
-  }, [notifications]);
-
-  // Clear all notifications
-  const clearAll = useCallback(async () => {
-    if (!userId) return;
-
-    const { error } = await supabase
-      .from("user_notifications")
-      .delete()
-      .eq("user_id", userId);
-
-    if (!error) {
-      setNotifications([]);
-      setUnreadCount(0);
-    }
-  }, [userId]);
-
-  // Restore a deleted notification (undo) - adds back to local state only
-  // Since notifications get deleted from DB, we just re-add to local state for UX
-  const restoreNotification = useCallback(async (notification: Notification) => {
-    if (!userId) return;
-    
-    // Re-add to local state (the notification was already deleted from DB)
-    // For a true undo, we would need to re-insert, but for now just refresh
-    await fetchNotifications();
-  }, [userId, fetchNotifications]);
-
+    },
+    [userId, fetchNotifications],
+  );
+  const markAsRead = useCallback(
+    (id: string) => change({ read: true }, id),
+    [change],
+  );
+  const markAllAsRead = useCallback(
+    () => change({ read: true }, undefined, true),
+    [change],
+  );
+  const deleteNotification = useCallback(
+    (id: string) => change({ dismissed_at: new Date().toISOString() }, id),
+    [change],
+  );
+  const clearAll = useCallback(
+    () => change({ dismissed_at: new Date().toISOString() }),
+    [change],
+  );
+  const restoreNotification = useCallback(
+    (notification: Notification) =>
+      change({ dismissed_at: null }, notification.id),
+    [change],
+  );
   // Get notifications by category
-  const getByCategory = useCallback((category: string) => {
-    return notifications.filter(n => n.category === category);
-  }, [notifications]);
+  const getByCategory = useCallback(
+    (category: string) => {
+      return notifications.filter((n) => n.category === category);
+    },
+    [notifications],
+  );
 
   // Group notifications by time
   const groupedByTime = useCallback(() => {
@@ -349,7 +276,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
       earlier: [],
     };
 
-    notifications.forEach(n => {
+    notifications.forEach((n) => {
       const date = new Date(n.created_at);
       if (date >= today) {
         groups.today.push(n);
@@ -380,87 +307,102 @@ export function useNotifications(userId: string | null | undefined, options: Use
   };
 }
 
-// Hook for notification preferences
+// Preferences are account-scoped and report failed saves instead of silently reverting.
 export function useNotificationPreferences(userId: string | null | undefined) {
-  const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const defaultCategories = ['matches', 'leagues', 'events', 'messages', 'community', 'achievements', 'system'];
-
+  const [state, setState] = useState<{
+    userId: typeof userId;
+    rows: NotificationPreference[];
+  }>({ userId, rows: [] });
+  const [loading, setLoading] = useState(true),
+    [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const preferences = state.userId === userId ? state.rows : [];
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchPreferences = async () => {
-      const { data, error } = await supabase
-        .from("notification_preferences")
-        .select("*")
-        .eq("user_id", userId);
-
-      if (error) {
-        console.error("Error fetching preferences:", error);
-      } else {
-        setPreferences(data || []);
-      }
-      setLoading(false);
+    let active = true;
+    setLoading(!!userId);
+    setState({ userId, rows: [] });
+    if (userId)
+      void (async () => {
+        const { data, error } = await supabase
+          .from("notification_preferences")
+          .select("*")
+          .eq("user_id", userId);
+        if (!active) return;
+        if (error) toast.error("Notification preferences could not load.");
+        else setState({ userId, rows: data ?? [] });
+        setLoading(false);
+      })();
+    return () => {
+      active = false;
     };
-
-    fetchPreferences();
   }, [userId]);
-
-  const updatePreference = useCallback(async (
-    category: string,
-    updates: Partial<Pick<NotificationPreference, 'in_app_enabled' | 'push_enabled' | 'email_enabled'>>
-  ) => {
-    if (!userId) return;
-
-    const existing = preferences.find(p => p.category === category);
-
-    if (existing) {
-      const { error } = await supabase
-        .from("notification_preferences")
-        .update(updates)
-        .eq("id", existing.id);
-
-      if (!error) {
-        setPreferences(prev => 
-          prev.map(p => p.id === existing.id ? { ...p, ...updates } : p)
+  const updatePreference = useCallback(
+    async (
+      category: string,
+      updates: Partial<
+        Pick<
+          NotificationPreference,
+          "in_app_enabled" | "push_enabled" | "email_enabled"
+        >
+      >,
+    ) => {
+      if (!userId || savingRef.current) return false;
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        const { data, error } = await supabase
+          .from("notification_preferences")
+          .upsert(
+            { user_id: userId, category, ...updates },
+            { onConflict: "user_id,category" },
+          )
+          .select()
+          .single();
+        if (error) throw error;
+        setState((old) =>
+          old.userId === userId
+            ? {
+                userId,
+                rows: [
+                  ...old.rows.filter((p) => p.category !== category),
+                  data,
+                ],
+              }
+            : old,
         );
+        return true;
+      } catch (error) {
+        toast.error("Notification preference was not saved. Please try again.");
+        console.error(error);
+        return false;
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
       }
-    } else {
-      const { data, error } = await supabase
-        .from("notification_preferences")
-        .insert({
-          user_id: userId,
-          category,
-          ...updates,
-        })
-        .select()
-        .single();
-
-      if (!error && data) {
-        setPreferences(prev => [...prev, data]);
-      }
-    }
-  }, [userId, preferences]);
-
-  const getPreference = useCallback((category: string): NotificationPreference | null => {
-    return preferences.find(p => p.category === category) || null;
-  }, [preferences]);
-
-  const isEnabled = useCallback((category: string): boolean => {
-    const pref = getPreference(category);
-    return pref?.in_app_enabled ?? true; // Default to enabled
-  }, [getPreference]);
-
+    },
+    [userId],
+  );
+  const getPreference = useCallback(
+    (category: string) =>
+      preferences.find((p) => p.category === category) || null,
+    [preferences],
+  );
   return {
     preferences,
     loading,
+    saving,
     updatePreference,
     getPreference,
-    isEnabled,
-    defaultCategories,
+    isEnabled: (category: string) =>
+      getPreference(category)?.in_app_enabled ?? true,
+    defaultCategories: [
+      "matches",
+      "leagues",
+      "events",
+      "messages",
+      "community",
+      "achievements",
+      "system",
+    ],
   };
 }

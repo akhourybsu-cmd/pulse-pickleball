@@ -176,7 +176,7 @@ const AdminLegacyTools = () => {
             <ListTile
               icon={Trophy}
               title="Pending Matches"
-              onClick={() => navigate("/pending-matches")}
+              onClick={() => navigate("/player/matches?tab=pending")}
             />
           </div>
         </section>
