@@ -70,4 +70,3 @@ BEGIN
   WHERE id = p_player_id;
 END;
 $$;
-
