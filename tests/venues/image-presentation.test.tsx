@@ -8,7 +8,7 @@ import { VenueMasthead } from '@/components/venue/VenuePageChrome';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import type { GroupWithMembership } from '@/hooks/useGroups';
-vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('react-router-dom', () => ({ Link: ({to,children,...props}: any) => <a href={to} {...props}>{children}</a> }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ prefetchQuery: vi.fn() }) }));
 vi.mock('@/hooks/useGroupPosts', () => ({ fetchGroupPosts: vi.fn() }));
 vi.mock('@/hooks/useGroupEvents', () => ({ fetchGroupEvents: vi.fn() }));
@@ -60,4 +60,14 @@ describe('venue image presentation', () => {
       expect(html).toContain('/wide-logo.png'); expect(html).not.toContain('/stale.png'); expect(html).toContain('object-fit:contain'); expect(html).toContain('rounded-full');
     }
   });
+});
+
+it('distinguishes verified venues from ordinary groups and removes the unread badge after acknowledgement', () => {
+ const base={id:'v',name:'Venue',type:'venue_official',member_count:4,is_venue_verified:true,unread_count:2} as GroupWithMembership;
+ const unread=renderToStaticMarkup(<GroupCard group={base}/>);
+ expect(unread).toContain('Verified venue'); expect(unread).toContain('2 unread updates');
+ const read=renderToStaticMarkup(<GroupCard group={{...base,unread_count:0}}/>);
+ expect(read).toContain('Verified venue'); expect(read).not.toContain('unread updates');
+ expect(renderToStaticMarkup(<GroupCard group={{...base,is_venue_verified:false}}/>)).not.toContain('Verified venue');
+ expect(renderToStaticMarkup(<GroupCard group={{...base,type:'crew'}}/>)).not.toContain('Verified venue');
 });

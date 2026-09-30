@@ -125,16 +125,6 @@ export default function GroupDetail() {
     }
   }, [isError, navigate, toast]);
 
-  // Mark the group read on entry (once per membership).
-  useEffect(() => {
-    if (membership?.id) {
-      void supabase
-        .from('group_members')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('id', membership.id);
-    }
-  }, [membership?.id]);
-
   const openQuickPost = useCallback((type: PostType) => {
     setQuickPostType(type);
     setQuickPostOpen(true);

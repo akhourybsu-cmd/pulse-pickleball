@@ -26,6 +26,8 @@ interface CreateGroupDialogProps {
     visibility: Group['visibility'];
     join_method: Group['join_method'];
     venue_id?: string;
+    city?: string;
+    state?: string;
   }) => Promise<Group | null>;
   onRequestVenue?: () => void;
 }
@@ -178,7 +180,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit, onRequestVenue
               />
             </div>
 
-            {isVenue && (
+            <div className="space-y-2"><p className="text-xs text-muted-foreground">Where do you play? Add an optional town and state to help local players find your community.</p>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="city">City</Label>
@@ -197,11 +199,11 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit, onRequestVenue
                     placeholder="MA"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    maxLength={2}
+                    maxLength={80}
                   />
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description (optional)</Label>

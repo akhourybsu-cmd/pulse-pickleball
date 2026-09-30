@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 export type GroupType = 'crew' | 'league' | 'open_play' | 'tournament' | 'venue_official' | 'club';
 
 interface AdminGeneralTabProps {
+  city?: string; state?: string; onCityChange?: (value: string) => void; onStateChange?: (value: string) => void;
   name: string;
   description: string;
   type: GroupType;
@@ -41,6 +42,7 @@ const GROUP_TYPES: { value: GroupType; label: string; description: string }[] = 
 ];
 
 export function AdminGeneralTab({
+  city, state, onCityChange, onStateChange,
   name,
   description,
   type,
@@ -263,6 +265,7 @@ export function AdminGeneralTab({
             />
           </div>
 
+          {type!=='venue_official' && onCityChange && onStateChange && <div className="space-y-2"><p className="text-xs text-muted-foreground">Optional home area for local discovery. This is shown on public community cards.</p><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm">City / town<Input value={city??''} onChange={e=>onCityChange(e.target.value)} maxLength={80}/></label><label className="space-y-1 text-sm">State / region<Input value={state??''} onChange={e=>onStateChange(e.target.value)} maxLength={80}/></label></div></div>}
           <div className="space-y-1.5">
             <Label htmlFor="group-type">Group Type</Label>
             <Select value={type} onValueChange={onTypeChange} disabled={type === 'venue_official'}>

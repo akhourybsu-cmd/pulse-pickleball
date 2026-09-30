@@ -11,6 +11,7 @@ vi.mock('react', async importOriginal => {
   return { ...actual, lazy: () => { const label = ++index === 1 ? 'Free community shell' : 'Facility shell'; return () => actual.createElement('p', null, label); } };
 });
 vi.mock('react-router-dom', () => ({ Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>, useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }) }));
+vi.mock('@/hooks/useMarkCommunityRead', () => ({ useMarkCommunityRead: vi.fn() }));
 vi.mock('@/hooks/useGroupDetail', () => ({ useGroupDetail: () => state.group }));
 vi.mock('@/hooks/useVenueModules', () => ({ useVenueModules: () => state.modules }));
 vi.mock('@/lib/venues/featureFlag', () => ({ isVenueCommunitiesEnabled: () => true }));

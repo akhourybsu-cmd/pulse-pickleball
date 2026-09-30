@@ -1,32 +1,101 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { usePublicCommunities } from '@/hooks/usePublicCommunity';
-import { GuestAccountPrompt } from '@/components/community/GuestAccountPrompt';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { venuePublicPath } from '@/lib/communityAccess';
-
+import { useSearchParams } from "react-router-dom";
+import { useCommunityDiscovery } from "@/hooks/useCommunityDiscovery";
+import { useDebounce } from "@/hooks/useDebounce";
+import { GuestAccountPrompt } from "@/components/community/GuestAccountPrompt";
+import { CommunitySearchControls } from "@/components/community/CommunitySearchControls";
+import { GroupCard } from "@/components/community/GroupCard";
+import { Button } from "@/components/ui/button";
 export default function PublicCommunities() {
-  const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState('');
-  const [page, setPage] = useState(0);
-  const query = usePublicCommunities(search, page);
-  return <div className="space-y-6">
-    <div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Find your people</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Welcome to the community</h1><p className="mt-3 max-w-2xl text-muted-foreground">Explore venues and local pickleball communities. Find a place you love, then join PULSE to be part of it.</p></div>
-    <form className="flex gap-2" onSubmit={event => { event.preventDefault(); setSearch(draft.trim()); setPage(0); }}>
-      <Input aria-label="Search venues and communities" placeholder="Find a venue or community" value={draft} maxLength={100} onChange={event => setDraft(event.target.value)} className="min-h-11" />
-      <Button type="submit" className="min-h-11">Search</Button>
-    </form>
-    {query.isLoading ? <p role="status">Finding communities…</p> : query.isError ? <div role="alert" className="space-y-3"><p>We couldn’t load the communities. Please try again.</p><Button variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : <>
-      {query.data?.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{query.data.map(group => <Link key={group.id} to={group.venue?.slug ? venuePublicPath(group.venue.slug) : `/player/community/group/${group.id}`} className="rounded-2xl border bg-card p-5 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-primary">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.venue ? 'Venue' : 'Community'}</p>
-        <h2 className="mt-2 text-xl font-semibold">{group.venue?.name || group.name}</h2>
-        <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{group.venue?.tagline || group.description || 'Meet your next pickleball community.'}</p>
-        {group.venue && <p className="mt-3 text-sm">{[group.venue.city, group.venue.state].filter(Boolean).join(', ')}</p>}
-        <span className="mt-4 inline-block text-sm font-medium text-primary">Take a look →</span>
-      </Link>)}</div> : <p>No communities found. Try another name.</p>}
-      <div className="flex gap-3"><Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="outline" disabled={(query.data?.length || 0) < 24} onClick={() => setPage(page + 1)}>Next</Button></div>
-    </>}
-    <GuestAccountPrompt action="join communities, connect with players, and plan your next game" />
-  </div>;
+  const [params, setParams] = useSearchParams();
+  const search = params.get("q") || "";
+  const debounced = useDebounce(search, 250);
+  const page = Math.max(
+    0,
+    Math.min(416, Math.floor(Number(params.get("page"))) || 0),
+  );
+  const area = {
+    city: params.get("city") || "",
+    state: params.get("state") || "",
+  };
+  const query = useCommunityDiscovery(debounced, page, area);
+  const change = (values: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(values))
+      value ? next.set(key, value) : next.delete(key);
+    setParams(next, { replace: true });
+  };
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+          Find your people
+        </p>
+        <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+          Discover communities
+        </h1>
+        <p className="mt-3 max-w-2xl text-muted-foreground">
+          Find local venues, player crews, and your next game.
+        </p>
+      </div>
+      <CommunitySearchControls
+        search={search}
+        onSearch={(value) => change({ q: value, page: null })}
+        area={area}
+        onArea={(value) =>
+          change({
+            city: value?.city || null,
+            state: value?.state || null,
+            page: null,
+          })
+        }
+      />
+      {query.isLoading || search !== debounced ? (
+        <p role="status">Finding communities…</p>
+      ) : query.isError ? (
+        <div role="alert" className="space-y-3">
+          <p>We couldn’t load communities. Please try again.</p>
+          <Button variant="outline" onClick={() => void query.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <>
+          {query.data?.items.length ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {query.data.items.map((group) => (
+                <GroupCard key={group.id} group={group} />
+              ))}
+            </div>
+          ) : (
+            <p>No communities found. Try another name, town, or state.</p>
+          )}
+          {(page > 0 || query.data?.has_more) && (
+            <nav
+              aria-label="Community result pages"
+              className="flex items-center justify-between gap-3"
+            >
+              <Button
+                variant="outline"
+                disabled={!page || query.isFetching}
+                onClick={() =>
+                  change({ page: page === 1 ? null : String(page - 1) })
+                }
+              >
+                Previous
+              </Button>
+              <span className="text-sm">Page {page + 1}</span>
+              <Button
+                variant="outline"
+                disabled={!query.data?.has_more || query.isFetching}
+                onClick={() => change({ page: String(page + 1) })}
+              >
+                Next
+              </Button>
+            </nav>
+          )}
+        </>
+      )}
+      <GuestAccountPrompt action="join communities, connect with players, and plan your next game" />
+    </div>
+  );
 }

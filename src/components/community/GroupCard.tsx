@@ -1,144 +1,176 @@
-import { memo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import type { GroupWithMembership } from '@/hooks/useGroups';
-import { fetchGroupPosts } from '@/hooks/useGroupPosts';
-import { fetchGroupEvents } from '@/hooks/useGroupEvents';
-import { CommunityBrandMark } from './CommunityBrandMark';
-
-interface GroupCardProps {
+import { memo } from "react";
+import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Users,
+  Lock,
+  Eye,
+  BadgeCheck,
+  MapPin,
+  ArrowUpRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import type { GroupWithMembership } from "@/hooks/useGroups";
+import { fetchGroupPosts } from "@/hooks/useGroupPosts";
+import { fetchGroupEvents } from "@/hooks/useGroupEvents";
+import { CommunityBrandMark } from "./CommunityBrandMark";
+import { VenueCoverImage } from "@/components/venue/VenueCoverImage";
+import { normalizeHex } from "@/lib/venues/branding";
+import { communityLocation } from "@/lib/community/discovery";
+const typeLabels: Record<string, string> = {
+  crew: "Player crew",
+  league: "League",
+  open_play: "Open play",
+  venue_official: "Venue community",
+  tournament: "Tournament",
+  club: "Pickleball club",
+};
+interface Props {
   group: GroupWithMembership;
   showJoinButton?: boolean;
   onJoin?: (groupId: string) => Promise<void>;
   isJoining?: boolean;
 }
-
-const typeLabels: Record<string, string> = {
-  crew: 'Crew',
-  league: 'League',
-  open_play: 'Open Play',
-  venue_official: 'Venue Official',
-  tournament: 'Tournament',
-  club: 'Club / Venue',
-};
-
-const typeColors: Record<string, string> = {
-  crew: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  league: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  open_play: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  venue_official: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  tournament: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  club: 'bg-primary/10 text-primary',
-};
-
-export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCardProps) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const isMember = !!group.membership;
-  
-  const roleIcon = group.membership?.role === 'owner' 
-    ? <Crown className="h-3 w-3" />
-    : group.membership?.role === 'moderator'
-    ? <Shield className="h-3 w-3" />
-    : null;
-
-  const roleLabel = group.membership?.role === 'owner'
-    ? 'Owner'
-    : group.membership?.role === 'moderator'
-    ? 'Mod'
-    : 'Member';
-
-  const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
-
-  // Prefetch group data on hover for instant navigation
-  const handleMouseEnter = () => {
-    // Prefetch posts
-    queryClient.prefetchQuery({
-      queryKey: ['group-posts', group.id],
+export const GroupCard = memo(function GroupCard({
+  group,
+  showJoinButton,
+  onJoin,
+  isJoining,
+}: Props) {
+  const client = useQueryClient();
+  const isMember = group.membership?.status === "active";
+  const verified =
+    group.type === "venue_official" && group.is_venue_verified === true;
+  const accent = normalizeHex(group.venue?.primary_color) || "#166f63";
+  const place = communityLocation(group);
+  const location = [place.city, place.state].filter(Boolean).join(", ");
+  const unread = group.unread_count ?? 0;
+  const prefetch = () => {
+    if (!isMember) return;
+    void client.prefetchQuery({
+      queryKey: ["group-posts", group.id],
       queryFn: () => fetchGroupPosts(group.id),
-      staleTime: 30 * 1000,
+      staleTime: 30000,
     });
-    
-    // Prefetch events
-    queryClient.prefetchQuery({
-      queryKey: ['group-events', group.id],
+    void client.prefetchQuery({
+      queryKey: ["group-events", group.id],
       queryFn: () => fetchGroupEvents(group.id),
-      staleTime: 60 * 1000,
+      staleTime: 60000,
     });
   };
-
   return (
-    <button
-      type="button"
-      className="group w-full min-h-[72px] rounded-2xl border border-border/60 bg-card/80 p-3 text-left shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.45)] transition-[transform,background-color,border-color] hover:border-primary/25 hover:bg-card active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
-      onClick={() => navigate(`/player/community/group/${group.id}`)}
-      onMouseEnter={handleMouseEnter}
+    <article
+      className={cn(
+        "group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md",
+        verified && "shadow-[0_8px_24px_-18px_hsl(var(--foreground)/0.3)]",
+      )}
     >
-      <div className="flex items-center gap-3">
-        {/* Avatar - smaller, more refined */}
-        <CommunityBrandMark group={group} className="h-11 w-11 text-[44px] ring-1 ring-border/40" />
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-medium text-sm text-foreground line-clamp-2 break-words">{group.name}</h3>
-            {isVerifiedVenue && (
-              <BadgeCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-            )}
+      <Link
+        to={"/player/community/group/" + group.id}
+        className="flex min-w-0 flex-1 flex-col rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        onMouseEnter={prefetch}
+      >
+        {verified && (
+          <div
+            className="relative h-20 overflow-hidden"
+            style={{ background: accent }}
+          >
+            <VenueCoverImage
+              src={group.venue?.cover_image_url || group.cover_url}
+              crop={group.venue?.cover_crop}
+              fit={group.venue?.cover_image_fit}
+              focalPoint={group.venue?.cover_focal_point}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
+            <span className="absolute bottom-3 left-4 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-900">
+              <BadgeCheck className="h-3.5 w-3.5 text-emerald-700" />
+              Verified venue
+            </span>
           </div>
-          
-          {/* Subtitle — for groups you're in, show just your role (clean,
-              TeamReach-style). For public/explore groups you're not in yet,
-              show type + member count so you can evaluate before joining. */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-            {isMember ? (
-              <span className="flex items-center gap-1 shrink-0">
-                {roleIcon}
-                {roleLabel}
-              </span>
-            ) : (
-              <>
-                <span className="truncate">{typeLabels[group.type]}</span>
-                <span className="opacity-50">•</span>
-                <span className="flex items-center gap-1 shrink-0">
-                  <Users className="h-3 w-3" />
-                  {group.member_count}
-                </span>
-              </>
-            )}
+        )}
+        <div className="flex min-w-0 items-start gap-3 p-4">
+          <CommunityBrandMark
+            group={group}
+            className="h-12 w-12 text-[48px] ring-1 ring-border/40"
+          />
+          <div className="min-w-0 flex-1">
+            <h3 className="break-words text-base font-semibold leading-snug text-foreground">
+              {group.venue?.name || group.name}
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {typeLabels[group.type] || "Community"}
+              {isMember &&
+                (group.membership?.role === "owner"
+                  ? " · Owner"
+                  : group.membership?.role === "moderator"
+                    ? " · Moderator"
+                    : " · Joined")}
+            </p>
           </div>
+          <ArrowUpRight
+            className="mt-1 h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
         </div>
-
-        {/* Right side */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Unread badge */}
-          {group.unread_count && group.unread_count > 0 && (
-            <span className="bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-              {group.unread_count > 99 ? '99+' : group.unread_count}
+        {(group.venue?.tagline || group.description) && (
+          <p className="px-4 pb-3 text-sm leading-5 text-muted-foreground line-clamp-2">
+            {group.venue?.tagline || group.description}
+          </p>
+        )}
+        <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4 text-xs text-muted-foreground">
+          {location && (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="break-words">{location}</span>
             </span>
           )}
-          {/* Join button for non-members */}
-          {showJoinButton && !isMember && onJoin && (
+          <span className="inline-flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" aria-hidden />
+            {group.member_count} members
+          </span>
+          {group.visibility === "private" && (
+            <span className="inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              Private
+            </span>
+          )}
+          {group.visibility === "unlisted" && (
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              Unlisted
+            </span>
+          )}
+          {unread > 0 && (
+            <span
+              aria-label={`${unread} unread updates`}
+              className="ml-auto rounded-full bg-blue-100 px-2 py-1 font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-200"
+            >
+              {unread > 99 ? "99+" : unread} new
+            </span>
+          )}
+        </div>
+      </Link>
+      {showJoinButton &&
+        !isMember &&
+        onJoin &&
+        group.join_method !== "invite_only" && (
+          <div className="border-t border-border/60 px-4 py-3">
             <Button
               size="sm"
-              variant="default"
-              className="h-9 rounded-xl px-3 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                onJoin(group.id);
-              }}
+              variant="outline"
+              className="min-h-10 w-full rounded-xl"
               disabled={isJoining}
+              onClick={() => void onJoin(group.id)}
             >
-              {isJoining ? '...' : group.join_method === 'request_to_join' ? 'Request' : 'Join'}
+              {isJoining
+                ? "Joining…"
+                : group.join_method === "request_to_join"
+                  ? "Request to join"
+                  : "Join community"}
             </Button>
-          )}
-          <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" />
-        </div>
-      </div>
-    </button>
+          </div>
+        )}
+    </article>
   );
 });

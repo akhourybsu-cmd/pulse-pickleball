@@ -37,7 +37,7 @@ beforeAll(async () => {
     CREATE TABLE venues(id uuid PRIMARY KEY, slug text UNIQUE, name text, address text, city text, state text, phone text, email text, website_url text,
       logo_url text, cover_image_url text, logo_image_fit text, cover_image_fit text, logo_shape text, cover_focal_point text,
       accent_color text, logo_background_color text, background_color text, surface_color text, text_color text, primary_color text, secondary_color text, tagline text, welcome_headline text, welcome_message text, timezone text, hours_of_operation jsonb,
-      is_active bool DEFAULT true, is_published bool DEFAULT true, owner_id uuid, stripe_account_id text,
+      is_active bool DEFAULT true, is_published bool DEFAULT true, is_searchable bool DEFAULT true, owner_id uuid, stripe_account_id text,
       verification_approved_at timestamptz DEFAULT now(),verification_approved_by uuid DEFAULT '${id(99)}');
     CREATE TABLE groups(id uuid PRIMARY KEY, venue_id uuid REFERENCES venues, type text DEFAULT 'club', name text, description text,
       visibility text DEFAULT 'public', join_method text DEFAULT 'open', icon_url text, cover_url text, member_count integer DEFAULT 12,
@@ -69,6 +69,7 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260928230000_venue_address_automation.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930120000_venue_image_framing.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930121000_public_venue_branding.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260930130000_community_discovery.sql', 'utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
@@ -267,4 +268,31 @@ it('projects saved venue framing and logo colors without exposing payment or own
  expect(JSON.stringify(page)).not.toMatch(/SECRET_STRIPE|owner_id/);
  await expect(guest('SELECT venue_brand_identity($1)',[id(1)])).rejects.toThrow(/permission denied/);
  await expect(db.query('UPDATE venues SET logo_crop=$1 WHERE id=$2',[JSON.stringify({x:101,y:0,zoom:4}),id(1)])).rejects.toThrow();
+});
+
+
+describe('community discovery',()=>{
+ it('ranks town then state before popularity, searches beyond twenty rows, and paginates without duplicates',async()=>{
+  await db.exec('BEGIN');
+  try {
+   for(let n=100;n<132;n++) await db.query("INSERT INTO groups(id,name,city,state,member_count) VALUES($1,$2,$3,$4,$5)",[id(n),'Directory crew '+n,n===130?'Attleboro':n===129?'Boston':'Austin',n>=129?'MA':'TX',1000-n]);
+   const discover=async(q='',offset=0)=>(await guest('SELECT discover_communities($1,$2,$3,$4) result',[q,'Attleboro','Massachusetts',offset]))[0].result as any;
+   const first=await discover('Directory');const second=await discover('Directory',24);
+   expect(first.items[0]).toMatchObject({id:id(130),city:'Attleboro',state:'MA'});
+   expect(first.items[1].state).toBe('MA');expect(first.has_more).toBe(true);expect(second.has_more).toBe(false);
+   expect(new Set([...first.items,...second.items].map(x=>x.id)).size).toBe(32);
+   expect((await discover('crew 131')).items.map((x:any)=>x.id)).toEqual([id(131)]);
+   expect((await discover('%')).items).toEqual([]);
+   expect((await discover('Attleboro MA')).items.map((x:any)=>x.id)).toEqual([id(130)]);
+   expect(JSON.stringify(first)).not.toMatch(/invite_code|SECRET|owner_id|settings/);
+  } finally {await db.exec('ROLLBACK');}
+ });
+ it('respects discoverability while preserving direct public venue links',async()=>{
+  await db.exec('BEGIN');try{
+   await db.query('UPDATE venues SET is_searchable=false WHERE id=$1',[id(1)]);
+   const result=(await guest('SELECT discover_communities() result'))[0].result as any;
+   expect(result.items.map((x:any)=>x.id)).toEqual([id(7)]);
+   expect(await preview(1)).not.toBeNull();
+  }finally{await db.exec('ROLLBACK');}
+ });
 });

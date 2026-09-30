@@ -1,144 +1,16 @@
-import { useNavigate } from 'react-router-dom';
-import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-import type { GroupWithMembership } from '@/hooks/useGroups';
-import { CommunityBrandMark } from './CommunityBrandMark';
-
-interface ReorderableGroupListProps {
+import type { GroupWithMembership } from "@/hooks/useGroups";
+import { GroupCard } from "./GroupCard";
+/** Shared cards keep discovery and joined communities visually consistent. */
+export function ReorderableGroupList({
+  groups,
+}: {
   groups: GroupWithMembership[];
-  /**
-   * No-op since drag-to-reorder was removed for a cleaner mobile list.
-   * Prop kept on the API so callers (Community.tsx) don't need to know
-   * about the rewrite. Pass anything — it's ignored.
-   */
   onReorder?: (groups: GroupWithMembership[]) => void;
-}
-
-const typeLabels: Record<string, string> = {
-  crew: 'Crew',
-  league: 'League',
-  open_play: 'Open Play',
-  venue_official: 'Venue Official',
-  tournament: 'Tournament',
-  club: 'Club / Venue',
-};
-
-function GroupRow({ group }: { group: GroupWithMembership }) {
-  const navigate = useNavigate();
-
-  const roleIcon =
-    group.membership?.role === 'owner' ? <Crown className="h-3 w-3" />
-    : group.membership?.role === 'moderator' ? <Shield className="h-3 w-3" />
-    : null;
-  const roleLabel =
-    group.membership?.role === 'owner' ? 'Owner'
-    : group.membership?.role === 'moderator' ? 'Mod'
-    : null; // plain members don't get a label — reduces visual noise
-
-  const visibilityIcon =
-    group.visibility === 'private' ? <Lock className="h-3 w-3" />
-    : group.visibility === 'unlisted' ? <Eye className="h-3 w-3" />
-    : <Globe className="h-3 w-3" />;
-
-  const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
-  const hasUnread = !!group.unread_count && group.unread_count > 0;
-
+}) {
   return (
-    <Card
-      className={cn(
-        'relative overflow-hidden cursor-pointer border transition-all duration-200 active:scale-[0.995]',
-        // Every card carries a soft gold border so the list reads as a
-        // set of distinct, brand-aligned tiles that pop off the page.
-        hasUnread
-          // A group with a notification stands out hard: brighter gold
-          // border, a faint gold wash, and a lifted shadow.
-          ? 'border-primary/60 bg-gradient-to-br from-primary/[0.07] to-transparent shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.35)]'
-          : 'border-primary/25 hover:border-primary/50 hover:bg-gradient-to-br hover:from-primary/[0.04] hover:to-transparent',
-      )}
-      onClick={() => navigate(`/player/community/group/${group.id}`)}
-    >
-      {/* Left accent bar — a clear at-a-glance "there's something new
-          here" marker, echoing the unread treatment in the chat inbox. */}
-      {hasUnread && (
-        <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" aria-hidden />
-      )}
-
-      <div className="p-4 flex items-center gap-3">
-        {/* Shared identity keeps logos and fallback initials consistent. */}
-        <CommunityBrandMark group={group} className="h-12 w-12 text-[48px] ring-1 ring-border/40" />
-
-        {/* Content — title row + one tight metadata line. The role +
-            type + members + visibility used to render as four separate
-            chips that wrapped to 2-3 lines on mobile; now it's a
-            single inline strip with subtle dot separators. */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <h3 className={cn(
-              'font-bold text-[15px] leading-tight truncate',
-              hasUnread ? 'text-foreground' : 'text-foreground/90',
-            )}>
-              {group.name}
-            </h3>
-            {isVerifiedVenue && (
-              <BadgeCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Official venue group" />
-            )}
-            {/* Pulsing gold dot — the primary "new activity" tell that sits
-                right against the group name. */}
-            {hasUnread && (
-              <span className="relative flex h-2 w-2 shrink-0" aria-label="New activity">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-              </span>
-            )}
-          </div>
-
-          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-            {roleLabel && (
-              <>
-                <span className="inline-flex items-center gap-1 text-foreground/80">
-                  {roleIcon}
-                  {roleLabel}
-                </span>
-                <span className="opacity-40">·</span>
-              </>
-            )}
-            <span className="truncate">{typeLabels[group.type]}</span>
-            <span className="opacity-40">·</span>
-            <span className="inline-flex items-center gap-1 shrink-0">
-              <Users className="h-3 w-3" />
-              {group.member_count}
-            </span>
-            <span className="opacity-40">·</span>
-            <span className="inline-flex items-center text-muted-foreground/70 shrink-0">
-              {visibilityIcon}
-            </span>
-          </div>
-        </div>
-
-        {/* Right side — unread chip + chevron */}
-        <div className="flex items-center gap-2 shrink-0">
-          {group.unread_count && group.unread_count > 0 ? (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tabular-nums">
-              {group.unread_count > 99 ? '99+' : group.unread_count}
-            </span>
-          ) : null}
-          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// Export name preserved so callers don't need to change. Drag-to-reorder
-// was removed for a cleaner list; the grip handle on the left of each
-// row added visual noise for a low-engagement power-user feature.
-// Reordering can come back as a long-press affordance later if needed.
-export function ReorderableGroupList({ groups }: ReorderableGroupListProps) {
-  return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {groups.map((group) => (
-        <GroupRow key={group.id} group={group} />
+        <GroupCard key={group.id} group={group} />
       ))}
     </div>
   );
