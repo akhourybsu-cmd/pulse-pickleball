@@ -9,7 +9,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import { VenueEmailIntegration } from './VenueEmailIntegration';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { venuePublicUrl } from '@/lib/communityAccess';
-import { ADDRESS_STATUS, suggestedVenueAddress, venueAddressError, venueAddressUrl } from '@/lib/venues/address';
+import { venueAddressStatus, suggestedVenueAddress, venueAddressError, venueAddressUrl } from '@/lib/venues/address';
 import { checkVenueAddress, getVenueAddressSetup, requestVenueAddress, VENUE_INTEGRATIONS, type AddressAvailability, type VenueAddressSetup } from '@/lib/venues/integrations';
 
 export function ShareVenueAddress({ url, label }: { url: string; label: string }) {
@@ -43,7 +43,7 @@ export function VenueAddressCard({ setup, onCheck, onRequest, onRefresh, refresh
   const [busy, setBusy] = useState<'check' | 'request' | null>(null);
   const [failure, setFailure] = useState('');
   const connection = setup.connection;
-  const status = connection && ADDRESS_STATUS[connection.status];
+  const status = connection && venueAddressStatus(connection.status, setup.public_ready);
   const validation = venueAddressError(slug);
   const eligible = setup.verified && setup.active && !setup.private_sample;
   const connected = connection?.status === 'connected';
@@ -83,7 +83,7 @@ export function VenueAddressCard({ setup, onCheck, onRequest, onRefresh, refresh
           <div className="space-y-2"><Label htmlFor="venue-address-name">Choose your address</Label><div className="flex min-w-0 items-center rounded-xl border bg-background focus-within:ring-2 focus-within:ring-ring"><Input id="venue-address-name" value={slug} onChange={event => { setSlug(event.target.value.toLowerCase()); setAvailability(null); setFailure(''); }} maxLength={63} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" aria-describedby="venue-address-help venue-address-feedback" className="h-12 min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0" /><span className="shrink-0 pr-3 text-sm text-muted-foreground">.pulsepb.com</span></div><p id="venue-address-help" className="text-xs leading-5 text-muted-foreground">Use your venue name, adding your city if needed. Choose carefully: this address stays with your venue.</p></div>
           <p id="venue-address-feedback" aria-live="polite" className="text-sm leading-6">{validation ?? (availability?.available ? 'That address is available. Ready to make it yours?' : availability?.reason) ?? 'Check availability to see if this name is yours to use.'}</p>
           <Button type="submit" disabled={!!validation || !!busy} className="min-h-11">{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busy === 'check' ? 'Checking…' : busy === 'request' ? 'Requesting…' : availability?.available && availability.slug === slug ? 'Request this address' : 'Check availability'}</Button>
-          {availability?.available && <p className="text-xs leading-5 text-muted-foreground">We’ll reserve the name and start setup automatically. You can follow progress right here.</p>}
+          {availability?.available && <p className="text-xs leading-5 text-muted-foreground">We’ll reserve the name and start setup automatically. You can follow progress here and receive a notification when your public venue website is live.</p>}
         </fieldset>
       </form>}
       {failure && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm">{failure}</p>}

@@ -25,10 +25,11 @@ describe('venue integration setup', () => {
       expect(html).toContain('not ready to share yet'); expect(html).not.toContain('href="https://palace.pulsepb.com"');
     }
     const html=renderToStaticMarkup(<VenueAddressCard {...props({connection:connected,public_ready:false})} />);
-    expect(html).toContain('Review access &amp; privacy'); expect(html).not.toContain('href="https://palace.pulsepb.com"'); expect(html).not.toContain('Copy venue link');
+    expect(html).toContain('Address ready · page private'); expect(html).not.toContain('Website live'); expect(html).toContain('Review access &amp; privacy'); expect(html).not.toContain('href="https://palace.pulsepb.com"'); expect(html).not.toContain('Copy venue link');
   });
   it('offers verified connected links, and a clear verification/sample path', () => {
-    expect(renderToStaticMarkup(<VenueAddressCard {...props({connection:connected})} />)).toContain('href="https://palace.pulsepb.com"');
+    const live=renderToStaticMarkup(<VenueAddressCard {...props({connection:connected})} />);
+    expect(live).toContain('Website live'); expect(live).toContain('live and ready to share'); expect(live).toContain('href="https://palace.pulsepb.com"');
     expect(renderToStaticMarkup(<VenueAddressCard {...props({verified:false})} />)).toContain('Review ownership verification');
     const sample=renderToStaticMarkup(<VenueAddressCard {...props({private_sample:true})} />);
     expect(sample).toContain('This sample stays private'); expect(sample).not.toContain('<input'); expect(sample).not.toContain('Copy venue link');
