@@ -47,6 +47,7 @@ async function seedMatch(n = 10, ranked = true, date = "2026-09-01") {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role BYPASSRLS;
+ CREATE FUNCTION pulse_has_required_mfa() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
  CREATE TABLE profiles(id uuid PRIMARY KEY,initial_self_rating numeric DEFAULT 3.5,current_rating numeric DEFAULT 3.5,week_start_rating numeric,week_start_date date,total_matches integer DEFAULT 0,wins integer DEFAULT 0,losses integer DEFAULT 0,total_points_for integer DEFAULT 0,total_points_against integer DEFAULT 0,updated_at timestamptz);
  CREATE TABLE matches(id uuid PRIMARY KEY,status text,verification_status text,voided boolean DEFAULT false,count_for_rating boolean DEFAULT true,team1_score integer,team2_score integer,match_date timestamptz,created_at timestamptz DEFAULT now(),week_start date DEFAULT '2026-08-31',match_type text DEFAULT 'league');
  CREATE TABLE match_participants(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),match_id uuid REFERENCES matches ON DELETE CASCADE,player_id uuid REFERENCES profiles,team integer,rating_before numeric,rating_after numeric,rating_change numeric);
@@ -215,6 +216,14 @@ it("repairs only recorded rating caches, preserves history and audits each corre
   );
   const repair = read("20260930180000_reconcile_recorded_rating_cache.sql");
   await db.exec(repair);
+  await db.exec(read("20260930181000_rating_audit_mfa_policy.sql"));
+  expect(
+    (
+      await db.query(
+        "SELECT polpermissive FROM pg_policy WHERE polrelid='public.rating_cache_repair_audit'::regclass AND polname='pulse_required_mfa'",
+      )
+    ).rows,
+  ).toEqual([{ polpermissive: false }]);
   expect((await stats()).slice(0, 4)).toEqual(original);
   expect((await stats())[4].current_rating).toBe("4.25");
   expect((await db.query("SELECT * FROM matches ORDER BY id")).rows).toEqual(
@@ -272,9 +281,6 @@ it("restores a player's own starting rating when their only approved history is 
       source_match_id: null,
     }),
   ]);
-  expect(
-    Object.values((await db.query(matchIntegrityQuery)).rows[0].checks),
-  ).toEqual(expect.arrayContaining([0]));
   expect(
     Object.values((await db.query(matchIntegrityQuery)).rows[0].checks).every(
       (value) => value === 0,
