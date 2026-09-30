@@ -1,85 +1,75 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { GroupSettings, parseGroupSettings, DEFAULT_GROUP_SETTINGS } from '@/types/groupSettings';
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "./useAuthState";
+import { useToast } from "./use-toast";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import {
+  GroupSettings,
+  parseGroupSettings,
+  DEFAULT_GROUP_SETTINGS,
+} from "@/types/groupSettings";
 export function useGroupSettings(groupId: string | undefined) {
-  const [settings, setSettings] = useState<GroupSettings>(DEFAULT_GROUP_SETTINGS);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { user } = useAuthState();
+  const client = useQueryClient();
   const { toast } = useToast();
-
-  const fetchSettings = useCallback(async () => {
-    if (!groupId) return;
-    
-    setLoading(true);
-    try {
+  const key = ["group-settings", groupId, user?.id];
+  const query = useQuery({
+    queryKey: key,
+    enabled: !!groupId && !!user,
+    queryFn: async () => {
       const { data, error } = await supabase
-        .from('groups')
-        .select('settings')
-        .eq('id', groupId)
+        .from("groups")
+        .select("settings")
+        .eq("id", groupId!)
         .single();
-
       if (error) throw error;
-      setSettings(parseGroupSettings(data?.settings));
-    } catch (error) {
-      console.error('Error fetching group settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
-
-  const updateSettings = async (updates: Partial<GroupSettings>): Promise<boolean> => {
-    if (!groupId) return false;
-    
-    setSaving(true);
-    const newSettings = { ...settings, ...updates };
-    
-    // Optimistic update
-    setSettings(newSettings);
-    
-    try {
-      const { error } = await supabase
-        .from('groups')
-        .update({ settings: newSettings })
-        .eq('id', groupId);
-
-      if (error) throw error;
-      
-      toast({ title: 'Settings saved' });
-      return true;
-    } catch (error: any) {
-      // Revert on error
-      setSettings(settings);
-      console.error('Error updating settings:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save settings',
-        variant: 'destructive',
+      return parseGroupSettings(data.settings);
+    },
+  });
+  const mutation = useMutation({
+    mutationFn: async (updates: Partial<GroupSettings>) => {
+      if (!groupId || !user) throw new Error("Sign in and choose a community");
+      const { data, error } = await supabase.rpc("patch_group_settings", {
+        p_group_id: groupId,
+        p_patch: updates,
       });
+      if (error) throw error;
+      return parseGroupSettings(data);
+    },
+    onSuccess: async (settings) => {
+      client.setQueryData(key, settings);
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["group-settings", groupId] }),
+        client.invalidateQueries({ queryKey: ["group-detail", groupId] }),
+        client.invalidateQueries({ queryKey: ["groups"] }),
+      ]);
+      toast({ title: "Settings saved" });
+    },
+    onError: (error) =>
+      toast({
+        title: "Settings not saved",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      }),
+  });
+  async function updateSettings(updates: Partial<GroupSettings>) {
+    try {
+      await mutation.mutateAsync(updates);
+      return true;
+    } catch {
       return false;
-    } finally {
-      setSaving(false);
     }
-  };
-
-  const updateSetting = async <K extends keyof GroupSettings>(
-    key: K,
-    value: GroupSettings[K]
-  ): Promise<boolean> => {
-    return updateSettings({ [key]: value });
-  };
-
+  }
   return {
-    settings,
-    loading,
-    saving,
+    settings: query.data ?? DEFAULT_GROUP_SETTINGS,
+    loading: query.isPending,
+    saving: mutation.isPending,
+    error: query.error,
     updateSettings,
-    updateSetting,
-    refetch: fetchSettings,
+    updateSetting: <K extends keyof GroupSettings>(
+      key: K,
+      value: GroupSettings[K],
+    ) => updateSettings({ [key]: value }),
+    refetch: query.refetch,
   };
 }

@@ -11,7 +11,6 @@ import {
   Calendar,
   Users,
   Award,
-  Undo2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -47,11 +46,11 @@ interface NotificationCenterProps {
     earlier: Notification[];
   };
   onClose: () => void;
-  onMarkAsRead: (id: string) => void;
-  onMarkAllAsRead: () => void;
-  onDelete: (id: string) => void;
-  onClearAll: () => void;
-  onUndo?: (notification: Notification) => void;
+  onMarkAsRead: (id: string) => Promise<boolean> | void;
+  onMarkAllAsRead: () => Promise<boolean> | void;
+  onDelete: (id: string) => Promise<boolean> | void;
+  onClearAll: () => Promise<boolean> | void;
+  onUndo?: (notification: Notification) => Promise<boolean> | void;
 }
 
 // Tournament category dropped during the player-only beta — tournament
@@ -90,13 +89,12 @@ export function NotificationCenter({
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [recentlyDeleted, setRecentlyDeleted] = useState<Notification | null>(null);
 
   const handleSelect = useCallback(async (notificationId: string) => {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
 
-    await onMarkAsRead(notificationId);
+    if (await onMarkAsRead(notificationId) === false) return;
     onClose();
     
     if (notification.link) {
@@ -114,11 +112,10 @@ export function NotificationCenter({
     }
   }, [notifications, onMarkAsRead, onClose, navigate]);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const notification = notifications.find(n => n.id === id);
     if (notification) {
-      setRecentlyDeleted(notification);
-      onDelete(id);
+      if (await onDelete(id) === false) return;
       
       // Show undo toast
       toast("Notification dismissed", {
@@ -135,8 +132,8 @@ export function NotificationCenter({
     }
   }, [notifications, onDelete, onUndo]);
 
-  const handleClearAll = useCallback(() => {
-    onClearAll();
+  const handleClearAll = useCallback(async () => {
+    if (await onClearAll() === false) return;
     setShowClearDialog(false);
     toast("All notifications cleared");
   }, [onClearAll]);

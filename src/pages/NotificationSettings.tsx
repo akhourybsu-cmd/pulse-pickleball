@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useAuthState } from '@/hooks/useAuthState';
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,15 +26,8 @@ const categoryConfig = [
 
 export default function NotificationSettings() {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
-  }, []);
-
-  const { preferences, loading, updatePreference, isEnabled } = useNotificationPreferences(userId);
+  const {user}=useAuthState();
+  const { loading, saving, updatePreference, isEnabled } = useNotificationPreferences(user?.id);
 
   if (loading) {
     return (
@@ -96,6 +90,8 @@ export default function NotificationSettings() {
                   </div>
                   <Switch
                     checked={enabled}
+                    disabled={saving}
+                    aria-label={cat.label + " notifications"}
                     onCheckedChange={(checked) => updatePreference(cat.id, { in_app_enabled: checked })}
                   />
                 </div>
