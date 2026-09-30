@@ -6,13 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import { useVenueModules } from '@/hooks/useVenueModules';
-import { VenueStaffProvider } from '@/components/venue/VenueStaffContext';
+import { VenueStaffProvider, useMyVenueRole } from '@/components/venue/VenueStaffContext';
 import { Button } from '@/components/ui/button';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
 import { VenueEntrance } from '@/components/venue/VenueEntrance';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const VenueCommunity = lazy(() => import('./VenueCommunity'));
+const PublicCommunity = lazy(() => import('../public/PublicCommunity'));
 
 /**
  * Chooses the shell for a community.
@@ -34,10 +35,11 @@ export default function GroupRoute() {
   const communityView = params.get('view') === 'community';
   const isVenue = isVenueCommunitiesEnabled() && !!group?.venue_id;
   const modules = useVenueModules(isVenue ? group?.venue_id : null);
+  const venueRole = useMyVenueRole(isVenue ? group?.venue_id : null);
 
   if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetch()} />;
 
-  if (loading) {
+  if (loading || (isVenue && venueRole.loading)) {
     return (
       <div className="space-y-4 p-4">
         <Skeleton className="h-44 w-full rounded-2xl" />
@@ -45,6 +47,12 @@ export default function GroupRoute() {
         <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
+  }
+
+  // Signing in alone does not expose conversations or member data. Keep the
+  // same public overview until joining, while preserving staff operations.
+  if (group?.visibility === 'public' && membership?.status !== 'active' && !venueRole.role) {
+    return <PublicCommunity key={groupId} memberContext={{ group, membership }} />;
   }
 
   const moduleError = isVenue && modules.isError && !communityView;

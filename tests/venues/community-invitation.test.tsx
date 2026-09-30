@@ -160,6 +160,20 @@ describe("guest community invite flow", () => {
       expect(peekPostAuthRedirect()).toBe(path);
     }
   );
+  it('opens existing public invitations on the overview without joining as a guest', async () => {
+    const base = state.rpc.getMockImplementation()!;
+    state.rpc.mockImplementation((name,args) => name === 'get_public_community' || name === 'get_public_community_programs' ? {
+      abortSignal: () => Promise.resolve({data:name === 'get_public_community' ? {...preview('RALLY'),visibility:'public',courts:[],venue:null} : [],error:null})
+    } : base(name,args));
+    await mount(); await flush();
+    expect(text()).toContain('Overview');
+    expect(text()).toContain('Welcome to');
+    expect(joins()).toHaveLength(0);
+  });
+  it('removes the signed-out Explore directory while preserving the signed-in destination', async () => {
+    await mount('/player/community');
+    expect(path).toBe('/auth?mode=signin&redirect=%2Fplayer%2Fcommunity');
+  });
   it("keeps approval requests distinct from successful membership", async () => {
     state.authenticated = true;
     const base = state.rpc.getMockImplementation()!;

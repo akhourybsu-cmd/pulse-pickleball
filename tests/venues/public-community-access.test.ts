@@ -46,6 +46,9 @@ beforeAll(async () => {
     CREATE TABLE private_venue_sandboxes(venue_id uuid, group_id uuid);
     CREATE TABLE venue_module_access(venue_id uuid,module_key text,enabled boolean,expires_at timestamptz);
     CREATE TABLE group_messages(body text); INSERT INTO group_messages VALUES('Private conversation');
+    CREATE TABLE group_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),group_id uuid,venue_id uuid,parent_event_id uuid,canceled_at timestamptz,title text,description text,event_format text DEFAULT 'open_play',start_time timestamptz DEFAULT now()+interval '1 day',end_time timestamptz DEFAULT now()+interval '1 day 2 hours',capacity integer,skill_level_min numeric,skill_level_max numeric,price_cents integer DEFAULT 1500,currency text DEFAULT 'usd',registration_paused boolean DEFAULT false,created_by uuid,private_notes text);
+    ALTER TABLE group_events ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT ON group_events TO anon;
     ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
     ALTER TABLE venues ENABLE ROW LEVEL SECURITY;
     ALTER TABLE group_messages ENABLE ROW LEVEL SECURITY;
@@ -70,10 +73,30 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260930120000_venue_image_framing.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930121000_public_venue_branding.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20260930130000_community_discovery.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260930190000_public_community_schedule.sql', 'utf8'));
 }, 30_000);
 afterAll(async () => { await db?.close(); });
 
 describe('anonymous community projection', () => {
+  it('publishes only upcoming public program fields, excluding rentals, holds, canceled events and private groups', async () => {
+    for (const [n,format] of [[1,'open_play'],[1,'reservation'],[1,'program_hold'],[3,'open_play'],[7,'social']] as const) {
+      await db.query('INSERT INTO group_events(group_id,venue_id,title,event_format,description,private_notes,created_by) VALUES($1,$2,$3,$4,$5,$6,$1)', [id(n),n===7?null:id(n),`Session ${format}`,format,'Program description','PRIVATE_NOTES']);
+    }
+    await db.query("INSERT INTO group_events(group_id,venue_id,title,canceled_at) VALUES($1,$1,'Canceled',now())",[id(1)]);
+    await db.query("INSERT INTO group_events(group_id,venue_id,title,start_time,end_time) VALUES($1,$1,'Past',now()-interval '2 days',now()-interval '1 day')",[id(1)]);
+    await db.query("INSERT INTO group_events(group_id,venue_id,title,parent_event_id) VALUES($1,$1,'Internal hold',$1)",[id(1)]);
+    await db.query("INSERT INTO group_events(group_id,venue_id,title) VALUES($1,$2,'Other venue')",[id(1),id(2)]);
+    const rows = await guest('SELECT get_public_community_programs($1) AS event',[id(1)]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].event).toMatchObject({title:'Session open_play',price_cents:1500,description:'Program description'});
+    expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_NOTES|created_by|private_notes|reservation|Other venue|Internal hold/);
+    expect(await guest('SELECT * FROM group_events')).toEqual([]);
+    expect(await guest('SELECT get_public_community_programs($1)',[id(3)])).toEqual([]);
+    expect((await guest('SELECT get_public_community_programs($1) AS event',[id(7)]))[0].event).toMatchObject({title:'Session social'});
+    await db.query("UPDATE groups SET visibility='private' WHERE id=$1",[id(1)]);
+    expect(await guest('SELECT get_public_community_programs($1)',[id(1)])).toEqual([]);
+    await db.query("UPDATE groups SET visibility='public' WHERE id=$1",[id(1)]);
+  });
   it('allows direct public links and ordinary communities', async () => {
     expect(await preview(1)).toMatchObject({ id: id(1), name: 'Community 1', venue: { slug: 'venue-1' } });
     expect(await preview(7)).toMatchObject({ venue: null, courts: [] });

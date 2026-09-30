@@ -9336,6 +9336,10 @@ export type Database = {
         Args: { p_group_id?: string | null; p_venue_slug?: string | null }
         Returns: Json
       }
+      get_public_community_programs: {
+        Args: { p_group_id: string; p_offset?: number }
+        Returns: Json[]
+      }
       list_public_communities: {
         Args: { p_search?: string; p_offset?: number }
         Returns: Json[]

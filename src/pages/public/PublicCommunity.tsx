@@ -1,52 +1,472 @@
-import { VenueTheme } from '@/components/venue/VenueTheme';
-import { useState } from 'react';
-import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { CalendarDays, MapPin, MessageCircle, Users } from 'lucide-react';
-import { useAuthState } from '@/hooks/useAuthState';
-import { usePublicCommunity } from '@/hooks/usePublicCommunity';
-import { GuestAccountPrompt } from '@/components/community/GuestAccountPrompt';
-import { CommunityHero } from '@/components/community/CommunityHero';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { publicWebsiteUrl } from '@/lib/communityAccess';
+import { useState } from "react";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { ArrowUpRight, MessageCircle, Users } from "lucide-react";
+import { useAuthState } from "@/hooks/useAuthState";
+import {
+  usePublicCommunity,
+  usePublicCommunityPrograms,
+} from "@/hooks/usePublicCommunity";
+import type { Group, GroupMember } from "@/hooks/useGroups";
+import { GuestAccountPrompt } from "@/components/community/GuestAccountPrompt";
+import { CommunityHero } from "@/components/community/CommunityHero";
+import { CommunityJoinAction } from "@/components/community/CommunityJoinAction";
+import { CommunityAccessPreview } from "@/components/community/CommunityAccessPreview";
+import { VenueTheme } from "@/components/venue/VenueTheme";
+import { VenueHome } from "@/components/venue/VenueHome";
+import { VenueClubAbout } from "@/components/venue/VenueClubHome";
+import { VenueEventCard } from "@/components/venue/VenueEventCard";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { parseVenueHours } from "@/lib/venues/hours";
+import { eventSchedule } from "@/lib/venues/eventPresentation";
+import { formatMoney } from "@/lib/payments";
 
-export default function PublicCommunity() {
+export default function PublicCommunity({
+  memberContext,
+  publicGroupId,
+}: {
+  publicGroupId?: string;
+  memberContext?: { group: Group; membership: GroupMember | null };
+}) {
   const { groupId, slug } = useParams<{ groupId: string; slug: string }>();
   const { isAuthenticated } = useAuthState();
   const location = useLocation();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const query = usePublicCommunity(groupId, slug);
-  const [intent, setIntent] = useState<{ action: string; returnTo: string } | null>(null);
-  if (query.isLoading) return <p role="status" className="py-16 text-center">Opening the community…</p>;
-  if (query.isError) return <div role="alert" className="space-y-4 py-12 text-center"><h1 className="text-2xl font-semibold">Let’s try that again</h1><p>We couldn’t load this page. Your link is still here.</p><Button onClick={() => void query.refetch()}>Try again</Button></div>;
+  const query = usePublicCommunity(publicGroupId || groupId, slug);
+  const requestedTab = params.get("tab") || "home";
+  const tab = ["events", "play", "schedule"].includes(requestedTab)
+    ? "events"
+    : ["feed", "members", "files"].includes(requestedTab)
+      ? "feed"
+      : ["book", "chat", "more"].includes(requestedTab)
+        ? requestedTab
+        : "home";
+  const page =
+    tab === "events"
+      ? Math.max(0, Math.min(416, Math.floor(Number(params.get("page"))) || 0))
+      : 0;
+  const programs = usePublicCommunityPrograms(query.data?.id, page);
+  const [intent, setIntent] = useState<{
+    action: string;
+    returnTo: string;
+  } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    params.get("program")
+  );
+  if (query.isLoading)
+    return (
+      <p role="status" className="py-16 text-center">
+        Opening the community…
+      </p>
+    );
+  if (query.isError)
+    return (
+      <section role="alert" className="space-y-4 py-12 text-center">
+        <h1 className="text-2xl font-semibold">Let’s try that again</h1>
+        <p>We couldn’t load this page. Your link is still here.</p>
+        <Button onClick={() => void query.refetch()}>Try again</Button>
+      </section>
+    );
   const group = query.data;
-  if (!group) return <div className="space-y-4 py-12"><h1 className="text-2xl font-semibold">This community isn’t available to browse</h1><p className="text-muted-foreground">It may be private or not published yet. If you’re a member, sign in or use the invite link your host shared.</p><GuestAccountPrompt action="access your communities" /><Link to="/player/community" className="inline-block py-3 underline">Explore communities</Link></div>;
-  if (isAuthenticated && slug) return <Navigate to={`/player/community/group/${group.id}${location.search}${location.hash}`} replace />;
+  if (!group)
+    return (
+      <section className="space-y-4 py-12">
+        <h1 className="text-2xl font-semibold">
+          This community isn’t available to browse
+        </h1>
+        <p className="text-muted-foreground">
+          It may be private or not published yet. Use the invitation your host
+          shared to access a private community.
+        </p>
+        {!isAuthenticated && (
+          <GuestAccountPrompt action="access your communities" />
+        )}
+      </section>
+    );
+  if (isAuthenticated && slug)
+    return (
+      <Navigate
+        to={`/player/community/group/${group.id}${location.search}${location.hash}`}
+        replace
+      />
+    );
   const venue = group.venue;
   const name = venue?.name || group.name;
-  const website = publicWebsiteUrl(venue?.website_url);
-  const tab = params.get('tab') || 'home';
-  const openTab = (value: string) => { const next = new URLSearchParams(params); next.set('tab', value); setParams(next); };
-  const gate = (action: string, destinationTab: string) => {
-    const next = new URLSearchParams(params); next.set('tab', destinationTab);
-    setIntent({ action, returnTo: `${location.pathname}?${next}${location.hash}` });
+  const items = programs.data?.items ?? [];
+  const selected = items.find((event) => event.id === selectedId);
+  const selectedSchedule =
+    selected &&
+    eventSchedule(selected.start_time, selected.end_time, venue?.timezone);
+  const destination = (destinationTab: string, eventId?: string) => {
+    const next = new URLSearchParams(params);
+    next.delete("view");
+    if (!eventId) next.delete("page");
+    next.delete("program");
+    if (destinationTab === "home") next.delete("tab");
+    else next.set("tab", destinationTab);
+    if (eventId) next.set("program", eventId);
+    return `${location.pathname}${next.size ? `?${next}` : ""}${location.hash}`;
   };
-  return <VenueTheme brand={venue} className="min-w-0 space-y-5 [overflow-wrap:anywhere]">
-    <Link to="/player/community" className="inline-block text-sm text-muted-foreground hover:underline">← Explore communities</Link>
-    <CommunityHero group={group} />
-    <GuestAccountPrompt name={name} action={venue?.booking_enabled ? 'join the community, book courts, and connect with players' : 'join the community, post, and connect with players'} />
-    <nav aria-label="Community sections" className="flex gap-2 overflow-x-auto border-b pb-3">
-      {[['home', 'About'], ...(venue ? [['book', 'Courts'], ['events', 'Events']] : []), ['feed', 'Community']].map(([value, label]) => <Button key={value} variant={tab === value ? 'default' : 'ghost'} aria-current={tab === value ? 'page' : undefined} onClick={() => openTab(value)} className="min-h-11">{label}</Button>)}
-    </nav>
-    {venue && tab === 'events' ? <section className="space-y-4 rounded-2xl border p-6">
-      <CalendarDays className="h-7 w-7 text-primary" aria-hidden="true" />
-      <h2 className="text-2xl font-semibold">Events at {name}</h2>
-      <p className="max-w-2xl text-sm leading-7 text-muted-foreground">Sign in to browse the schedule, see session times and available spots, and join an event. Your account is free; any event prices and venue requirements are shown before you sign up.</p>
-      <Button className="min-h-11" onClick={() => gate('browse the schedule and sign up for events', 'events')}>Explore events</Button>
-    </section> : tab === 'home' ? <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
-      <section className="rounded-2xl border p-6"><h2 className="text-2xl font-semibold">{venue?.welcome_headline || `Welcome to ${name}`}</h2><p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{venue?.welcome_message || group.description || 'A place to connect over pickleball. Take a look around and join us when you’re ready.'}</p><Button className="mt-5 min-h-11" onClick={() => gate(group.join_method === 'invite_only' ? 'use your invitation and join the community' : 'join this community', 'feed')}>{group.join_method === 'request_to_join' ? 'Request to join' : group.join_method === 'invite_only' ? 'Join with an invitation' : 'Join the community'}</Button></section>
-      <section className="rounded-2xl border p-6"><h2 className="text-lg font-semibold">{venue ? 'Plan your visit' : 'Meet the community'}</h2>{venue && <p className="mt-4 flex gap-2 text-sm leading-6"><MapPin className="mt-1 h-4 w-4 shrink-0" />{[venue.address, venue.city, venue.state].filter(Boolean).join(', ') || 'Location details coming soon'}</p>}<p className="mt-4 flex items-center gap-2 text-sm"><Users className="h-4 w-4" />{group.member_count || 0} community members</p>{website && <a className="mt-4 inline-block py-2 text-sm underline" href={website} target="_blank" rel="noopener noreferrer">Visit venue website ↗</a>}<p className="mt-3 text-xs leading-5 text-muted-foreground">A free PULSE account connects you with the community. Venue fees and membership requirements may still apply.</p></section>
-    </div> : tab === 'book' && venue ? <section className="space-y-4"><div><h2 className="text-2xl font-semibold">Find your court</h2><p className="mt-2 text-sm text-muted-foreground">Explore the courts. Join the community to plan your next game.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{group.courts.map(court => <article key={court.id} className="rounded-2xl border p-5"><h3 className="font-semibold">{court.name || `Court ${court.court_number}`}</h3><p className="mt-2 text-sm text-muted-foreground">{[court.court_type, court.surface_type].filter(Boolean).join(' · ')}</p></article>)}</div>{!group.courts.length && <p className="text-sm text-muted-foreground">Court details are coming soon.</p>}{venue.booking_enabled && <Button className="min-h-11" onClick={() => gate('check availability and book a court', 'book')}>Check availability</Button>}</section> : <section className="space-y-4"><h2 className="text-2xl font-semibold">There’s more waiting for you</h2><p className="text-sm leading-6 text-muted-foreground">Join PULSE to see community activity and take part. Private conversations and member details are shared according to the community’s access settings.</p><div className="grid gap-3 sm:grid-cols-3">{[{ label: 'Events & play', action: 'explore events and join a game', tab: venue ? 'play' : 'schedule', icon: CalendarDays }, { label: 'Posts & updates', action: 'read updates and share a post', tab: 'feed', icon: Users }, { label: 'Community chat', action: 'connect with the community in chat', tab: 'chat', icon: MessageCircle }].map(item => <Button key={item.tab} variant="outline" className="min-h-16 justify-start gap-3 whitespace-normal" onClick={() => gate(item.action, item.tab)}><item.icon className="h-5 w-5 shrink-0" />{item.label}</Button>)}</div></section>}
-    <Dialog open={!!intent} onOpenChange={open => { if (!open) setIntent(null); }}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>Join in with a free account</DialogTitle><DialogDescription>Create a free PULSE account to {intent?.action}. Any community approval or venue requirements still apply.</DialogDescription></DialogHeader><GuestAccountPrompt name={name} action={intent?.action} returnTo={intent?.returnTo} /><Button variant="ghost" className="min-h-11" onClick={() => setIntent(null)}>Keep looking around</Button></DialogContent></Dialog>
-  </VenueTheme>;
+  const openTab = (value: string) => {
+    const next = new URLSearchParams(params);
+    next.delete("view");
+    next.delete("page");
+    next.delete("program");
+    if (value === "home") next.delete("tab");
+    else next.set("tab", value);
+    setParams(next);
+  };
+  const gate = (action: string, destinationTab = tab, eventId?: string) => {
+    const returnTo = destination(destinationTab, eventId);
+    setSelectedId(null);
+    if (memberContext) navigate(returnTo, { replace: true });
+    setIntent({ action, returnTo });
+  };
+  const access = (action: string, returnTo?: string) =>
+    memberContext ? (
+      <CommunityJoinAction
+        group={memberContext.group}
+        membership={memberContext.membership}
+      />
+    ) : (
+      <GuestAccountPrompt name={name} action={action} returnTo={returnTo} />
+    );
+  const joinLabel =
+    group.join_method === "request_to_join"
+      ? "Request to join"
+      : group.join_method === "invite_only"
+        ? "Join with an invitation"
+        : "Join the community";
+  const schedule = (
+    <section className="space-y-4" aria-label="Public event schedule">
+      <div>
+        <h2 className="text-2xl font-semibold">Coming up at {name}</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Browse sessions and prices. Sign in and join the community to
+          register.
+        </p>
+      </div>
+      {programs.isLoading ? (
+        <p role="status">Loading the schedule…</p>
+      ) : programs.isError ? (
+        <div role="alert" className="space-y-3">
+          <p>We couldn’t load the schedule.</p>
+          <Button variant="outline" onClick={() => void programs.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : items.length ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {items.map((event) => (
+            <VenueEventCard
+              key={event.id}
+              event={event}
+              timeZone={venue?.timezone}
+              onPick={setSelectedId}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-2xl border border-dashed p-6 text-muted-foreground">
+          No upcoming events are listed{page ? " on this page" : ""}. Check back
+          for the next session.
+        </p>
+      )}
+      {(page > 0 || programs.data?.hasMore) && (
+        <nav
+          aria-label="Schedule pages"
+          className="flex items-center justify-between gap-3"
+        >
+          <Button
+            variant="outline"
+            disabled={!page || programs.isFetching}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set("page", String(page - 1));
+              setParams(next);
+            }}
+          >
+            Previous
+          </Button>
+          <span className="text-sm">Page {page + 1}</span>
+          <Button
+            variant="outline"
+            disabled={!programs.data?.hasMore || programs.isFetching}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set("page", String(page + 1));
+              setParams(next);
+            }}
+          >
+            Next
+          </Button>
+        </nav>
+      )}
+    </section>
+  );
+
+  return (
+    <VenueTheme
+      brand={venue}
+      className="mx-auto min-w-0 max-w-6xl space-y-5 [overflow-wrap:anywhere]"
+    >
+      <CommunityHero group={group} />
+      <nav
+        aria-label="Community sections"
+        className="sticky top-0 z-20 flex gap-1 overflow-x-auto border-b bg-background/95 py-3 backdrop-blur"
+      >
+        {[
+          ["home", "Overview"],
+          ...(venue ? [["book", "Courts"]] : []),
+          ["events", "Events"],
+          ["feed", "Community"],
+          ["chat", "Chat"],
+          ...(venue ? [["more", "Venue info"]] : []),
+        ].map(([value, label]) => (
+          <Button
+            key={value}
+            variant={tab === value ? "default" : "ghost"}
+            aria-current={tab === value ? "page" : undefined}
+            onClick={() => openTab(value)}
+            className="min-h-11 shrink-0"
+          >
+            {label}
+          </Button>
+        ))}
+      </nav>
+      {tab === "home" ? (
+        <div className="space-y-6">
+          {venue ? (
+            <VenueHome
+              timeZone={venue.timezone}
+              welcomeHeadline={venue.welcome_headline || `Welcome to ${name}`}
+              welcomeMessage={venue.welcome_message || group.description}
+              city={venue.city || null}
+              state={venue.state || null}
+              phone={venue.phone || null}
+              email={venue.email}
+              websiteUrl={venue.website_url || null}
+              hours={parseVenueHours(venue.hours_of_operation)}
+              nextUp={items.slice(0, 3)}
+              hasCourts={venue.booking_enabled && group.courts.length > 0}
+              freeNow={null}
+              courtCount={group.courts.length}
+              onBook={() => openTab("book")}
+              onOpenPlay={() => openTab("events")}
+              onPickProgram={setSelectedId}
+              loadingPrograms={programs.isLoading}
+              programsUnavailable={programs.isError}
+              onRetryPrograms={() => void programs.refetch()}
+            />
+          ) : (
+            <>
+              <section className="rounded-2xl border bg-card p-6">
+                <h2 className="text-2xl font-semibold">Welcome to {name}</h2>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                  {group.description ||
+                    "Connect with local players and make more time for pickleball."}
+                </p>
+              </section>
+              {schedule}
+            </>
+          )}
+          <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Be part of {name}</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Join to register for events and connect with the community.
+              </p>
+            </div>
+            <Button
+              className="min-h-11 shrink-0"
+              onClick={() => gate("join this community", "home")}
+            >
+              {joinLabel}
+              <ArrowUpRight className="ml-2 h-4 w-4" />
+            </Button>
+          </section>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { label: "Community updates", value: "feed", icon: Users },
+              { label: "Community chat", value: "chat", icon: MessageCircle },
+            ].map((item) => (
+              <button
+                key={item.value}
+                className="flex min-h-20 items-center gap-3 rounded-2xl border bg-card p-5 text-left font-semibold"
+                onClick={() => openTab(item.value)}
+              >
+                <item.icon className="h-5 w-5 text-primary" />
+                {item.label}
+                <ArrowUpRight className="ml-auto h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : tab === "events" ? (
+        schedule
+      ) : tab === "book" && venue ? (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-semibold">Courts at {name}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Find your space to play. Join the community to reserve a court.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {group.courts.map((court) => (
+              <article
+                key={court.id}
+                className="rounded-2xl border bg-card p-5"
+              >
+                <h3 className="font-semibold">
+                  {court.name || `Court ${court.court_number}`}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {[court.court_type, court.surface_type]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </article>
+            ))}
+          </div>
+          {!group.courts.length && (
+            <p className="text-sm text-muted-foreground">
+              Court details are coming soon.
+            </p>
+          )}
+          {venue.booking_enabled && (
+            <Button
+              className="min-h-11"
+              onClick={() =>
+                gate("check availability and book a court", "book")
+              }
+            >
+              Check availability
+            </Button>
+          )}
+        </section>
+      ) : tab === "more" && venue ? (
+        <VenueClubAbout
+          name={name}
+          description={venue.welcome_message || group.description}
+          city={venue.city}
+          state={venue.state}
+          hoursRaw={venue.hours_of_operation}
+          timeZone={venue.timezone}
+          phone={venue.phone}
+          email={venue.email}
+          websiteUrl={venue.website_url}
+        />
+      ) : (
+        <CommunityAccessPreview
+          title={tab === "chat" ? `Chat with ${name}` : `Inside ${name}`}
+          description={
+            tab === "chat"
+              ? memberContext
+                ? "Join the community to read messages and take part in the conversation."
+                : "Community chat is for members. Create a PULSE account and join the community to read messages and take part."
+              : memberContext
+                ? "Posts, player details and shared files are for members. Join the community to see what’s happening."
+                : "Posts, player details and shared files are for community members. Sign in and join to see what’s happening."
+          }
+        >
+          {access(
+            tab === "chat"
+              ? "join the community and access chat"
+              : "join the community and see member updates"
+          )}
+        </CommunityAccessPreview>
+      )}
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selected?.title}</DialogTitle>
+            <DialogDescription>
+              {selected &&
+                selectedSchedule &&
+                `${selectedSchedule.label} · ${selectedSchedule.time}${selectedSchedule.zone ? ` ${selectedSchedule.zone}` : ""}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <>
+              <p className="whitespace-pre-line text-sm leading-7">
+                {selected.description}
+              </p>
+              <p className="font-semibold">
+                {selected.price_cents
+                  ? `${formatMoney(selected.price_cents)} per player`
+                  : "Free"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Sign in and join the community to see current availability, the
+                player roster and registration options.
+              </p>
+              <Button
+                className="min-h-11"
+                disabled={selected.registration_paused}
+                onClick={() =>
+                  gate(
+                    "register for this event",
+                    venue ? "events" : "schedule",
+                    selected.id
+                  )
+                }
+              >
+                {selected.registration_paused
+                  ? "Registration paused"
+                  : "Sign up for this event"}
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!intent}
+        onOpenChange={(open) => {
+          if (!open) setIntent(null);
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {memberContext
+                ? `Join ${name}`
+                : "Join in with a free PULSE account"}
+            </DialogTitle>
+            <DialogDescription>
+              {memberContext
+                ? "Join the community to take part. Community approval and venue requirements still apply."
+                : `Create an account or sign in to ${intent?.action}. You’ll return here to join the community.`}
+            </DialogDescription>
+          </DialogHeader>
+          {access(intent?.action || "join this community", intent?.returnTo)}
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => setIntent(null)}
+          >
+            Keep looking around
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </VenueTheme>
+  );
 }

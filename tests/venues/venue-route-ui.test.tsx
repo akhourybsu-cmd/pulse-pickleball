@@ -4,28 +4,38 @@ import GroupRoute from '@/pages/player/GroupRoute';
 
 const state = vi.hoisted(() => ({
   group: {} as any, modules: {} as any, params: new URLSearchParams(), setParams: vi.fn(),
-  buttons: [] as { label: string; click?: () => any }[],
+  buttons: [] as { label: string; click?: () => any }[], role: null as string | null,
 }));
 vi.mock('react', async importOriginal => {
   const actual = await importOriginal<typeof import('react')>(); let index = 0;
-  return { ...actual, lazy: () => { const label = ++index === 1 ? 'Free community shell' : 'Facility shell'; return () => actual.createElement('p', null, label); } };
+  return { ...actual, lazy: () => { const label = ['Free community shell', 'Facility shell', 'Public overview'][index++]; return () => actual.createElement('p', null, label); } };
 });
 vi.mock('react-router-dom', () => ({ Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>, useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }) }));
 vi.mock('@/hooks/useMarkCommunityRead', () => ({ useMarkCommunityRead: vi.fn() }));
 vi.mock('@/hooks/useGroupDetail', () => ({ useGroupDetail: () => state.group }));
 vi.mock('@/hooks/useVenueModules', () => ({ useVenueModules: () => state.modules }));
 vi.mock('@/lib/venues/featureFlag', () => ({ isVenueCommunitiesEnabled: () => true }));
-vi.mock('@/components/venue/VenueStaffContext', () => ({ VenueStaffProvider: ({ children }: any) => children }));
+vi.mock('@/components/venue/VenueStaffContext', () => ({ VenueStaffProvider: ({ children }: any) => children, useMyVenueRole: () => ({role: state.role, loading: false}) }));
 vi.mock('@/components/venue/VenueLoadState', () => ({ VenueLoadState: () => <p>Venue data unavailable</p> }));
 vi.mock('@/components/ui/button', () => ({ Button: ({ children, onClick }: any) => { state.buttons.push({ label: children, click: onClick }); return <button>{children}</button>; } }));
 const render = () => renderToStaticMarkup(<GroupRoute />);
 beforeEach(() => {
-  vi.clearAllMocks(); state.buttons = []; state.params = new URLSearchParams('tab=members');
+  vi.clearAllMocks(); state.buttons = []; state.params = new URLSearchParams('tab=members'); state.role = null;
   state.group = { group: { venue_id: 'venue', venue: { name: 'ELEVENO' } }, loading: false, isError: false, refetch: vi.fn() };
   state.modules = { loading: false, isError: false, booking: true, facility: true, refetch: vi.fn() };
 });
 
 describe('venue community fallback routing', () => {
+  it('keeps signed-in nonmembers and pending members on the public overview, preserving staff access', () => {
+    state.group.group.visibility = 'public';
+    expect(render()).toContain('Public overview');
+    state.group.membership = {status: 'pending'};
+    expect(render()).toContain('Public overview');
+    state.group.membership = {status: 'active'};
+    expect(render()).toContain('Facility shell');
+    state.group.membership = null; state.role = 'manager';
+    expect(render()).toContain('Facility shell');
+  });
   it('uses the administrator’s branding while facility access is loading', () => {
     state.group.group.venue = { name: 'Pickleball Palace', logo_url: '/palace-logo.png', primary_color: '#123456', secondary_color: '#26343a', logo_shape: 'circle', logo_image_fit: 'contain' };
     state.modules.loading = true;

@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PublicCommunity from '@/pages/public/PublicCommunity';
 import { GuestAccountPrompt } from '@/components/community/GuestAccountPrompt';
 
-const state = vi.hoisted(() => ({ query: {} as any }));
+const state = vi.hoisted(() => ({ query: {} as any, programs: {} as any }));
 vi.mock('@/hooks/useAuthState', () => ({ useAuthState: () => ({ isAuthenticated: false }) }));
-vi.mock('@/hooks/usePublicCommunity', () => ({ usePublicCommunity: () => state.query }));
+vi.mock('@/hooks/usePublicCommunity', () => ({ usePublicCommunity: () => state.query, usePublicCommunityPrograms: () => state.programs }));
 const render = (path = '/venues/palace') => renderToStaticMarkup(<MemoryRouter initialEntries={[path]}><PublicCommunity /></MemoryRouter>);
 beforeEach(() => {
+  state.programs = {data: {items: [{id: 'event', title: 'Friday round robin', start_time: '2099-11-03T15:00:00Z', end_time: '2099-11-03T17:00:00Z', price_cents: 1500, event_format: 'round_robin'}], hasMore: false}, isLoading: false, isError: false, refetch: vi.fn()};
   state.query = { data: { id: 'community', name: 'Palace', description: 'Find your people', member_count: 20, join_method: 'request_to_join', courts: [{ id: 'court', name: 'Center court', court_number: 1 }], venue: { name: 'Palace', slug: 'palace', booking_enabled: true } }, isLoading: false, isError: false, refetch: vi.fn() };
 });
 describe('guest community surfaces', () => {
@@ -16,11 +17,12 @@ describe('guest community surfaces', () => {
     const html = render();
     expect(html).toContain('Welcome to Palace');
     expect(html).toContain('Request to join');
-    expect(html).toContain('Create a free account');
-    expect(html).toContain('You’ll return to this community');
+    expect(html).toContain('Overview');
+    expect(html).toContain('Friday round robin');
+    expect(html).toContain('$15.00');
+    expect(html).not.toContain('Explore communities');
+    expect(html).not.toContain('Join PULSE');
     expect(html).toContain('Share Palace');
-    expect(html).toContain('mode=signup');
-    expect(html).toContain('mode=signin');
   });
   it('allows court browsing, and offers booking only when enabled', () => {
     expect(render('/venues/palace?tab=book')).toContain('Center court');
@@ -31,9 +33,21 @@ describe('guest community surfaces', () => {
   });
   it('gates deep-linked chat and events while keeping their exact signup destination', () => {
     const html = render('/venues/palace?tab=chat&view=community#latest');
-    expect(html).toContain('There’s more waiting for you');
+    expect(html).toContain('Chat with Palace');
+    expect(html).toContain('blur-[6px]');
+    expect(html).toContain('mode=signup');
+    expect(html).toContain('mode=signin');
     expect(html).toContain('redirect=%2Fvenues%2Fpalace%3Ftab%3Dchat%26view%3Dcommunity%23latest');
     expect(html).not.toContain('textarea');
+  });
+  it('shows the actual schedule before sign-in without exposing rosters or private conversations', () => {
+    const html = render('/venues/palace?tab=events');
+    expect(html).toContain('Friday round robin');
+    expect(html).toContain('$15.00');
+    expect(html).toContain('register');
+    expect(html).not.toContain('textarea');
+    state.programs.isError = true;
+    expect(render('/venues/palace?tab=events')).toContain('Try again');
   });
   it('keeps loading, connection failure and unavailable communities distinct', () => {
     state.query.isLoading = true;

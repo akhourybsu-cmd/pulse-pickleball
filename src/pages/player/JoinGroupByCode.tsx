@@ -15,6 +15,7 @@ import {
 } from "@/lib/authRedirect";
 import { communityInvitePath, communityPath } from "@/lib/communityShare";
 import { withAuthDeadline } from "@/lib/authDeadline";
+import PublicCommunity from '@/pages/public/PublicCommunity';
 
 interface InvitePreview {
   id: string;
@@ -162,11 +163,12 @@ export function CommunityInvitation({ code }: { code: string }) {
           Ask a member for a new invitation link.
         </p>
         <Button asChild variant="outline">
-          <Link to="/player/community">Explore communities</Link>
+          <Link to="/player/community">Your communities</Link>
         </Button>
       </section>
     );
   const detail = publicPage.data;
+  if (!isAuthenticated && detail) return <PublicCommunity publicGroupId={group.id} />;
   const name = detail?.venue?.name || group.name;
   const pending = result?.status === "pending";
   return (
@@ -214,7 +216,7 @@ export function CommunityInvitation({ code }: { code: string }) {
           )}
           {pending && (
             <Button asChild variant="outline">
-              <Link to="/player/community">Explore communities</Link>
+              <Link to="/player/community">Your communities</Link>
             </Button>
           )}
         </section>
