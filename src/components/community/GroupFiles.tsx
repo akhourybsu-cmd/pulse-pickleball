@@ -10,11 +10,13 @@ import { GroupEmptyState } from './GroupEmptyState';
 import { ImageLightbox } from './ImageLightbox';
 import { useGroupFiles, type GroupFile } from '@/hooks/useGroupFiles';
 import { cn } from '@/lib/utils';
+import { CommunityLoadError } from './CommunityLoadError';
 
 interface GroupFilesProps {
   groupId: string;
   isAdmin: boolean;
   currentUserId: string | null;
+  canUpload?: boolean;
 }
 
 const FILE_ICONS: Record<string, any> = {
@@ -35,15 +37,15 @@ function formatFileSize(bytes: number | null): string {
 
 type ViewMode = 'list' | 'grid';
 
-export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps) {
-  const { files, loading, uploading, uploadFile, deleteFile } = useGroupFiles(groupId);
+export function GroupFiles({ groupId, isAdmin, currentUserId, canUpload = true }: GroupFilesProps) {
+  const { files, loading, isError, refetch, uploading, uploadFile, deleteFile } = useGroupFiles(groupId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && canUpload) {
       await uploadFile(file);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -54,6 +56,8 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
   // Separate images and other files for gallery view
   const imageFiles = files.filter(f => f.file_type?.startsWith('image/'));
   const otherFiles = files.filter(f => !f.file_type?.startsWith('image/'));
+
+  if (isError) return <CommunityLoadError subject="shared files" onRetry={refetch} />;
 
   if (loading) {
     return (
@@ -76,14 +80,14 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
           onChange={handleFileChange}
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
         />
-        <Button 
+        {canUpload && <Button
           onClick={() => fileInputRef.current?.click()} 
           className="gap-2 w-full sm:flex-1"
           disabled={uploading}
         >
           <Upload className="h-4 w-4" />
           {uploading ? 'Uploading...' : 'Upload File'}
-        </Button>
+        </Button>}
         
         {files.length > 0 && (
           <ToggleGroup 
@@ -108,9 +112,9 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
           icon={FolderOpen}
           title="No files yet"
           description="Share documents, images, or resources with your group."
-          actions={[
+          actions={canUpload ? [
             { label: 'Upload File', onClick: () => fileInputRef.current?.click(), icon: Upload },
-          ]}
+          ] : []}
           size="sm"
         />
       ) : viewMode === 'grid' ? (

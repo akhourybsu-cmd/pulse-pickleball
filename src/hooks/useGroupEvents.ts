@@ -161,6 +161,7 @@ export function useGroupEvents(groupId: string | undefined) {
   const {
     data: events = [],
     isLoading: loading,
+    isError,
     refetch,
   } = useQuery({
     queryKey: ["group-events", groupId],
@@ -501,6 +502,7 @@ export function useGroupEvents(groupId: string | undefined) {
   return {
     events,
     loading,
+    isError,
     createEvent: createEventMutation.mutateAsync,
     deleteEvent: deleteEventMutation.mutateAsync,
     updateEvent: updateEventMutation.mutateAsync,

@@ -114,7 +114,7 @@ export function useGroupChat(groupId: string | undefined) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const initializedForGroup = useRef<string | undefined>();
 
-  const { data: messages = [], isLoading: loading, refetch } = useQuery({
+  const { data: messages = [], isLoading: loading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchGroupMessagesPage(groupId!, undefined, currentUserId),
     // Realtime keeps an open chat fresh. Refetch on mount also closes the gap
@@ -431,6 +431,7 @@ export function useGroupChat(groupId: string | undefined) {
   return {
     messages,
     loading,
+    isError,
     hasOlder,
     loadingOlder,
     loadOlder,

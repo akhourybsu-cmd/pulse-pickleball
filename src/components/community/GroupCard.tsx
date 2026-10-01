@@ -18,6 +18,7 @@ import { CommunityBrandMark } from "./CommunityBrandMark";
 import { VenueCoverImage } from "@/components/venue/VenueCoverImage";
 import { normalizeHex } from "@/lib/venues/branding";
 import { communityLocation } from "@/lib/community/discovery";
+import '@/styles/community-clubhouse.css';
 const typeLabels: Record<string, string> = {
   crew: "Player crew",
   league: "League",
@@ -42,6 +43,7 @@ export const GroupCard = memo(function GroupCard({
   const isMember = group.membership?.status === "active";
   const verified =
     group.type === "venue_official" && group.is_venue_verified === true;
+  const regular = !group.venue && group.type !== 'venue_official';
   const accent = normalizeHex(group.venue?.primary_color) || "#166f63";
   const place = communityLocation(group);
   const location = [place.city, place.state].filter(Boolean).join(", ");
@@ -70,7 +72,12 @@ export const GroupCard = memo(function GroupCard({
         to={"/player/community/group/" + group.id}
         className="flex min-w-0 flex-1 flex-col rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
         onMouseEnter={prefetch}
+        onFocus={prefetch}
       >
+        {regular && <div className="club-directory-cover">
+          {group.cover_url ? <img src={group.cover_url} alt="" loading="lazy" /> : <svg viewBox="0 0 480 240" fill="none" className="club-court-lines" aria-hidden><rect x="40" y="-30" width="360" height="300" rx="150" /><rect x="100" y="15" width="240" height="210" rx="105" /><path d="M0 120h480M220-30v300" /><circle cx="395" cy="60" r="22" className="club-ball" /></svg>}
+          <span className="club-eyebrow">{typeLabels[group.type] || 'Community'}</span>
+        </div>}
         {verified && (
           <div
             className="relative h-20 overflow-hidden"
@@ -114,9 +121,9 @@ export const GroupCard = memo(function GroupCard({
           />
         </div>
         {(group.venue?.tagline || group.description) && (
-          <p className="px-4 pb-3 text-sm leading-5 text-muted-foreground line-clamp-2">
+          <div className="px-4 pb-3"><p className="text-sm leading-5 text-muted-foreground line-clamp-2">
             {group.venue?.tagline || group.description}
-          </p>
+          </p></div>
         )}
         <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4 text-xs text-muted-foreground">
           {location && (

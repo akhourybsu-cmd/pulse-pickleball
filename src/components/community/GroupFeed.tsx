@@ -19,9 +19,8 @@ import {
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { GroupEmptyState } from './GroupEmptyState';
-import { GroupWelcomeCard } from './GroupWelcomeCard';
 import { GroupFeedPlaceholder } from './GroupFeedPlaceholder';
-import { CommunityPulse } from './CommunityPulse';
+import { CommunityLoadError } from './CommunityLoadError';
 import { ImageLightbox } from './ImageLightbox';
 import { PollCard } from './PollCard';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
@@ -138,6 +137,8 @@ export function GroupFeed({
   const {
     posts: queriedPosts,
     loading: postsLoading,
+    isError,
+    refetch,
     deletePost,
     toggleReaction,
     togglePin,
@@ -146,7 +147,7 @@ export function GroupFeed({
     castPollVote,
   } = useGroupPosts(groupId);
   const posts = previewPosts ?? queriedPosts;
-  const { events } = useGroupEvents(groupId);
+  const { events, isError: eventsError } = useGroupEvents(groupId);
   const [deleteDialogPost, setDeleteDialogPost] = useState<GroupPost | null>(null);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -157,10 +158,15 @@ export function GroupFeed({
   const activeTodayCount = posts.filter(p => {
     const createdAt = new Date(p.created_at);
     const now = new Date();
-    return now.getTime() - createdAt.getTime() < 24 * 60 * 60 * 1000;
+    const age = now.getTime() - createdAt.getTime();
+    return age >= 0 && age < 24 * 60 * 60 * 1000;
   }).length;
   
-  const sessionsThisWeek = events.length;
+  const now = Date.now();
+  const sessionsThisWeek = events.filter(event => {
+    const start = new Date(event.start_time).getTime();
+    return start >= now && start < now + 7 * 24 * 60 * 60 * 1000;
+  }).length;
 
   const handleDeletePost = async () => {
     if (!deleteDialogPost) return;
@@ -239,8 +245,10 @@ export function GroupFeed({
     return <GroupFeedPlaceholder />;
   }
 
+  if (isError && !previewPosts) return <CommunityLoadError subject="community updates" onRetry={refetch} />;
+
   return (
-    <div className="space-y-5 pb-20">
+    <div className="space-y-5 pb-6">
       {venueMode ? (
         <section className="space-y-3" aria-label="Community feed">
           {!embeddedVenue && <div className="flex items-end justify-between gap-4">
@@ -310,10 +318,7 @@ export function GroupFeed({
           )}
         </section>
       ) : (
-        <CommunityPulse
-          activeTodayCount={activeTodayCount}
-          sessionsThisWeek={sessionsThisWeek}
-        />
+        <div className="club-feed-stats"><span>{activeTodayCount} {activeTodayCount === 1 ? 'update' : 'updates'} in the last 24 hours</span>{!eventsError && <span>{sessionsThisWeek} {sessionsThisWeek === 1 ? 'event' : 'events'} in the next 7 days</span>}</div>
       )}
 
       {/* Pinned Posts Section */}
@@ -358,15 +363,10 @@ export function GroupFeed({
               size="sm"
             />
           ) : (
-            <>
-              <GroupWelcomeCard
-                groupName={groupName}
-                onPostUpdate={focusComposer}
-                onScheduleSession={() => onSwitchToEvents?.()}
-                onAskQuestion={focusComposer}
-              />
-              <GroupFeedPlaceholder />
-            </>
+            <GroupEmptyState icon={MessageSquare} title="Every community starts with a hello." description={`This is the board for ${groupName}. Updates, photos and conversations will appear here.`} actions={[
+              ...(onOpenQuickPost ? [{ label: 'Share the first update', onClick: focusComposer, icon: Plus }] : []),
+              ...(onSwitchToEvents ? [{ label: 'Explore events', onClick: onSwitchToEvents, icon: CalendarDays, variant: 'outline' as const }] : []),
+            ]} />
           )}
         </div>
       ) : filteredPosts.length === 0 ? (

@@ -1,17 +1,17 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar,
   FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, Bell,
   Lock, Globe, Eye, BadgeCheck
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuthState } from '@/hooks/useAuthState';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isVenueCommunitiesEnabled } from '@/lib/venues/featureFlag';
 import { venueChrome } from '@/lib/venues/branding';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +40,11 @@ import { CommunityBrandMark } from '@/components/community/CommunityBrandMark';
 import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
 import { parseGroupSettings } from '@/types/groupSettings';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
+import { CommunityIdentity } from '@/components/community/CommunityIdentity';
+import { ClubhouseNavigation } from '@/components/community/ClubhouseNavigation';
+import { CommunityLoadError } from '@/components/community/CommunityLoadError';
+import { communityAbilities } from '@/lib/community/navigation';
+import { useCommunityTabs } from '@/hooks/useCommunityTabs';
 
 
 
@@ -47,21 +52,15 @@ export default function GroupDetail() {
   const viewport = useVisualViewportPane();
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const mobile = useIsMobile();
+  const { user, profile: currentUserProfile } = useAuthState();
+  const currentUserId = user?.id ?? null;
+  const { group, membership, loading, isError, refetch } = useGroupDetail(groupId);
+  const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
+  const abilities = communityAbilities(group?.settings, membership);
 
-  // Honor a ?tab= deep link (e.g. from the Social hub's group-chats list) so
-  // a shared/tapped link can open straight to Chat, Events, etc.
   const [searchParams] = useSearchParams();
-  const requestedTab = ['events', 'play'].includes(searchParams.get('tab') || '') ? 'schedule' : searchParams.get('tab');
-  const initialTab = ['feed', 'schedule', 'chat', 'members', 'more'].includes(requestedTab || '')
-    ? requestedTab!
-    : 'feed';
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState<{ display_name: string | null; full_name: string | null; avatar_url: string | null } | null>(null);
-
-  // Track which tabs have been visited for lazy mounting
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set([initialTab]));
+  const { activeTab, visitedTabs, handleTabChange } = useCommunityTabs(groupSettings.chat_enabled);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   
   
@@ -71,75 +70,31 @@ export default function GroupDetail() {
   const [quickPostOpen, setQuickPostOpen] = useState(false);
   const [quickPostType, setQuickPostType] = useState<PostType>('post');
 
-  const { createPost } = useGroupPosts(groupId || '');
+  // This parent only needs the mutation. Feed data loads when its panel mounts.
+  const { createPost } = useGroupPosts(groupId, { enabled: false });
   
   // Single presence subscription at parent level
-  const presence = useGroupPresence(groupId);
+  const memberGroupId = membership?.status === 'active' ? groupId : undefined;
+  const presence = useGroupPresence(memberGroupId);
   const { onlineCount, isConnected, isOnline } = presence;
   
   // Single realtime subscription for all group data
-  useGroupRealtime(groupId);
-
-  // Handle tab changes with lazy mounting
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    setVisitedTabs(prev => {
-      if (prev.has(tab)) return prev;
-      return new Set([...prev, tab]);
-    });
-  }, []);
-
-  // Current user + composer avatar — independent of the group query so
-  // children get currentUserId as soon as auth resolves.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled) return;
-      if (!user) { navigate('/auth'); return; }
-      setCurrentUserId(user.id);
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, full_name, avatar_url')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (!cancelled && data) setCurrentUserProfile(data);
-    })();
-    return () => { cancelled = true; };
-  }, [navigate]);
-
-  // Group + the viewer's membership, cached so re-entering a group paints
-  // from cache instead of re-spinning. Group and membership are independent
-  // → fetched in parallel (previously serial). maybeSingle() on membership:
-  // non-members legitimately have zero rows and .single() treats that as an error.
-  // Shared with GroupRoute and the venue shell so all three read one query
-  // under one cache key — see hooks/useGroupDetail.
-  const { group, membership, loading, isError } = useGroupDetail(groupId);
-
-
-  // Failed load → toast + back to Community (mirrors the old catch).
-  useEffect(() => {
-    if (isError) {
-      toast({ title: 'Error', description: 'Failed to load group', variant: 'destructive' });
-      navigate('/player/community');
-    }
-  }, [isError, navigate, toast]);
+  useGroupRealtime(memberGroupId);
 
   const openQuickPost = useCallback((type: PostType) => {
+    if (!abilities.post || (type === 'lfg' && !abilities.lfg)) return;
     setQuickPostType(type);
     setQuickPostOpen(true);
-  }, []);
+  }, [abilities.post, abilities.lfg]);
 
   const handleQuickPost = useCallback(async (data: Parameters<typeof createPost>[0]) => {
+    if (!abilities.post || (data.type === 'lfg' && !abilities.lfg)) return false;
     const result = await createPost(data);
     return !!result;
-  }, [createPost]);
+  }, [createPost, abilities.post, abilities.lfg]);
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
-  const groupSettings = useMemo(() => parseGroupSettings(group?.settings), [group?.settings]);
-  const canSendChat =
-    groupSettings.chat_enabled &&
-    (isAdmin || (membership?.status === 'active' && groupSettings.allow_member_chat));
+  const canSendChat = abilities.sendChat;
   
   // Venue branding. The accent plumbing below (the --venue-primary custom
   // property, the tinted tab underline) has always been here; it was fed a
@@ -160,7 +115,7 @@ export default function GroupDetail() {
     { value: 'chat', icon: MessageCircle, label: 'Chat' },
     { value: 'members', icon: Users, label: 'Members' },
     { value: 'more', icon: MoreHorizontal, label: 'More' },
-  ], []);
+  ].filter(tab => tab.value !== 'chat' || groupSettings.chat_enabled), [groupSettings.chat_enabled]);
 
   // Human-readable subtitle: "{Visibility} {Type} · N members"
   const typeLabel = useMemo(() => {
@@ -170,7 +125,7 @@ export default function GroupDetail() {
       open_play: 'Open Play',
       venue_official: 'Venue',
       tournament: 'Tournament',
-      club: 'Club / Venue',
+      club: 'Pickleball club',
     };
     return group ? (map[group.type] || 'Group') : 'Group';
   }, [group]);
@@ -192,6 +147,8 @@ export default function GroupDetail() {
       </div>
     );
   }
+
+  if (isError && !group) return <div className="mx-auto max-w-xl p-6"><CommunityLoadError subject="this community" onRetry={refetch} /></div>;
 
   if (!group) {
     return (
@@ -221,16 +178,18 @@ export default function GroupDetail() {
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           Community
         </Button>
-        <div className="rounded-2xl border border-border/60 bg-card p-6 text-center space-y-3">
-          <CommunityBrandMark group={group} className="mx-auto h-20 w-20 bg-secondary text-[80px]" />
-          <div>
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+          {!isVenueGroup ? <CommunityIdentity group={group} label={typeLabel} /> : <div className="p-6 text-center">
+            <CommunityBrandMark group={group} className="mx-auto h-20 w-20 bg-secondary text-[80px]" />
             <h1 className="font-sans text-2xl font-semibold [overflow-wrap:anywhere]">{group.name}</h1>
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-          </div>
+          </div>}
+          <div className="space-y-4 p-6">
           {group.description && (
             <p className="text-sm text-muted-foreground leading-relaxed">{group.description}</p>
           )}
           <CommunityJoinAction key={group.id + ":" + currentUserId} group={group} membership={membership} />
+          </div>
         </div>
       </div>
     );
@@ -238,13 +197,28 @@ export default function GroupDetail() {
 
   return (
     <div 
-      className={cn('flex flex-col h-[100dvh]', isVenueGroup && 'venue-community-frame font-sans [&_h1]:font-sans [&_h2]:font-sans')}
+      className={cn('flex flex-col h-[100dvh]', isVenueGroup ? 'venue-community-frame font-sans [&_h1]:font-sans [&_h2]:font-sans' : 'community-clubhouse')}
       style={isVenueGroup ? {
         '--venue-primary': venueColor,
         '--venue-pane-height': viewport.height,
         '--venue-pane-top': viewport.top ?? 0,
-      } as React.CSSProperties : undefined}
+      } as React.CSSProperties : viewport}
     >
+      {!isVenueGroup && <>
+        <div className="club-toolbar">
+          <Button variant="ghost" className="gap-2 px-2 text-xs" onClick={() => navigate('/player/community')}><ArrowLeft className="h-4 w-4" />Communities</Button>
+          <div className="flex items-center gap-1">
+            {(group.invite_code || group.visibility === 'public') && <Button variant="ghost" size="icon" aria-label={`Share ${group.name}`} onClick={() => setInviteModalOpen(true)}><Share2 className="h-4 w-4" /></Button>}
+            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Community options"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setNotifSettingsOpen(true)}><Bell className="mr-2 h-4 w-4" />Notifications</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleTabChange('more')}><FolderOpen className="mr-2 h-4 w-4" />About & resources</DropdownMenuItem>
+              {isAdmin && <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}><Settings className="mr-2 h-4 w-4" />Manage community</DropdownMenuItem>}
+            </DropdownMenuContent></DropdownMenu>
+            {abilities.post && <Button className="club-create ml-2 gap-1.5 text-xs" onClick={() => openQuickPost('post')}><Plus className="h-4 w-4" />Post</Button>}
+          </div>
+        </div>
+        <CommunityIdentity group={group} label={typeLabel} compact={activeTab === 'chat'} />
+      </>}
       {isVenueGroup && group.venue?.cover_image_url && activeTab !== 'chat' && <div className="hidden relative h-[clamp(7rem,20vw,12rem)] w-full shrink-0 overflow-hidden bg-[#171a1f] lg:block lg:h-24 xl:h-28">
         <VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} crop={group.venue.cover_crop} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} />
       </div>}
@@ -253,7 +227,7 @@ export default function GroupDetail() {
           it carries real contrast against the cream/ink app chrome while
           staying on-brand. Deliberately dark in both themes (a hero band).
           A faint pickleball-court watermark adds depth without noise. */}
-      <div
+      {isVenueGroup && <div
         className={cn("venue-community-toolbar relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]", isVenueGroup && "venue-brand-chrome")}
         style={{
           // PULSE ink band — same ink ramp as the rest of the app chrome
@@ -400,7 +374,7 @@ export default function GroupDetail() {
             </DropdownMenu>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Tab strip — sliding-underline pattern (matches MatchHistory,
           RoundRobinDetail, Community.tsx). Pre-overhaul each TabsTrigger
@@ -411,8 +385,9 @@ export default function GroupDetail() {
           preserved — clicks still flow through the underlying Tabs
           value to drive TabsContent visibility. Venue-branded groups
           override the underline color to the venue accent inline. */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-        <div
+      <Tabs value={activeTab} onValueChange={handleTabChange} orientation={!isVenueGroup && !mobile ? 'vertical' : 'horizontal'} className={isVenueGroup ? 'flex-1 flex flex-col overflow-hidden' : 'club-body'}>
+        {!isVenueGroup && <ClubhouseNavigation chatEnabled={groupSettings.chat_enabled} description={group.description} subtitle={subtitle} onlineCount={onlineCount} connected={isConnected} onTabChange={handleTabChange} />}
+        {isVenueGroup && <div
           className="venue-community-nav border-b border-border/30 bg-background shrink-0 relative"
           style={
             chrome?.accentHex ? { borderColor: `${chrome.accentHex}20` } : undefined
@@ -464,21 +439,26 @@ export default function GroupDetail() {
               <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
             ))}
           </TabsList>
-        </div>
+        </div>}
 
         {/* Content Area - Lazy mounted tabs */}
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className={cn('min-h-0 min-w-0 flex-1 overflow-hidden', !isVenueGroup && 'club-content')}>
           {/* Feed Tab - Always mounted first */}
           <TabsContent 
             value="feed" 
             className={cn(
               "h-full m-0 overflow-y-auto p-4",
+              !isVenueGroup && 'club-panel',
               activeTab !== 'feed' && "hidden"
             )}
             forceMount={visitedTabs.has('feed') ? true : undefined}
           >
             {visitedTabs.has('feed') && (
               <div className="space-y-4">
+                {!isVenueGroup && <>
+                  <div className="club-panel-heading"><div><h2>The community board</h2><p>Good games start with a conversation.</p></div></div>
+                  {abilities.post && <button className="club-composer" onClick={() => openQuickPost('post')}><span><Plus className="h-5 w-5" /></span><span className="min-w-0"><span className="text-sm font-semibold">What’s happening, {currentUserProfile?.display_name || currentUserProfile?.first_name || 'player'}?</span><small>Share an update, a photo or a poll.</small></span></button>}
+                </>}
                 {isVenueGroup && group.venue?.cover_image_url && <div className="relative h-[6.25rem] overflow-hidden rounded-xl bg-[#171a1f] lg:hidden"><VenueCoverImage src={group.venue.cover_image_url} fit={group.venue.cover_image_fit} crop={group.venue.cover_crop} focalPoint={group.venue.cover_focal_point} alt={`${group.name} banner`} /></div>}
                 {membership && (
                   <EnablePushBanner
@@ -498,7 +478,7 @@ export default function GroupDetail() {
                   groupName={group.name}
                   isAdmin={isAdmin} 
                   currentUserId={currentUserId}
-                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                  onOpenQuickPost={abilities.post ? (type) => openQuickPost(type as PostType) : undefined}
                   onSwitchToEvents={() => handleTabChange('schedule')}
                 />
               </div>
@@ -510,12 +490,16 @@ export default function GroupDetail() {
             value="schedule" 
             className={cn(
               "h-full m-0 overflow-y-auto p-4",
+              !isVenueGroup && 'club-panel',
               activeTab !== 'schedule' && "hidden"
             )}
             forceMount={visitedTabs.has('schedule') ? true : undefined}
           >
             {visitedTabs.has('schedule') && (
-              <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+              <div>
+                {!isVenueGroup && <div className="club-panel-heading"><div><h2>See you on court</h2><p>Your community’s calendar. Find a game and save your spot.</p></div></div>}
+                <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} canCreateEvent={abilities.event} />
+              </div>
             )}
           </TabsContent>
 
@@ -528,7 +512,7 @@ export default function GroupDetail() {
             )}
             forceMount={visitedTabs.has('chat') ? true : undefined}
           >
-            {visitedTabs.has('chat') && (
+            {visitedTabs.has('chat') && abilities.chat && (
               <GroupChat
                 groupId={groupId!}
                 currentUserId={currentUserId}
@@ -547,19 +531,23 @@ export default function GroupDetail() {
             value="members" 
             className={cn(
               "h-full m-0 overflow-y-auto p-4",
+              !isVenueGroup && 'club-panel',
               activeTab !== 'members' && "hidden"
             )}
             forceMount={visitedTabs.has('members') ? true : undefined}
           >
             {visitedTabs.has('members') && (
-              <GroupMembers 
+              <div>
+              {!isVenueGroup && <div className="club-panel-heading"><div><h2>Your people</h2><p>Find familiar faces and your next playing partner.</p></div></div>}
+              <GroupMembers
                 groupId={groupId!} 
                 isAdmin={isAdmin} 
                 isOwner={membership?.role === 'owner'} 
                 currentUserId={currentUserId}
-                onInviteClick={() => setInviteModalOpen(true)}
+                onInviteClick={group.invite_code || group.visibility === 'public' ? () => setInviteModalOpen(true) : undefined}
                 isOnline={isOnline}
               />
+              </div>
             )}
           </TabsContent>
 
@@ -568,6 +556,7 @@ export default function GroupDetail() {
             value="more" 
             className={cn(
               "h-full m-0 overflow-y-auto p-4 space-y-6",
+              !isVenueGroup && 'club-panel',
               activeTab !== 'more' && "hidden"
             )}
             forceMount={visitedTabs.has('more') ? true : undefined}
@@ -608,19 +597,20 @@ export default function GroupDetail() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {abilities.files && <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
                     <FolderOpen className="h-3.5 w-3.5" />
                     <span className="font-medium uppercase tracking-wide">Files</span>
                   </div>
-                  <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
-                </div>
+                  <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} canUpload={abilities.upload} />
+                </div>}
 
                 <div className="space-y-2">
                   <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground px-1">
                     Community
                   </div>
                   <div className="rounded-xl border border-border/40 bg-card divide-y divide-border/30 overflow-hidden">
+                    <button onClick={() => setNotifSettingsOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40"><Bell className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Notification preferences</span></button>
                     {(group.invite_code || group.visibility === 'public') && (
                       <button
                         onClick={() => setInviteModalOpen(true)}
@@ -664,7 +654,7 @@ export default function GroupDetail() {
       />
 
       {/* Collapsed Composer Bar - Only show on Feed tab */}
-      {activeTab === 'feed' && (
+      {activeTab === 'feed' && isVenueGroup && abilities.post && (
         <CollapsedComposerBar
           embedded={isVenueGroup}
           onExpand={() => openQuickPost('post')}
@@ -676,10 +666,12 @@ export default function GroupDetail() {
 
       {/* Quick Post Composer (Drawer) */}
       <QuickPostComposer
-        open={quickPostOpen}
+        open={quickPostOpen && abilities.post}
         onOpenChange={setQuickPostOpen}
         initialType={quickPostType}
         groupId={groupId || ''}
+        contextName={group.name}
+        canPostLfg={abilities.lfg}
         onSubmit={handleQuickPost}
       />
     </div>

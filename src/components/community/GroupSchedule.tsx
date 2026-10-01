@@ -35,11 +35,13 @@ import { useGroupSettings } from '@/hooks/useGroupSettings';
 import { EventSettingsDialog } from './EventSettingsDialog';
 import { EVENT_TYPE_OPTIONS } from './event-wizard/types';
 import { cn } from '@/lib/utils';
+import { CommunityLoadError } from './CommunityLoadError';
 
 interface GroupScheduleProps {
   groupId: string;
   isAdmin: boolean;
   currentUserId: string | null;
+  canCreateEvent?: boolean;
 }
 
 /** Bucket label for a start date — drives the sticky section headers. */
@@ -61,13 +63,14 @@ const BUCKET_LABEL: Record<string, string> = {
 
 const BUCKET_ORDER = ['today', 'tomorrow', 'week', 'later', 'past'] as const;
 
-export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupScheduleProps) {
-  const { events, loading, deleteEvent, updateRsvp, updateEvent } = useGroupEvents(groupId);
+export function GroupSchedule({ groupId, isAdmin, currentUserId, canCreateEvent }: GroupScheduleProps) {
+  const { events, loading, isError, refetch, deleteEvent, updateRsvp, updateEvent } = useGroupEvents(groupId);
   const { settings } = useGroupSettings(groupId);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardRequested, setWizardOpen] = useState(false);
   const [settingsEvent, setSettingsEvent] = useState<GroupEvent | null>(null);
   // Non-admin members can only schedule when the group allows it.
-  const canCreate = isAdmin || settings.allow_member_events !== false;
+  const canCreate = canCreateEvent ?? (isAdmin || settings.allow_member_events !== false);
+  const wizardOpen = wizardRequested && canCreate;
   // View toggle — list (default, "what's next") vs month (glanceable
   // calendar with day dots; tapping a day filters the list to that day).
   const [view, setView] = useState<'list' | 'month'>('list');
@@ -97,6 +100,8 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
     }));
   }, [visibleEvents, selectedDay]);
 
+  if (isError) return <CommunityLoadError subject="events" onRetry={refetch} />;
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -111,7 +116,7 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
   return (
     <div className="space-y-4">
       {/* Create Event Wizard or CTA */}
-      {wizardOpen ? (
+      {wizardOpen && canCreate ? (
         <EventWizardContainer
           groupId={groupId}
           onClose={() => setWizardOpen(false)}

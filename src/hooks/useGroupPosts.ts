@@ -231,18 +231,21 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   });
 }
 
-export function useGroupPosts(groupId: string | undefined) {
+export function useGroupPosts(groupId: string | undefined, options: { enabled?: boolean } = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const queryKey = ['group-posts', groupId];
 
-  const { data: posts = [], isLoading: loading, refetch } = useQuery({
+  const { data: posts = [], isLoading: loading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchGroupPosts(groupId!),
     // Realtime patches the cache directly — no periodic refetch needed.
     staleTime: Infinity,
+    // A realtime insert or a post made from another tab can create a partial
+    // cache before the feed has ever loaded. Always reconcile when it opens.
+    refetchOnMount: 'always',
     gcTime: 10 * 60 * 1000,
-    enabled: !!groupId,
+    enabled: !!groupId && options.enabled !== false,
   });
 
   const createPostMutation = useMutation({
@@ -529,6 +532,7 @@ export function useGroupPosts(groupId: string | undefined) {
   return {
     posts,
     loading,
+    isError,
     createPost: (data: CreatePostInput) =>
       createPostMutation.mutateAsync({
         ...data,
