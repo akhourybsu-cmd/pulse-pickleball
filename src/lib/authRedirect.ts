@@ -31,6 +31,12 @@ export const isAuthEntryPath = (path: string) => path === "/" || path === "/auth
 export const isCommunityReturnPath = (path: string | null | undefined): boolean =>
   !!path && /^\/(?:venues\/[^/?#]+|player\/community(?:\/group\/[^/?#]+|\/join\/[^/?#]+)?)(?:[?#]|$)/.test(path);
 
+export const isRoundRobinReturnPath = (path: string | null | undefined): boolean =>
+  !!path && (/^\/round-robin\/[0-9a-f-]{36}(?:[?#]|$)/i.test(path) || /^\/player\/play\?[^#]*\binvite=/.test(path));
+
+export const isSharedPageReturnPath = (path: string | null | undefined): boolean =>
+  isCommunityReturnPath(path) || isRoundRobinReturnPath(path);
+
 export const isAssessmentSaveRedirect = (path: string | null | undefined) =>
   !!path && /^\/skill-assessment\?save=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path);
 
@@ -74,7 +80,7 @@ export const consumePostAuthRedirect = () => {
   // App's callback listener, Index and Auth can all resolve the same login.
   // Keep assessment and community handoffs until the destination acknowledges arrival;
   // otherwise a second resolver can replace it with the default dashboard.
-  if (!isAssessmentSaveRedirect(redirect) && !isCommunityReturnPath(redirect)) clearPostAuthRedirect();
+  if (!isAssessmentSaveRedirect(redirect) && !isSharedPageReturnPath(redirect)) clearPostAuthRedirect();
   return redirect || DEFAULT_AUTH_DESTINATION;
 };
 

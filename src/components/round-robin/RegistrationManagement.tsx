@@ -18,6 +18,7 @@ import {
 import { UserMinus, UserPlus, Share2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { copyRoundRobinLink } from "@/lib/roundRobin/sharing";
 
 interface RegistrationManagementProps {
   eventId: string;
@@ -113,7 +114,7 @@ export function RegistrationManagement({
     try {
       const { error } = await supabase
         .from('round_robin_players')
-        .update({ registration_status: 'confirmed' })
+        .update({ registration_status: 'confirmed', active: true, status: 'active' })
         .eq('event_id', eventId)
         .eq('id', registrationId);
 
@@ -126,10 +127,9 @@ export function RegistrationManagement({
     }
   };
 
-  const handleShareLink = () => {
-    const url = `${window.location.origin}/round-robin/${eventId}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Event link copied to clipboard!');
+  const handleShareLink = async () => {
+    try { await copyRoundRobinLink(eventId); toast.success('Event link copied'); }
+    catch { toast.error('Could not copy the link. Please try again.'); }
   };
 
   const PlayerRow = ({ 

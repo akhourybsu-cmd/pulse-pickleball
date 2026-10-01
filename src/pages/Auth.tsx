@@ -23,6 +23,7 @@ import {
   sanitizeRedirectPath,
   stashPostAuthRedirect,
   isCommunityReturnPath,
+  isRoundRobinReturnPath,
   isAssessmentSaveRedirect,
 } from "@/lib/authRedirect";
 
@@ -85,7 +86,8 @@ const Auth = () => {
   const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
   const assessmentReturn = isAssessmentSaveRedirect(redirectPath);
-  const communityReturn = isCommunityReturnPath(redirectPath);
+  const roundRobinReturn = isRoundRobinReturnPath(redirectPath);
+  const communityReturn = isCommunityReturnPath(redirectPath) || roundRobinReturn;
   const communityCallback = `${window.location.origin}/auth?${new URLSearchParams({ redirect: redirectPath })}`;
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
@@ -459,7 +461,7 @@ const Auth = () => {
           <CardContent>
             {communityReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
               {awaitingConfirmation && <p role="status">Check your email to finish creating your account. We’ll bring you back here after you sign in. If the link opens in another browser, you may need to sign in there to continue.</p>}
-              <Link className="inline-block min-h-9 text-primary underline underline-offset-4" to={redirectPath}>Back to exploring</Link>
+              <Link className="inline-block min-h-9 text-primary underline underline-offset-4" to={redirectPath}>{roundRobinReturn ? "Back to event" : "Back to exploring"}</Link>
             </div>}
             {assessmentReturn && <div className="mb-5 space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
               <p>{awaitingConfirmation ? 'Check your email, then finish verification in this browser. If the link opens somewhere else, return here and sign in to save your answers.' : 'Finish signing in on this browser to bring your guest answers with you.'}</p>

@@ -7,7 +7,8 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, Trophy, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
+import { Calendar, Trophy, Search, Medal, Target, TrendingUp, Star, ArrowLeft, Share2 } from "lucide-react";
+import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
 
@@ -52,6 +53,8 @@ interface Event {
   rating_type: string;
   format?: string;
   allow_guests?: boolean;
+  registration_mode?: string;
+  invite_code?: string | null;
   voided?: boolean;
 }
 
@@ -430,6 +433,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
             </NavLink>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="ghost" size="icon" aria-label="Share Event" className="text-secondary-foreground hover:bg-secondary-foreground/10" onClick={async () => {
+              try {
+                if (await shareRoundRobin(event.id, event.name, event.registration_mode !== "open_registration" ? event.invite_code : null) === "copied") toast.success("Event link copied");
+              } catch { toast.error("Could not share the link. Please try again."); }
+            }}><Share2 className="h-5 w-5" /></Button>
             <ThemeToggle />
             {userId && <NotificationBell unreadCount={0} onOpen={() => navigate('/player/dashboard')} />}
           </div>

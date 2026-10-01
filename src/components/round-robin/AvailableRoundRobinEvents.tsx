@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock, Trophy } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
-import { toast } from "sonner";
+import { roundRobinPath } from "@/lib/roundRobin/sharing";
 import { RoundRobinEventDetailDialog } from "./RoundRobinEventDetailDialog";
 
 export function AvailableRoundRobinEvents({ userId }: { userId: string | null }) {
   const navigate = useNavigate();
-  const [joiningEvent, setJoiningEvent] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const { data: events = [], refetch } = useQuery({
@@ -23,7 +22,8 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
         .select('*')
         .eq('is_published', true)
         .eq('registration_mode', 'open_registration')
-        .gte('registration_deadline', new Date().toISOString())
+        .or(`registration_deadline.is.null,registration_deadline.gt.${new Date().toISOString()}`)
+        .in('status', ['draft', 'live'])
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -34,9 +34,9 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
         eventIds.length > 0
           ? supabase
               .from('round_robin_players')
-              .select('event_id, player_id, registration_status')
+              .select('event_id, player_id, registration_status, active')
               .in('event_id', eventIds)
-              .eq('active', true)
+              .or('active.eq.true,registration_status.eq.waitlisted')
           : Promise.resolve({ data: [], error: null }),
         organizerIds.length > 0
           ? supabase
@@ -63,7 +63,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
 
       const enrichedEvents = (data ?? []).map((event) => {
         const registrations = registrationsByEvent.get(event.id) ?? [];
-        const confirmed = registrations.filter((row) => row.registration_status === 'confirmed').length;
+        const confirmed = registrations.filter((row) => row.active && (row.registration_status ?? 'confirmed') === 'confirmed').length;
         const waitlisted = registrations.filter((row) => row.registration_status === 'waitlisted').length;
         const myRegistration = registrations.find((row) => row.player_id === userId);
         const organizer = organizersById.get(event.organizer_id);
@@ -83,41 +83,6 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
     enabled: !!userId
   });
 
-  const handleJoinEvent = async (eventId: string, maxPlayers: number, confirmedCount: number) => {
-    if (!userId) {
-      toast.error("Please sign in to join events");
-      return;
-    }
-
-    setJoiningEvent(eventId);
-    try {
-      const status = confirmedCount >= maxPlayers ? 'waitlisted' : 'confirmed';
-      
-      const { error } = await supabase
-        .from('round_robin_players')
-        .insert({
-          event_id: eventId,
-          player_id: userId,
-          registration_status: status,
-          active: true
-        });
-
-      if (error) throw error;
-
-      toast.success(
-        status === 'confirmed' 
-          ? 'Successfully registered!' 
-          : 'Added to waitlist - you\'ll be notified if a spot opens'
-      );
-      refetch();
-    } catch (error: unknown) {
-      console.error('Join error:', error);
-      toast.error('Failed to join event');
-    } finally {
-      setJoiningEvent(null);
-    }
-  };
-
   if (events.length === 0) {
     return (
       <Card>
@@ -136,8 +101,8 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {events.map((event) => {
         const eventDate = parseISO(event.date + 'T00:00:00');
-        const deadline = parseISO(event.registration_deadline);
-        const isFull = event.confirmed_count >= event.max_players;
+        const deadline = event.registration_deadline ? parseISO(event.registration_deadline) : null;
+        const isFull = event.max_players !== null && event.confirmed_count >= event.max_players;
 
         return (
           <Card key={event.id} className="hover:shadow-lg transition-shadow">
@@ -171,7 +136,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
                     Capacity
                   </span>
                   <span className="font-medium">
-                    {event.confirmed_count} / {event.max_players}
+                    {event.confirmed_count}{event.max_players !== null ? ` / ${event.max_players}` : ""}
                     {event.waitlisted_count > 0 && (
                       <span className="text-muted-foreground ml-1">
                         (+{event.waitlisted_count} waitlist)
@@ -185,7 +150,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
                     <Clock className="h-4 w-4" />
                     Registration closes
                   </span>
-                  <span className="text-xs">{format(deadline, 'MMM d, h:mm a')}</span>
+                  <span className="text-xs">{deadline ? format(deadline, 'MMM d, h:mm a') : 'Open'}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -206,17 +171,13 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
                 >
                   View Details
                 </Button>
-                {!event.is_registered && !isPast(deadline) && (
+                {!event.is_registered && (!deadline || !isPast(deadline)) && (
                   <Button
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleJoinEvent(event.id, event.max_players, event.confirmed_count)}
-                    disabled={joiningEvent === event.id}
+                    onClick={() => navigate(roundRobinPath(event.id))}
                   >
-                    {joiningEvent === event.id 
-                      ? 'Joining...' 
-                      : isFull ? 'Join Waitlist' : 'Join Event'
-                    }
+                    {isFull ? 'Join the Waitlist' : 'Register'}
                   </Button>
                 )}
               </div>

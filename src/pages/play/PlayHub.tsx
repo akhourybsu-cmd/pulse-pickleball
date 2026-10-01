@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { JoinByInviteCodeDialog } from '@/components/round-robin/JoinByInviteCodeDialog';
 import { UpcomingPlaySection } from '@/components/play/UpcomingPlaySection';
+import { clearPostAuthRedirect } from '@/lib/authRedirect';
 
 const FindEvents = lazy(() => import('@/pages/player/FindEvents'));
 
@@ -47,6 +48,7 @@ export default function PlayHub() {
   // so a refresh doesn't re-trigger the dialog.
   useEffect(() => {
     if (inviteParam) {
+      clearPostAuthRedirect(`${location.pathname}${location.search}${location.hash}`);
       setInviteCode(inviteParam);
       setAutoPreview(true);
       setDialogOpen(true);
