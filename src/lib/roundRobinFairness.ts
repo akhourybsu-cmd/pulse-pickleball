@@ -3,6 +3,8 @@
  * Tracks and calculates fairness metrics for round robin scheduling
  */
 
+import { equalGameTarget } from "./roundRobin/scheduleCore";
+
 export interface PlayerStats {
   playerId: string;
   gamesPlayed: number;
@@ -62,11 +64,13 @@ export function calculateMetrics(
 export function suggestRounds(
   players: number,
   courts: number,
-  desiredGamesPerPlayer: number = 4
+  desiredGamesPerPlayer: number = 4,
+  equalGames = false
 ): number {
   const possibleMatches = Math.floor(players / 4);
   const matchesPerRound = Math.min(courts, possibleMatches);
   const onCourtPerRound = 4 * matchesPerRound;
   if (onCourtPerRound === 0) return 0;
-  return Math.ceil((desiredGamesPerPlayer * players) / onCourtPerRound);
+  const games = equalGames ? equalGameTarget(players, desiredGamesPerPlayer) : desiredGamesPerPlayer;
+  return Math.ceil((games * players) / onCourtPerRound);
 }

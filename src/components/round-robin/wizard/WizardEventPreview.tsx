@@ -32,7 +32,7 @@ export function WizardEventPreview({ formData }: { formData: WizardFormData }) {
           <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 shrink-0 text-primary" />{date}{formData.startTime ? ` · ${formData.startTime}` : " · Time to come"}</p>
         </div>
         <div className="rr-ticket-metrics">
-          {[{ value: count, label: formData.eventMode === "open_registration" ? "Player cap" : "Players" }, { value: formData.courtCount, label: "Courts" }, { value: formData.gamesPerPlayer, label: "Games each" }].map(({ value, label }) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}
+          {[{ value: count, label: formData.eventMode === "open_registration" ? "Player cap" : "Players" }, { value: formData.courtCount, label: "Courts" }, { value: formData.gamesPerPlayer, label: "Game target" }].map(({ value, label }) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}
         </div>
         <p className="mt-5 flex items-center gap-2 text-xs"><Trophy className="h-4 w-4 text-primary" />{formData.ratingEligible && !formData.allowGuests ? "PULSE rated event" : "Play for the love of it"}</p>
       </div>

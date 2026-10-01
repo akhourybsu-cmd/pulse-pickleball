@@ -92,11 +92,13 @@ export interface ScheduleMetrics {
 export function calculateMetrics(
   players: number,
   courts: number,
-  gamesPerPlayer: number
+  gamesPerPlayer: number,
+  equalGames = false
 ): ScheduleMetrics {
   const playerCount = Math.max(0, Math.floor(players));
   const courtCount = Math.max(0, Math.floor(courts));
-  const targetGames = Math.max(0, Math.floor(gamesPerPlayer));
+  const requestedGames = Math.max(0, Math.floor(gamesPerPlayer));
+  const targetGames = equalGames ? equalGameTarget(playerCount, requestedGames) : requestedGames;
   const maxPossibleMatches = Math.floor(playerCount / 4);
   const matchesPerRound = Math.min(courtCount, maxPossibleMatches);
   const onCourtPerRound = 4 * matchesPerRound;
@@ -109,7 +111,7 @@ export function calculateMetrics(
       ? Math.ceil(targetGames / gamesPerRoundPerPlayer)
       : 0;
 
-  const totalByes = rounds * byesPerRound;
+  const totalByes = equalGames ? rounds * playerCount - playerCount * targetGames : rounds * byesPerRound;
   const targetByes =
     totalByes > 0 && playerCount > 0 ? Math.round(totalByes / playerCount) : 0;
 
@@ -305,6 +307,23 @@ function minimumCostPairs<T>(
       });
       pairs.push([left, remaining.splice(bestIndex, 1)[0]]);
     }
+    // Repair greedy traps on larger rosters without exponential search. A
+    // swap changes two partnerships but never changes anyone's game count.
+    for (let pass = 0; pass < pairs.length; pass++) {
+      let improved = false;
+      for (let i = 0; i < pairs.length; i++) {
+        for (let j = i + 1; j < pairs.length; j++) {
+          const [a, b] = pairs[i], [c, d] = pairs[j];
+          const old = penaltyFor(a, b) + penaltyFor(c, d);
+          const cross = penaltyFor(a, c) + penaltyFor(b, d);
+          const alternate = penaltyFor(a, d) + penaltyFor(b, c);
+          if (Math.min(cross, alternate) >= old) continue;
+          [pairs[i], pairs[j]] = cross <= alternate ? [[a, c], [b, d]] : [[a, d], [b, c]];
+          improved = true;
+        }
+      }
+      if (!improved) break;
+    }
     return pairs;
   }
 
@@ -483,6 +502,94 @@ export interface RegenerateOptions {
    * future selection balance but are not emitted as matches or fairness data.
    */
   initialGameCredits?: Map<SeatId, number>;
+}
+
+/** Smallest uniform total that can be divided into four-player games. */
+export function equalGameTarget(players: number, requested: number): number {
+  const step = players % 2 ? 4 : players % 4 ? 2 : 1;
+  return Math.ceil(requested / step) * step;
+}
+
+/**
+ * Construct exact player-game obligations first, then optimize partners. Court
+ * capacity is a ceiling, never an obligation to give somebody an extra game.
+ * Highest-remaining-degree allocation realizes a bipartite player/round graph;
+ * if the shortest candidate cannot fit, add a round, down to one match per
+ * round. The caller validates divisibility and feasible individual deficits.
+ */
+export function generateEqualRounds(opts: Omit<RegenerateOptions, "totalRounds">): CoreMatch[] {
+  const { seatIds, numCourts, gamesPerPlayer, startFromRound, format = "open",
+    genders = new Map<SeatId, string>(), frozenMatches = [] } = opts;
+  const initial = buildPlayerStats(seatIds, frozenMatches);
+  const deficits = seatIds.map(id => gamesPerPlayer - initial.get(id)!.gamesPlayed);
+  const total = deficits.reduce((sum, n) => sum + n, 0);
+  if (total === 0) return [];
+  if (deficits.some(n => n < 0) || total % 4 !== 0 || Math.max(...deficits) > total / 4) {
+    throw new Error("These remaining game totals cannot form complete doubles matches.");
+  }
+  const male = seatIds.filter(id => genders.get(id)?.trim().toLowerCase() === "male");
+  const female = seatIds.filter(id => genders.get(id)?.trim().toLowerCase() === "female");
+  if (format === "mixed" && (male.length + female.length !== seatIds.length ||
+    male.reduce((sum, id) => sum + gamesPerPlayer - initial.get(id)!.gamesPlayed, 0) !== total / 2)) {
+    throw new Error("Equal mixed doubles needs equal remaining games for men and women.");
+  }
+  const maxCourts = Math.min(numCourts, Math.floor(seatIds.length / 4),
+    format === "mixed" ? Math.floor(male.length / 2) : numCourts,
+    format === "mixed" ? Math.floor(female.length / 2) : numCourts);
+  if (maxCourts < 1) throw new Error("Need enough eligible players for a doubles court.");
+  const matchCount = total / 4;
+  const minimumRounds = Math.max(Math.ceil(matchCount / maxCourts), ...deficits);
+
+  for (let roundCount = minimumRounds; roundCount <= matchCount; roundCount++) {
+    let best: CoreMatch[] | null = null;
+    let bestRepeats = Infinity;
+    // Multiple deterministic rotations avoid committing to an unlucky early
+    // partner choice. Work stays bounded, including large social rosters.
+    const attempts = seatIds.length <= 40 ? 12 : 4;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const rng = new SeededRandom(`${opts.seed}:equal:${roundCount}:${attempt}`);
+      const remaining = new Map(seatIds.map((id, i) => [id, deficits[i]]));
+      const stats = buildPlayerStats(seatIds, frozenMatches);
+      const generated: CoreMatch[] = [];
+      let valid = true;
+      for (let index = 0; index < roundCount; index++) {
+        const round = startFromRound + index;
+        // Balanced round sizes also avoid a tiny final round stranding a player
+        // who still needs multiple games. Larger rounds come first for Havel–Hakimi.
+        const courts = Math.floor(matchCount / roundCount) + (index < matchCount % roundCount ? 1 : 0);
+        const select = (pool: SeatId[], count: number) => rng.shuffle(pool)
+          .filter(id => remaining.get(id)! > 0)
+          .sort((a, b) => remaining.get(b)! - remaining.get(a)! ||
+            stats.get(a)!.lastPlayedRound - stats.get(b)!.lastPlayedRound)
+          .slice(0, count);
+        const playing = format === "mixed"
+          ? [...select(male, courts * 2), ...select(female, courts * 2)]
+          : select(seatIds, courts * 4);
+        if (playing.length !== courts * 4) { valid = false; break; }
+        playing.forEach(id => remaining.set(id, remaining.get(id)! - 1));
+        if ([...remaining.values()].some(n => n > roundCount - index - 1)) { valid = false; break; }
+        const teams = format === "mixed"
+          ? formTeamsMixed(playing.slice(0, courts * 2), playing.slice(courts * 2), stats, rng)
+          : formTeams(playing, stats, rng);
+        const matches: CoreMatch[] = assignCourts(pairOpponents(teams, stats, rng), stats, numCourts, rng)
+          .map(({ pairing, courtNo }) => ({ round_no: round, court_no: courtNo,
+            a1: pairing.teamA[0], a2: pairing.teamA[1], b1: pairing.teamB[0], b2: pairing.teamB[1], is_bye: false }));
+        const playingSet = new Set(playing);
+        seatIds.filter(id => !playingSet.has(id)).forEach((id, bye) => matches.push({
+          round_no: round, court_no: numCourts + bye + 1, a1: id, a2: null, b1: null, b2: null, is_bye: true,
+        }));
+        generated.push(...matches);
+        matches.forEach(match => applyMatchToStats(match, stats));
+      }
+      if (!valid || [...remaining.values()].some(n => n !== 0)) continue;
+      const repeats = [...stats.values()].reduce((sum, stat) => sum +
+        [...stat.partnerCounts.values()].reduce((count, n) => count + Math.max(0, n - 1), 0), 0);
+      if (repeats < bestRepeats) { best = generated; bestRepeats = repeats; }
+      if (repeats === 0) break;
+    }
+    if (best) return best;
+  }
+  throw new Error("Unable to schedule the exact game totals. Adjust the roster or game target.");
 }
 
 /**

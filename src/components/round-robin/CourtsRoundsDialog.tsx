@@ -6,10 +6,12 @@ import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal
 import { ScheduleImpactPreview } from "./ScheduleImpactPreview";
 import type { ScheduleAdjustmentPlan } from "@/lib/roundRobin/scheduleAdjustment";
 import type { SeatId } from "@/lib/roundRobin/scheduleCore";
+import { EqualGamesSetting } from "./EqualGamesSetting";
 
 export interface RoundRobinScheduleSettings {
   numCourts: number;
   gamesPerPlayer: number;
+  equalGames?: boolean;
 }
 
 interface CourtsRoundsDialogProps {
@@ -17,6 +19,7 @@ interface CourtsRoundsDialogProps {
   onOpenChange: (open: boolean) => void;
   currentCourts: number;
   currentGamesPerPlayer: number;
+  currentEqualGames?: boolean;
   currentTotalRounds?: number;
   currentRound: number | null;
   hasScores: boolean;
@@ -33,6 +36,7 @@ export function CourtsRoundsDialog({
   onOpenChange,
   currentCourts,
   currentGamesPerPlayer,
+  currentEqualGames = false,
   currentTotalRounds,
   currentRound,
   hasScores,
@@ -46,6 +50,7 @@ export function CourtsRoundsDialog({
   const [newCourts, setNewCourts] = useState(currentCourts);
   const [newGamesPerPlayer, setNewGamesPerPlayer] = useState(currentGamesPerPlayer);
   const [loading, setLoading] = useState(false);
+  const [equalGames, setEqualGames] = useState(currentEqualGames);
 
   // Re-sync when the dialog is reopened — the event may have changed courts
   // since this component first mounted (useState initial values are sticky).
@@ -53,14 +58,15 @@ export function CourtsRoundsDialog({
     if (open) {
       setNewCourts(currentCourts);
       setNewGamesPerPlayer(currentGamesPerPlayer);
+      setEqualGames(currentEqualGames);
     }
-  }, [open, currentCourts, currentGamesPerPlayer]);
+  }, [open, currentCourts, currentGamesPerPlayer, currentEqualGames]);
 
   const handleUpdate = async () => {
     const courtsChanged = newCourts !== currentCourts;
     const gamesChanged = newGamesPerPlayer !== currentGamesPerPlayer;
 
-    if (!courtsChanged && !gamesChanged) return;
+    if (!courtsChanged && !gamesChanged && equalGames === currentEqualGames) return;
 
     setLoading(true);
     try {
@@ -69,6 +75,7 @@ export function CourtsRoundsDialog({
       await onApply({
         numCourts: newCourts,
         gamesPerPlayer: newGamesPerPlayer,
+        equalGames,
       });
       onOpenChange(false);
     } finally {
@@ -79,10 +86,11 @@ export function CourtsRoundsDialog({
   const handleClose = () => {
     setNewCourts(currentCourts);
     setNewGamesPerPlayer(currentGamesPerPlayer);
+    setEqualGames(currentEqualGames);
     onOpenChange(false);
   };
 
-  const hasChanges = newCourts !== currentCourts || newGamesPerPlayer !== currentGamesPerPlayer;
+  const hasChanges = newCourts !== currentCourts || newGamesPerPlayer !== currentGamesPerPlayer || equalGames !== currentEqualGames;
   const isPreScheduleSetup = !hasSchedule && totalPlayers < 4;
   const previewPlayerCount = isPreScheduleSetup
     ? Math.max(4, estimatedPlayerCount ?? totalPlayers)
@@ -95,6 +103,7 @@ export function CourtsRoundsDialog({
     : getImpactPlan?.({
         numCourts: newCourts,
         gamesPerPlayer: newGamesPerPlayer,
+        equalGames,
       }) ?? null;
 
   return (
@@ -164,7 +173,9 @@ export function CourtsRoundsDialog({
           </div>
         )}
 
+        <EqualGamesSetting value={equalGames} onChange={setEqualGames} />
         <ScheduleImpactPreview
+          equalGames={equalGames}
           playerCount={previewPlayerCount}
           courtCount={newCourts}
           gamesPerPlayer={newGamesPerPlayer}

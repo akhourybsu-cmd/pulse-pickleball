@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { rosterGenderIssue } from "@/lib/roundRobin/participantGender";
+import { calculateMetrics } from "@/lib/roundRobin/scheduleCore";
 
 export interface WizardFormData {
   eventMode: "immediate" | "open_registration";
@@ -23,6 +24,7 @@ export interface WizardFormData {
   playerInputMethod: "add" | "count" | null;
   courtCount: number;
   gamesPerPlayer: number;
+  equalGames?: boolean;
   eventDate: string;
   startTime: string;
   registrationDeadline: string;
@@ -106,6 +108,12 @@ export function useWizardSteps(formData: WizardFormData) {
         return formData.maxPlayers >= 4;
       case "schedule":
         // Both sub-fields must be valid for the combined step to advance.
+        if (formData.equalGames && formData.format === "mixed" &&
+            formData.eventMode === "immediate" && formData.playerInputMethod === "add") {
+          const men = formData.selectedPlayers.filter(p => p.gender?.trim().toLowerCase() === "male").length;
+          const women = formData.selectedPlayers.filter(p => p.gender?.trim().toLowerCase() === "female").length;
+          if (men !== women || men + women !== formData.selectedPlayers.length) return false;
+        }
         return formData.courtCount >= 1 && formData.gamesPerPlayer >= 1;
       case "datetime":
         if (formData.eventMode === "immediate") {
@@ -163,11 +171,12 @@ export function generateDefaultEventName(): string {
 export function calculateScheduleMetrics(
   playerCount: number,
   courtCount: number,
-  gamesPerPlayer: number
+  gamesPerPlayer: number,
+  equalGames = false
 ) {
   const P = playerCount;
   const C = courtCount;
-  const G = gamesPerPlayer;
+  const G = calculateMetrics(playerCount, courtCount, gamesPerPlayer, equalGames).targetGames;
 
   if (P < 4 || C < 1 || G < 1) {
     return { rounds: 0, totalSlots: 0, capacity: 0, fairnessWarning: null };

@@ -19,11 +19,13 @@ export function planCreationSchedulePreview({
   participants,
   numCourts,
   gamesPerPlayer,
+  equalGames = false,
   format,
 }: {
   participants: readonly CreationPreviewParticipant[];
   numCourts: number;
   gamesPerPlayer: number;
+  equalGames?: boolean;
   format: EventFormat;
 }): ScheduleAdjustmentPlan | null {
   if (participants.length < 4 || numCourts < 1 || gamesPerPlayer < 1) {
@@ -49,6 +51,7 @@ export function planCreationSchedulePreview({
     firstMutableRound: 1,
     numCourts,
     gamesPerPlayer,
+    equalGames,
     format,
     genders,
     lateJoinCredit: "none",

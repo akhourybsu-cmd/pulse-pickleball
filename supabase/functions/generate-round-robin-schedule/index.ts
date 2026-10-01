@@ -32,6 +32,7 @@ interface ScheduleRequest {
   num_courts: number;
   num_rounds?: number;
   games_per_player: number;
+  equal_games?: boolean;
   regenerate_from_round?: number;
   expected_version?: number;
   format?: EventFormat;
@@ -50,6 +51,7 @@ interface EventSnapshot {
   num_courts: number;
   num_rounds: number;
   games_per_player: number | null;
+  equal_games: boolean;
   schedule_version: number | null;
   voided: boolean | null;
 }
@@ -207,11 +209,15 @@ serve(async (req) => {
       return respond(422, { error: "Courts and games per player must be between 1 and 20" });
     }
 
+    if (body.equal_games != null && typeof body.equal_games !== "boolean") {
+      return respond(422, { error: "equal_games must be a boolean" });
+    }
+
     // Authorize before loading any roster or schedule details. The database RPC
     // repeats this check under the event row lock.
     const { data: rawEvent, error: eventError } = await supabase
       .from("round_robin_events")
-      .select("id, organizer_id, format, status, current_round, num_courts, num_rounds, games_per_player, schedule_version, voided")
+      .select("id, organizer_id, format, status, current_round, num_courts, num_rounds, games_per_player, equal_games, schedule_version, voided")
       .eq("id", eventId)
       .single();
     if (eventError || !rawEvent) {
@@ -458,6 +464,7 @@ serve(async (req) => {
       protectedRounds: protectedThrough > 0 ? [protectedThrough] : [],
       numCourts: requestedCourts,
       gamesPerPlayer: requestedGames,
+      equalGames: body.equal_games ?? event.equal_games,
       // Event format is persisted configuration; never let a request body
       // silently bypass mixed/gender scheduling requirements.
       format: (event.format ?? "open") as EventFormat,
@@ -502,7 +509,7 @@ serve(async (req) => {
         p_regenerate_from_round: firstMutableRound,
         p_num_courts: requestedCourts,
         p_num_rounds: plan.capacity.recommendedTotalRounds,
-        p_games_per_player: requestedGames,
+        p_games_per_player: plan.capacity.gamesPerPlayerTarget,
         p_schedule: replacementRows,
         p_impact: serializedPlan,
         p_reason: reason,
