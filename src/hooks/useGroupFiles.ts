@@ -22,6 +22,7 @@ export interface GroupFile {
 export function useGroupFiles(groupId: string | undefined) {
   const [files, setFiles] = useState<GroupFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
@@ -29,6 +30,7 @@ export function useGroupFiles(groupId: string | undefined) {
     if (!groupId) return;
     
     setLoading(true);
+    setIsError(false);
     try {
       const { data: filesData, error } = await supabase
         .from('group_files')
@@ -54,6 +56,7 @@ export function useGroupFiles(groupId: string | undefined) {
 
       setFiles(filesWithData);
     } catch (error) {
+      setIsError(true);
       console.error('Error fetching files:', error);
       toast({
         title: 'Error',
@@ -151,6 +154,7 @@ export function useGroupFiles(groupId: string | undefined) {
   return {
     files,
     loading,
+    isError,
     uploading,
     uploadFile,
     deleteFile,

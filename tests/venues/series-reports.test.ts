@@ -177,7 +177,8 @@ it("counts cash and card receipts once and attributes refunds to the original sa
     "UPDATE payment_orders SET refunded_cents=500,status='partially_refunded' WHERE id=$1",
     [order.id]
   );
-  const day = (await db.query<any>("SELECT current_date::text d")).rows[0].d;
+  // The report uses the venue day, which can differ from the runner's date.
+  const day = (await db.query<any>("SELECT (now() AT TIME ZONE timezone)::date::text d FROM venues WHERE id=$1", [venue])).rows[0].d;
   const r = (
     await as(owner, "SELECT venue_operating_report($1,$2,$2) data", [
       venue,

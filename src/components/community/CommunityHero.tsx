@@ -7,6 +7,7 @@ import { InviteModal } from "./InviteModal";
 import { venueChrome } from "@/lib/venues/branding";
 import { communityUrl } from "@/lib/communityShare";
 import type { PublicCommunity } from "@/hooks/usePublicCommunity";
+import { CommunityIdentity } from './CommunityIdentity';
 
 export function CommunityHero({
   group,
@@ -30,7 +31,7 @@ export function CommunityHero({
   const chrome = venueChrome(venue);
   return (
     <>
-      <section
+      {!venue ? <div className="overflow-hidden rounded-2xl sm:rounded-3xl"><CommunityIdentity group={group} label={inviteCode ? 'You’re invited' : 'Pickleball community'}><Button variant="outline" className="h-11 w-11 rounded-full border-white/30 bg-white/10 p-0 text-white hover:bg-white/20 hover:text-white" aria-label={`Share ${name}`} onClick={() => setSharing(true)}><Share2 className="h-4 w-4" /></Button></CommunityIdentity></div> : <section
         className="overflow-hidden rounded-2xl border bg-card shadow-sm sm:rounded-3xl"
         aria-label={name}
       >
@@ -89,7 +90,7 @@ export function CommunityHero({
             {group.member_count === 1 ? "member" : "members"}
           </p>
         </div>
-      </section>
+      </section>}
       <InviteModal
         open={sharing}
         onOpenChange={setSharing}

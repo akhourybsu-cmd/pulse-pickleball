@@ -9,6 +9,7 @@ import { useVenueModules } from '@/hooks/useVenueModules';
 import { VenueStaffProvider, useMyVenueRole } from '@/components/venue/VenueStaffContext';
 import { Button } from '@/components/ui/button';
 import { VenueLoadState } from '@/components/venue/VenueLoadState';
+import { CommunityLoadError } from '@/components/community/CommunityLoadError';
 import { VenueEntrance } from '@/components/venue/VenueEntrance';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
@@ -37,7 +38,7 @@ export default function GroupRoute() {
   const modules = useVenueModules(isVenue ? group?.venue_id : null);
   const venueRole = useMyVenueRole(isVenue ? group?.venue_id : null);
 
-  if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetch()} />;
+  if (!loading && (isError || !group)) return isVenue ? <VenueLoadState fullPage onRetry={() => void refetch()} /> : <div className="mx-auto max-w-xl p-6"><CommunityLoadError subject="this community" onRetry={refetch} /></div>;
 
   if (loading || (isVenue && venueRole.loading)) {
     return (

@@ -31,6 +31,8 @@ import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { OnlineIndicator } from './OnlineIndicator';
 import { MemberActionSheet, type MemberActionTarget } from './MemberActionSheet';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { CommunityLoadError } from './CommunityLoadError';
 
 interface GroupMembersProps {
   groupId: string;
@@ -139,7 +141,7 @@ const MemberCard = memo(function MemberCard({
         </button>
 
         {/* Role Badge */}
-        {!isPending && (
+        {!isPending && member.role !== 'member' && (
           <Badge 
             variant="secondary" 
             className={cn(
@@ -150,7 +152,7 @@ const MemberCard = memo(function MemberCard({
           >
             {member.role === 'owner' && <Crown className="h-3 w-3" />}
             {member.role === 'moderator' && <Shield className="h-3 w-3" />}
-            {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+            <span className="sr-only sm:not-sr-only">{member.role.charAt(0).toUpperCase() + member.role.slice(1)}</span>
           </Badge>
         )}
 
@@ -162,6 +164,7 @@ const MemberCard = memo(function MemberCard({
               size="icon"
               className="h-10 w-10 text-green-600 hover:bg-green-500/10"
               onClick={() => onApprove(member.id)}
+              aria-label={`Approve ${member.profile.full_name}`}
             >
               <Check className="h-4 w-4" />
             </Button>
@@ -170,6 +173,7 @@ const MemberCard = memo(function MemberCard({
               size="icon"
               className="h-10 w-10 text-red-600 hover:bg-red-500/10"
               onClick={() => onReject(member.id)}
+              aria-label={`Reject ${member.profile.full_name}`}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -185,6 +189,7 @@ const MemberCard = memo(function MemberCard({
               size="icon"
               className="h-10 w-10"
               onClick={() => onStartDM(member.user_id)}
+              aria-label={`Message ${member.profile.full_name}`}
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
@@ -196,6 +201,7 @@ const MemberCard = memo(function MemberCard({
                 size="icon"
                 className="h-10 w-10"
                 onClick={() => onSendFriendRequest(member.user_id)}
+                aria-label={`Add ${member.profile.full_name} as a friend`}
               >
                 <UserPlus className="h-4 w-4" />
               </Button>
@@ -205,6 +211,7 @@ const MemberCard = memo(function MemberCard({
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 text-muted-foreground"
+                aria-label="Friend request sent"
                 disabled
               >
                 <Clock className="h-4 w-4" />
@@ -215,6 +222,7 @@ const MemberCard = memo(function MemberCard({
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 text-primary"
+                aria-label="Already friends"
                 disabled
               >
                 <Check className="h-4 w-4" />
@@ -227,7 +235,7 @@ const MemberCard = memo(function MemberCard({
         {!isPending && canManage && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10">
+              <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Manage ${member.profile.full_name}`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -279,7 +287,9 @@ export function GroupMembers({
   const { 
     members, 
     pendingMembers, 
-    loading, 
+    loading,
+    isError,
+    refetch,
     approveMember, 
     rejectMember, 
     updateRole, 
@@ -294,6 +304,11 @@ export function GroupMembers({
   // card at once. "Show more" reveals the next window.
   const MEMBERS_PAGE = 30;
   const [membersShown, setMembersShown] = useState(MEMBERS_PAGE);
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLocaleLowerCase();
+  const filteredMembers = members.filter(member =>
+    [member.profile.display_name, member.profile.full_name].some(name => name?.toLocaleLowerCase().includes(needle))
+  );
 
   const [actionDialog, setActionDialog] = useState<{
     type: 'remove' | 'ban' | null;
@@ -356,8 +371,14 @@ export function GroupMembers({
     );
   }
 
+  if (isError) return <CommunityLoadError subject="members" onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-3">
+        <Input aria-label="Search community members" placeholder="Find a member by name…" value={search} onChange={event => { setSearch(event.target.value); setMembersShown(MEMBERS_PAGE); }} className="h-11 min-w-0 flex-1 rounded-xl bg-card" />
+        {onInviteClick && <Button variant="outline" className="h-11 gap-2 rounded-xl" onClick={onInviteClick}><UserPlus className="h-4 w-4" />Invite</Button>}
+      </div>
       {/* Pending Requests */}
       {pendingMembers.length > 0 && isAdmin && (
         <div className="space-y-3">
@@ -398,16 +419,17 @@ export function GroupMembers({
         {members.length === 0 ? (
           <GroupEmptyState
             icon={Users}
-            title="Just you for now"
-            description="Invite players to grow your group and start playing together!"
-            actions={[
+            title="No members to display"
+            description="Members will appear here when they join the community."
+            actions={onInviteClick ? [
               { label: 'Invite Players', onClick: () => onInviteClick?.(), icon: UserPlus },
               { label: 'Share Link', onClick: () => onInviteClick?.(), variant: 'outline', icon: Share2 },
-            ]}
+            ] : []}
           />
         ) : (
           <>
-            {members.slice(0, membersShown).map(m => (
+            {filteredMembers.length === 0 && <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">No members match “{search}”. Try another name.</p>}
+            {filteredMembers.slice(0, membersShown).map(m => (
               <MemberCard
                 key={m.id}
                 member={m}
@@ -427,7 +449,7 @@ export function GroupMembers({
                 onOpenSheet={handleOpenSheet}
               />
             ))}
-            {members.length > membersShown && (
+            {filteredMembers.length > membersShown && (
               <div className="flex justify-center pt-1">
                 <Button
                   variant="ghost"

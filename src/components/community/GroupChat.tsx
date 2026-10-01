@@ -24,6 +24,7 @@ import {
 } from '@/lib/chat/scroll';
 import { isSameSenderRun } from '@/lib/chat/grouping';
 import { useAuthState } from '@/hooks/useAuthState';
+import { CommunityLoadError } from './CommunityLoadError';
 import { VenueBrandMark, type VenueIdentity } from '@/components/venue/VenueBrandMark';
 
 interface GroupChatProps {
@@ -72,7 +73,7 @@ export const GroupChat = memo(function GroupChat({
   canSendMessages = true,
 }: GroupChatProps) {
   const {
-    messages, loading, sending, hasOlder, loadingOlder, loadOlder,
+    messages, loading, isError, refetch, sending, hasOlder, loadingOlder, loadOlder,
     sendMessage, retryMessage, deleteMessage, editMessage, togglePinMessage, toggleReaction,
   } = useGroupChat(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
@@ -380,6 +381,8 @@ export const GroupChat = memo(function GroupChat({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  if (isError && messages.length === 0) return <div className="p-4"><CommunityLoadError subject="the conversation" onRetry={refetch} /></div>;
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col p-4 gap-4">
@@ -491,7 +494,7 @@ export const GroupChat = memo(function GroupChat({
           aria-relevant="additions text"
           aria-label={`${title || 'Community chat'} messages`}
           tabIndex={0}
-          className="venue-chat-messages h-full touch-pan-y overflow-y-auto overscroll-contain bg-background px-3 py-4 [overflow-anchor:none] sm:px-5"
+          className="venue-chat-messages h-full touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain bg-background px-3 py-4 [overflow-anchor:none] sm:px-5"
         >
           {messages.length > 0 && (
             <div className="flex min-h-7 items-center justify-center pb-3">

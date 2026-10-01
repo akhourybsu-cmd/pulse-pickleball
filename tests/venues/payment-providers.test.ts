@@ -323,11 +323,13 @@ it("routes court walk-ins and lesson deposits to Square while retaining court an
       )
     ).rows,
   ).toHaveLength(1);
+  // Match the venue's calendar day, even when the runner has passed midnight.
+  const reportDay = (await db.query<any>("SELECT (now() AT TIME ZONE timezone)::date::text d FROM venues WHERE id=$1", [venue])).rows[0].d;
   const report = (
     await as(
       owner,
-      "SELECT venue_operating_report($1,current_date,current_date) data",
-      [venue],
+      "SELECT venue_operating_report($1,$2,$2) data",
+      [venue, reportDay],
     )
   )[0].data;
   expect(report).toMatchObject({

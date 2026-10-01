@@ -22,7 +22,7 @@ export interface GroupMemberWithProfile {
   };
 }
 
-async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMemberWithProfile[]; pendingMembers: GroupMemberWithProfile[] }> {
+export async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMemberWithProfile[]; pendingMembers: GroupMemberWithProfile[] }> {
   // Fetch all members
   const { data: membersData, error } = await supabase
     .from('group_members')
@@ -34,15 +34,17 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
 
   // Fetch profiles
   const userIds = (membersData || []).map(m => m.user_id);
-  const { data: profilesData } = await supabase
+  if (!userIds.length) return { members: [], pendingMembers: [] };
+  const { data: profilesData, error: profileError } = await supabase
     .from('profiles_public')
     .select('id, display_name, full_name, avatar_url, current_rating, gender')
     .in('id', userIds);
 
+  if (profileError) throw profileError;
+
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
   const membersWithProfiles: GroupMemberWithProfile[] = (membersData || [])
-    .filter(m => profilesMap.has(m.user_id))
     .map(m => {
       const profile = profilesMap.get(m.user_id);
       return {
@@ -71,7 +73,7 @@ export function useGroupMembers(groupId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading: loading, refetch } = useQuery({
+  const { data, isLoading: loading, isError, refetch } = useQuery({
     queryKey: ['group-members', groupId],
     queryFn: () => fetchGroupMembers(groupId!),
     staleTime: 60 * 1000, // 1 minute
@@ -255,6 +257,7 @@ export function useGroupMembers(groupId: string | undefined) {
     members,
     pendingMembers,
     loading,
+    isError,
     approveMember: approveMemberMutation.mutateAsync,
     rejectMember: rejectMemberMutation.mutateAsync,
     updateRole: (memberId: string, role: 'moderator' | 'member') => 
