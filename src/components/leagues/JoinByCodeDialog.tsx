@@ -4,13 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KeyRound, Info, CalendarClock, XCircle } from "lucide-react";
 import type { LeagueTeaser } from "@/lib/leagues/types";
+import { Logo } from '@/components/Logo';
+import './playerLeague.css';
 
 /**
  * Two-step flow:
@@ -123,11 +125,13 @@ export function JoinByCodeDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="league-menu sm:max-w-md w-[calc(100%-2rem)] rounded-2xl overflow-y-auto">
+        <div className="league-invite-mark"><Logo compact className="w-20" /><p className="mt-3 text-xs text-[#e3ca92]">Your next season starts here.</p></div>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="w-4 h-4" />
             Join a league
           </DialogTitle>
+          <DialogDescription>Enter your invitation and preview the league before joining.</DialogDescription>
         </DialogHeader>
 
         {!teaser ? (

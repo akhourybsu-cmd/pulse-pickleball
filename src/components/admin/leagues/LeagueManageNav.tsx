@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { type ManageTab, type TabDef, MANAGE_TABS, GROUPS } from "./leagueManageTabs";
+import { Logo } from '@/components/Logo';
 
 export type { ManageTab };
 
@@ -22,6 +23,7 @@ export function LeagueManageNav({
     <>
       <aside className="hidden lg:block w-[248px] shrink-0 sticky top-24 self-start">
         <nav aria-label="League management" className="lg-scroll-area max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 space-y-3">
+          <div className="rounded-xl bg-[#1c2621] px-4 py-4 text-[#faf7ef]"><Logo compact className="w-16" /><p className="mt-2 text-xs text-[#e3ca92]">Organizer workspace</p></div>
           {GROUPS.map(group => {
             const items = tabs.filter(tab => tab.group === group);
             if (!items.length) return null;
@@ -50,7 +52,7 @@ function SectionButton({ tab, active, onSelect, compact = false, count }: { tab:
       className={cn(
         "flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        active ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent text-foreground hover:border-border hover:bg-muted/60 active:bg-muted",
+        active ? "border-primary/40 bg-primary/10 text-foreground shadow-[inset_3px_0_0_hsl(var(--primary))]" : "border-transparent text-foreground hover:border-border hover:bg-muted/60 active:bg-muted",
       )}
     >
       <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} aria-hidden />
@@ -94,6 +96,7 @@ function MobileSectionPicker({ active, onChange, tabs, actionCount }: {
         </DrawerTrigger>
         <DrawerContent className="league-menu mx-auto w-full max-w-xl rounded-t-3xl p-0 overflow-hidden">
           <DrawerHeader className="shrink-0 border-b border-border p-5 pr-16 text-left">
+            <Logo compact className="mb-3 w-16 text-foreground" />
             <DrawerTitle className="text-xl font-semibold leading-snug">League sections</DrawerTitle>
             <DrawerDescription className="text-sm leading-relaxed">Set up your league, manage play, and review results.</DrawerDescription>
           </DrawerHeader>

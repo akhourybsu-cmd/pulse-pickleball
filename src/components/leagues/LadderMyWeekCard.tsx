@@ -89,7 +89,7 @@ export function LadderMyWeekCard({
       : "text-[color:var(--lg-text-dim)]";
 
   return (
-    <div className="lg-card p-4 space-y-3">
+    <div className="lg-card league-court-card p-5 sm:p-6 space-y-4">
       <LgSectionHeader icon={Layers} className="mb-0">
         {batch ? `This week · Week ${batch.week_number}` : "Your ladder spot"}
       </LgSectionHeader>

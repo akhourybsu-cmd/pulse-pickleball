@@ -38,7 +38,7 @@ export function LeagueTransitionOutlet() {
   }, [currentDepth]);
 
   return (
-    <div className="relative overflow-x-hidden">
+    <div className="relative overflow-x-clip">
       <div
         key={location.pathname}
         className="pulse-route-enter"
