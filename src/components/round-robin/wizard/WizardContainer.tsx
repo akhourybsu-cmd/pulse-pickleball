@@ -61,6 +61,7 @@ export function WizardContainer() {
     playerInputMethod: null,
     courtCount: 2,
     gamesPerPlayer: 3,
+    equalGames: true,
     eventDate: "",
     startTime: "",
     registrationDeadline: "",
@@ -195,7 +196,7 @@ export function WizardContainer() {
         return;
       }
 
-      const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer);
+      const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer, formData.equalGames);
 
       const { data: event, error: eventError } = await supabase
         .from("round_robin_events")
@@ -217,6 +218,7 @@ export function WizardContainer() {
           venue_id: null,
           num_courts: formData.courtCount,
           games_per_player: formData.gamesPerPlayer,
+          equal_games: formData.equalGames ?? true,
           rating_eligible: formData.allowGuests ? false : formData.ratingEligible,
           rating_type: formData.ratingType,
           allow_guests: formData.allowGuests,
@@ -232,7 +234,7 @@ export function WizardContainer() {
               : formData.eventMode,
           num_rounds: formData.eventMode === "immediate"
             ? metrics.rounds
-            : calculateScheduleMetrics(formData.maxPlayers, formData.courtCount, formData.gamesPerPlayer).rounds,
+            : calculateScheduleMetrics(formData.maxPlayers, formData.courtCount, formData.gamesPerPlayer, formData.equalGames).rounds,
           date: formData.eventMode === "immediate"
             ? new Date().toISOString().split("T")[0]
             : new Date(formData.eventDate).toISOString().split("T")[0],
@@ -422,6 +424,8 @@ export function WizardContainer() {
             courtCount={formData.courtCount}
             onCourtCountChange={(v) => updateFormData("courtCount", v)}
             gamesPerPlayer={formData.gamesPerPlayer}
+            equalGames={formData.equalGames ?? true}
+            onEqualGamesChange={(value) => updateFormData("equalGames", value)}
             onGamesPerPlayerChange={(v) => updateFormData("gamesPerPlayer", v)}
             format={formData.format}
             selectedPlayers={formData.selectedPlayers}

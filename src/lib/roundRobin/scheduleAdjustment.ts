@@ -1,5 +1,6 @@
 import {
   calculateMetrics,
+  generateEqualRounds,
   regenerateRounds,
   seatsOf,
   type CoreMatch,
@@ -18,6 +19,8 @@ export type ScheduleWarningCode =
   | "unused_courts"
   | "target_games_not_exact"
   | "target_already_exceeded"
+  | "equal_games_unavailable"
+  | "equal_target_adjusted"
   | "late_join_credit_applied"
   | "protected_rounds_preserved";
 
@@ -54,6 +57,8 @@ export interface ScheduleAdjustmentInput {
   protectedRounds?: number[];
   numCourts: number;
   gamesPerPlayer: number;
+  /** Exact actual games for every active player; may leave courts unused. */
+  equalGames?: boolean;
   format?: EventFormat;
   genders?: Map<SeatId, string>;
   substitutions?: ScheduleSubstitution[];
@@ -116,6 +121,8 @@ export interface ScheduleFairness {
 }
 
 export interface ScheduleCapacity {
+  equalGames?: boolean;
+  requestedGamesPerPlayer?: number;
   playerCount: number;
   requestedCourts: number;
   usableCourts: number;
@@ -643,7 +650,7 @@ export function planScheduleAdjustment(
   const warnings: ScheduleWarning[] = [];
   const format = input.format ?? "open";
   const genders = input.genders ?? new Map<SeatId, string>();
-  const targetGames = Math.max(0, Math.floor(input.gamesPerPlayer));
+  let targetGames = Math.max(0, Math.floor(input.gamesPerPlayer));
   const gameCredits = new Map<SeatId, number>();
   const firstEligibleRounds = new Map<SeatId, number>();
   const relevantSeats = new Set([...currentSeatIds, ...nextSeatIds]);
@@ -760,7 +767,7 @@ export function planScheduleAdjustment(
     );
   const lateJoinCredit = input.lateJoinCredit ?? "roster_median";
   const defaultJoinCredit =
-    lateJoinCredit === "roster_median"
+    !input.equalGames && lateJoinCredit === "roster_median"
       ? median(retainedPriorAllocations)
       : 0;
   addedSeats.forEach((seatId) => {
@@ -785,7 +792,7 @@ export function planScheduleAdjustment(
       substitution.incomingSeatId !== substitution.outgoingSeatId;
     if (!validSubstitution) continue;
 
-    if (substitution.inheritPriorGames !== false) {
+    if (!input.equalGames && substitution.inheritPriorGames !== false) {
       // The replacement may already occur in the post-RPC schedule snapshot
       // (or be a reactivated former roster member), so current-set membership
       // cannot identify a new substitute. Compare availability-adjusted
@@ -820,7 +827,40 @@ export function planScheduleAdjustment(
     );
   }
 
-  appliedGameCredits = creditsAppliedToTarget(gameCredits, targetGames);
+  // Equal-game mode counts actual play only. Virtual credit must never be
+  // presented as having played a game. Keep raw credits for balanced mode.
+  appliedGameCredits = input.equalGames ? new Map() : creditsAppliedToTarget(gameCredits, targetGames);
+
+  if (input.equalGames) {
+    const actual = nextSeatIds.map(id => priorGames.get(id) || 0);
+    let feasibleTarget: number | undefined;
+    for (let candidate = Math.max(1, targetGames, ...actual); candidate <= 20; candidate++) {
+      const needed = actual.map(n => candidate - n);
+      const slots = needed.reduce((sum, n) => sum + n, 0);
+      if (slots % 4 || Math.max(...needed) > slots / 4) continue;
+      if (format === "mixed") {
+        const maleSlots = nextSeatIds.reduce((sum, id, i) => sum +
+          (genders.get(id)?.trim().toLowerCase() === "male" ? needed[i] : 0), 0);
+        if (maleSlots !== slots / 2) continue;
+      }
+      feasibleTarget = candidate;
+      break;
+    }
+    if (feasibleTarget === undefined) {
+      const message = format === "mixed"
+        ? "Equal games in mixed doubles requires matching remaining game totals for men and women. Balance the roster, choose Open doubles, or turn off Equal games. Protected results stay unchanged."
+        : "Equal games cannot be reached within 20 games with this roster and protected results. Adjust the roster or turn off Equal games; completed play stays unchanged.";
+      return { ok: false, code: "equal_games_unavailable", schedule: preservedMatches,
+        preservedMatches, generatedMatches: [], capacity: { ...emptyCapacity(input, protectedThroughRound), equalGames: true },
+        impact: emptyImpact(input, preservedMatches),
+        fairness: analyzeScheduleFairness(preservedMatches, nextSeatIds, targetGames, appliedGameCredits, firstEligibleRounds),
+        warnings: [...warnings, { code: "equal_games_unavailable", severity: "error", message }],
+        gameCredits, appliedGameCredits, firstEligibleRounds };
+    }
+    if (feasibleTarget !== targetGames) warnings.push({ code: "equal_target_adjusted", severity: "info",
+      message: `The ${targetGames}-game target becomes ${feasibleTarget} games for everyone so all matches have four players and protected results stay unchanged.` });
+    targetGames = feasibleTarget;
+  }
 
   if (
     nextSeatIds.some(
@@ -918,19 +958,19 @@ export function planScheduleAdjustment(
       Math.ceil(femaleRemainingTargetGames / playerGamesPerGenderPerRound)
     );
   }
-  const futureRounds = Math.max(
+  let futureRounds = Math.max(
     maxDeficit,
     roundsForSlots,
     roundsForGenderCapacity
   );
-  const recommendedTotalRounds = protectedThroughRound + futureRounds;
-  const scheduledFuturePlayerGames =
+  let recommendedTotalRounds = protectedThroughRound + futureRounds;
+  let scheduledFuturePlayerGames =
     futureRounds * capacityShape.playersOnCourt;
-  const unavoidableExtraPlayerGames = Math.max(
+  let unavoidableExtraPlayerGames = Math.max(
     0,
     scheduledFuturePlayerGames - remainingTargetPlayerGames
   );
-  const exactTargetPossible = unavoidableExtraPlayerGames === 0;
+  let exactTargetPossible = unavoidableExtraPlayerGames === 0;
 
   if (effectiveGames.some((games) => games > targetGames)) {
     warnings.push({
@@ -940,7 +980,7 @@ export function planScheduleAdjustment(
         "At least one player has already exceeded the new game target; completed play remains intact.",
     });
   }
-  if (!exactTargetPossible && futureRounds > 0) {
+  if (!input.equalGames && !exactTargetPossible && futureRounds > 0) {
     warnings.push({
       code: "target_games_not_exact",
       severity: "info",
@@ -956,7 +996,7 @@ export function planScheduleAdjustment(
 
   let generatedMatches: CoreMatch[] = [];
   if (futureRounds > 0) {
-    generatedMatches = regenerateRounds({
+    const options = {
       seed: `${input.seed}:adjust:${protectedThroughRound + 1}`,
       seatIds: nextSeatIds,
       numCourts: Math.floor(input.numCourts),
@@ -967,7 +1007,15 @@ export function planScheduleAdjustment(
       frozenMatches: preservedMatches,
       genders,
       initialGameCredits: appliedGameCredits,
-    });
+    };
+    generatedMatches = input.equalGames ? generateEqualRounds(options) : regenerateRounds(options);
+    if (input.equalGames) {
+      futureRounds = new Set(generatedMatches.map(match => match.round_no)).size;
+      recommendedTotalRounds = protectedThroughRound + futureRounds;
+      scheduledFuturePlayerGames = playable(generatedMatches).length * 4;
+      unavoidableExtraPlayerGames = 0;
+      exactTargetPossible = true;
+    }
   }
   const schedule = [...preservedMatches, ...generatedMatches].sort(
     (a, b) =>
@@ -1034,6 +1082,8 @@ export function planScheduleAdjustment(
       : "The schedule is rebalanced within the same number of rounds; protected play is unchanged.";
 
   const capacity: ScheduleCapacity = {
+    equalGames: input.equalGames ?? false,
+    requestedGamesPerPlayer: input.gamesPerPlayer,
     playerCount: nextSeatIds.length,
     requestedCourts: Math.floor(input.numCourts),
     usableCourts: capacityShape.usableCourts,

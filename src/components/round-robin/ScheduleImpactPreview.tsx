@@ -20,6 +20,7 @@ interface PreviousScheduleSettings {
 }
 
 interface ScheduleImpactPreviewProps {
+  equalGames?: boolean;
   playerCount: number;
   courtCount: number;
   gamesPerPlayer: number;
@@ -47,6 +48,7 @@ interface ScheduleImpactPreviewProps {
  * responds immediately as a host taps either stepper.
  */
 export function ScheduleImpactPreview({
+  equalGames = false,
   playerCount,
   courtCount,
   gamesPerPlayer,
@@ -78,7 +80,8 @@ export function ScheduleImpactPreview({
     );
   }
 
-  const metrics = calculateMetrics(playerCount, courtCount, gamesPerPlayer);
+  const metrics = calculateMetrics(playerCount, courtCount, gamesPerPlayer, equalGames);
+  const targetGames = plan?.capacity.gamesPerPlayerTarget ?? metrics.targetGames;
   const projectedRounds = plan?.capacity.recommendedTotalRounds ?? metrics.rounds;
   const matchesPerRound = plan?.capacity.matchesPerRound ?? metrics.matchesPerRound;
   const restingPerRound = plan?.capacity.restsPerRound ?? metrics.byesPerRound;
@@ -89,8 +92,8 @@ export function ScheduleImpactPreview({
   );
   const totalMatches = plan
     ? plan.impact.preservedPlayableMatches + plan.impact.generatedPlayableMatches
-    : metrics.rounds * metrics.matchesPerRound;
-  const totalPlaySlots = metrics.rounds * metrics.onCourtPerRound;
+    : equalGames ? playerCount * targetGames / 4 : metrics.rounds * metrics.matchesPerRound;
+  const totalPlaySlots = equalGames ? playerCount * targetGames : metrics.rounds * metrics.onCourtPerRound;
   const estimatedMinGames = Math.floor(totalPlaySlots / playerCount);
   const estimatedPlayersWithExtraGame = totalPlaySlots % playerCount;
   const estimatedMaxGames = estimatedMinGames + (estimatedPlayersWithExtraGame > 0 ? 1 : 0);
@@ -118,6 +121,14 @@ export function ScheduleImpactPreview({
   const exactTargetWarning = plan?.warnings.find(
     (warning) => warning.code === "target_games_not_exact",
   );
+  const roundRests = plan?.ok
+    ? [...new Set(plan.generatedMatches.map(match => match.round_no))].map(round =>
+        plan.generatedMatches.filter(match => match.round_no === round && match.is_bye).length)
+    : [];
+  const minRests = roundRests.length ? Math.min(...roundRests) : equalGames && projectedRounds
+    ? playerCount - Math.ceil(totalMatches / projectedRounds) * 4 : restingPerRound;
+  const maxRests = roundRests.length ? Math.max(...roundRests) : equalGames && projectedRounds
+    ? playerCount - Math.floor(totalMatches / projectedRounds) * 4 : restingPerRound;
 
   return (
     <section
@@ -136,7 +147,7 @@ export function ScheduleImpactPreview({
               {title}
             </div>
             <p className="mt-1 text-xs leading-snug text-muted-foreground">
-              {playerCount} players · {matchesPerRound} simultaneous {matchesPerRound === 1 ? "match" : "matches"}
+              {playerCount} players · up to {matchesPerRound} simultaneous {matchesPerRound === 1 ? "match" : "matches"}
             </p>
           </div>
           <div className="shrink-0 text-right">
@@ -172,13 +183,13 @@ export function ScheduleImpactPreview({
           icon={Grid3X3}
           label="Court use"
           value={`${matchesPerRound}/${courtCount}`}
-          detail={unusedCourts > 0 ? `${unusedCourts} open · roster limit` : "All courts active"}
+          detail={equalGames ? "Maximum · partial rounds allowed" : unusedCourts > 0 ? `${unusedCourts} open · roster limit` : "All courts active"}
         />
         <MetricCell
           icon={Users}
           label="Resting"
-          value={`${restingPerRound}`}
-          detail={restingPerRound === 0 ? "No rests per round" : "Rotated each round"}
+          value={minRests === maxRests ? `${minRests}` : `${minRests}–${maxRests}`}
+          detail={minRests === maxRests && maxRests === 0 ? "No rests per round" : "Players per round"}
         />
         <MetricCell
           icon={ShieldCheck}
@@ -191,11 +202,20 @@ export function ScheduleImpactPreview({
           icon={CircleGauge}
           label="Total matches"
           value={`${totalMatches}`}
-          detail={`${gamesPerPlayer} game target`}
+          detail={equalGames ? `${targetGames} games each${targetGames !== gamesPerPlayer ? ` · requested ${gamesPerPlayer}` : ""}` : `${gamesPerPlayer} game target`}
         />
       </div>
 
       <div className={cn("space-y-2.5", compact ? "px-3.5 py-3" : "px-4 py-3.5")}>
+        {equalGames && (plan?.ok ?? true) && (
+          <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed">
+            <strong>Equal games for everyone.</strong>{" "}
+            {targetGames !== gamesPerPlayer
+              ? `${gamesPerPlayer} games each cannot form complete doubles matches with this roster and any protected play. The schedule uses ${targetGames} games each.`
+              : `Everyone finishes with ${targetGames} actual games.`}{" "}
+            Courts may sit empty and rests may vary by round. Partners rotate to minimize repeats.
+          </p>
+        )}
         {mixedRosterEstimate && (
           <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2.5">
             <CircleGauge className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
@@ -228,7 +248,7 @@ export function ScheduleImpactPreview({
           )} />
           <p className="text-xs leading-relaxed text-muted-foreground">
             <strong className="font-semibold text-foreground">{fairnessLabel} game distribution.</strong>{" "}
-            {fairnessDetail} The scheduler prioritizes players with fewer games and longer rests.
+            {fairnessDetail} {equalGames ? "Equal totals take priority over filling courts." : "The scheduler prioritizes players with fewer games and longer rests."}
           </p>
         </div>
 

@@ -53,7 +53,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
         : formData.playerCount
       : formData.maxPlayers;
 
-  const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer);
+  const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer, formData.equalGames);
   const rosterCompositionKnown = formData.eventMode === "immediate" &&
     formData.playerInputMethod === "add";
   const creationPlan = rosterCompositionKnown
@@ -61,6 +61,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
         participants: formData.selectedPlayers,
         numCourts: formData.courtCount,
         gamesPerPlayer: formData.gamesPerPlayer,
+        equalGames: formData.equalGames,
         format: formData.format,
       })
     : null;
@@ -141,7 +142,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
     },
     {
       icon: Target,
-      label: "Games / player",
+      label: "Game target / player",
       value: `${formData.gamesPerPlayer} · ${projectedRounds} round${projectedRounds === 1 ? "" : "s"}`,
       stepIndex: 4,
     },
@@ -262,6 +263,7 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
           playerCount={playerCount}
           courtCount={formData.courtCount}
           gamesPerPlayer={formData.gamesPerPlayer}
+          equalGames={formData.equalGames}
           title="Your rotation"
           compact
           plan={creationPlan}

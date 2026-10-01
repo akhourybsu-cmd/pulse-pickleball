@@ -5405,6 +5405,7 @@ export type Database = {
       }
       round_robin_events: {
         Row: {
+          equal_games: boolean
           allow_guests: boolean
           completed_at: string | null
           created_at: string
@@ -5440,6 +5441,7 @@ export type Database = {
           voided_by: string | null
         }
         Insert: {
+          equal_games?: boolean
           allow_guests?: boolean
           completed_at?: string | null
           created_at?: string
@@ -5475,6 +5477,7 @@ export type Database = {
           voided_by?: string | null
         }
         Update: {
+          equal_games?: boolean
           allow_guests?: boolean
           completed_at?: string | null
           created_at?: string

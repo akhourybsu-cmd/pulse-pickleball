@@ -125,6 +125,7 @@ interface Event {
   num_courts: number;
   num_rounds: number;
   games_per_player?: number;
+  equal_games?: boolean;
   current_round: number | null;
   status: "draft" | "live" | "completed" | "voided";
   rating_eligible: boolean;
@@ -1012,6 +1013,7 @@ export default function RoundRobinDetail() {
     overrides?: {
       numCourts?: number;
       gamesPerPlayer?: number;
+      equalGames?: boolean;
       reason?: string;
       /** null lets the server snapshot the version after another atomic RPC. */
       expectedVersion?: number | null;
@@ -1044,6 +1046,7 @@ export default function RoundRobinDetail() {
         num_courts: numCourts,
         num_rounds: event.num_rounds,
         games_per_player: gamesPerPlayer,
+        equal_games: overrides?.equalGames ?? event.equal_games ?? false,
         regenerate_from_round: Math.max(1, fromRound),
         expected_version: overrides?.expectedVersion === null
           ? undefined
@@ -1052,7 +1055,13 @@ export default function RoundRobinDetail() {
         substitutions: overrides?.substitutions,
       },
     });
-    if (generateError) throw generateError;
+    if (generateError) {
+      // Preserve actionable planner messages (for example an unequal mixed
+      // roster) instead of hiding every 422 behind a generic network error.
+      const context = generateError.context;
+      const detail = context instanceof Response ? await context.json().catch(() => null) : null;
+      throw new Error(detail?.error || generateError.message);
+    }
 
     const result = data as {
       num_rounds?: number;
@@ -1533,22 +1542,24 @@ export default function RoundRobinDetail() {
   const handleApplyScheduleSettings = async ({
     numCourts,
     gamesPerPlayer,
+    equalGames = event?.equal_games ?? false,
   }: {
     numCourts: number;
     gamesPerPlayer: number;
+    equalGames?: boolean;
   }) => {
     if (!event || !userId) return;
 
     const courtsChanged = numCourts !== event.num_courts;
     const gamesChanged = gamesPerPlayer !== (event.games_per_player || 3);
-    if (!courtsChanged && !gamesChanged) return;
+    if (!courtsChanged && !gamesChanged && equalGames === (event.equal_games ?? false)) return;
 
     const activePlayerCount = players.filter((player) => player.active !== false).length;
     const isPreScheduleSetup = schedule.length === 0 && activePlayerCount < 4;
 
     if (isPreScheduleSetup) {
       const estimatePlayerCount = Math.max(4, activePlayerCount, event.max_players ?? 0);
-      const estimatedRounds = suggestRounds(estimatePlayerCount, numCourts, gamesPerPlayer);
+      const estimatedRounds = suggestRounds(estimatePlayerCount, numCourts, gamesPerPlayer, equalGames);
       const pulse = startPulseActivity("Saving courts and game target…");
 
       try {
@@ -1561,6 +1572,7 @@ export default function RoundRobinDetail() {
           .update({
             num_courts: numCourts,
             games_per_player: gamesPerPlayer,
+            equal_games: equalGames,
             num_rounds: estimatedRounds,
             schedule_version: (event.schedule_version ?? 0) + 1,
           })
@@ -1593,11 +1605,13 @@ export default function RoundRobinDetail() {
     try {
       const reasonParts = [
         courtsChanged ? `courts ${event.num_courts}→${numCourts}` : null,
+        equalGames !== (event.equal_games ?? false) ? `equal games ${equalGames ? "on" : "off"}` : null,
         gamesChanged ? `games/player ${event.games_per_player || 3}→${gamesPerPlayer}` : null,
       ].filter(Boolean);
       const result = await regenerateScheduleFromRound(fromRound, {
         numCourts,
         gamesPerPlayer,
+        equalGames,
         reason: `Host changed ${reasonParts.join(" and ")}`,
       });
 
@@ -1958,9 +1972,11 @@ export default function RoundRobinDetail() {
   const buildScheduleImpactPlan = ({
     numCourts,
     gamesPerPlayer,
+    equalGames = event.equal_games ?? false,
   }: {
     numCourts: number;
     gamesPerPlayer: number;
+    equalGames?: boolean;
   }): ScheduleAdjustmentPlan | null => {
     const toSeatId = (playerId: string | null, guestId: string | null): SeatId | null =>
       playerId ? `p:${playerId}` : guestId ? `g:${guestId}` : null;
@@ -2030,6 +2046,7 @@ export default function RoundRobinDetail() {
       protectedRounds,
       numCourts,
       gamesPerPlayer,
+      equalGames,
       format: (event.format || "open") as EventFormat,
       genders,
       lateJoinCredit: "roster_median",
@@ -2062,7 +2079,9 @@ export default function RoundRobinDetail() {
         match.b2_player_id ?? match.b2_guest_id,
       ].filter(Boolean).length;
     }, 0);
-    return playable !== currentSchedulePlan.capacity.matchesPerRound || assignedIdentities !== activeRoster.length;
+    return (event.equal_games
+      ? playable < 1 || playable > currentSchedulePlan.capacity.matchesPerRound
+      : playable !== currentSchedulePlan.capacity.matchesPerRound) || assignedIdentities !== activeRoster.length;
   });
   const scheduleRoundDrift = !!currentSchedulePlan?.ok && (
     currentSchedulePlan.capacity.recommendedTotalRounds !== event.num_rounds ||
@@ -2073,11 +2092,20 @@ export default function RoundRobinDetail() {
     currentSchedulePlan.fairness.duplicateSeatAssignments > 0 ||
     currentSchedulePlan.fairness.underfilledMatches > 0
   );
+  const unequalGameTotals = event.equal_games === true && activeRoster.some(player => {
+    const actualGames = schedule.filter(match => !match.is_bye && !match.abandoned && (
+      player.player_id
+        ? [match.a1_player_id, match.a2_player_id, match.b1_player_id, match.b2_player_id].includes(player.player_id)
+        : [match.a1_guest_id, match.a2_guest_id, match.b1_guest_id, match.b2_guest_id].includes(player.guest_player_id)
+    )).length;
+    return actualGames !== (event.games_per_player || 3);
+  });
   const needsScheduleRepair = hasSchedule && (
     currentSchedulePlan?.ok === false ||
     mutableShapeDrift ||
     scheduleRoundDrift ||
-    scheduleStructureDrift
+    scheduleStructureDrift ||
+    unequalGameTotals
   );
 
   // Calculate progress step
@@ -2092,7 +2120,7 @@ export default function RoundRobinDetail() {
   const currentStep = getCurrentStep();
 
   // Estimate rounds and time
-  const estimatedRounds = hasSchedule ? event.num_rounds : suggestRounds(activeRoster.length, event.num_courts, event.games_per_player || 3);
+  const estimatedRounds = hasSchedule ? event.num_rounds : suggestRounds(activeRoster.length, event.num_courts, event.games_per_player || 3, event.equal_games);
   const estimatedMinutes = estimatedRounds * 12;
 
   // Share functionality
@@ -2157,7 +2185,7 @@ export default function RoundRobinDetail() {
       console.error(error);
       await fetchEventDetails();
       toast.error(
-        "We couldn't confirm the schedule update. The latest schedule is refreshed—verify it before retrying.",
+        getErrorMessage(error) || "We couldn't confirm the schedule update. The latest schedule is refreshed—verify it before retrying.",
       );
     }
   };
@@ -2955,6 +2983,7 @@ export default function RoundRobinDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ScheduleImpactPreview
+            equalGames={event.equal_games ?? false}
             playerCount={activeRoster.length}
             courtCount={event.num_courts}
             gamesPerPlayer={event.games_per_player || 3}
@@ -3139,6 +3168,7 @@ export default function RoundRobinDetail() {
             onOpenChange={setCourtsRoundsOpen}
             currentCourts={event.num_courts}
             currentGamesPerPlayer={event.games_per_player || 3}
+            currentEqualGames={event.equal_games ?? false}
             currentTotalRounds={event.num_rounds}
             currentRound={event.current_round}
             hasScores={hasScores}

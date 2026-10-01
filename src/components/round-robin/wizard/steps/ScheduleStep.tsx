@@ -18,12 +18,15 @@ import {
   type CreationPreviewParticipant,
 } from "@/lib/roundRobin/creationSchedulePreview";
 import type { EventFormat } from "@/lib/roundRobin/scheduleCore";
+import { EqualGamesSetting } from "../../EqualGamesSetting";
 
 interface ScheduleStepProps {
   playerCount: number;
   courtCount: number;
   onCourtCountChange: (v: number) => void;
   gamesPerPlayer: number;
+  equalGames?: boolean;
+  onEqualGamesChange?: (value: boolean) => void;
   onGamesPerPlayerChange: (v: number) => void;
   format: EventFormat;
   selectedPlayers: CreationPreviewParticipant[];
@@ -47,6 +50,8 @@ export function ScheduleStep({
   courtCount,
   onCourtCountChange,
   gamesPerPlayer,
+  equalGames = true,
+  onEqualGamesChange,
   onGamesPerPlayerChange,
   format,
   selectedPlayers,
@@ -71,6 +76,7 @@ export function ScheduleStep({
         participants: selectedPlayers,
         numCourts: courtCount,
         gamesPerPlayer,
+        equalGames,
         format,
       })
     : null;
@@ -99,7 +105,7 @@ export function ScheduleStep({
             incrementLabel="Increase court count"
           />
           <p className="text-xs text-muted-foreground text-center mt-2">
-            The scheduler uses every court your roster can fill
+            {equalGames ? "Available courts are a maximum; some rounds may use fewer" : "The scheduler uses every court your roster can fill"}
           </p>
         </div>
 
@@ -198,7 +204,9 @@ export function ScheduleStep({
           )}
         </div>
 
+        {onEqualGamesChange && <EqualGamesSetting value={equalGames} onChange={onEqualGamesChange} />}
         <ScheduleImpactPreview
+          equalGames={equalGames}
           playerCount={playerCount}
           courtCount={courtCount}
           gamesPerPlayer={gamesPerPlayer}
