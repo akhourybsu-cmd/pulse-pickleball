@@ -1,3 +1,7 @@
+import { useTheme } from 'next-themes';
+import { leagueBrandStyle } from '@/lib/leagues/branding';
+import { LeagueBrandMark } from '@/components/leagues/LeagueIdentity';
+import { VenueCoverImage } from '@/components/venue/VenueCoverImage';
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -19,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
 import { LeaguesExplainer } from "@/components/leagues/LeaguesExplainer";
-import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { LeagueScope, LeagueTypeChip } from "@/components/leagues/_leagueScope";
 import { SocialEmptyState } from "@/components/social/_shared";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { toast } from "sonner";
 
-const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
   const reducedMotion = useReducedMotion();
@@ -345,7 +347,7 @@ export default function PlayerLeagues() {
   );
 }
 
-function LeagueTicket({
+export function LeagueTicket({
   league,
   season,
   role,
@@ -358,9 +360,10 @@ function LeagueTicket({
   discover?: boolean;
   onClick: () => void;
 }) {
-  const Icon = TYPE_META[league.league_type].icon;
+  const { resolvedTheme } = useTheme();
   return (
-    <button type="button" className="league-ticket group" onClick={onClick}>
+    <button type="button" className="league-ticket group" style={leagueBrandStyle(league.branding, resolvedTheme === "dark")} onClick={onClick}>
+      {league.branding?.cover_url && <div className="relative h-24 overflow-hidden"><VenueCoverImage src={league.branding.cover_url} crop={league.branding.cover_crop} /></div>}
       <div className="league-ticket-banner flex items-center justify-between gap-2">
         <LeagueTypeChip type={league.league_type} />
         <span className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
@@ -368,9 +371,7 @@ function LeagueTicket({
         </span>
       </div>
       <div className="flex flex-1 items-start gap-4 p-5 sm:p-6">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[color:var(--lg-eyebrow-ring)] bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-accent-gold)]">
-          <Icon className="h-5 w-5" aria-hidden />
-        </span>
+        <LeagueBrandMark name={league.name} branding={league.branding} className="h-14 w-14 text-[56px]" />
         <div className="min-w-0">
           <h2 className="break-words text-xl font-semibold leading-snug">
             {league.name}

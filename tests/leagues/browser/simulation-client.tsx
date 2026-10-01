@@ -22,11 +22,24 @@ const send = async (action: Row) => {
   const response = await fetch("/__league-sim", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...action, user: currentUser }),
+    // Local HTTP asset transport stands in for the HTTPS storage CDN. Database
+    // validation and storage policies still run with canonical persisted URLs.
+    body: JSON.stringify({ ...action, user: currentUser }).replaceAll(location.origin + '/__league-assets/', 'https://league-assets.test/storage/v1/object/public/league-branding/'),
   });
-  return response.json();
+  return JSON.parse((await response.text()).replaceAll('https://league-assets.test/storage/v1/object/public/league-branding/', location.origin + '/__league-assets/'));
 };
 export const supabase = {
+  storage: {
+    from: (bucket: string) => ({
+      upload: async (path: string, blob: Blob) => {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let binary = '';
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        return send({ kind: 'storage', bucket, path, mime: blob.type, base64: btoa(binary) });
+      },
+      getPublicUrl: (path: string) => ({ data: { publicUrl: location.origin + '/__league-assets/' + path } }),
+    }),
+  },
   auth: {
     getUser: async () => ({ data: { user: { id: currentUser } }, error: null }),
     getSession: async () => ({

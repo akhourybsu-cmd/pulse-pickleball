@@ -1,4 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, type CSSProperties } from "react";
+import { useTheme } from "next-themes";
+import { ScopedThemeContext } from "@/components/ui/scoped-theme";
+import { leagueBrandStyle, type LeagueBrand } from "@/lib/leagues/branding";
+import { LeagueBrandMark, LeagueCover } from "./LeagueIdentity";
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,14 +21,20 @@ export function LeagueScope({
   /** If true, force dark-mode tokens regardless of app theme.
    *  Organizer console can opt in when a dark workspace reads better. */
   forceDark = false,
+  brand,
   className,
 }: {
   children: ReactNode;
   forceDark?: boolean;
+  brand?: LeagueBrand | null;
   className?: string;
 }) {
+  const { resolvedTheme } = useTheme();
+  const dark = forceDark || resolvedTheme === 'dark';
+  const style = leagueBrandStyle(brand, dark) as CSSProperties;
   return (
-    <div
+    <ScopedThemeContext.Provider value={{ className: cn('league-menu', dark && 'dark'), style }}>
+    <div style={style}
       className={cn(
         "league-scope",
         forceDark && "dark",
@@ -34,6 +44,7 @@ export function LeagueScope({
     >
       {children}
     </div>
+    </ScopedThemeContext.Provider>
   );
 }
 
@@ -57,7 +68,7 @@ export function LeagueHero({
 }: {
   league: Pick<
     League,
-    "name" | "description" | "location" | "league_type" | "status" | "visibility" | "rating_eligible" | "guests_allowed"
+    "branding" | "name" | "description" | "location" | "league_type" | "status" | "visibility" | "rating_eligible" | "guests_allowed"
   >;
   managerName?: string | null;
   kpis?: Array<{ icon: LucideIcon; label: string; value: number | string }>;
@@ -72,6 +83,7 @@ export function LeagueHero({
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="relative min-w-0 overflow-hidden rounded-2xl border border-[color:var(--lg-border)] lg-hero-gradient"
     >
+      <LeagueCover branding={league.branding} />
       {/* Diagonal court-line texture */}
       <div className="absolute inset-0 lg-court-lines pointer-events-none" aria-hidden />
       {/* Gold hairline top edge */}
@@ -93,6 +105,7 @@ export function LeagueHero({
           {rightSlot && <div className="shrink-0">{rightSlot}</div>}
         </div>
 
+        <LeagueBrandMark name={league.name} branding={league.branding} className="mt-4 h-16 w-16 text-[64px] ring-1 ring-white/20" />
         {/* Title */}
         <h1 className="font-display mt-4 break-words text-2xl sm:text-3xl lg:text-4xl leading-tight text-[color:var(--lg-hero-text)]">
           {league.name}

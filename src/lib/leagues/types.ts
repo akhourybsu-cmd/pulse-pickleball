@@ -33,6 +33,7 @@ export type LeagueMatchRatingStatus =
   | "eligible_future";
 
 export interface League {
+  branding?: import('./branding').LeagueBrand | null;
   id: string;
   name: string;
   description: string | null;
@@ -55,6 +56,7 @@ export interface League {
 
 /** Teaser shape returned by the find_league_by_invite_code RPC. */
 export interface LeagueTeaser {
+  branding?: import('./branding').LeagueBrand | null;
   id: string;
   name: string;
   description: string | null;

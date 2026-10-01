@@ -5,25 +5,28 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { type ManageTab, type TabDef, MANAGE_TABS, GROUPS } from "./leagueManageTabs";
+import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
+import type { League } from "@/lib/leagues/types";
 import { Logo } from '@/components/Logo';
 
 export type { ManageTab };
 
 /** One ordered, type-filtered navigation model for the desktop rail and mobile drawer. */
 export function LeagueManageNav({
-  active, onChange, tabs = MANAGE_TABS, actionCount,
+  active, onChange, tabs = MANAGE_TABS, actionCount, league,
 }: {
   active: ManageTab;
   onChange: (tab: ManageTab) => void;
   tabs?: TabDef[];
   actionCount?: number;
+  league?: Pick<League, "name" | "branding">;
 }) {
   if (!tabs.length) return null;
   return (
     <>
       <aside className="hidden lg:block w-[248px] shrink-0 sticky top-24 self-start">
         <nav aria-label="League management" className="lg-scroll-area max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 space-y-3">
-          <div className="rounded-xl bg-[#1c2621] px-4 py-4 text-[#faf7ef]"><Logo compact className="w-16" /><p className="mt-2 text-xs text-[#e3ca92]">Organizer workspace</p></div>
+          <div className="rounded-xl bg-[var(--league-header,#1c2621)] px-4 py-4 text-[#faf7ef]"><Logo compact className="w-16" />{league && <div className="mt-3 flex items-center gap-2"><LeagueBrandMark name={league.name} branding={league.branding} className="h-9 w-9 text-[36px]" /><span className="min-w-0 break-words text-xs font-semibold">{league.name}</span></div>}<p className="mt-2 text-xs text-[color:var(--league-brand-accent,#e3ca92)]">Organizer workspace</p></div>
           {GROUPS.map(group => {
             const items = tabs.filter(tab => tab.group === group);
             if (!items.length) return null;
@@ -36,7 +39,7 @@ export function LeagueManageNav({
           })}
         </nav>
       </aside>
-      <MobileSectionPicker active={active} onChange={onChange} tabs={tabs} actionCount={actionCount} />
+      <MobileSectionPicker league={league} active={active} onChange={onChange} tabs={tabs} actionCount={actionCount} />
     </>
   );
 }
@@ -65,11 +68,12 @@ function SectionButton({ tab, active, onSelect, compact = false, count }: { tab:
   );
 }
 
-function MobileSectionPicker({ active, onChange, tabs, actionCount }: {
+function MobileSectionPicker({ active, onChange, tabs, actionCount, league }: {
   active: ManageTab;
   onChange: (tab: ManageTab) => void;
   tabs: TabDef[];
   actionCount?: number;
+  league?: Pick<League, "name" | "branding">;
 }) {
   const [open, setOpen] = useState(false);
   const activeDef = tabs.find(tab => tab.key === active) ?? tabs[0];
@@ -97,6 +101,7 @@ function MobileSectionPicker({ active, onChange, tabs, actionCount }: {
         <DrawerContent className="league-menu mx-auto w-full max-w-xl rounded-t-3xl p-0 overflow-hidden">
           <DrawerHeader className="shrink-0 border-b border-border p-5 pr-16 text-left">
             <Logo compact className="mb-3 w-16 text-foreground" />
+            {league && <div className="mb-3 flex items-center gap-3"><LeagueBrandMark name={league.name} branding={league.branding} className="h-11 w-11 text-[44px]" /><span className="min-w-0 break-words text-sm font-semibold">{league.name}</span></div>}
             <DrawerTitle className="text-xl font-semibold leading-snug">League sections</DrawerTitle>
             <DrawerDescription className="text-sm leading-relaxed">Set up your league, manage play, and review results.</DrawerDescription>
           </DrawerHeader>

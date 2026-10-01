@@ -16,6 +16,7 @@ export function VenueImagePositionEditor({
   value,
   onChange,
   disabled = false,
+  saveHint = "Save the venue profile to apply.",
 }: {
   src: string;
   label: string;
@@ -26,6 +27,7 @@ export function VenueImagePositionEditor({
   value: unknown;
   onChange: (crop: ImageCrop) => void;
   disabled?: boolean;
+  saveHint?: string;
 }) {
   const id = useId(),
     crop = imageCrop(value);
@@ -51,7 +53,7 @@ export function VenueImagePositionEditor({
       <legend className="px-1 text-sm font-semibold">{label}</legend>
       <p id={id + "-hint"} className="text-xs leading-5 text-muted-foreground">
         Drag the image to position it, or use the sliders. Your original image
-        stays intact. Save the venue profile to apply.
+        stays intact. {saveHint}
       </p>
       <div
         role="group"

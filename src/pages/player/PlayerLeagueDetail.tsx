@@ -293,7 +293,7 @@ export default function PlayerLeagueDetail() {
   );
 
   return (
-    <LeagueScope className="league-player">
+    <LeagueScope brand={league.branding} className="league-player">
       <div className="container mx-auto max-w-6xl space-y-5 px-4 py-5 sm:px-6 sm:py-7">
         <div className="flex items-center justify-between gap-2">
           <ActionButton
@@ -324,6 +324,8 @@ export default function PlayerLeagueDetail() {
         <PlayerLeagueStage
           compact
           title={league.name}
+          branding={league.branding}
+          showIdentity
           description={
             season?.name ?? "Your next chapter on court starts here."
           }

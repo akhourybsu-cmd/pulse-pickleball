@@ -1,5 +1,5 @@
 import {
-  Trophy, CalendarDays, Layers, Users, UsersRound,
+  Palette, Trophy, CalendarDays, Layers, Users, UsersRound,
   CalendarClock, Swords, Award, Shield, LifeBuoy, ClipboardList,
   type LucideIcon,
 } from "lucide-react";
@@ -13,7 +13,7 @@ import {
  * export only React components — keeps Fast Refresh happy.
  */
 export type ManageTab =
-  | "actions" | "overview" | "seasons"
+  | "actions" | "overview" | "seasons" | "branding"
   | "members" | "teams" | "subs"
   | "ladder" | "sessions" | "matches"
   | "standings"
@@ -40,6 +40,7 @@ export const MANAGE_TABS: TabDef[] = [
   { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Competition",    hint: "Individual matchups" },
   { key: "standings", label: "Standings",  short: "Table",    icon: Award,         group: "Competition", hint: "Wins, points, form" },
   { key: "overview",  label: "League settings", short: "Settings", icon: Trophy,     group: "League setup",   hint: "Details, visibility and invitations" },
+  { key: "branding", label: "Branding", short: "Branding", icon: Palette, group: "League setup", hint: "Colors, profile image and cover" },
   { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "League setup",   hint: "Dates, registration and season status" },
   { key: "audit",     label: "Activity log", short: "Activity", icon: Shield,       group: "League setup",     hint: "Changes, who made them and when" },
 ];

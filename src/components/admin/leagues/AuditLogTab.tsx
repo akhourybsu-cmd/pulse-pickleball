@@ -75,6 +75,7 @@ const ACTION_LABELS: Record<string, string> = {
   'ladder.sub_request_canceled': 'Substitute request canceled',
   'ladder.sub_request_reopened': 'Substitute request reopened',
   "league.created":              "League created",
+  "league.branding_updated": "League branding updated",
   "league.updated":              "League updated",
   "league.archived":             "League archived",
   "league.invite_code_set":      "Invite code set",

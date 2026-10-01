@@ -644,6 +644,15 @@ All colors MUST be HSL.
    so .league-menu explicitly provides the same aliases without global overrides. */
 .league-scope,
 .league-menu {
+  /* Each league is an independent identity, including nested previews and portals. */
+  --primary: 41 60% 50%;
+  --accent: 41 60% 50%;
+  --accent-foreground: 220 10% 12%;
+  --ring: 41 60% 50%;
+  --league-header: #191d1b;
+  --league-header-glow: #285043;
+  --league-brand-accent: #e6c782;
+  --league-raw-primary: #c9962f;
   /* Ink labels keep gold actions readable in both app themes. */
   --primary-foreground: 220 10% 12%;
   --lg-bg: hsl(var(--background));

@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { PRESSABLE } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import type { League } from "@/lib/leagues/types";
+import { leagueBrandStyle } from "@/lib/leagues/branding";
+import { LeagueBrandMark, LeagueCover } from "@/components/leagues/LeagueIdentity";
 
 /** Can this browser share files (image) via the native sheet? */
 function canShareFiles(): boolean {
@@ -179,7 +181,7 @@ export default function LeaguePoster() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-slate-950 text-white" style={leagueBrandStyle(league.branding, true)}>
       {/* Controls — hidden when printing */}
       <div className="print:hidden fixed top-0 inset-x-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800">
         <div className="container mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
@@ -240,13 +242,14 @@ export default function LeaguePoster() {
             "relative mx-auto my-6 sm:my-8 print:my-0",
             "aspect-[8.5/11] w-full max-w-[850px]",
             "rounded-3xl print:rounded-none overflow-hidden",
-            "bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]",
+            "bg-[var(--league-header,#0B171F)]",
             "print:bg-white print:text-slate-900",
             "border border-slate-800 print:border-0",
             "shadow-2xl print:shadow-none",
             "flex flex-col",
           ].join(" ")}
         >
+          <div className="print:hidden"><LeagueCover branding={league.branding} /></div>
           {/* Decorative diagonal stripes — screen only. Turned off on
               print because printers add moiré to sub-pixel repeats. */}
           <div
@@ -265,11 +268,12 @@ export default function LeaguePoster() {
           />
 
           {/* Header */}
-          <div className="relative pt-10 sm:pt-14 px-8 text-center">
+          <div className="relative pt-8 sm:pt-10 px-8 text-center">
+            {league.branding?.logo_url && <LeagueBrandMark name={league.name} branding={league.branding} className="mx-auto mb-4 h-16 w-16 text-[64px]" />}
             <div
               className={[
                 "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.25em]",
-                "bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30",
+                "bg-white/10 text-[color:var(--league-brand-accent,#A6DB5A)] ring-1 ring-white/20",
                 "print:bg-transparent print:text-[#5f8f26] print:ring-1 print:ring-[#5f8f26]/40",
               ].join(" ")}
             >
@@ -291,7 +295,7 @@ export default function LeaguePoster() {
 
           {/* Hero: QR is the primary call-to-action, code is the fallback. */}
           <div className="relative flex-1 flex flex-col items-center justify-center gap-5 sm:gap-7 px-8">
-            <div className="flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-[#A6DB5A] print:text-[#5f8f26]">
+            <div className="flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-[color:var(--league-brand-accent,#A6DB5A)] print:text-[#5f8f26]">
               <ScanLine className="w-4 h-4" />
               Scan to join
             </div>
@@ -319,7 +323,7 @@ export default function LeaguePoster() {
               <div
                 className={[
                   "font-mono font-black text-5xl sm:text-7xl tracking-[0.12em] leading-none",
-                  "text-[#A6DB5A] print:text-slate-900",
+                  "text-[color:var(--league-brand-accent,#A6DB5A)] print:text-slate-900",
                   "break-all",
                 ].join(" ")}
               >

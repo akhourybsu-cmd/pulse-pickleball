@@ -1,3 +1,5 @@
+import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
+import { normalizeHex } from "@/lib/venues/branding";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, ListChecks, Trophy, Shuffle, Zap, Sparkles, Layers,
@@ -48,7 +50,6 @@ export function MyLeaguesCard() {
     <div className="space-y-2">
       {visible.map(({ league, season, membership, isSubstitute }) => {
         const meta = TYPE_META[league.league_type];
-        const Icon = meta.icon;
         const isOfficer = membership.role !== "player";
 
         return (
@@ -64,14 +65,9 @@ export function MyLeaguesCard() {
             <div className="flex items-stretch">
               {/* Type-accent side rail — same language as the /player/leagues
                   page so the card and the hub feel like one system. */}
-              <div className={cn("w-1.5 shrink-0", meta.stripe)} aria-hidden />
+              <div className={cn("w-1.5 shrink-0", meta.stripe)} style={{ background: normalizeHex(league.branding?.primary_color) ?? undefined }} aria-hidden />
               <div className="flex-1 min-w-0 px-3 py-3 flex items-center gap-3">
-                <div className={cn(
-                  "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-                  meta.chip,
-                )}>
-                  <Icon className="w-5 h-5" />
-                </div>
+                <LeagueBrandMark name={league.name} branding={league.branding} className="h-11 w-11 text-[44px]" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">

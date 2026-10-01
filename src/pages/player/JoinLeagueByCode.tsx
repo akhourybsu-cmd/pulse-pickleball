@@ -1,3 +1,4 @@
+import { LeagueBrandMark, LeagueCover } from "@/components/leagues/LeagueIdentity";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { Logo } from '@/components/Logo';
 import '@/components/leagues/playerLeague.css';
 
 interface LeagueTeaser {
+  branding?: import("@/lib/leagues/branding").LeagueBrand;
   id: string;
   name: string;
   description: string | null;
@@ -148,9 +150,9 @@ export default function JoinLeagueByCode() {
     : null;
 
   return (
-    <LeagueScope className="league-player flex items-center justify-center p-4 sm:p-6">
+    <LeagueScope brand={league?.branding} className="league-player flex items-center justify-center p-4 sm:p-6">
       <Card className="w-full max-w-md overflow-hidden rounded-3xl border-[color:var(--lg-border)] shadow-xl shadow-black/5">
-        <div className="bg-[#1c2621] p-6 text-[#faf7ef]"><Logo compact className="mx-auto w-24" /><p className="mt-4 text-center text-xs uppercase tracking-[.2em] text-[#e3ca92]">Your league invitation</p></div>
+        <div className="relative overflow-hidden bg-[var(--league-header,#1c2621)] p-6 text-[#faf7ef]"><LeagueCover branding={league?.branding} /><div className="relative"><Logo compact className="mx-auto w-24" /><p className="mt-4 text-center text-xs uppercase tracking-[.2em] text-[color:var(--league-brand-accent,#e3ca92)]">Your league invitation</p>{league && <LeagueBrandMark name={league.name} branding={league.branding} className="mx-auto mt-4 h-20 w-20 text-[80px]" />}</div></div>
         <CardContent className="p-8 text-center space-y-5">
           {phase === "loading" && (
             <>

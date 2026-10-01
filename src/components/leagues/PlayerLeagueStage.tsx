@@ -1,3 +1,5 @@
+import { LeagueBrandMark, LeagueCover } from "./LeagueIdentity";
+import type { LeagueBrand } from "@/lib/leagues/branding";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
@@ -50,7 +52,7 @@ export function LeagueCourtArt({ className }: { className?: string }) {
           cx="172"
           cy="73"
           r="6"
-          fill="#d8b86a"
+          fill="var(--league-brand-accent, #d8b86a)"
         />
       </g>
     </svg>
@@ -64,6 +66,8 @@ export function PlayerLeagueStage({
   children,
   stats,
   compact = false,
+  branding,
+  showIdentity = false,
 }: {
   title: string;
   description?: string | null;
@@ -71,17 +75,21 @@ export function PlayerLeagueStage({
   children?: ReactNode;
   stats?: { label: string; value: ReactNode }[];
   compact?: boolean;
+  branding?: LeagueBrand | null;
+  showIdentity?: boolean;
 }) {
   return (
     <header className={cn("league-stage", compact && "league-stage-compact")}>
-      <LeagueCourtArt />
+      <LeagueCover branding={branding} />
+      {!branding?.cover_url && <LeagueCourtArt />}
       <div className="league-stage-content">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <Logo compact className="w-20 text-[#faf7ef]" />
-          <span className="border-l border-white/25 pl-4 text-[10px] font-bold uppercase tracking-[.22em] text-[#e6c782]">
+          <span className="border-l border-white/25 pl-4 text-[10px] font-bold uppercase tracking-[.22em] text-[color:var(--league-brand-accent,#e6c782)]">
             Leagues
           </span>
         </div>
+        {showIdentity && <LeagueBrandMark name={title} branding={branding} className="mt-5 h-20 w-20 text-[80px] ring-1 ring-white/20 shadow-lg" />}
         {eyebrow && (
           <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-[#e8e3d8]">
             {eyebrow}
