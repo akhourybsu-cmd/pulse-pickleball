@@ -40,6 +40,7 @@ import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { RankBadge } from "@/components/round-robin/RankBadge";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
+import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
 import { Send } from "lucide-react";
 import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
@@ -157,6 +158,7 @@ interface Player {
   guest_player_id: string | null;
   guest_name: string | null;
   joined_at: string;
+  registration_status?: string | null;
   active: boolean;
   status?: string;
   effective_round?: number | null;
@@ -1198,6 +1200,7 @@ export default function RoundRobinDetail() {
         guest_player_id: input.guestPlayerId ?? null,
         guest_name: input.guestName ?? existing?.guest_name ?? null,
         status: "active" as const,
+        registration_status: "confirmed",
       }));
 
     try {
@@ -2124,21 +2127,11 @@ export default function RoundRobinDetail() {
   const estimatedMinutes = estimatedRounds * 12;
 
   // Share functionality
-  const handleShareEvent = () => {
-    const eventUrl = `${window.location.origin}/round-robin/${event.id}`;
-    if (navigator.share) {
-      navigator.share({
-        title: event.name,
-        text: `Join the Round Robin event: ${event.name}`,
-        url: eventUrl,
-      }).catch(() => {
-        navigator.clipboard.writeText(eventUrl);
-        toast.success("Event link copied to clipboard!");
-      });
-    } else {
-      navigator.clipboard.writeText(eventUrl);
-      toast.success("Event link copied to clipboard!");
-    }
+  const handleShareEvent = async () => {
+    try {
+      const result = await shareRoundRobin(event.id, event.name, event.registration_mode !== "open_registration" ? event.invite_code : null);
+      if (result === "copied") toast.success("Event link copied");
+    } catch { toast.error("Could not share the link. Please try again."); }
   };
 
   // Get player initials
@@ -2770,7 +2763,7 @@ export default function RoundRobinDetail() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant={player.active === false ? "secondary" : "default"}>
-                              {player.active === false ? "Inactive" : "Active"}
+                              {player.registration_status === "waitlisted" ? "Waitlisted" : player.active === false ? "Inactive" : "Active"}
                             </Badge>
                             {isOrganizer && isUnlinkedGuest && (
                               <Button

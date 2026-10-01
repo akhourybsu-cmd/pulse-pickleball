@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,8 @@ interface Player {
   guest_player_id?: string | null;
   guest_name?: string | null;
   active: boolean;
+  registration_status?: string | null;
+  joined_at?: string;
   profiles: {
     id: string;
     full_name: string;
@@ -124,7 +127,9 @@ export function PlayerManagementDialog({
   const [justRemovedId, setJustRemovedId] = useState<string | null>(null);
 
   const activePlayers = players.filter(p => p.active);
-  const inactivePlayers = players.filter(p => !p.active);
+  const inactivePlayers = players.filter(p => !p.active && p.registration_status !== "waitlisted");
+  const waitlistedPlayers = players.filter(p => p.registration_status === "waitlisted")
+    .sort((a,b) => (a.joined_at ?? "").localeCompare(b.joined_at ?? "") || a.id.localeCompare(b.id));
   const eventLocked = eventStatus === "completed" || eventStatus === "voided";
   const adjustmentStart = Math.max(1, Math.floor(firstAdjustableRound));
   const protectedRoundCount = Math.min(totalRounds, Math.max(0, adjustmentStart - 1));
@@ -438,6 +443,20 @@ export function PlayerManagementDialog({
                 })}
               </div>
             </div>
+
+            {waitlistedPlayers.length > 0 && <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between"><span className="text-sm font-semibold">Waitlist</span><Badge variant="outline">{waitlistedPlayers.length}</Badge></div>
+              <p className="text-xs text-muted-foreground">Waiting players are not included in the playing schedule. Add a player when a place is available.</p>
+              {waitlistedPlayers.map((p, index) => <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 p-3">
+                <span className="min-w-0 truncate text-sm">{index+1}. {resolveRRParticipant(p).name}</span>
+                <Button size="sm" variant="outline" disabled={loading || eventLocked || !p.player_id} onClick={async () => {
+                  setLoading(true);
+                  try { await onAddPlayers([{ playerId: p.player_id }]); toast.success("Player added to the roster"); }
+                  catch (error) { toast.error(error instanceof Error ? error.message : "Could not add this player"); }
+                  finally { setLoading(false); }
+                }}>Add to roster</Button>
+              </div>)}
+            </div>}
 
             {inactivePlayers.length > 0 && (
               <div className="pt-1">

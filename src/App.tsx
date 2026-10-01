@@ -43,7 +43,7 @@ import {
 } from "@/lib/authCallback";
 import {
   consumePostAuthRedirect,
-  isCommunityReturnPath,
+  isSharedPageReturnPath,
   sanitizeRedirectPath,
   stashPostAuthRedirect,
 } from "@/lib/authRedirect";
@@ -191,6 +191,7 @@ const DemoTour = lazy(() => import("./pages/DemoTour"));
 const RoundRobinHub = lazy(() => import("./pages/RoundRobinHub"));
 const CreateRoundRobin = lazy(() => import("./pages/CreateRoundRobin"));
 const RoundRobinDetail = lazy(() => import("./pages/RoundRobinDetail"));
+const RoundRobinEntry = lazy(() => import("./pages/RoundRobinEntry"));
 const RoundRobinKiosk = lazy(() => import("./pages/RoundRobinKiosk"));
 const TournamentAdmin = lazy(() => import("./pages/TournamentAdmin"));
 const TournamentEventDetail = lazy(
@@ -355,7 +356,7 @@ const AppContent = () => {
     const callbackReturn = sanitizeRedirectPath(
       new URL(window.location.href).searchParams.get("redirect")
     );
-    if (isCommunityReturnPath(callbackReturn))
+    if (isSharedPageReturnPath(callbackReturn))
       stashPostAuthRedirect(callbackReturn);
     // StrictMode may run the effect twice; both subscribers observe one check.
     callbackCheck.current ??= completeAuthCallback(
@@ -369,7 +370,7 @@ const AppContent = () => {
         callbackHandled.current = true;
         if (result.handled && result.entryPath)
           navigate(
-            isCommunityReturnPath(callbackReturn)
+            isSharedPageReturnPath(callbackReturn)
               ? callbackReturn
               : consumePostAuthRedirect(),
             { replace: true }
@@ -435,7 +436,7 @@ const AppContent = () => {
                 new URL(window.location.href).searchParams.get("redirect")
               );
               navigate(
-                isCommunityReturnPath(destination)
+                isSharedPageReturnPath(destination)
                   ? `/auth?${new URLSearchParams({ redirect: destination })}`
                   : "/auth",
                 { replace: true }
@@ -1032,11 +1033,7 @@ const AppContent = () => {
           />
           <Route
             path="/round-robin/:id"
-            element={
-              <AuthGuard>
-                <RoundRobinDetail />
-              </AuthGuard>
-            }
+            element={<RoundRobinEntry />}
           />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
           {/* Tournament surface — under reconstruction and invisible to

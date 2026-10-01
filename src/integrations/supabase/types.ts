@@ -9869,6 +9869,14 @@ export type Database = {
           registration_status: string
         }[]
       }
+      get_round_robin_entry: {
+        Args: { p_event_id: string; p_invite_code?: string }
+        Returns: Json
+      }
+      join_round_robin_event: {
+        Args: { p_event_id: string; p_invite_code?: string }
+        Returns: Json
+      }
       ladder_finalize_batch: {
         Args: { p_batch_id: string; p_plan: Json }
         Returns: Json

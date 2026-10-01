@@ -18,6 +18,7 @@ import { Calendar, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil, Gri
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { supabase } from "@/integrations/supabase/client";
 import { useCourtName } from "@/hooks/useCourtName";
 import "./event.css";
@@ -119,10 +120,7 @@ export function RoundRobinHostHero({
     onLocationUpdated?.();
   };
 
-  const showInviteCode = !!inviteCode && registrationMode === "invite_only";
-  const joinUrl = showInviteCode
-    ? `${window.location.origin}/player/play?invite=${encodeURIComponent(inviteCode!)}`
-    : null;
+  const showInviteCode = !!inviteCode && (registrationMode === "invite_only" || registrationMode === "immediate");
 
   const handleCopyCode = async () => {
     if (!inviteCode) return;
@@ -137,26 +135,10 @@ export function RoundRobinHostHero({
   };
 
   const handleShareCode = async () => {
-    if (!inviteCode || !joinUrl) return;
-    const shareText = `Join "${name}" on PULSE — invite code ${inviteCode}`;
-    if (typeof navigator !== "undefined" && (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share) {
-      try {
-        await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share({
-          title: name,
-          text: shareText,
-          url: joinUrl,
-        });
-        return;
-      } catch {
-        // Fall through to clipboard.
-      }
-    }
+    if (!inviteCode) return;
     try {
-      await navigator.clipboard.writeText(`${shareText}\n${joinUrl}`);
-      toast.success("Share text copied");
-    } catch {
-      toast.error("Could not copy share text");
-    }
+      if (await shareRoundRobin(eventId, name, inviteCode) === "copied") toast.success("Event link copied");
+    } catch { toast.error("Could not share the link. Please try again."); }
   };
 
   // Status language — "Schedule not generated" reads better than "Schedule TBD".
