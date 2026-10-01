@@ -61,6 +61,9 @@ const PREFIX_META: Record<string, ActionMeta> = {
  * actions fall back to a title-cased version of the suffix.
  */
 const ACTION_LABELS: Record<string, string> = {
+  'ladder.batch_processed': 'Ladder results processed',
+  'ladder.batch_generated': 'Next ladder round generated',
+  'ladder.player_replaced': 'Ladder player replaced',
   'substitute.added': 'Substitute added to bench',
   'substitute.updated': 'Substitute details updated',
   'substitute.removed': 'Substitute removed from bench',
@@ -263,6 +266,8 @@ export function AuditLogTab({
     const p = actors[id];
     return leaguePlayerName(p);
   };
+  const entryActorName = (entry: LeagueAuditEntry) => entry.new_value?.via === 'auto_advance'
+    ? 'League automation' : actorName(entry.actor_user_id);
 
   // Discover the prefixes present in this log so the filter dropdown
   // only shows groups that actually appear.
@@ -286,7 +291,7 @@ export function AuditLogTab({
       list = list.filter((e) =>
         e.action.toLowerCase().includes(q)
         || (e.entity_type ?? "").toLowerCase().includes(q)
-        || actorName(e.actor_user_id).toLowerCase().includes(q));
+        || entryActorName(e).toLowerCase().includes(q));
     }
     return list;
   }, [entries, prefixFilter, query, actors]);
@@ -363,7 +368,7 @@ export function AuditLogTab({
                   <span className="ml-1.5 opacity-60">· {rows.length}</span>
                 </div>
                 <ul className="space-y-2">
-                  {rows.map((e) => <AuditRow key={e.id} entry={e} actor={actors[e.actor_user_id]} actorName={actorName(e.actor_user_id)} nameOf={actorName} benchUserId={e.entity_id ? benchNames[e.entity_id] : undefined} />)}
+                  {rows.map((e) => <AuditRow key={e.id} entry={e} actor={e.new_value?.via === 'auto_advance' ? undefined : actors[e.actor_user_id]} actorName={entryActorName(e)} nameOf={actorName} benchUserId={e.entity_id ? benchNames[e.entity_id] : undefined} />)}
                 </ul>
               </section>
             );
