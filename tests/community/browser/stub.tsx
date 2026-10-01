@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { DEFAULT_GROUP_SETTINGS } from "../../../src/types/groupSettings";
 export const scenario = new URLSearchParams(location.search).get("scenario");
 const noop = () => {};
@@ -156,8 +156,16 @@ const events = [
   },
 ];
 export const fetchGroupEvents = async () => events;
+let visibleEvents = scenario === 'empty' ? [] : events;
+const eventListeners = new Set<() => void>();
 export const useGroupEvents = () => ({
-  events: scenario === "empty" ? [] : events,
+  events: useSyncExternalStore(listener => { eventListeners.add(listener); return () => { eventListeners.delete(listener); }; }, () => visibleEvents),
+  createEvent: async (data: Record<string, unknown>) => {
+    if (scenario === 'saveerror') throw new Error('Local QA: save failed. Your draft is still here.');
+    visibleEvents = [...visibleEvents, { ...events[0], ...data, id: crypto.randomUUID(), created_by: 'me', rsvps: { going: 0, maybe: 0, waitlist: 0, not_going: 0 }, is_recurring: !!data.recurring_rule }];
+    eventListeners.forEach(listener => listener());
+    return true;
+  },
   loading: false,
   isError: scenario === "error",
   refetch: asyncNoop,

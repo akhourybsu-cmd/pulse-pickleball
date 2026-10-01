@@ -143,12 +143,12 @@ export function EventDateTimeStep({
           reveals the occurrence-count dropdown below. */}
       <div className="space-y-3 pt-2 border-t border-border/40">
         <div>
-          <Label className="text-xs text-muted-foreground mb-1 block">Repeats</Label>
+          <Label htmlFor="event-repeat" className="text-xs text-muted-foreground mb-1 block">Repeats</Label>
           <Select
             value={recurringFrequency}
             onValueChange={(v) => onRecurringFrequencyChange(v as RecurringFrequency)}
           >
-            <SelectTrigger>
+            <SelectTrigger id="event-repeat">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -166,14 +166,14 @@ export function EventDateTimeStep({
 
         {isRecurring && (
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">
+            <Label htmlFor="event-repeat-count" className="text-xs text-muted-foreground mb-1 block">
               How many occurrences? (including the first)
             </Label>
             <Select
               value={String(recurringCount)}
               onValueChange={(v) => onRecurringCountChange(parseInt(v, 10))}
             >
-              <SelectTrigger>
+              <SelectTrigger id="event-repeat-count">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

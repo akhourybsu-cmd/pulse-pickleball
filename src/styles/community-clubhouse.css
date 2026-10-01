@@ -48,13 +48,13 @@
   gap: 24px;
   max-width: 1440px;
   margin: auto;
-  padding: 30px 36px 34px;
-  min-height: 178px;
+  padding: 22px 36px 26px;
+  min-height: 152px;
 }
 .club-identity h1 {
   margin: 9px 0 10px;
   font-family: inherit;
-  font-size: clamp(1.55rem, 3.5vw, 2.75rem);
+  font-size: clamp(1.55rem, 3.2vw, 2.4rem);
   font-weight: 650;
   letter-spacing: -0.045em;
   line-height: 1.12;
@@ -358,8 +358,8 @@
     padding-inline: 12px;
   }
   .club-identity-content {
-    min-height: 150px;
-    padding: 22px 18px 26px;
+    min-height: 130px;
+    padding: 16px 18px 20px;
     gap: 16px;
   }
   .club-identity .club-identity-mark {
@@ -369,7 +369,7 @@
     border-radius: 14px;
   }
   .club-identity h1 {
-    font-size: 25px;
+    font-size: 23px;
     margin-block: 8px;
   }
   .club-eyebrow {

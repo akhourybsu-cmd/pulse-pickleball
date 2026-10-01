@@ -28,19 +28,19 @@ export function EventNameStep({
 
   return (
     <div className="space-y-3">
-      <div>
+      {venueMode && <div>
         <h3 className="text-lg font-semibold">{venueMode ? 'Program details' : 'Name your event'}</h3>
         {venueMode && (
           <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
             Use a clear, scannable name. Put what players should expect in the description.
           </p>
         )}
-      </div>
+      </div>}
       
       <div className="space-y-4">
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-3">
-            <Label htmlFor="event-title" className="text-xs font-semibold">Program name</Label>
+            <Label htmlFor="event-title" className="text-xs font-semibold">{venueMode ? 'Program name' : 'Event name'}</Label>
             <span className="text-[10px] tabular-nums text-muted-foreground">{title.length}/80</span>
           </div>
         <div className="flex gap-2">
@@ -59,7 +59,7 @@ export function EventNameStep({
             className="h-11 w-11 shrink-0 rounded-xl"
             onClick={handleAutoGenerate}
             title="Use a suggested name"
-            aria-label="Use a suggested program name"
+            aria-label={venueMode ? 'Use a suggested program name' : 'Use a suggested event name'}
           >
             <Sparkles className="h-4 w-4" />
           </Button>
