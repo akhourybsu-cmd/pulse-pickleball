@@ -141,6 +141,11 @@ describe('substitute workflow database guards', () => {
 });
 
 describe('request eligibility presentation', () => {
+  it('offers the earliest available week first even when rows arrive in UUID order', () => {
+    const weeks = [4, 3, 5].map(week_number => ({ id: `week-${week_number}`, week_number, scheduled_date: null, status: 'published' } as SubRequestWeek));
+    expect(requestableWeeks(weeks, new Set(), '2026-10-01').map(week => week.week_number)).toEqual([3, 4, 5]);
+    expect(weeks.map(week => week.week_number)).toEqual([4, 3, 5]);
+  });
   it('filters both bench and member pools by conflicts, deduplicating candidates', () => {
     const req={id:'r',session_id:'w',player_id:'out',status:'pending'} as SubRequest;
     const others=[req,{id:'r2',session_id:'w',player_id:'other',status:'sub',assigned_sub_id:'booked'}, {id:'r3',session_id:'w',player_id:'absent',status:'pending'}] as SubRequest[];

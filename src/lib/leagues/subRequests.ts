@@ -16,7 +16,8 @@ export interface SubRequestWeek {
 export function requestableWeeks(weeks: SubRequestWeek[], generated: Set<number>, today: string) {
   return weeks.filter(w => w.week_number != null && w.week_number >= 2
     && w.status === 'published' && (!w.scheduled_date || w.scheduled_date >= today)
-    && !generated.has(w.week_number));
+    && !generated.has(w.week_number))
+    .sort((a, b) => a.week_number! - b.week_number!);
 }
 
 export function eligibleSubIds(ids: string[], order: string[], requests: SubRequest[], request: SubRequest, sitouts: string[] = []) {
