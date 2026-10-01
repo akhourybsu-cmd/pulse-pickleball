@@ -1,3 +1,5 @@
+import { LeagueScope } from "./_leagueScope";
+import { LeagueBrandMark } from "./LeagueIdentity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query';
@@ -123,9 +125,10 @@ export function JoinByCodeDialog({
   };
 
   return (
+    <LeagueScope brand={teaser?.branding} className="!min-h-0">
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="league-menu sm:max-w-md w-[calc(100%-2rem)] rounded-2xl overflow-y-auto">
-        <div className="league-invite-mark"><Logo compact className="w-20" /><p className="mt-3 text-xs text-[#e3ca92]">Your next season starts here.</p></div>
+        <div className="league-invite-mark"><Logo compact className="w-20" /><p className="mt-3 text-xs text-[color:var(--league-brand-accent,#e3ca92)]">Your next season starts here.</p></div>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="w-4 h-4" />
@@ -169,6 +172,7 @@ export function JoinByCodeDialog({
           </div>
         ) : (
           <div className="space-y-3">
+            <LeagueBrandMark name={teaser.name} branding={teaser.branding} className="h-16 w-16 text-[64px]" />
             {/* Teaser preview — confirm before commit */}
             <div className={`rounded-xl border p-4 ${
               teaser.registration_open
@@ -250,5 +254,6 @@ export function JoinByCodeDialog({
         )}
       </DialogContent>
     </Dialog>
+    </LeagueScope>
   );
 }

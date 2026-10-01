@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
-import { leagueSimulationDatabase } from "../../helpers/leagueSimulationDatabase";
+import { leagueSimulationDatabase, leagueActor } from "../../helpers/leagueSimulationDatabase";
 import { leagueSimulationClient } from "../../helpers/leagueSimulationClient";
 import { seedLeagueBrowserSimulation } from "../../helpers/leagueBrowserSimulation";
 
@@ -16,6 +16,13 @@ export default defineConfig({
       async configureServer(server) {
         const db = await leagueSimulationDatabase();
         const state = await seedLeagueBrowserSimulation(db);
+        const assets = new Map<string, { bytes: Buffer; mime: string }>();
+        server.middlewares.use('/__league-assets/', (req, res) => {
+          const asset = assets.get(decodeURIComponent((req.url ?? '').split('?')[0].replace(/^\//, '')));
+          if (!asset) { res.statusCode = 404; res.end(); return; }
+          res.setHeader('Content-Type', asset.mime);
+          res.end(asset.bytes);
+        });
         server.httpServer?.once("close", () => void db.close());
         server.middlewares.use("/__league-sim", async (req, res) => {
           res.setHeader("Content-Type", "application/json");
@@ -37,7 +44,13 @@ export default defineConfig({
               throw new Error("Unknown simulation user");
             const api = leagueSimulationClient(db, action.user);
             let result;
-            if (action.kind === "rpc")
+            if (action.kind === 'storage') {
+              const bytes = Buffer.from(action.base64, 'base64');
+              if (bytes.length > 8388608 || !['image/jpeg','image/png','image/webp','image/gif'].includes(action.mime)) throw new Error('Invalid image');
+              await leagueActor(db, action.user)('INSERT INTO storage.objects(bucket_id,name) VALUES($1,$2)', [action.bucket, action.path]);
+              assets.set(action.path, { bytes, mime: action.mime });
+              result = { data: { path: action.path }, error: null };
+            } else if (action.kind === "rpc")
               result = await api.rpc(action.name, action.args);
             else if (action.kind === "function") {
               const handler = state.handlers[action.name];

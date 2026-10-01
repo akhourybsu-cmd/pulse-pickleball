@@ -10,6 +10,7 @@ import PlayerLeagueDetail from "@/pages/player/PlayerLeagueDetail";
 import PlayerLeagues from "@/pages/player/PlayerLeagues";
 import JoinLeagueByCode from "@/pages/player/JoinLeagueByCode";
 import { QaAuth } from "./simulation-client";
+import { ThemeProvider, useTheme } from "next-themes";
 import "@/index.css";
 const client = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -21,9 +22,10 @@ function Preview({
 }) {
   const [user, setUser] = useState(state.users[0].id);
   const [dark, setDark] = useState(false);
+  const { setTheme } = useTheme();
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
+    setTheme(dark ? 'dark' : 'light');
+  }, [dark, setTheme]);
   const navigate = useNavigate();
   return (
     <QaAuth user={user}>
@@ -85,6 +87,7 @@ fetch("/__league-sim")
   .then((state) =>
     createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={client}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <TooltipProvider>
           <MemoryRouter
             initialEntries={[
@@ -94,6 +97,7 @@ fetch("/__league-sim")
             <Preview state={state} />
           </MemoryRouter>
         </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     )
   );

@@ -30,6 +30,7 @@ interface RpcRow {
   membership_created_at: string;
   membership_updated_at: string;
 
+  league_branding?: League["branding"];
   league_id: string;
   league_name: string;
   league_description: string | null;
@@ -74,6 +75,7 @@ function mapRow(r: RpcRow): MyLeagueRow {
     },
     league: {
       id: r.league_id,
+      branding: r.league_branding,
       name: r.league_name,
       description: r.league_description,
       location: r.league_location,

@@ -10,6 +10,8 @@ import {
   Trophy,
   ArrowLeft, ExternalLink,
 } from "lucide-react";
+import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
+import { BrandingTab } from "@/components/admin/leagues/BrandingTab";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
 import { MembersTab } from "@/components/admin/leagues/MembersTab";
@@ -270,7 +272,7 @@ export default function AdminLeagueDetail() {
     league.league_type === "doubles" || league.league_type === "team";
 
   return shell(
-    <LeagueScope>
+    <LeagueScope brand={league.branding}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 max-w-[1440px] space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" className="h-11 rounded-xl" onClick={() => navigate(backHref)}>
@@ -281,7 +283,7 @@ export default function AdminLeagueDetail() {
           </Button>
         </div>
         {activeTab === 'actions' ? <section className="lg-hero-gradient rounded-2xl p-5 sm:p-6">
-          <p className="text-sm text-[color:var(--lg-hero-text-dim)]">League management</p>
+          <LeagueBrandMark name={league.name} branding={league.branding} className="mb-3 h-14 w-14 text-[56px]" /><p className="text-sm text-[color:var(--lg-hero-text-dim)]">League management</p>
           <h1 className="mt-1 break-words text-2xl sm:text-3xl font-semibold text-[color:var(--lg-hero-text)]">{league.name}</h1>
           <p className="mt-2 text-sm text-[color:var(--lg-hero-text-dim)]">Your requests, roster decisions and results in one place.</p>
         </section> : <LeagueHero
@@ -327,7 +329,7 @@ export default function AdminLeagueDetail() {
 
         {/* Rail + workspace */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <LeagueManageNav active={activeTab} onChange={setActiveTab} tabs={visibleTabs} actionCount={actions.error ? undefined : actions.data?.total} />
+          <LeagueManageNav league={league} active={activeTab} onChange={setActiveTab} tabs={visibleTabs} actionCount={actions.error ? undefined : actions.data?.total} />
 
           <div className="flex-1 min-w-0 space-y-3">
             {activeTabDef && (
@@ -354,6 +356,7 @@ export default function AdminLeagueDetail() {
                 // perceived-content budget.
                 transition={{ duration: DUR.hover, ease: EASE_OUT }}
               >
+                {activeTab === "branding" && <BrandingTab key={league.id} league={league} onRefresh={async () => { await refresh(); onDataMutated(); }} />}
                 {activeTab === "actions" && <ActionsTab query={actions} onMutated={onDataMutated} onNavigate={(tab, seasonId) => {
                   const next = new URLSearchParams(searchParams);
                   next.set('tab', tab);

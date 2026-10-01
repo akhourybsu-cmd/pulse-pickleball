@@ -12,8 +12,8 @@
   border-radius: 1.75rem;
   color: #faf7ef;
   background:
-    radial-gradient(ellipse at 95% 10%, #285043 0%, transparent 55%),
-    linear-gradient(120deg, #191d1b, #242822);
+    radial-gradient(ellipse at 95% 10%, var(--league-header-glow, #285043) 0%, transparent 55%),
+    linear-gradient(120deg, var(--league-header, #191d1b), var(--league-header, #242822));
   box-shadow: 0 16px 40px #121b1410;
   animation: league-stage-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -202,7 +202,7 @@
   border-radius: 1.5rem;
 }
 .league-menu .league-invite-mark {
-  background: #1c2621;
+  background: var(--league-header, #1c2621);
   color: #f6ecd4;
   border-radius: 1rem;
   padding: 1.1rem;

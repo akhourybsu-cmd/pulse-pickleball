@@ -28,7 +28,8 @@ describe('PULSE league presentation', () => {
     expect(leagueCSS).toContain("'Manrope'");
     expect(leagueCSS).toContain("'Sora'");
     expect(leagueCSS).toContain('--lg-surface: hsl(var(--card))');
-    expect(leagueCSS).not.toMatch(/--(?:background|foreground|primary):/);
+    // League colors may now override actions, but reading surfaces stay shared.
+    expect(leagueCSS).not.toMatch(/--(?:background|foreground):/);
     expect(leagueCSS).toContain('.league-menu');
   });
 
