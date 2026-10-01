@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { stashPostAuthRedirect } from "@/lib/authRedirect";
+import { LeagueScope } from '@/components/leagues/_leagueScope';
+import { Logo } from '@/components/Logo';
+import '@/components/leagues/playerLeague.css';
 
 interface LeagueTeaser {
   id: string;
@@ -145,8 +148,9 @@ export default function JoinLeagueByCode() {
     : null;
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
+    <LeagueScope className="league-player flex items-center justify-center p-4 sm:p-6">
+      <Card className="w-full max-w-md overflow-hidden rounded-3xl border-[color:var(--lg-border)] shadow-xl shadow-black/5">
+        <div className="bg-[#1c2621] p-6 text-[#faf7ef]"><Logo compact className="mx-auto w-24" /><p className="mt-4 text-center text-xs uppercase tracking-[.2em] text-[#e3ca92]">Your league invitation</p></div>
         <CardContent className="p-8 text-center space-y-5">
           {phase === "loading" && (
             <>
@@ -271,6 +275,6 @@ export default function JoinLeagueByCode() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </LeagueScope>
   );
 }

@@ -1,0 +1,308 @@
+.league-player {
+  background-image: radial-gradient(
+    ellipse at 100% 0%,
+    hsl(var(--primary) / 0.07),
+    transparent 45%
+  );
+}
+.league-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  color: #faf7ef;
+  background:
+    radial-gradient(ellipse at 95% 10%, #285043 0%, transparent 55%),
+    linear-gradient(120deg, #191d1b, #242822);
+  box-shadow: 0 16px 40px #121b1410;
+  animation: league-stage-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.league-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid #d8b86a40;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.league-stage-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem;
+  max-width: 76%;
+}
+.league-stage-title {
+  margin-top: 1rem;
+  font-size: clamp(1.8rem, 4.5vw, 3.5rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+  max-width: 20ch;
+}
+.league-stage-compact .league-stage-title {
+  font-size: clamp(1.7rem, 3.5vw, 2.75rem);
+}
+.league-stage-compact .league-stage-content {
+  padding: 1.5rem;
+}
+.league-stage-compact .league-stage-content > .mt-6 {
+  margin-top: 1rem;
+}
+.league-stage-stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.2rem 2rem;
+  border-top: 1px solid #ffffff20;
+  background: #0000001a;
+}
+.league-court-art {
+  position: absolute;
+  color: #c9e1cd;
+  right: -1rem;
+  top: 0;
+  width: 40%;
+  max-height: 100%;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.league-court-draw {
+  animation: league-court-draw 1.1s ease-out both;
+}
+.league-court-ball {
+  animation: league-rally 2s 0.4s ease-in-out both;
+}
+.league-player-nav {
+  position: sticky;
+  top: 4rem;
+  z-index: 25;
+  padding: 0.5rem;
+  border: 1px solid var(--lg-border);
+  border-radius: 1.1rem;
+  background: var(--lg-bg);
+  box-shadow: 0 4px 14px #151a1407;
+}
+.league-player .league-player-tabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  height: auto;
+  width: 100%;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: transparent;
+  scrollbar-width: thin;
+}
+.league-player .league-player-tab {
+  flex: 1 0 auto;
+  gap: 0.4rem;
+  min-height: 44px;
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  color: var(--lg-text-dim);
+  transition:
+    background-color 0.18s,
+    color 0.18s;
+}
+.league-player .league-player-tab[data-state="active"] {
+  color: var(--lg-text);
+  background: hsl(var(--primary) / 0.15);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.3);
+  font-weight: 700;
+}
+.league-player .league-player-panel[data-state="active"] {
+  margin-top: 1.25rem;
+  animation: league-panel-enter 0.22s ease-out both;
+}
+.league-ticket {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  min-height: 240px;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid var(--lg-border);
+  border-radius: 1.5rem;
+  background: var(--lg-surface);
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.league-ticket:hover {
+  transform: translateY(-3px);
+  border-color: var(--lg-gold);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.07);
+}
+.league-ticket:focus-visible {
+  outline: 2px solid var(--lg-accent-gold);
+  outline-offset: 4px;
+}
+.league-ticket-banner {
+  position: relative;
+  padding: 1.1rem 1.4rem;
+  overflow: hidden;
+  background: linear-gradient(
+    120deg,
+    hsl(var(--primary) / 0.12),
+    hsl(var(--muted))
+  );
+  border-bottom: 1px solid var(--lg-border);
+}
+.league-ticket-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-top: 1px dashed var(--lg-border);
+  padding: 1rem 1.4rem;
+  color: var(--lg-accent-gold);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.league-date-tile {
+  display: flex;
+  flex: 0 0 58px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 66px;
+  border: 1px solid hsl(var(--primary) / 0.25);
+  border-radius: 0.85rem;
+  background: hsl(var(--primary) / 0.08);
+  color: var(--lg-accent-gold);
+}
+.league-date-tile span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.league-date-tile strong {
+  font-family: "Sora", sans-serif;
+  font-size: 1.45rem;
+  line-height: 1.4;
+}
+.league-match-card {
+  transition: border-color 0.2s;
+  box-shadow: 0 3px 12px hsl(var(--foreground) / 0.025);
+}
+.league-match-card:focus-within {
+  border-color: var(--lg-gold);
+}
+.league-player .league-court-card {
+  background:
+    linear-gradient(135deg, hsl(var(--primary) / 0.06), transparent 65%),
+    var(--lg-surface);
+  border-radius: 1.5rem;
+}
+.league-menu .league-invite-mark {
+  background: #1c2621;
+  color: #f6ecd4;
+  border-radius: 1rem;
+  padding: 1.1rem;
+}
+@keyframes league-stage-enter {
+  from {
+    opacity: 0.6;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes league-panel-enter {
+  from {
+    opacity: 0.5;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes league-court-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes league-rally {
+  0% {
+    transform: translate(-90px, 100px);
+  }
+  45% {
+    transform: translate(30px, 25px);
+  }
+  70% {
+    transform: translate(-20px, 65px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@media (min-width: 640px) {
+  .league-player-nav {
+    top: 4.5rem;
+  }
+}
+@media (max-width: 639px) {
+  .league-player .league-player-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .league-player .league-player-tab {
+    padding: 0.55rem 0.35rem;
+    min-width: 0;
+    font-size: 0.75rem;
+  }
+  .league-player .league-player-tab > svg {
+    display: none;
+  }
+  .league-stage-content {
+    padding: 1.4rem;
+    max-width: 100%;
+  }
+  .league-court-art {
+    width: 70%;
+    right: -28%;
+    opacity: 0.13;
+  }
+  .league-stage-stats {
+    padding: 1rem 1.4rem;
+    gap: 0.75rem;
+  }
+  .league-stage {
+    border-radius: 1.4rem;
+  }
+  .league-ticket {
+    min-height: 210px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .league-stage,
+  .league-court-draw,
+  .league-court-ball,
+  .league-player .league-player-panel[data-state="active"] {
+    animation: none;
+  }
+  .league-ticket,
+  .league-player .league-player-tab,
+  .league-match-card {
+    transition: none;
+  }
+  .league-ticket:hover {
+    transform: none;
+  }
+}
