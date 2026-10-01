@@ -37,6 +37,7 @@ interface EventDetailsStepProps {
   rrCourts: number | null;
   rrGamesPerPlayer: number | null;
   venueMode?: boolean;
+  hideLocation?: boolean;
   venueName?: string | null;
   courts?: VenueEventCourt[];
   selectedCourtIds?: string[];
@@ -89,6 +90,7 @@ export function EventDetailsStep({
   rrCourts,
   rrGamesPerPlayer,
   venueMode = false,
+  hideLocation = false,
   venueName,
   courts = [],
   selectedCourtIds = [],
@@ -206,7 +208,7 @@ export function EventDetailsStep({
             <p className="mt-2 text-[11px] text-muted-foreground">Checking the court schedule…</p>
           )}
         </FieldGroup>
-      ) : (
+      ) : !hideLocation && (
         <FieldGroup icon={MapPin} label="Location">
           <Input
             className="h-11 rounded-lg"
@@ -285,6 +287,7 @@ export function EventDetailsStep({
                 max={20}
                 className="h-11 rounded-lg tabular-nums"
                 placeholder="e.g. 4"
+                aria-label="Round robin courts"
                 value={rrCourts ?? ''}
                 onChange={(e) => onRrCourtsChange(e.target.value ? parseInt(e.target.value, 10) : null)}
               />
@@ -298,6 +301,7 @@ export function EventDetailsStep({
               max={20}
               className="h-11 rounded-lg tabular-nums"
               placeholder="e.g. 6"
+              aria-label="Games per player"
               value={rrGamesPerPlayer ?? ''}
               onChange={(e) => onRrGamesChange(e.target.value ? parseInt(e.target.value, 10) : null)}
             />
@@ -320,6 +324,7 @@ export function EventDetailsStep({
           min={1}
           className="h-11 rounded-lg tabular-nums"
           placeholder="Max players"
+          aria-label="Player capacity"
           value={capacity ?? ''}
           onChange={(e) => onCapacityChange(e.target.value ? parseInt(e.target.value, 10) : null)}
         />
@@ -338,7 +343,7 @@ export function EventDetailsStep({
                 : 'Set a capacity above to use the waitlist.'}
             </p>
           </div>
-          <Switch checked={waitlistEnabled} disabled={!capacity} onCheckedChange={onWaitlistEnabledChange} />
+          <Switch aria-label="Enable waitlist" checked={waitlistEnabled} disabled={!capacity} onCheckedChange={onWaitlistEnabledChange} />
         </div>
 
         {!!capacity && waitlistEnabled && (
@@ -352,6 +357,7 @@ export function EventDetailsStep({
               min={1}
               className="h-11 rounded-lg tabular-nums"
               placeholder="Unlimited"
+              aria-label="Waitlist capacity"
               value={waitlistLimit ?? ''}
               onChange={(e) => onWaitlistLimitChange(e.target.value ? parseInt(e.target.value, 10) : null)}
             />

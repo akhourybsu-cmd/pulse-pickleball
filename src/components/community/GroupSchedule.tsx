@@ -28,7 +28,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupEmptyState } from './GroupEmptyState';
-import { EventWizardContainer } from './event-wizard/EventWizardContainer';
+import { GroupEventDialog } from './event-wizard/GroupEventDialog';
 import { GroupScheduleCalendar } from './GroupScheduleCalendar';
 import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
 import { useGroupSettings } from '@/hooks/useGroupSettings';
@@ -115,26 +115,18 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId, canCreateEvent 
 
   return (
     <div className="space-y-4">
-      {/* Create Event Wizard or CTA */}
-      {wizardOpen && canCreate ? (
-        <EventWizardContainer
-          groupId={groupId}
-          onClose={() => setWizardOpen(false)}
-          onSuccess={() => setWizardOpen(false)}
-        />
-      ) : canCreate ? (
+      {canCreate && <GroupEventDialog groupId={groupId} open={wizardOpen} onOpenChange={setWizardOpen}>
         <Button
-          onClick={() => setWizardOpen(true)}
           className="h-12 w-full gap-2 rounded-2xl font-bold tracking-wide shadow-[0_10px_30px_-16px_hsl(var(--primary)/0.9)]"
         >
           <Plus className="h-4 w-4" />
           Create Event
         </Button>
-      ) : null}
+      </GroupEventDialog>}
 
       {/* Sticky toolbar — view switch + live count. Stays reachable while
           scrolling a long schedule. */}
-      {!wizardOpen && events.length > 0 && (
+      {events.length > 0 && (
         <div className="sticky top-0 z-10 -mx-1 px-1 py-1.5 bg-background/85 backdrop-blur-md">
           <div className="flex items-center justify-between gap-2">
             <div className="relative inline-flex items-center rounded-full border border-border/60 bg-card/80 p-0.5 text-xs backdrop-blur-sm shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.4)]">
@@ -189,7 +181,7 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId, canCreateEvent 
 
       {/* Month calendar (only in month view). The calendar drives selectedDay,
           which filters the list below. */}
-      {!wizardOpen && view === 'month' && events.length > 0 && (
+      {view === 'month' && events.length > 0 && (
         <GroupScheduleCalendar
           events={events.map((e) => ({ id: e.id, start_time: e.start_time, title: e.title }))}
           selectedDate={selectedDay}
@@ -198,7 +190,7 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId, canCreateEvent 
       )}
 
       {/* Events List */}
-      {events.length === 0 && !wizardOpen ? (
+      {events.length === 0 ? (
         <GroupEmptyState
           icon={Calendar}
           title="No upcoming events"

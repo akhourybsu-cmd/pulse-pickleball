@@ -31,11 +31,16 @@ import { EventNameStep } from './steps/EventNameStep';
 import { EventDateTimeStep } from './steps/EventDateTimeStep';
 import { EventDetailsStep } from './steps/EventDetailsStep';
 import { EventReviewStep } from './steps/EventReviewStep';
+import { GroupEventWizardShell } from './GroupEventWizardShell';
+import { GROUP_EVENT_STEPS, canVisitGroupEventStep, groupEventStepError } from './groupFlow';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface EventWizardContainerProps {
   groupId: string;
   onClose: () => void;
   onSuccess: () => void;
+  onPendingChange?: (pending: boolean) => void;
   venue?: {
     id: string;
     name: string;
@@ -52,10 +57,11 @@ function timeValue(date: Date | null | undefined): string {
   return date ? format(date, 'HH:mm') : '';
 }
 
-export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: EventWizardContainerProps) {
+export function EventWizardContainer({ groupId, onClose, onSuccess, onPendingChange, venue }: EventWizardContainerProps) {
   const { createEvent } = useGroupEvents(groupId);
   const venueMode = !!venue;
   const [currentStep, setCurrentStep] = useState(0);
+  const [furthestStep, setFurthestStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -119,8 +125,12 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
     return ids;
   }, [conflictQuery.data, occurrenceWindows]);
 
-  const step = EVENT_WIZARD_STEPS[currentStep];
-  const isLastStep = currentStep === EVENT_WIZARD_STEPS.length - 1;
+  const steps = venueMode ? EVENT_WIZARD_STEPS : GROUP_EVENT_STEPS;
+  const step = steps[currentStep];
+  const isLastStep = currentStep === steps.length - 1;
+  const groupValidation = isLastStep
+    ? GROUP_EVENT_STEPS.map(item => groupEventStepError(item.id, formData)).find(Boolean) ?? null
+    : groupEventStepError(step.id, formData);
   const courtsConfirmed = formData.selectedCourtIds.length === courtCount
     && formData.selectedCourtIds.every(id => venue?.courts.some(c => c.id === id && c.is_active !== false))
     && canUseVenueCourtSelection(formData.selectedCourtIds, busyCourtIds, conflictQuery.isSuccess && !conflictQuery.isFetching);
@@ -132,6 +142,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   }));
 
   const isStepValid = (): boolean => {
+    if (!venueMode) return !groupValidation;
     switch (step.id) {
       case 'type':
         return formData.eventType !== null;
@@ -139,10 +150,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
         return formData.title.trim().length > 0;
       case 'datetime':
         if (!formData.date || !formData.startTime) return false;
-        if (!venueMode) return true;
         return occurrenceWindows.length > 0;
       case 'details':
-        if (!venueMode) return true;
         return (
           courtsConfirmed &&
           (formData.skillLevelMin == null ||
@@ -150,16 +159,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             formData.skillLevelMin <= formData.skillLevelMax)
         );
       case 'review':
-        return !venueMode || courtsConfirmed;
+        return courtsConfirmed;
       default:
         return false;
     }
   };
 
   const goNext = () => {
-    if (currentStep < EVENT_WIZARD_STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setDirection(1);
       setCurrentStep((prev) => prev + 1);
+      setFurthestStep(prev => Math.max(prev, currentStep + 1));
     }
   };
 
@@ -171,7 +181,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
   };
 
   const goToStep = (nextStep: number) => {
-    if (nextStep > currentStep || nextStep < 0) return;
+    if (isLoading || (venueMode ? nextStep > currentStep || nextStep < 0 : !canVisitGroupEventStep(nextStep, furthestStep, formData))) return;
     setDirection(nextStep < currentStep ? -1 : 1);
     setCurrentStep(nextStep);
   };
@@ -180,14 +190,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
     if (isLoading || !isStepValid()) return;
     if (isLastStep) {
       await handleCreate();
+    } else if (!venueMode && canVisitGroupEventStep(steps.length - 1, furthestStep, formData)) {
+      goToStep(steps.length - 1);
     } else {
       goNext();
     }
   };
 
   const handleCreate = async () => {
-    if (isLoading || (venueMode && !courtsConfirmed)) return;
+    if (isLoading || (venueMode ? !courtsConfirmed : !!groupValidation)) return;
     setIsLoading(true);
+    onPendingChange?.(true);
     setCreateError(null);
     try {
       const startDateTime = venueMode ? occurrenceWindows[0].start : new Date(`${formData.date}T${formData.startTime}`);
@@ -212,7 +225,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
       );
 
       await createEvent({
-        title: formData.title,
+        title: formData.title.trim(),
         description: formData.description || undefined,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime?.toISOString(),
@@ -242,14 +255,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
 
       onSuccess();
     } catch (error) {
-      setCreateError(getErrorMessage(error, 'The program could not be created. Your draft is still here; please try again.'));
+      setCreateError(getErrorMessage(error, `The ${venueMode ? 'program' : 'event'} could not be created. Your draft is still here; please try again.`));
     } finally {
       setIsLoading(false);
+      onPendingChange?.(false);
     }
   };
 
-  const renderStep = () => {
-    switch (step.id) {
+  const renderStep = (stepId = step.id): React.ReactNode => {
+    switch (stepId) {
+      case 'basics':
+        return <div className="space-y-5">{renderStep('type')}{renderStep('name')}</div>;
       case 'type':
         return (
           <EventTypeStep
@@ -260,7 +276,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
                 ...prev,
                 eventType: type,
                 // Prefill a sensible title so the next step is one tap.
-                title: prev.title || generateDefaultEventTitle(type),
+                title: !prev.title || prev.title === generateDefaultEventTitle(prev.eventType) ? generateDefaultEventTitle(type) : prev.title,
                 rotationStyle:
                   type === 'clinic'
                     ? 'coach_led'
@@ -278,8 +294,9 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
                     ? prev.selectedCourtIds.length * suggestedPlayersPerCourt(type)
                     : prev.capacity,
               }));
-              // Auto-advance after selection
-              setTimeout(() => goNext(), 150);
+              // Group creation has an explicit Continue action. Venue selection
+              // still advances immediately, without a delayed double-tap race.
+              if (venueMode) goNext();
             }}
           />
         );
@@ -296,6 +313,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
         );
       case 'datetime':
         return (
+          <div className="space-y-5">
           <EventDateTimeStep
             date={formData.date}
             startTime={formData.startTime}
@@ -316,6 +334,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
               setFormData((prev) => ({ ...prev, recurringCount }))
             }
           />
+          {!venueMode && (
+            <div className="space-y-1.5 border-t pt-4">
+              <Label htmlFor="event-location">
+                Where are you playing? <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input id="event-location" placeholder="Court, park, or meetup spot"
+                value={formData.location}
+                onChange={event => setFormData(prev => ({ ...prev, location: event.target.value }))} />
+            </div>
+          )}
+          </div>
         );
       case 'details':
         return (
@@ -328,6 +357,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
             rrCourts={formData.rrCourts}
             rrGamesPerPlayer={formData.rrGamesPerPlayer}
             venueMode={venueMode}
+            hideLocation={!venueMode}
             venueName={venue?.name}
             courts={venue?.courts}
             selectedCourtIds={formData.selectedCourtIds}
@@ -370,11 +400,32 @@ export function EventWizardContainer({ groupId, onClose, onSuccess, venue }: Eve
           />
         );
       case 'review':
-        return <EventReviewStep formData={formData} venueName={venue?.name} courts={venue?.courts} timeZone={venue?.timeZone} />;
+        return <EventReviewStep formData={formData} venueName={venue?.name}
+          courts={venue?.courts} timeZone={venue?.timeZone}
+          onEdit={!venueMode ? (id) => goToStep(GROUP_EVENT_STEPS.findIndex(item => item.id === id)) : undefined} />;
       default:
         return null;
     }
   };
+
+  if (!venueMode) {
+    return (
+      <GroupEventWizardShell
+        currentStep={currentStep}
+        canVisit={index => canVisitGroupEventStep(index, furthestStep, formData)}
+        onStepChange={goToStep}
+        onBack={goBack}
+        onContinue={() => void handleContinue()}
+        onClose={onClose}
+        isLoading={isLoading}
+        validationMessage={groupValidation}
+        createError={createError}
+        returningToReview={!isLastStep && canVisitGroupEventStep(steps.length - 1, furthestStep, formData)}
+      >
+        {renderStep()}
+      </GroupEventWizardShell>
+    );
+  }
 
   return (
     <Card className={cn(

@@ -1,6 +1,7 @@
 import { Calendar, Clock, MapPin, Users, Repeat, ListOrdered, LayoutGrid, Gauge, Shuffle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { clockMinutes } from '@/lib/venues/programScheduling';
+import { Button } from '@/components/ui/button';
 import {
   EventWizardFormData,
   EVENT_TYPE_OPTIONS,
@@ -15,6 +16,7 @@ interface EventReviewStepProps {
   venueName?: string | null;
   courts?: VenueEventCourt[];
   timeZone?: string | null;
+  onEdit?: (step: 'basics' | 'datetime' | 'details') => void;
 }
 
 function Row({
@@ -32,12 +34,12 @@ function Row({
         <Icon className="h-3.5 w-3.5 text-primary/80" />
         {label}
       </span>
-      <span className="min-w-0 truncate text-right text-[13px] font-semibold">{value}</span>
+      <span className="min-w-0 break-words text-right text-[13px] font-semibold">{value}</span>
     </div>
   );
 }
 
-export function EventReviewStep({ formData, venueName, courts = [], timeZone }: EventReviewStepProps) {
+export function EventReviewStep({ formData, venueName, courts = [], timeZone, onEdit }: EventReviewStepProps) {
   const eventType = EVENT_TYPE_OPTIONS.find((t) => t.value === formData.eventType);
   const recurring = RECURRING_OPTIONS.find((r) => r.value === formData.recurringFrequency);
   const isRecurring = formData.recurringFrequency !== 'none';
@@ -72,6 +74,7 @@ export function EventReviewStep({ formData, venueName, courts = [], timeZone }: 
 
   return (
     <div className="space-y-3">
+      {onEdit && <div className="flex flex-wrap gap-1.5" aria-label="Edit event sections">{([['basics', 'Edit basics'], ['datetime', 'Edit schedule'], ['details', 'Edit players']] as const).map(([id, label]) => <Button key={id} type="button" variant="outline" size="sm" className="h-10 rounded-lg" onClick={() => onEdit(id)}>{label}</Button>)}</div>}
       <div className="rounded-2xl border border-primary/25 bg-primary/[0.06] p-3">
         <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
           {eventType?.label ?? 'Event'}
