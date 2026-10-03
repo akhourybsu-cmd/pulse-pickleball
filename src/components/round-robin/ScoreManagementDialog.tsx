@@ -98,15 +98,19 @@ export function ScoreManagementDialog({
     new Set(allMatches.map(m => m.round_no))
   ).sort((a, b) => a - b);
 
-  const roundMatches = (mode === 'enter' ? allMatches : scoredMatches).filter(m => m.round_no === selectedRound);
+  const showingAllMatches = mode === null || mode === 'enter';
+  const roundMatches = (showingAllMatches ? allMatches : scoredMatches).filter(m => m.round_no === selectedRound);
   const selectedMatchData = roundMatches.find(m => m.id === selectedMatch);
 
+  const selectedId = selectedMatchData?.id;
+  const savedTeam1 = selectedMatchData?.team1_score;
+  const savedTeam2 = selectedMatchData?.team2_score;
   useEffect(() => {
-    if (selectedMatchData) {
-      setTeam1Score(selectedMatchData.team1_score || 0);
-      setTeam2Score(selectedMatchData.team2_score || 0);
+    if (selectedId) {
+      setTeam1Score(savedTeam1 ?? 0);
+      setTeam2Score(savedTeam2 ?? 0);
     }
-  }, [selectedMatchData]);
+  }, [selectedId, savedTeam1, savedTeam2]);
 
   const handleEditScore = async () => {
     if (!selectedMatch || team1Score === team2Score) return;
@@ -197,7 +201,7 @@ export function ScoreManagementDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(mode === 'enter' ? allRounds : roundsWithScores).map(round => (
+                      {(showingAllMatches ? allRounds : roundsWithScores).map(round => (
                         <SelectItem key={round} value={round.toString()}>
                           Round {round}
                         </SelectItem>
@@ -233,7 +237,7 @@ export function ScoreManagementDialog({
                           title: 'Void Match',
                           description: 'Keep the record but remove from standings and ratings',
                           tone: 'warning' as const,
-                          show: true,
+                          show: scoredMatches.some(match => match.round_no === selectedRound),
                         },
                         {
                           id: 'delete' as const,

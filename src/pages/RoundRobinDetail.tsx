@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { VenueRoundRobinContext } from "@/components/venue/VenueRoundRobinContext";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -556,7 +556,6 @@ export default function RoundRobinDetail() {
         setPlayers(hydratedPlayers);
         setSchedule(hydratedSchedule);
         setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
-        calculateStandings(hydratedSchedule, hydratedPlayers);
 
         setLoading(false);
       });
@@ -752,7 +751,7 @@ export default function RoundRobinDetail() {
     }));
   };
 
-  const calculateStandings = (scheduleData: ScheduleMatch[], playersData: Player[]) => {
+  const calculateStandings = useCallback((scheduleData: ScheduleMatch[], playersData: Player[]) => {
     // Canonical standings math lives in src/lib/roundRobin/standings.ts so the
     // organizer page, kiosk, and player view can never diverge on tie-breaks
     // or on how removed/withdrawn players are ranked.
@@ -782,6 +781,27 @@ export default function RoundRobinDetail() {
         isRemoved: r.isRemoved,
       })),
     );
+  }, []);
+
+  useEffect(() => {
+    calculateStandings(schedule, players);
+  }, [schedule, players, calculateStandings]);
+
+  const showCommittedScore = (scheduleId: string, team1: number, team2: number, matchId: string) => {
+    // The RPC has committed. Show that result immediately, before any refresh,
+    // and reject reads that started before this acknowledgement. A slow or
+    // failed hydration must never make a successfully saved score disappear.
+    fetchRequestRef.current += 1;
+    setSchedule(rows => rows.map(row => row.id === scheduleId
+      ? { ...row, team1_score: team1, team2_score: team2, match_id: matchId }
+      : row));
+    setScores(previous => {
+      const draft = previous[scheduleId];
+      if (draft?.team1_score !== team1 || draft?.team2_score !== team2) return previous;
+      const next = { ...previous };
+      delete next[scheduleId];
+      return next;
+    });
   };
 
 
@@ -808,7 +828,7 @@ export default function RoundRobinDetail() {
       // appears in the player's history right away instead of waiting for
       // event completion. The match-insert trigger fires the rating
       // recalc automatically (when count_for_rating = true).
-      const { error } = await supabase.rpc("submit_rr_match_score", {
+      const { data: matchId, error } = await supabase.rpc("submit_rr_match_score", {
         p_schedule_id: match.id,
         p_team1_score: score.team1_score,
         p_team2_score: score.team2_score,
@@ -816,14 +836,9 @@ export default function RoundRobinDetail() {
 
       if (error) throw error;
 
+      showCommittedScore(match.id, score.team1_score, score.team2_score, matchId);
       toast.success("Score saved");
-      fetchEventDetails();
-
-      setScores(prev => {
-        const newScores = { ...prev };
-        delete newScores[match.id];
-        return newScores;
-      });
+      void fetchEventDetails();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to save score"));
       console.error(error);
@@ -1756,7 +1771,7 @@ export default function RoundRobinDetail() {
       // match_participants, resets verification, writes the audit log,
       // and (when the match row already exists) updates the linked
       // matches row in place so ratings stay correct.
-      const { error } = await supabase.rpc("submit_rr_match_score", {
+      const { data: linkedMatchId, error } = await supabase.rpc("submit_rr_match_score", {
         p_schedule_id: matchId,
         p_team1_score: team1Score,
         p_team2_score: team2Score,
@@ -1764,8 +1779,9 @@ export default function RoundRobinDetail() {
 
       if (error) throw error;
 
+      showCommittedScore(matchId, team1Score, team2Score, linkedMatchId);
       toast.success("Score updated");
-      await fetchEventDetails();
+      void fetchEventDetails();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update score"));
       console.error(error);
