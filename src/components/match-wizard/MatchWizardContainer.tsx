@@ -146,6 +146,7 @@ export function MatchWizardContainer() {
         const { data: existingGuests, error: lookupError } = await supabase
           .from('guest_players')
           .select('id, display_name')
+          .is('archived_at', null).is('linked_user_id', null)
           .eq('created_by', user.id);
         if (lookupError) throw lookupError;
 

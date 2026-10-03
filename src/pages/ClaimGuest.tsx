@@ -12,6 +12,10 @@ import {
   UserPlus,
   ShieldCheck,
 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthState } from "@/hooks/useAuthState";
+import { guestErrorMessage } from "@/lib/guests";
+import { clearPostAuthRedirect, stashPostAuthRedirect } from "@/lib/authRedirect";
 import { Logo } from "@/components/Logo";
 
 type InviteInfo = {
@@ -27,6 +31,8 @@ type InviteInfo = {
 
 /** Translate raw RPC/DB errors into player-friendly messages. */
 function friendlyError(raw: string): string {
+  const known = guestErrorMessage(raw, "");
+  if (known) return known;
   const m = raw.toLowerCase();
   if (m.includes("expired"))
     return "This invite has expired. Ask the organizer to send a new one.";
@@ -45,101 +51,68 @@ export default function ClaimGuest() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [invite, setInvite] = useState<InviteInfo | null>(null);
+  const { user: authedUser, loading: authLoading, isAuthenticated } = useAuthState();
+  const authReady = !authLoading;
+  const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const busyRef = useRef(false);
+  const generation = useRef(0);
   const [result, setResult] = useState<"linked" | "awaiting_approval" | null>(null);
-  const [authedUser, setAuthedUser] = useState<{
-    id: string;
-    email: string | null;
-  } | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const autoClaimedRef = useRef(false);
-
-  // Load auth state + subscribe to changes (so post-OAuth return auto-progresses).
+  const { data: invite, isLoading: loading, error: loadError, refetch } = useQuery({
+    queryKey: ["claim-guest", token, authedUser?.id],
+    enabled: !!token && authReady && (!authedUser || isAuthenticated),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_claim_invite", { _token: token! });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as InviteInfo | undefined;
+      if (!row) throw new Error("invalid_token");
+      return row;
+    },
+    retry: 1,
+  });
   useEffect(() => {
-    let cancelled = false;
-    supabase.auth.getUser().then(({ data }) => {
-      if (cancelled) return;
-      setAuthedUser(
-        data.user ? { id: data.user.id, email: data.user.email ?? null } : null,
-      );
-      setAuthReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (cancelled) return;
-      setAuthedUser(
-        session?.user
-          ? { id: session.user.id, email: session.user.email ?? null }
-          : null,
-      );
-      setAuthReady(true);
-    });
-    return () => {
-      cancelled = true;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  // Load invite info.
+    generation.current += 1;
+    setResult(null); setError(null);
+    return () => { generation.current += 1; };
+  }, [token, authedUser?.id]);
   useEffect(() => {
-    if (!token) {
-      setError("Missing invite token.");
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      const { data, error } = await supabase.rpc("get_claim_invite", {
-        _token: token,
-      });
-      if (error) setError(friendlyError(error.message));
-      else if (!data || (Array.isArray(data) && data.length === 0))
-        setError(
-          "We couldn't find this invite. The link may be invalid or it was revoked.",
-        );
-      else
-        setInvite(
-          Array.isArray(data) ? (data[0] as InviteInfo) : (data as InviteInfo),
-        );
-      setLoading(false);
-    })();
-  }, [token]);
+    if (!authReady || !authedUser || !token) return;
+    const destination = `/claim-guest/${token}`;
+    if (!isAuthenticated) {
+      stashPostAuthRedirect(destination);
+      navigate(`/auth?${new URLSearchParams({ redirect: destination })}`, { replace: true });
+    } else clearPostAuthRedirect(destination);
+  }, [authReady, authedUser, token, isAuthenticated, navigate]);
+  const displayError = error ?? (loadError ? friendlyError(loadError.message) : !token ? "Missing invite token." : null);
+  const expired = !!invite && new Date(invite.expires_at).getTime() <= Date.now();
 
   const handleClaim = async () => {
-    if (!token) return;
-    setClaiming(true);
-    const { data, error } = await supabase.rpc("claim_guest_profile", {
-      _token: token,
-    });
-    setClaiming(false);
-    if (error) {
-      setError(friendlyError(error.message));
-      return;
-    }
-    const res = data as { ok: boolean; status?: string; error?: string };
-    if (!res.ok) {
-      setError(friendlyError(res.error ?? "Could not claim this profile."));
-      return;
-    }
-    setResult(res.status === "linked" ? "linked" : "awaiting_approval");
+    if (!token || busyRef.current) return;
+    busyRef.current = true; setClaiming(true);
+    const current = generation.current;
+    try {
+      const { data, error } = await supabase.rpc("claim_guest_profile", { _token: token });
+      if (error) throw error;
+      const res = data as { ok?: boolean; status?: string; error?: string } | null;
+      if (!res?.ok) throw new Error(res?.error ?? "invalid_response");
+      if (current !== generation.current) return;
+      setError(null);
+      setResult(res.status === "linked" ? "linked" : "awaiting_approval");
+      void qc.invalidateQueries({ queryKey: ["my-guest-players"] });
+      void qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
+      void qc.invalidateQueries({ queryKey: ["pending-guest-claims"] });
+      // Player dashboards have several event/history query keys. Mark cached
+      // data stale after linking so returning to any one loads the new identity.
+      if (res.status === "linked") void qc.invalidateQueries();
+    } catch (error) {
+      if (current === generation.current) setError(friendlyError(error instanceof Error ? error.message : "unknown"));
+    } finally { busyRef.current = false; setClaiming(false); }
   };
-
-  // Auto-claim once when the user is signed in and the invite is actionable.
-  // Avoids an extra tap after sign-in/sign-up redirect.
-  useEffect(() => {
-    if (autoClaimedRef.current) return;
-    if (!invite || !authedUser || claiming || result || error) return;
-    if (invite.is_linked) return;
-    if (invite.status !== "pending" && invite.status !== "awaiting_approval")
-      return;
-    autoClaimedRef.current = true;
-    void handleClaim();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invite, authedUser]);
 
   const buildAuthUrl = (mode: "signin" | "signup") => {
     const redirect = `/claim-guest/${token}`;
+    stashPostAuthRedirect(redirect);
     const params = new URLSearchParams();
     params.set("redirect", redirect);
     if (mode === "signup") params.set("mode", "signup");
@@ -151,7 +124,8 @@ export default function ClaimGuest() {
   const goSignUp = () => navigate(buildAuthUrl("signup"));
 
   const switchAccount = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) { setError("Could not sign out. Please try again."); return; }
     navigate(buildAuthUrl("signin"));
   };
 
@@ -179,11 +153,12 @@ export default function ClaimGuest() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : error ? (
+          ) : displayError ? (
             <div className="text-center space-y-3 py-4">
               <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
               <h1 className="text-lg font-semibold">Can't open this invite</h1>
-              <p className="text-sm text-muted-foreground">{error}</p>
+              <p className="text-sm text-muted-foreground">{displayError}</p>
+              <Button onClick={() => { setError(null); void refetch(); }}>Try again</Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
@@ -240,14 +215,13 @@ export default function ClaimGuest() {
                 </p>
               </div>
 
-              {invite.is_linked ? (
+              {invite.is_linked && !authedUser ? (
                 <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground text-center">
                   This guest profile is already linked to an account.
                 </div>
-              ) : invite.status !== "pending" &&
-                invite.status !== "awaiting_approval" ? (
+              ) : (expired && invite.status !== "accepted") || (invite.status !== "pending" && invite.status !== "awaiting_approval" && invite.status !== "accepted") ? (
                 <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground text-center">
-                  This invite is no longer active ({invite.status}).
+                  This invite is no longer active ({expired ? "expired" : invite.status}). Ask the organizer for a new invitation.
                 </div>
               ) : !authedUser ? (
                 <div className="space-y-3">
@@ -286,7 +260,7 @@ export default function ClaimGuest() {
                     {emailMismatch && (
                       <p className="text-xs text-amber-600 mt-1">
                         This doesn't match the invited email
-                        ({invite.invited_email}). The organizer may need to
+                        ({invite.invited_email}). The organizer must
                         approve your claim.
                       </p>
                     )}
@@ -320,7 +294,7 @@ export default function ClaimGuest() {
               )}
 
               <p className="text-[11px] text-muted-foreground text-center">
-                Invites expire 30 days after they're sent.
+                Invites expire 30 days after they're created.
               </p>
             </>
           ) : null}

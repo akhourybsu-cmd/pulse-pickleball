@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/useAuthState";
+import { fetchSavedGuests, requireGuestResult } from "@/lib/guests";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +70,7 @@ type Guest = {
   created_at: string;
   group_id: string | null;
   gender: string | null;
+  archived_at: string | null;
 };
 
 type ClaimantProfile = {
@@ -83,7 +88,14 @@ export default function MyGuests() {
   const [creating, setCreating] = useState(false);
   const [updatingGenderId, setUpdatingGenderId] = useState<string | null>(null);
   const [inviteGuest, setInviteGuest] = useState<Guest | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuthState();
+  const userId = user?.id ?? null;
+  const creatingRef = useRef(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [editGuest, setEditGuest] = useState<Guest | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Guest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
@@ -96,46 +108,33 @@ export default function MyGuests() {
   } | null>(null);
   const [merging, setMerging] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
-
-  const { data: allGuests = [], isLoading } = useQuery({
-    queryKey: ["my-guest-players", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("guest_players")
-        .select("id, display_name, email, phone, linked_user_id, created_at, group_id, gender")
-        .eq("created_by", userId!)
-        .order("display_name", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Guest[];
-    },
+  const { data: allGuests = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["my-guest-players", userId], enabled: !!userId,
+    queryFn: () => fetchSavedGuests(userId!, null, true),
   });
 
   // Once a guest claims a PULSE account they graduate off the roster —
   // they're a real player now and get picked from player search instead.
   // Their history stays intact on the linked record.
   const guests = useMemo(
-    () => allGuests.filter((g) => !g.linked_user_id),
-    [allGuests],
+    () => allGuests.filter((g) => !g.linked_user_id && !!g.archived_at === showArchived),
+    [allGuests, showArchived],
   );
-  const linkedCount = allGuests.length - guests.length;
+  const linkedCount = allGuests.filter((g) => !!g.linked_user_id).length;
 
   // Pending guest claims awaiting the current user's (creator's) approval.
   // Without this UI, someone who signs up via a claim invite (with no
   // matching invited_email) gets stuck in "awaiting_approval" forever and
   // the guest → player merge never completes.
-  const { data: pendingClaims = [] } = useQuery({
+  const { data: pendingClaims = [], isError: claimsError, refetch: retryClaims } = useQuery({
     queryKey: ["pending-guest-claims", userId],
     enabled: !!userId,
     queryFn: async () => {
       const { data: invites, error } = await supabase
         .from("guest_claim_invites")
         .select("id, guest_player_id, accepted_by_user_id, created_at")
-        .eq("created_by", userId!)
-        .eq("status", "awaiting_approval");
+        .eq("status", "awaiting_approval")
+        .gt("expires_at", new Date().toISOString());
       if (error) throw error;
       const rows = invites ?? [];
       if (rows.length === 0) return [] as Array<{
@@ -150,15 +149,19 @@ export default function MyGuests() {
       const userIds = Array.from(
         new Set(rows.map((r) => r.accepted_by_user_id).filter(Boolean) as string[]),
       );
-      const [{ data: gs }, { data: ps }] = await Promise.all([
+      const [guestResult, profileResult] = await Promise.all([
         supabase.from("guest_players").select("id, display_name").in("id", guestIds),
         userIds.length
           ? supabase
-              .from("profiles")
-              .select("id, display_name, full_name, email")
+              .from("profiles_public")
+              .select("id, display_name, full_name")
               .in("id", userIds)
           : Promise.resolve({ data: [] as ClaimantProfile[], error: null }),
       ]);
+      if (guestResult.error) throw guestResult.error;
+      if (profileResult.error) throw profileResult.error;
+      const gs = guestResult.data;
+      const ps = profileResult.data;
       const gMap = new Map((gs ?? []).map((g) => [g.id, g.display_name]));
       const pMap = new Map((ps ?? []).map((p) => [p.id, p]));
       return rows
@@ -171,7 +174,7 @@ export default function MyGuests() {
             guest_name: (gMap.get(r.guest_player_id) as string) ?? "Guest",
             claimant_id: r.accepted_by_user_id!,
             claimant_name: p?.display_name || p?.full_name || "New player",
-            claimant_email: p?.email ?? null,
+            claimant_email: null,
           };
         });
     },
@@ -180,6 +183,8 @@ export default function MyGuests() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
     qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
+    qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
+    qc.invalidateQueries({ queryKey: ["guest-invites"] });
   };
 
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -192,10 +197,7 @@ export default function MyGuests() {
           const { data, error } = await supabase.rpc("approve_guest_claim", {
             _invite_id: inviteId,
           });
-          const res = (data ?? {}) as { ok?: boolean; error?: string };
-          if (error || !res.ok) {
-            throw new Error(error?.message || res.error || "Could not approve claim.");
-          }
+          requireGuestResult(data, error);
         },
         "Linked — removed from your guest list",
       );
@@ -208,16 +210,11 @@ export default function MyGuests() {
   };
 
   const rejectClaim = async (inviteId: string) => {
-    const { error } = await supabase
-      .from("guest_claim_invites")
-      .update({ status: "revoked" })
-      .eq("id", inviteId);
-    setRejectTarget(null);
-    if (error) {
-      toast.error("Could not reject.");
-      return;
-    }
-    refresh();
+    try {
+      const { data, error } = await supabase.rpc("revoke_guest_claim_invite", { _invite_id: inviteId });
+      requireGuestResult(data, error);
+      setRejectTarget(null); refresh();
+    } catch (error) { toast.error(getErrorMessage(error, "Could not reject claim.")); }
   };
 
   const filtered = useMemo(() => {
@@ -232,7 +229,8 @@ export default function MyGuests() {
 
   const addGuest = async () => {
     const display = name.trim();
-    if (!display || !userId) return;
+    if (!display || !userId || creatingRef.current) return;
+    creatingRef.current = true;
     setCreating(true);
     try {
       await withPulseActivity(`Adding ${display}…`, async () => {
@@ -251,6 +249,7 @@ export default function MyGuests() {
     } catch {
       toast.error("Could not add guest.");
     } finally {
+      creatingRef.current = false;
       setCreating(false);
     }
   };
@@ -261,7 +260,7 @@ export default function MyGuests() {
       const { error } = await supabase
         .from("guest_players")
         .update({ gender })
-        .eq("id", guestId);
+        .eq("id", guestId).select("id").single();
       if (error) throw error;
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["my-guest-players", userId] }),
@@ -278,13 +277,13 @@ export default function MyGuests() {
   const removeGuest = async (g: Guest) => {
     setRemoveTarget(null);
     try {
-      await withPulseActivity(`Removing ${g.display_name}…`, async () => {
-        const { error } = await supabase.from("guest_players").delete().eq("id", g.id);
-        if (error) throw error;
+      await withPulseActivity(`${g.archived_at ? "Restoring" : "Archiving"} ${g.display_name}…`, async () => {
+        const { data, error } = await supabase.rpc("archive_guest_player", { _guest_id: g.id, _archived: !g.archived_at });
+        requireGuestResult(data, error);
       });
       refresh();
     } catch {
-      toast.error("Could not remove. They may still be linked to past round robins.");
+      toast.error("Could not update guest archive. Please try again.");
     }
   };
 
@@ -313,18 +312,18 @@ export default function MyGuests() {
   };
 
   const confirmMerge = async () => {
-    if (!mergeConfirm) return;
+    if (!mergeConfirm || merging) return;
     setMerging(true);
     try {
       // Param names must match the SQL function signature exactly
       // (merge_guest_players(_keep_id, _remove_id)) — PostgREST resolves
       // functions by named arguments.
       await withPulseActivity("Merging guests…", async () => {
-        const { error } = await supabase.rpc("merge_guest_players", {
+        const { data, error } = await supabase.rpc("merge_guest_players", {
           _keep_id: mergeConfirm.keep.id,
           _remove_id: mergeConfirm.remove.id,
         } as never);
-        if (error) throw error;
+        requireGuestResult(data, error);
       }, `Merged into ${mergeConfirm.keep.display_name}`);
       setMergeConfirm(null);
       exitMergeMode();
@@ -334,6 +333,22 @@ export default function MyGuests() {
     } finally {
       setMerging(false);
     }
+  };
+
+  const saveGuest = async () => {
+    if (!editGuest || saving || !editName.trim()) return;
+    if (editEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
+      toast.error("Enter a valid email address."); return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("guest_players")
+        .update({ display_name: editName.trim(), email: editEmail.trim() || null })
+        .eq("id", editGuest.id).select("id").single();
+      if (error || !data) throw error ?? new Error("Guest no longer available.");
+      setEditGuest(null); refresh(); toast.success("Guest updated");
+    } catch { toast.error("Could not save this guest. Please try again."); }
+    finally { setSaving(false); }
   };
 
   // Suggest duplicates (case-insensitive name match).
@@ -388,13 +403,13 @@ export default function MyGuests() {
               Guest Roster
             </h1>
             <p className="mt-1 text-[12.5px] text-muted-foreground leading-snug">
-              Reusable guests for casual & open play. They don't affect PULSE
-              Ratings until they claim an account.
+              Reusable guests for casual & open play. Claiming connects their
+              history; past guest games stay unranked.
             </p>
           </div>
 
           <div className="mt-3.5 grid grid-cols-3 gap-2">
-            <HeroStatTile icon={Users} label="Guests" value={String(guests.length)} />
+            <HeroStatTile icon={Users} label={showArchived ? "Archived" : "Guests"} value={String(guests.length)} />
             <HeroStatTile icon={Inbox} label="Pending" value={String(pendingClaims.length)} />
             <HeroStatTile icon={UserCheck} label="Claimed" value={String(linkedCount)} />
           </div>
@@ -402,6 +417,10 @@ export default function MyGuests() {
       </section>
 
       <main className="container max-w-2xl mx-auto px-4 py-5 space-y-4">
+        {claimsError && <div role="alert" className="rounded-xl border p-3 text-sm">Couldn't load claim requests. <Button variant="link" onClick={() => retryClaims()}>Retry</Button></div>}
+        <Button variant="outline" onClick={() => { setShowArchived(!showArchived); exitMergeMode(); }}>
+          {showArchived ? "Show current guests" : "Show archived guests"}
+        </Button>
         {/* Add + search */}
         <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-3 space-y-2.5 shadow-[0_8px_30px_-18px_hsl(var(--foreground)/0.25)]">
           <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_auto] gap-2">
@@ -569,7 +588,7 @@ export default function MyGuests() {
           </div>
         )}
 
-        {isLoading ? (
+        {isError ? (<div role="alert" className="rounded-xl border p-4">Couldn't load guests. <Button variant="link" onClick={() => refetch()}>Retry</Button></div>) : isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 w-full rounded-2xl" />
@@ -581,7 +600,7 @@ export default function MyGuests() {
               <Users className="h-5 w-5" />
             </span>
             <p className="text-[13.5px] font-semibold">
-              {search ? "No guests match that search" : "No guests yet"}
+              {search ? "No guests match that search" : showArchived ? "No archived guests" : "No guests yet"}
             </p>
             <p className="mt-1 text-[12px] text-muted-foreground">
               {search
@@ -616,6 +635,7 @@ export default function MyGuests() {
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleSelected(g.id)}
+                      onClick={(event) => event.stopPropagation()}
                       aria-label={`Select ${g.display_name}`}
                     />
                   )}
@@ -630,7 +650,7 @@ export default function MyGuests() {
                         {g.display_name}
                       </p>
                       <Badge variant="outline" className="text-[10px]">
-                        Guest
+                        {g.archived_at ? "Archived" : "Guest"}
                       </Badge>
                       {isDup && !mergeMode && (
                         <Badge
@@ -672,20 +692,23 @@ export default function MyGuests() {
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={!!g.archived_at}
+                        aria-label={`Invite ${g.display_name}`}
                         onClick={() => setInviteGuest(g)}
                         className="h-9"
                       >
                         <Send className="h-3 w-3 sm:mr-1" />
                         <span className="hidden sm:inline">Invite</span>
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditGuest(g); setEditName(g.display_name); setEditEmail(g.email ?? ""); }}>Edit</Button>
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => setRemoveTarget(g)}
-                        aria-label={`Remove ${g.display_name}`}
+                        onClick={() => g.archived_at ? removeGuest(g) : setRemoveTarget(g)}
+                        aria-label={`${g.archived_at ? "Restore" : "Archive"} ${g.display_name}`}
                         className="h-9 w-9"
                       >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        {g.archived_at ? <UserPlus className="h-4 w-4" /> : <Trash2 className="h-4 w-4 text-muted-foreground" />}
                       </Button>
                     </div>
                   )}
@@ -714,15 +737,27 @@ export default function MyGuests() {
         />
       )}
 
+      <Dialog open={!!editGuest} onOpenChange={(open) => { if (!open && !saving) setEditGuest(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Edit guest</DialogTitle></DialogHeader>
+          <Label htmlFor="guest-edit-name">Name</Label>
+          <Input id="guest-edit-name" value={editName} maxLength={120} onChange={(e) => setEditName(e.target.value)} />
+          <Label htmlFor="guest-edit-email">Email (optional)</Label>
+          <Input id="guest-edit-email" type="email" maxLength={254} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Changes apply to this guest's roster and history. Existing invitations keep their original recipient.</p>
+          <DialogFooter><Button disabled={saving || !editName.trim()} onClick={saveGuest}>{saving ? "Saving…" : "Save guest"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Remove guest */}
       <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove this guest?</AlertDialogTitle>
+            <AlertDialogTitle>Archive this guest?</AlertDialogTitle>
             <AlertDialogDescription>
-              {removeTarget?.display_name} will be taken off your roster. If they
-              appear in past round robins, the removal will be blocked to protect
-              that history.
+              {removeTarget?.display_name} will be hidden from saved guest pickers.
+              Their existing event seats and match history stay intact. Active
+              invitations will be revoked. You can restore the guest later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -731,7 +766,7 @@ export default function MyGuests() {
               onClick={() => removeTarget && removeGuest(removeTarget)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Remove
+              Archive
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

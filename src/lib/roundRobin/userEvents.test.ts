@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }));
+const { fromMock, rpcMock } = vi.hoisted(() => ({ fromMock: vi.fn(), rpcMock: vi.fn() }));
 
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { from: fromMock },
+  supabase: { from: fromMock, rpc: rpcMock },
 }));
 
 import { fetchUserRoundRobinEvents } from "./userEvents";
@@ -48,7 +48,7 @@ const participatingEvent = {
 
 describe("fetchUserRoundRobinEvents", () => {
   beforeEach(() => {
-    fromMock.mockReset();
+    fromMock.mockReset(); rpcMock.mockReset();
   });
 
   it("hydrates participation explicitly and de-duplicates events the user hosts", async () => {
@@ -60,6 +60,7 @@ describe("fetchUserRoundRobinEvents", () => {
     const participating = query({ data: [participatingEvent], error: null });
     let eventRead = 0;
 
+    rpcMock.mockReturnValue(registrations);
     fromMock.mockImplementation((table: string) => {
       if (table === "round_robin_players") return registrations;
       eventRead += 1;
@@ -72,27 +73,28 @@ describe("fetchUserRoundRobinEvents", () => {
       ["hosted", "host"],
       ["playing", "player"],
     ]);
-    expect(registrations.eq).toHaveBeenCalledWith("active", true);
+    expect(rpcMock).toHaveBeenCalledWith("my_round_robin_registrations", { _include_inactive: false });
     expect(participating.in).toHaveBeenCalledWith("id", ["playing"]);
   });
 
   it("can include inactive registration history when explicitly requested", async () => {
     const registrations = query({ data: [], error: null });
     const hosted = query({ data: [], error: null });
+    rpcMock.mockReturnValue(registrations);
     fromMock.mockImplementation((table: string) =>
       table === "round_robin_players" ? registrations : hosted,
     );
 
     await fetchUserRoundRobinEvents("user-1", { includeInactiveRegistrations: true });
 
-    expect(registrations.eq).toHaveBeenCalledTimes(1);
-    expect(registrations.eq).toHaveBeenCalledWith("player_id", "user-1");
+    expect(rpcMock).toHaveBeenCalledWith("my_round_robin_registrations", { _include_inactive: true });
   });
 
   it("surfaces base query failures instead of silently showing an empty state", async () => {
     const registrations = query({ data: [], error: null });
     const expected = new Error("round robin events unavailable");
     const hosted = query({ data: null, error: expected });
+    rpcMock.mockReturnValue(registrations);
     fromMock.mockImplementation((table: string) =>
       table === "round_robin_players" ? registrations : hosted,
     );

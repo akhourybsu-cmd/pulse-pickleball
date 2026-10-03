@@ -2338,6 +2338,8 @@ export type Database = {
       }
       guest_claim_invites: {
         Row: {
+          email_attempted_at: string | null
+          email_queued_at: string | null
           accepted_at: string | null
           accepted_by_user_id: string | null
           created_at: string
@@ -2352,6 +2354,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          email_attempted_at?: string | null
+          email_queued_at?: string | null
           accepted_at?: string | null
           accepted_by_user_id?: string | null
           created_at?: string
@@ -2366,6 +2370,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          email_attempted_at?: string | null
+          email_queued_at?: string | null
           accepted_at?: string | null
           accepted_by_user_id?: string | null
           created_at?: string
@@ -2426,6 +2432,7 @@ export type Database = {
       }
       guest_players: {
         Row: {
+          archived_at: string | null
           created_at: string
           created_by: string
           display_name: string
@@ -2440,6 +2447,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           created_by: string
           display_name: string
@@ -2454,6 +2462,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           created_by?: string
           display_name?: string
@@ -9947,6 +9956,22 @@ export type Database = {
           p_venue_id: string
         }
         Returns: Json
+      }
+      archive_guest_player: {
+        Args: { _guest_id: string; _archived: boolean }
+        Returns: Json
+      }
+      create_guest_claim_invite: {
+        Args: { _guest_id: string; _email: string | null; _request_id: string }
+        Returns: Json
+      }
+      revoke_guest_claim_invite: {
+        Args: { _invite_id: string }
+        Returns: Json
+      }
+      my_round_robin_registrations: {
+        Args: { _include_inactive?: boolean }
+        Returns: { event_id: string }[]
       }
       merge_guest_players: {
         Args: { _keep_id: string; _remove_id: string }
