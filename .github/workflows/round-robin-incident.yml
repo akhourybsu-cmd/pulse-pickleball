@@ -1,19 +1,31 @@
-name: Inspect active round robin
+name: Repair round-robin loading
 on:
   push:
     branches: [codex/round-robin-active-repair]
-    paths: [scripts/inspect-round-robin-incident.mjs, .github/workflows/round-robin-incident.yml]
+    paths: [scripts/inspect-round-robin-incident.mjs, .github/workflows/round-robin-incident.yml, supabase/migrations/20261003014000_round_robin_access_performance.sql]
+concurrency:
+  group: supabase-production-deploy
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - name: Verify production target and migration runner
+        run: |
+          node scripts/check-production-release.mjs
+          node --test scripts/deploy-supabase-migrations.test.mjs
+      - name: Apply tested access-planning repair
+        run: node scripts/deploy-supabase-migrations.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
       - name: Read event state and schedule integrity
         run: node scripts/inspect-round-robin-incident.mjs
         env:
