@@ -46,6 +46,9 @@ interface ScheduleMatch {
   b1_guest_id?: string | null;
   b2_guest_id?: string | null;
   is_bye: boolean;
+  abandoned?: boolean;
+  voided_at?: string | null;
+  superseded_by_schedule_id?: string | null;
   team1_score: number | null;
   team2_score: number | null;
   match_id: string | null;
@@ -82,13 +85,16 @@ export function ScoreManagementDialog({
   const [team1Score, setTeam1Score] = useState<number>(0);
   const [team2Score, setTeam2Score] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const invalidScore = ![team1Score, team2Score].every(value => Number.isInteger(value) && value >= 0 && value <= 99) || Math.abs(team1Score - team2Score) < 2;
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  const scoredMatches = schedule.filter(s => 
+  const availableMatches = schedule.filter(s => !s.abandoned && !s.voided_at && !s.superseded_by_schedule_id);
+  const scoredMatches = availableMatches.filter(s =>
     !s.is_bye && (s.team1_score !== null || s.team2_score !== null)
   );
 
-  const allMatches = schedule.filter(s => !s.is_bye);
+  const allMatches = availableMatches.filter(s => !s.is_bye);
 
   const roundsWithScores = Array.from(
     new Set(scoredMatches.map(m => m.round_no))
@@ -113,12 +119,15 @@ export function ScoreManagementDialog({
   }, [selectedId, savedTeam1, savedTeam2]);
 
   const handleEditScore = async () => {
-    if (!selectedMatch || team1Score === team2Score) return;
+    if (!selectedMatch || invalidScore || loading) return;
+    setSaveError(null);
     
     setLoading(true);
     try {
       await onEditScore(selectedMatch, team1Score, team2Score);
       resetForm();
+    } catch {
+      setSaveError("Score was not saved. Your entry is still here; review it and try again.");
     } finally {
       setLoading(false);
     }
@@ -151,6 +160,7 @@ export function ScoreManagementDialog({
   };
 
   const resetForm = () => {
+    setSaveError(null);
     setMode(null);
     setSelectedMatch("");
     setTeam1Score(0);
@@ -390,11 +400,11 @@ export function ScoreManagementDialog({
                           </div>
                         </div>
 
-                        {team1Score === team2Score && (
+                        {invalidScore && (
                           <Alert variant="destructive">
                             <AlertTriangle className="w-4 h-4" />
                             <AlertDescription>
-                              Scores cannot be tied. Please enter different scores.
+                              Use whole-number scores from 0 to 99, with a winning margin of at least 2.
                             </AlertDescription>
                           </Alert>
                         )}
@@ -471,11 +481,11 @@ export function ScoreManagementDialog({
                           </div>
                         </div>
 
-                        {team1Score === team2Score && (
+                        {invalidScore && (
                           <Alert variant="destructive">
                             <AlertTriangle className="w-4 h-4" />
                             <AlertDescription>
-                              Scores cannot be tied. Please enter different scores.
+                              Use whole-number scores from 0 to 99, with a winning margin of at least 2.
                             </AlertDescription>
                           </Alert>
                         )}
@@ -546,6 +556,7 @@ export function ScoreManagementDialog({
             )}
           </div>
 
+          {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           <DialogFooter className="gap-2 sm:gap-2">
             {mode && (
               <Button
@@ -563,7 +574,7 @@ export function ScoreManagementDialog({
             {mode === 'enter' && (
               <Button
                 onClick={handleEditScore}
-                disabled={!selectedMatch || team1Score === team2Score || loading}
+                disabled={!selectedMatch || invalidScore || loading}
                 className="gap-1.5"
               >
                 <Edit3 className="h-4 w-4" />
@@ -573,7 +584,7 @@ export function ScoreManagementDialog({
             {mode === 'edit' && (
               <Button
                 onClick={handleEditScore}
-                disabled={!selectedMatch || team1Score === team2Score || !hasScoreChanged || loading}
+                disabled={!selectedMatch || invalidScore || !hasScoreChanged || loading}
                 className="gap-1.5"
               >
                 <Edit3 className="h-4 w-4" />

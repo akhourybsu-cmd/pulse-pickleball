@@ -98,11 +98,11 @@ import { persistRosterAdditions } from "@/lib/roundRobin/persistRosterAdditions"
 
 // Score validation schema
 const scoreSchema = z.object({
-  team1_score: z.number().min(0).max(99),
-  team2_score: z.number().min(0).max(99),
+  team1_score: z.number().int().min(0).max(99),
+  team2_score: z.number().int().min(0).max(99),
 }).refine(
-  (data) => data.team1_score !== data.team2_score,
-  { message: "Scores cannot be tied" }
+  (data) => Math.abs(data.team1_score - data.team2_score) >= 2,
+  { message: "The winning team must lead by at least 2 points" }
 );
 
 interface Event {
@@ -280,6 +280,8 @@ export default function RoundRobinDetail() {
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const [closingRound, setClosingRound] = useState(false);
   const closingRoundRef = useRef(false);
+  const completingEventRef = useRef(false);
+  const [completingEvent, setCompletingEvent] = useState(false);
   const fetchRequestRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
@@ -315,7 +317,6 @@ export default function RoundRobinDetail() {
   useEffect(() => {
     if (!id || !authUser) return;
     fetchEventDetails();
-    fetchAuditHistory();
     
     // Event-scoped channel name — a shared name collides if two detail
     // views are ever mounted (or remount mid-teardown on fast nav).
@@ -376,7 +377,7 @@ export default function RoundRobinDetail() {
     }, 180);
   };
 
-  const fetchAuditHistory = async () => {
+  const fetchAuditHistory = useCallback(async () => {
     if (!id) return;
 
     const { data, error } = await supabase
@@ -414,7 +415,11 @@ export default function RoundRobinDetail() {
     }));
 
     setAuditEntries(formattedEntries);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (auditHistoryOpen) void fetchAuditHistory();
+  }, [auditHistoryOpen, fetchAuditHistory]);
 
   const fetchEventDetails = async () => {
     if (!id || !authUser) return;
@@ -822,6 +827,7 @@ export default function RoundRobinDetail() {
       // recalc automatically (when count_for_rating = true).
       const { data: matchId, error } = await supabase.rpc("submit_rr_match_score", {
         p_schedule_id: match.id,
+        p_expected_schedule_version: event.schedule_version ?? 0,
         p_team1_score: score.team1_score,
         p_team2_score: score.team2_score,
       });
@@ -840,94 +846,32 @@ export default function RoundRobinDetail() {
   };
 
   const handleCompleteEvent = async () => {
-    if (!event) return;
-    
-    // Check if all matches have scores, show confirmation for partial submission
-    const unscoredMatches = schedule.filter(m => !m.is_bye && !m.abandoned && (m.team1_score === null || m.team2_score === null));
-    const scoredMatches = schedule.filter(m => !m.is_bye && !m.abandoned && m.team1_score !== null && m.team2_score !== null);
-    
-    if (unscoredMatches.length > 0) {
-      const totalMatches = schedule.filter(m => !m.is_bye).length;
-      const confirmMessage = `You have ${unscoredMatches.length} unscored match(es) out of ${totalMatches} total.\n\nOnly the ${scoredMatches.length} completed match(es) will be saved to match history.\n\nContinue?`;
-      
-      if (!confirm(confirmMessage)) {
-        return;
-      }
+    if (!event || completingEventRef.current) return;
+    if (savingScore || closingRoundRef.current) {
+      toast.error("Wait for the current save to finish before completing the event.");
+      return;
     }
-    
+    const playable = schedule.filter(m => !m.is_bye && !m.abandoned);
+    const unscored = playable.filter(m => m.team1_score === null || m.team2_score === null).length;
+    if (unscored && !confirm(`You have ${unscored} unscored match(es). Only the ${playable.length - unscored} completed match(es) will be saved to match history.\n\nComplete the event?`)) return;
+    completingEventRef.current = true;
+    setCompletingEvent(true);
     try {
-      // Phase-2 immediate-sync model: every score entered via
-      // handleSaveScore / handleEditMatchScore was already pushed into
-      // matches + match_participants by submit_rr_match_score. So
-      // completion has only two jobs left:
-      //   1. Backfill any scored schedule rows that DON'T yet have a
-      //      linked match_id (e.g. events scored before this migration
-      //      shipped). Idempotent via the same RPC.
-      //   2. Flip the event's status to 'completed'.
-      const needsBackfill = scoredMatches.filter(m => !m.match_id);
-      const errors: string[] = [];
-      let backfilled = 0;
-
-      for (const m of needsBackfill) {
-        const { error } = await supabase.rpc("submit_rr_match_score", {
-          p_schedule_id: m.id,
-          p_team1_score: m.team1_score!,
-          p_team2_score: m.team2_score!,
-        });
-        if (error) {
-          errors.push(`Round ${m.round_no} Court ${m.court_no}: ${getErrorMessage(error)}`);
-        } else {
-          backfilled += 1;
-        }
-      }
-
-      // QA-flagged: previously this loop silently swallowed per-match
-      // failures and then marked the event complete anyway, leaving
-      // scored matches orphaned from match history. Bail before status
-      // flip if anything in the backfill failed so the host knows their
-      // event isn't fully synced.
-      if (errors.length > 0) {
-        toast.error(`Cannot complete — ${errors.length} match(es) failed to sync`, {
-          description: errors.slice(0, 3).join("; "),
-        });
-        console.error("Match sync errors during completion:", errors);
-        return;
-      }
-
-      const { error: statusError } = await supabase
-        .from("round_robin_events")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          current_round: null,
-        })
-        .eq("id", id);
-
-      if (statusError) throw statusError;
-
-      // Audit the completion itself.
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId!,
-        change_type: "event_complete",
-        changes: {
-          synced_total: scoredMatches.length,
-          backfilled,
-          unscored: unscoredMatches.length,
-        },
-        reason: "Event marked complete",
+      const { data, error } = await supabase.rpc("rr_complete_event", {
+        p_event_id: event.id,
+        p_expected_version: event.schedule_version ?? 0,
+        p_expected_unscored: unscored,
       });
-
-      toast.success(
-        backfilled > 0
-          ? `Event completed · ${scoredMatches.length} matches in history (${backfilled} backfilled)`
-          : `Event completed · ${scoredMatches.length} matches in history`,
-      );
-
-      fetchEventDetails();
+      if (error) throw error;
+      const result = data as { synced_total?: number } | null;
+      toast.success(result?.synced_total !== undefined ? `Event completed - ${result.synced_total} matches in history` : "Event completed");
+      await fetchEventDetails();
     } catch (error: unknown) {
       toast.error(`Failed to complete event: ${getErrorMessage(error)}`);
       console.error(error);
+    } finally {
+      completingEventRef.current = false;
+      setCompletingEvent(false);
     }
   };
 
@@ -1668,6 +1612,7 @@ export default function RoundRobinDetail() {
       // matches row in place so ratings stay correct.
       const { data: linkedMatchId, error } = await supabase.rpc("submit_rr_match_score", {
         p_schedule_id: matchId,
+        p_expected_schedule_version: event?.schedule_version ?? 0,
         p_team1_score: team1Score,
         p_team2_score: team2Score,
       });
@@ -2172,7 +2117,7 @@ export default function RoundRobinDetail() {
             }))}
             scores={scores}
             savingScore={savingScore}
-            busy={closingRound || !!savingScore}
+            busy={closingRound || completingEvent || !!savingScore}
             loadError={loadError}
             onRefresh={fetchEventDetails}
             onScoreChange={handleScoreChange}
@@ -2341,7 +2286,7 @@ export default function RoundRobinDetail() {
               totalRounds={event.num_rounds}
               currentRoundScoredCount={progress.resolved}
               currentRoundTotalCount={progress.total}
-              busy={closingRound || !!savingScore}
+              busy={closingRound || completingEvent || !!savingScore}
               isOrganizer={isOrganizer}
               onAddPlayers={() => setPlayerManagementOpen(true)}
               onGenerateSchedule={handleGenerateSchedule}
@@ -2623,6 +2568,7 @@ export default function RoundRobinDetail() {
                 {isOrganizer && event.status === "live" && (
                   <Button
                     onClick={handleCompleteEvent}
+                disabled={completingEvent || !!savingScore}
                     variant="outline"
                     className="w-full min-h-11 mt-4 whitespace-normal text-left sm:text-center"
                   >
@@ -3155,6 +3101,7 @@ export default function RoundRobinDetail() {
               <button
                 type="button"
                 onClick={handleCompleteEvent}
+                disabled={completingEvent || !!savingScore}
                 className="w-full flex items-center gap-3 rounded-2xl bg-primary text-primary-foreground px-4 py-3.5 shadow-[0_10px_30px_-10px_hsl(var(--primary)/0.6)] hover:bg-primary/90 active:scale-[0.99] transition-all"
                 aria-label="Review and submit event"
               >

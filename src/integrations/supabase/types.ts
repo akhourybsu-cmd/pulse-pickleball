@@ -10083,6 +10083,10 @@ export type Database = {
         Returns: undefined
       }
       resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
+      rr_complete_event: {
+        Args: { p_event_id: string; p_expected_version: number; p_expected_unscored: number }
+        Returns: Json
+      }
       rr_close_round: {
         Args: { p_event_id: string; p_expected_round: number }
         Returns: number
@@ -10209,6 +10213,7 @@ export type Database = {
       submit_rr_match_score: {
         Args: {
           p_schedule_id: string
+          p_expected_schedule_version?: number
           p_team1_score: number
           p_team2_score: number
         }
