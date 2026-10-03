@@ -6,7 +6,6 @@ const query = `WITH target AS (
 ) SELECT jsonb_build_object(
   'id',e.id,'name',e.name,'date',e.date,'status',e.status,'voided',e.voided,
   'current_round',e.current_round,'num_rounds',e.num_rounds,'num_courts',e.num_courts,
-  'organizer_can_manage',public.can_manage_round_robin(e.id,e.organizer_id),
   'players',(SELECT jsonb_agg(x) FROM (SELECT active,status,registration_status,count(*) AS count FROM round_robin_players WHERE event_id=e.id GROUP BY active,status,registration_status) x),
   'rounds',(SELECT jsonb_agg(x ORDER BY round_no) FROM (SELECT round_no,count(*) AS rows,
     count(*) FILTER(WHERE is_bye) AS byes,count(*) FILTER(WHERE abandoned) AS abandoned,
