@@ -11,6 +11,9 @@ interface Assignment {
   b1_guest_id: string | null;
   b2_guest_id: string | null;
   completed: boolean;
+  abandoned?: boolean | null;
+  voided_at?: string | null;
+  superseded_by_schedule_id?: string | null;
 }
 
 /** Read the saved assignments without advancing the event or predicting pairings. */
@@ -22,9 +25,9 @@ export function playerRoundFocus<T extends Assignment>(schedule: T[], ids: Set<s
   const isRest = (match: T) => match.is_bye || !(match.a1_player_id ?? match.a1_guest_id)
     || !(match.b1_player_id ?? match.b1_guest_id)
     || (match.a1_player_id ?? match.a1_guest_id) === (match.b1_player_id ?? match.b1_guest_id);
-  const mine = schedule.filter(includesPlayer);
+  const mine = schedule.filter(match => includesPlayer(match) && !match.voided_at && !match.superseded_by_schedule_id);
   const current = mine.find(match => match.round_no === round);
-  const next = mine.filter(match => match.round_no > round && !isRest(match) && !match.completed)
+  const next = mine.filter(match => match.round_no > round && !isRest(match) && !match.completed && !match.abandoned)
     .sort((a, b) => a.round_no - b.round_no)[0];
   const onTeamA = current && [current.a1_player_id, current.a2_player_id, current.a1_guest_id, current.a2_guest_id]
     .some(id => id != null && ids.has(id));

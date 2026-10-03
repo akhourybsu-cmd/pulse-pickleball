@@ -27,6 +27,15 @@ export interface CountableScheduleRow {
   voided_at?: string | null;
   superseded_by_schedule_id?: string | null;
   abandoned?: boolean | null;
+  abandoned_reason?: string | null;
+}
+
+/** A removed result stays on its court so hosts can still advance the round. */
+export function resolvedMatchLabel(row: Pick<CountableScheduleRow, 'abandoned' | 'abandoned_reason'>): string | null {
+  if (!row.abandoned) return null;
+  if (row.abandoned_reason === 'Result voided by host') return 'Result voided';
+  if (row.abandoned_reason === 'Result deleted by administrator') return 'Result removed';
+  return 'Abandoned';
 }
 
 /** True when a schedule row's result should count toward standings/stats. */

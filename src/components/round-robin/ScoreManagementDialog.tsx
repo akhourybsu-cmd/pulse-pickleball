@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,6 +60,7 @@ interface ScoreManagementDialogProps {
   onOpenChange: (open: boolean) => void;
   schedule: ScheduleMatch[];
   isAdmin: boolean;
+  eventStatus?: "draft" | "live" | "completed" | "voided";
   ratingEligible: boolean;
   getPlayerName: (playerId: string | null) => string;
   onEditScore: (matchId: string, team1Score: number, team2Score: number) => Promise<void>;
@@ -73,7 +75,7 @@ export function ScoreManagementDialog({
   onOpenChange,
   schedule,
   isAdmin,
-  ratingEligible,
+  eventStatus = "live",
   getPlayerName,
   onEditScore,
   onVoidMatch,
@@ -85,6 +87,7 @@ export function ScoreManagementDialog({
   const [team1Score, setTeam1Score] = useState<number>(0);
   const [team2Score, setTeam2Score] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const invalidScore = ![team1Score, team2Score].every(value => Number.isInteger(value) && value >= 0 && value <= 99) || Math.abs(team1Score - team2Score) < 2;
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -94,7 +97,8 @@ export function ScoreManagementDialog({
     !s.is_bye && (s.team1_score !== null || s.team2_score !== null)
   );
 
-  const allMatches = availableMatches.filter(s => !s.is_bye);
+  const allMatches = eventStatus === "draft" || eventStatus === "voided" ? []
+    : availableMatches.filter(s => !s.is_bye && (eventStatus !== "completed" || (s.team1_score !== null && s.team2_score !== null)));
 
   const roundsWithScores = Array.from(
     new Set(scoredMatches.map(m => m.round_no))
@@ -105,6 +109,15 @@ export function ScoreManagementDialog({
   ).sort((a, b) => a - b);
 
   const showingAllMatches = mode === null || mode === 'enter';
+  const selectableRounds = (showingAllMatches ? allRounds : roundsWithScores).join(',');
+  useEffect(() => {
+    if (!open || savingRef.current) return;
+    const rounds = selectableRounds.split(',').filter(Boolean).map(Number);
+    if (rounds.length && !rounds.includes(selectedRound)) {
+      setSelectedRound(rounds[0]);
+      setSelectedMatch('');
+    }
+  }, [open, selectableRounds, selectedRound]);
   const roundMatches = (showingAllMatches ? allMatches : scoredMatches).filter(m => m.round_no === selectedRound);
   const selectedMatchData = roundMatches.find(m => m.id === selectedMatch);
 
@@ -119,42 +132,54 @@ export function ScoreManagementDialog({
   }, [selectedId, savedTeam1, savedTeam2]);
 
   const handleEditScore = async () => {
-    if (!selectedMatch || invalidScore || loading) return;
+    if (!selectedMatchData || invalidScore || savingRef.current) return;
     setSaveError(null);
     
+    savingRef.current = true;
     setLoading(true);
     try {
       await onEditScore(selectedMatch, team1Score, team2Score);
       resetForm();
-    } catch {
-      setSaveError("Score was not saved. Your entry is still here; review it and try again.");
+    } catch (error) {
+      setSaveError(`Score was not saved. ${getErrorMessage(error, "Review your entry and try again.")}`);
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleVoidMatch = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatchData || savingRef.current) return;
+    setSaveError(null);
     
+    savingRef.current = true;
     setLoading(true);
     try {
       await onVoidMatch(selectedMatch);
       resetForm();
       setConfirmDialogOpen(false);
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The correction was not saved. Please retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleDeleteMatch = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatchData || savingRef.current) return;
+    setSaveError(null);
     
+    savingRef.current = true;
     setLoading(true);
     try {
       await onDeleteMatch(selectedMatch);
       resetForm();
       setConfirmDialogOpen(false);
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The correction was not saved. Please retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
@@ -168,6 +193,8 @@ export function ScoreManagementDialog({
   };
 
   const handleClose = () => {
+    if (savingRef.current) return;
+    setConfirmDialogOpen(false);
     resetForm();
     onOpenChange(false);
   };
@@ -179,7 +206,7 @@ export function ScoreManagementDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={open} onOpenChange={next => { if (!next) handleClose(); }}>
         <DialogContent className="rr-event-modal max-w-[calc(100vw-24px)] sm:max-w-[760px] max-h-[90dvh] overflow-y-auto">
           <PremiumDialogHeader
             icon={ClipboardList}
@@ -187,7 +214,7 @@ export function ScoreManagementDialog({
             description="Edit a reported score, void a result, or delete a match record."
           />
 
-          <div className="space-y-4 py-4">
+          <fieldset disabled={loading} className="space-y-4 py-4">
             {allMatches.length === 0 ? (
               <Alert>
                 <AlertTriangle className="w-4 h-4" />
@@ -229,9 +256,9 @@ export function ScoreManagementDialog({
                           id: 'enter' as const,
                           icon: Edit3,
                           title: 'Enter Scores',
-                          description: 'Enter or update scores for any match in this round',
+                          description: 'Save results for playable matches in this round',
                           tone: 'default' as const,
-                          show: true,
+                          show: eventStatus === "live",
                         },
                         {
                           id: 'edit' as const,
@@ -239,7 +266,7 @@ export function ScoreManagementDialog({
                           title: 'Edit Score',
                           description: 'Update an existing score and recalculate standings',
                           tone: 'default' as const,
-                          show: scoredMatches.length > 0,
+                          show: scoredMatches.some(match => match.round_no === selectedRound),
                         },
                         {
                           id: 'void' as const,
@@ -343,8 +370,7 @@ export function ScoreManagementDialog({
                     <Alert>
                       <Edit3 className="w-4 h-4" />
                       <AlertDescription>
-                        Enter scores for unscored matches or update existing scores. Changes recalculate standings
-                        {ratingEligible && <> and reset match verification</>}.
+                        Enter scores for unscored matches or update existing scores. Host-confirmed results update standings, player totals and applicable ratings immediately.
                       </AlertDescription>
                     </Alert>
 
@@ -376,7 +402,7 @@ export function ScoreManagementDialog({
                               min="0"
                               max="99"
                               value={team1Score}
-                              onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                              onChange={(e) => setTeam1Score(Number(e.target.value))}
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
@@ -391,7 +417,7 @@ export function ScoreManagementDialog({
                               min="0"
                               max="99"
                               value={team2Score}
-                              onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                              onChange={(e) => setTeam2Score(Number(e.target.value))}
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
@@ -413,7 +439,7 @@ export function ScoreManagementDialog({
                           <Alert>
                             <ShieldCheck className="w-4 h-4" />
                             <AlertDescription>
-                              <strong>Note:</strong> Verification will be reset for this match. Players will need to verify the new score.
+                              <strong>Host-confirmed result:</strong> Saving updates match history and player totals immediately.
                             </AlertDescription>
                           </Alert>
                         )}
@@ -425,8 +451,7 @@ export function ScoreManagementDialog({
                     <Alert>
                       <Edit3 className="w-4 h-4" />
                       <AlertDescription>
-                        Editing a score will recalculate standings
-                        {ratingEligible && <>, reflow ratings forward, and reset match verification</>}.
+                        Editing a score recalculates standings. Ranked results also update ratings using the rules saved with that match.
                       </AlertDescription>
                     </Alert>
 
@@ -457,7 +482,7 @@ export function ScoreManagementDialog({
                               min="0"
                               max="99"
                               value={team1Score}
-                              onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                              onChange={(e) => setTeam1Score(Number(e.target.value))}
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
@@ -472,7 +497,7 @@ export function ScoreManagementDialog({
                               min="0"
                               max="99"
                               value={team2Score}
-                              onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                              onChange={(e) => setTeam2Score(Number(e.target.value))}
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
@@ -494,7 +519,7 @@ export function ScoreManagementDialog({
                           <Alert>
                             <ShieldCheck className="w-4 h-4" />
                             <AlertDescription>
-                              <strong>Note:</strong> Verification will be reset for this match. Players will need to verify the new score.
+                              <strong>Host-confirmed result:</strong> Saving updates match history and player totals immediately.
                             </AlertDescription>
                           </Alert>
                         )}
@@ -506,7 +531,7 @@ export function ScoreManagementDialog({
                     <Alert variant="destructive">
                       <Ban className="w-4 h-4" />
                       <AlertDescription>
-                        Voiding a match keeps the record visible with a "Voided" badge, but removes it from standings and ratings calculations.
+                        Voiding preserves the result in match history and marks the court resolved. It no longer counts toward standings, player totals or ratings.
                       </AlertDescription>
                     </Alert>
 
@@ -531,7 +556,7 @@ export function ScoreManagementDialog({
                     <Alert variant="destructive">
                       <Trash2 className="w-4 h-4" />
                       <AlertDescription>
-                        <strong>Admin Only:</strong> Permanently delete this match record. This will remove it from the schedule and reflow ratings. This action cannot be undone.
+                        <strong>Admin Only:</strong> Permanently delete this match record. The court stays resolved in the schedule; its result no longer counts toward totals or ratings. This action cannot be undone.
                       </AlertDescription>
                     </Alert>
 
@@ -554,7 +579,7 @@ export function ScoreManagementDialog({
                 ) : null}
               </>
             )}
-          </div>
+          </fieldset>
 
           {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           <DialogFooter className="gap-2 sm:gap-2">
@@ -562,13 +587,14 @@ export function ScoreManagementDialog({
               <Button
                 variant="ghost"
                 onClick={resetForm}
+                disabled={loading}
                 className="mr-auto text-muted-foreground hover:text-foreground"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
             )}
-            <Button variant="outline" onClick={handleClose}>
+            <Button variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
             {mode === 'enter' && (
@@ -617,7 +643,7 @@ export function ScoreManagementDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={next => { if (!savingRef.current) setConfirmDialogOpen(next); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -632,15 +658,17 @@ export function ScoreManagementDialog({
               ) : (
                 <>
                   <strong>This action cannot be undone.</strong> The match record will be permanently deleted 
-                  from the schedule, and ratings will be reflowed to account for the removal.
+                  from match history. The court stays resolved, and totals and ratings are updated.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={mode === 'void' ? handleVoidMatch : handleDeleteMatch}
+              disabled={loading}
+              onClick={e => { e.preventDefault(); void (mode === "void" ? handleVoidMatch() : handleDeleteMatch()); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {loading ? "Processing..." : mode === 'void' ? 'Void Match' : 'Delete Match'}

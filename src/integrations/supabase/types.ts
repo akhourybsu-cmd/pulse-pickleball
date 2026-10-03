@@ -10108,6 +10108,18 @@ export type Database = {
         Returns: undefined
       }
       resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
+      rr_start_event: {
+        Args: { p_event_id: string; p_expected_version: number }
+        Returns: Json
+      }
+      rr_update_event_settings: {
+        Args: { p_event_id: string; p_expected_version: number; p_updates: Json }
+        Returns: boolean
+      }
+      rr_remove_match_result: {
+        Args: { p_schedule_id: string; p_expected_version: number; p_action: string; p_expected_match_id: string | null; p_expected_team1_score: number | null; p_expected_team2_score: number | null }
+        Returns: boolean
+      }
       rr_complete_event: {
         Args: { p_event_id: string; p_expected_version: number; p_expected_unscored: number }
         Returns: Json

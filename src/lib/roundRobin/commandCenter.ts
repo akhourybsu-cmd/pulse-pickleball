@@ -8,6 +8,7 @@ export interface CommandMatch {
   team1_score: number | null;
   team2_score: number | null;
   abandoned?: boolean | null;
+  abandoned_reason?: string | null;
   voided_at?: string | null;
   superseded_by_schedule_id?: string | null;
   team1: string[];

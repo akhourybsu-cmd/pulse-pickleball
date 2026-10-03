@@ -1,3 +1,4 @@
+import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,7 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
               <PlayerEventBriefing status={event.voided ? "voided" : event.status} round={event.current_round || 1} totalRounds={event.num_rounds}
                 court={myMatch && !resting ? myMatch.court_no : undefined} resting={resting}
                 completedMatch={myMatch?.completed} wins={myStats?.wins} gamesPlayed={myStats?.gamesPlayed}
+                resolvedLabel={myMatch ? resolvedMatchLabel(myMatch) : null}
                 team={myMatch ? (onTeamA ? [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')] : [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')]) : undefined}
                 opponents={myMatch ? (onTeamA ? [seatName(myMatch, 'b1'), seatName(myMatch, 'b2')] : [seatName(myMatch, 'a1'), seatName(myMatch, 'a2')]) : undefined}
                 score={myMatch ? (onTeamA ? [myMatch.team_a_score, myMatch.team_b_score] : [myMatch.team_b_score, myMatch.team_a_score]) : undefined}
@@ -214,8 +216,8 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                               const a1Id = match.a1_player_id ?? match.a1_guest_id;
                               const b1Id = match.b1_player_id ?? match.b1_guest_id;
                               const isBye = !a1Id || !b1Id || a1Id === b1Id;
-                              const teamAScore = match.team_a_score ?? match.team1_score ?? null;
-                              const teamBScore = match.team_b_score ?? match.team2_score ?? null;
+                              const teamAScore = match.abandoned ? null : match.team_a_score ?? match.team1_score ?? null;
+                              const teamBScore = match.abandoned ? null : match.team_b_score ?? match.team2_score ?? null;
                               const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
                               const teamBWon = match.completed && teamAScore !== null && teamBScore !== null && teamBScore > teamAScore;
 
@@ -254,7 +256,7 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                                         </Badge>
                                         {!match.completed && (
                                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                            {isCurrentRound && event.status === "live" ? "On court" : "Upcoming"}
+                                            {resolvedMatchLabel(match) ?? (event.status === "completed" || event.status === "voided" ? "No result" : isCurrentRound && event.status === "live" ? "On court" : "Upcoming")}
                                           </span>
                                         )}
                                       </div>

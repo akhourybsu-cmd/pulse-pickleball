@@ -16,7 +16,7 @@ if (params.has('large')) {
 }
 const roster = profiles.map((p,i)=>({id:`roster-${i}`,event_id:event.id,player_id:p.id,guest_player_id:null,active:true,status:'confirmed',registration_status:'confirmed',profiles:p}));
 const pairings = [[[0,1,2,3],[4,5,6,7]],[[0,2,4,6],[1,3,5,7]],[[0,3,5,6],[1,2,4,7]]];
-const schedule = params.has('empty') ? [] : pairings.flatMap((round,r)=>round.map((seats,c)=>({id:`match-${r}-${c}`,event_id:event.id,round_no:r+1,court_no:c+1,a1_player_id:`player-${seats[0]}`,a2_player_id:`player-${seats[1]}`,b1_player_id:`player-${seats[2]}`,b2_player_id:`player-${seats[3]}`,a1_guest_id:null,a2_guest_id:null,b1_guest_id:null,b2_guest_id:null,is_bye:false,team1_score:status==='completed'||r===0?11:null,team2_score:status==='completed'||r===0?7+c:null,match_id:null,locked_at:null,abandoned:false,voided_at:null,superseded_by_schedule_id:null})));
+const schedule = params.has('empty') ? [] : pairings.flatMap((round,r)=>round.map((seats,c)=>({id:`match-${r}-${c}`,event_id:event.id,round_no:r+1,court_no:c+1,a1_player_id:`player-${seats[0]}`,a2_player_id:`player-${seats[1]}`,b1_player_id:`player-${seats[2]}`,b2_player_id:`player-${seats[3]}`,a1_guest_id:null,a2_guest_id:null,b1_guest_id:null,b2_guest_id:null,is_bye:false,team1_score:status==='completed'||(r===0&&status!=='draft')?11:null,team2_score:status==='completed'||(r===0&&status!=='draft')?7+c:null,match_id:null,locked_at:null,abandoned:false,voided_at:null,superseded_by_schedule_id:null})));
 if (params.has('large')) {
   const plan = planCreationSchedulePreview({ participants: profiles, numCourts: 8, gamesPerPlayer: 20, equalGames: true, format: 'mixed' })!;
   if (!plan.ok) throw new Error('Large fixture needs a valid schedule');
@@ -33,6 +33,7 @@ if (params.has('manycourts')) {
     }
   }
 }
+const mutationAttempts = new Set<string>();
 const listeners = new Map<object, (() => void)[]>();
 function createChannel() {
   const callbacks: (() => void)[] = [];
@@ -60,6 +61,37 @@ export const supabase = {
     await delay();
     if(name === "can_manage_round_robin") return {data:user.id === event.organizer_id,error:null};
     // Opt-in command-center QA only changes these in-memory fixtures.
+    const controls = ['rr_start_event','rr_update_event_settings','rr_edit_schedule','rr_remove_match_result'];
+    if (params.has('retry') && controls.includes(name) && !mutationAttempts.has(name)) {
+      mutationAttempts.add(name);
+      return {data:null,error:{message:'Fixture network interruption. Please retry.'}};
+    }
+    if (params.has('command') && name === 'rr_start_event') {
+      event.status='live'; event.current_round=1; event.schedule_version++;
+      return {data:{current_round:1,already_started:false},error:null};
+    }
+    if (params.has('command') && name === 'rr_update_event_settings') {
+      Object.assign(event,args.p_updates); event.schedule_version++;
+      return {data:true,error:null};
+    }
+    if (params.has('command') && name === 'rr_remove_match_result') {
+      const match=schedule.find(row=>row.id===args.p_schedule_id);
+      if (match) Object.assign(match,{abandoned:true,abandoned_reason:'Result voided by host'});
+      event.schedule_version++;
+      return {data:true,error:null};
+    }
+    if (params.has('command') && name === 'rr_edit_schedule') {
+      const match=schedule.find(row=>row.id===args.p_match_id);
+      if(match && args.p_action==='rotate_partners') [match.a2_player_id,match.b1_player_id]=[match.b1_player_id,match.a2_player_id];
+      if(match && args.p_action==='move_court') {
+        const other=schedule.find(row=>row.round_no===match.round_no&&row.court_no===args.p_new_court_no);
+        if(other) other.court_no=match.court_no;
+        match.court_no=Number(args.p_new_court_no);
+      }
+      event.schedule_version++;
+      return {data:{ok:true},error:null};
+    }
+
     if (params.has('command') && name === 'submit_rr_match_score' && !params.has('saveerror')) {
       const match = schedule.find(row => row.id === args.p_schedule_id);
       if (match) { match.team1_score = Number(args.p_team1_score); match.team2_score = Number(args.p_team2_score); }
@@ -84,7 +116,7 @@ export const supabase = {
     let rows:Record<string,unknown>[] = table==='round_robin_events'?[event]:table==='round_robin_players'?roster:table==='round_robin_schedule'?schedule:table==='profiles_public'?profiles:table==='round_robin_audit'?[{id:'audit-1',change_type:'event_create',editor_id:'player-0',changes:{after:{name:event.name}},created_at:'2026-09-21T12:00:00Z',reason:'Event created'}]:[];
     const result=()=>({data:structuredClone(single?rows[0]??null:rows),error:null});
     const chain={
-      select:()=>chain,order:()=>chain,eq:()=>chain,is:()=>chain,in:()=>chain,not:()=>chain,or:()=>chain,limit:()=>chain,abortSignal:()=>chain,
+      select:()=>chain,order:()=>chain,eq:()=>chain,is:(key:string,value:unknown)=>{rows=rows.filter(row=>row[key]==value);return chain;},in:()=>chain,not:()=>chain,or:()=>chain,limit:()=>chain,abortSignal:()=>chain,
       range:(start:number,end:number)=>{rows=rows.slice(start,end+1);return chain;},
       single:()=>{single=true;return chain;},maybeSingle:()=>{single=true;return chain;},
       update:()=>{throw new Error('Preview changes are disabled.');},insert:()=>{throw new Error('Preview changes are disabled.');},delete:()=>{throw new Error('Preview changes are disabled.');},

@@ -8,6 +8,7 @@ interface PlayerEventBriefingProps {
   court?: number;
   resting?: boolean;
   completedMatch?: boolean;
+  resolvedLabel?: string | null;
   team?: string[];
   opponents?: string[];
   score?: [number | null, number | null];
@@ -18,20 +19,21 @@ interface PlayerEventBriefingProps {
 }
 
 /** A glanceable courtside summary, derived only from the saved event and schedule. */
-export function PlayerEventBriefing({ status, round, totalRounds, court, resting, completedMatch, team, opponents, score, next, wins = 0, gamesPlayed = 0, onExplore }: PlayerEventBriefingProps) {
+export function PlayerEventBriefing({ status, round, totalRounds, court, resting, completedMatch, resolvedLabel, team, opponents, score, next, wins = 0, gamesPlayed = 0, onExplore }: PlayerEventBriefingProps) {
   const finished = status === "completed";
   const voided = status === "voided";
   const live = status === "live";
-  const assigned = court != null && !resting && !finished && !voided;
-  const title = voided ? "Event voided" : finished ? "That's a wrap." : live && resting ? "Take a breather." : assigned ? `Court ${court}` : live ? "Stay ready." : "See you on court.";
+  const assigned = court != null && !resting && !finished && !voided && !resolvedLabel;
+  const title = voided ? "Event voided" : finished ? "That's a wrap." : resolvedLabel ? resolvedLabel : live && resting ? "Take a breather." : assigned ? `Court ${court}` : live ? "Stay ready." : "See you on court.";
   const instruction = voided ? "This event is no longer active." : finished ? "Your final results are ready."
+    : resolvedLabel ? "This court is resolved and the result does not count. Follow your host's next round announcement."
     : live && resting ? next ? "Rest this round. Your next assignment is below." : "Rest this round. Follow your host's next update."
     : assigned && completedMatch ? "Score recorded. Wait for the host to start the next round."
     : assigned && live ? "Head to your court. Your host records the score."
     : assigned ? "Your opening matchup is ready. Wait for your host to start."
     : live ? "Your host will confirm your assignment. Check the schedule for updates."
     : "Your court appears here when the host prepares the schedule.";
-  const StateIcon = voided ? Flag : finished ? Trophy : resting ? Coffee : completedMatch ? Check : Activity;
+  const StateIcon = voided || resolvedLabel ? Flag : finished ? Trophy : resting ? Coffee : completedMatch ? Check : Activity;
   const showScore = assigned && completedMatch && score?.every(value => value != null);
   return (
     <section className="rr-player-mission" aria-label="Your event at a glance">

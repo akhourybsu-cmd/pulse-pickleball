@@ -1,3 +1,4 @@
+import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { kioskClient as supabase } from "@/integrations/supabase/kioskClient";
@@ -110,6 +111,7 @@ interface ScheduleMatch {
   team1_score: number | null;
   team2_score: number | null;
   abandoned?: boolean | null;
+  abandoned_reason?: string | null;
   a1_profile?: { display_name: string | null; full_name: string } | null;
   a2_profile?: { display_name: string | null; full_name: string } | null;
   b1_profile?: { display_name: string | null; full_name: string } | null;
@@ -459,7 +461,7 @@ export default function RoundRobinKiosk() {
                 </div>
               )}
               {currentRoundMatches.map((match) => {
-                const hasScore = match.team1_score !== null && match.team2_score !== null;
+                const hasScore = !match.abandoned && match.team1_score !== null && match.team2_score !== null;
                 const t1 = match.team1_score ?? 0;
                 const t2 = match.team2_score ?? 0;
                 const team1Won = hasScore && t1 > t2;
@@ -470,7 +472,7 @@ export default function RoundRobinKiosk() {
                 const b2 = seatName(match, "b2");
                 const teamAPending = a1 === "TBD" && a2 === "TBD";
                 const teamBPending = b1 === "TBD" && b2 === "TBD";
-                const statusLabel = hasScore
+                const statusLabel = match.abandoned ? resolvedMatchLabel(match)?.toUpperCase() : hasScore
                   ? "FINAL"
                   : teamAPending || teamBPending
                   ? "ASSIGNING"
