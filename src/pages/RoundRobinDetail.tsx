@@ -48,6 +48,7 @@ import { RoundRobinTopBar } from "@/components/round-robin/RoundRobinTopBar";
 import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero";
 import { OrganizerCommandCenter } from "@/components/round-robin/OrganizerCommandCenter";
 import { HostControlsMenu } from "@/components/round-robin/HostControlsMenu";
+import type { RosterAdjustment } from "../../supabase/functions/_shared/roundRobin/rosterAdjustment";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleImpactPreview } from "@/components/round-robin/ScheduleImpactPreview";
@@ -60,16 +61,6 @@ import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinV
 import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-import {
-  callRrManageParticipant,
-  friendlyRpcError,
-  type RRManageParticipantError,
-} from "@/lib/roundRobin/manageParticipantRpc";
-import {
-  manageParticipantWithEscalation,
-  friendlyParticipantError,
-  isInfrastructureError,
-} from "@/lib/roundRobin/participantOrchestration";
 import {
   findParticipantLiveMatch,
   type LiveMatchRow,
@@ -317,6 +308,7 @@ export default function RoundRobinDetail() {
     team1Score: number | null;
     team2Score: number | null;
     run: (kind: ActiveMatchResolutionKind) => Promise<void>;
+    cancel: () => void;
   } | null>(null);
   const [resolvingActiveMatch, setResolvingActiveMatch] = useState(false);
 
@@ -1037,6 +1029,7 @@ export default function RoundRobinDetail() {
       /** Explicit identity handoff used to carry only the outgoing player's
        * protected-play allocation gap into the replacement's future rotation. */
       substitutions?: ScheduleSubstitution[];
+      rosterChange?: RosterAdjustment;
     },
   ): Promise<{
     previousRounds: number;
@@ -1070,6 +1063,7 @@ export default function RoundRobinDetail() {
           : (overrides?.expectedVersion ?? event.schedule_version ?? 0),
         reason: overrides?.reason,
         substitutions: overrides?.substitutions,
+        roster_change: overrides?.rosterChange,
       },
     });
     if (generateError) {
@@ -1087,6 +1081,8 @@ export default function RoundRobinDetail() {
       warnings?: Array<{ code: string; severity: string; message: string }>;
     } | null;
     const targetRounds = result?.num_rounds ?? previousRounds;
+    const relaxed = result?.warnings?.find(warning => warning.code === "equal_games_relaxed");
+    if (relaxed) toast.warning(relaxed.message, { duration: 10000 });
 
     await fetchEventDetails();
     return {
@@ -1293,155 +1289,54 @@ export default function RoundRobinDetail() {
 
   const rrMutationInFlightRef = useRef(false);
 
-  const handleMarkInactive = async (playerEventId: string) => {
-    if (!event || !userId) return;
-    if (rrMutationInFlightRef.current) return;
-
+  const handleMarkInactive = async (playerEventId: string, allowBalanced = false): Promise<boolean> => {
+    if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     const player = players.find(p => p.id === playerEventId);
-    if (!player) return;
-
-    // Resolved name works for registered players, reusable guests, and legacy
-    // ad-hoc guests alike.
+    if (!player) throw new Error("Refresh the roster before removing this player.");
+    const outgoingSeatId: SeatId | null = player.player_id ? `p:${player.player_id}`
+      : player.guest_player_id ? `g:${player.guest_player_id}` : null;
+    if (!outgoingSeatId) throw new Error("This player needs a saved identity before the schedule can change.");
     const participantName = resolveRRParticipant(player as never).name;
-    const reason = "Player removed from roster (past scores preserved)";
-
-    // Core apply path — optionally carrying the host's decision about a live
-    // match. Wrapped so both the direct case and the post-resolution case run
-    // the exact same orchestration + fallback logic.
-    const doRemove = async (activeMatchResolution?: { kind: ActiveMatchResolutionKind }) => {
-      if (rrMutationInFlightRef.current) return;
+    const doRemove = async (kind: ActiveMatchResolutionKind = "keep_current") => {
+      if (rrMutationInFlightRef.current) throw new Error("A roster change is already running.");
       rrMutationInFlightRef.current = true;
-
-      const onSuccess = async () => {
-        // The `active` boolean is kept in sync with `status` by a DB trigger,
-        // so all existing readers reflect the change immediately.
-        await fetchEventDetails();
-
-        // The orchestration layer only *repairs* the seats the departing
-        // participant held. That can leave the remaining rounds shaped for the
-        // old roster size (short-handed foursomes / stale round count), so we
-        // follow every removal with a real regeneration from the first
-        // unlocked round. Scored rounds and rounds with a linked match_id are
-        // protected inside regenerateScheduleFromRound. This is identity-
-        // agnostic: the live roster is read back from the DB and mapped by
-        // player_id / guest_player_id, so guests regenerate exactly like
-        // registered players.
-        const fromRound = event.current_round || 1;
-        const regenResult = await regenerateScheduleFromRound(fromRound, {
-          expectedVersion: null,
-          reason: `${participantName} removed; future rounds rebalanced`,
-        }).catch((err) => {
-          console.error("post-removal regeneration failed", err);
-          toast.warning(
-            `${participantName} was removed safely, but the optimized round count could not be applied. Use Repair schedule before continuing.`,
-          );
-          return null;
-        });
-
-        const roundsSuffix = regenResult?.roundsChanged
-          ? `Schedule rebuilt — now ${regenResult.targetRounds} rounds.`
-          : regenResult
-            ? "Schedule rebuilt."
-            : "";
-
-        toast.success(
-          <div className="flex items-start gap-3">
-            <div className="h-9 w-9 rounded-full bg-destructive/15 text-destructive flex items-center justify-center flex-shrink-0 mt-0.5">
-              <UserMinus className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-semibold text-base">{participantName} removed</div>
-              <div className="text-sm opacity-90 leading-snug">
-                They can rejoin later.{roundsSuffix ? ` ${roundsSuffix}` : ""}
-              </div>
-            </div>
-          </div>,
-          { duration: 5000 }
-        );
-      };
-
-      // Prefer the Slice 2b orchestration layer (snapshot → Slice 3 planner →
-      // transactional apply); it auto-escalates minimal→reoptimize so the
-      // change never dead-ends on "no simple swap covers this". Returns true
-      // when handled (success or a surfaced application error); false when the
-      // layer is unavailable and we should fall back to the direct RPC.
-      const handledByOrchestration = async (): Promise<boolean> => {
-        const res = await manageParticipantWithEscalation({
-          eventId: event.id,
-          participantId: playerEventId,
-          action: "remove",
-          reason,
-          activeMatchResolution,
-        });
-        if (res.ok) {
-          await onSuccess();
-          return true;
-        }
-        if (isInfrastructureError(res)) return false;
-        toast.error(friendlyParticipantError(res));
-        await fetchEventDetails();
-        throw new Error(res.code ?? "remove_failed");
-      };
-
       try {
-        if (await handledByOrchestration()) return;
-
-        // Fallback: direct transactional RPC (local-repair only).
-        try {
-          await callRrManageParticipant({
-            eventId: event.id,
-            playerId: playerEventId,
-            action: "remove",
-            reason,
-            regenMode: "minimal",
-            activeMatchResolution,
-          });
-          await onSuccess();
-        } catch (error: unknown) {
-          const err = error as RRManageParticipantError;
-          toast.error(friendlyRpcError(err));
-          console.error("rr_manage_participant remove failed", err);
-          await fetchEventDetails();
-          throw err;
-        }
-      } finally {
-        rrMutationInFlightRef.current = false;
-      }
+        await regenerateScheduleFromRound(event.current_round || 1, {
+          reason: `${participantName} removed; remaining rounds rebalanced`,
+          rosterChange: { outgoingSeatId, resolution: kind === "abandon" ? "abandon" : "keep_current", allowBalanced },
+        });
+        toast.success(`${participantName} removed. Remaining rounds updated; saved scores preserved.`);
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        await fetchEventDetails();
+        throw error;
+      } finally { rrMutationInFlightRef.current = false; }
     };
-
-    // If this player is on court in the live round, the RPC won't touch that
-    // match without an explicit decision — collect it first instead of letting
-    // the change fail with a "finish the match first" toast the host can't act
-    // on. When they aren't in a live match, apply immediately.
-    const live = findParticipantLiveMatch(
-      schedule as unknown as LiveMatchRow[],
-      event.current_round,
+    const live = event.status === "live" ? findParticipantLiveMatch(
+      schedule as unknown as LiveMatchRow[], event.current_round,
       { playerId: player.player_id, guestPlayerId: player.guest_player_id },
-    );
-    if (live) {
-      setPlayerManagementOpen(false);
+    ) : null;
+    if (!live) { await doRemove(); return true; }
+    // Keep the caller pending until the host confirms and the transaction
+    // succeeds. Cancelling must never show a successful removal.
+    setPlayerManagementOpen(false);
+    return new Promise<boolean>((resolve) => {
       setActiveMatchPrompt({
-        participantName: resolveRRParticipant(player as never).name,
-        courtNo: live.match.court_no,
-        isScored: live.isScored,
-        team1Score: live.match.team1_score ?? null,
-        team2Score: live.match.team2_score ?? null,
-        run: (kind) => doRemove({ kind }),
+        participantName, courtNo: live.match.court_no, isScored: live.isScored,
+        team1Score: live.match.team1_score ?? null, team2Score: live.match.team2_score ?? null,
+        run: async kind => { await doRemove(kind); resolve(true); },
+        cancel: () => resolve(false),
       });
-      return;
-    }
-
-    await doRemove();
+    });
   };
-
 
   const handleSubstitute = async (
     originalRosterId: string,
     replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
-    scope: 'global' | number
+    scope: 'global' | 'current_future' | number,
+    allowBalanced = false,
   ) => {
-    if (!event || !userId) return;
-    if (rrMutationInFlightRef.current) return;
+    if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     // Acquire before format validation, which performs async profile/guest
     // reads. Otherwise two rapid taps can both clear the initial guard and
     // launch competing versioned mutations after validation resolves.
@@ -1451,7 +1346,7 @@ export default function RoundRobinDetail() {
       // The original is identified by its roster row id, so this works for a
       // guest (no player_id) exactly as it does for a registered player.
       const original = players.find(p => p.id === originalRosterId);
-      if (!original) return;
+      if (!original) throw new Error("Refresh the roster before selecting a replacement.");
 
       try {
         await validateRosterInputsForFormat([replacement]);
@@ -1460,7 +1355,7 @@ export default function RoundRobinDetail() {
         throw error;
       }
 
-      if (scope === 'global') {
+      if (scope === 'global' || scope === 'current_future') {
         const outgoingSeatId = original.player_id
           ? `p:${original.player_id}` as SeatId
           : original.guest_player_id
@@ -1480,18 +1375,20 @@ export default function RoundRobinDetail() {
           // The Edge planner proposes the post-handoff roster, then the service-
           // only database RPC commits roster lifecycle, persistent fairness
           // credit, event settings, schedule rows, version, and audit together.
-          // Current/live and completed play remain byte-for-byte unchanged.
+          // Only an explicitly requested, unscored current match can change.
           const result = await regenerateScheduleFromRound(
             event.status === "draft" ? 1 : (event.current_round || 1),
             {
               reason: "Global substitute applied; future rounds rebalanced",
-              substitutions: [{ outgoingSeatId, incomingSeatId }],
+              rosterChange: { outgoingSeatId, incomingSeatId, includeCurrent: scope === "current_future", allowBalanced },
             },
           );
           const fairness = result?.fairness?.score;
           pulse.done(fairness != null ? `Substituted · ${fairness}% fairness` : "Player substituted");
           toast.success(
-            event.status === "live"
+            scope === "current_future"
+              ? "Player substituted in the current round and remaining schedule."
+              : event.status === "live"
               ? "Player substituted for future rounds. The current live round is unchanged."
               : "Player substituted and the schedule was rebalanced.",
           );
@@ -1499,9 +1396,7 @@ export default function RoundRobinDetail() {
           pulse.fail();
           console.error("atomic global substitution failed", error);
           await fetchEventDetails();
-          toast.error(
-            "We couldn't confirm the substitution. The latest roster and schedule are refreshed—verify them before retrying.",
-          );
+          toast.error(getErrorMessage(error));
           throw error;
         }
         return;
@@ -3139,6 +3034,7 @@ export default function RoundRobinDetail() {
             genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
             eventFormat={(event.format || "open") as EventFormat}
             ratingEligible={event.rating_eligible}
+            equalGames={event.equal_games}
             onAddPlayers={handleAddPlayers}
             onMarkInactive={handleMarkInactive}
             onSubstitute={handleSubstitute}
@@ -3148,7 +3044,7 @@ export default function RoundRobinDetail() {
             <ActiveMatchResolutionDialog
               open={!!activeMatchPrompt}
               onOpenChange={(o) => {
-                if (!o && !resolvingActiveMatch) setActiveMatchPrompt(null);
+                if (!o && !resolvingActiveMatch) { activeMatchPrompt.cancel(); setActiveMatchPrompt(null); setPlayerManagementOpen(true); }
               }}
               participantName={activeMatchPrompt.participantName}
               courtNo={activeMatchPrompt.courtNo}

@@ -1,8 +1,8 @@
 import { requireCallerMfa } from '../_shared/mfa.ts';
+import { projectRosterAdjustment, planWithRosterFallback, type RosterAdjustment } from "../_shared/roundRobin/rosterAdjustment.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  planScheduleAdjustment,
   type ScheduleAdjustmentPlan,
   type ScheduleSubstitution,
 } from "../_shared/roundRobin/scheduleAdjustment.ts";
@@ -40,6 +40,7 @@ interface ScheduleRequest {
   /** Optional host-authorized identity handoff committed atomically with the
    * future-only schedule rebuild. It affects allocation credit, never standings. */
   substitutions?: ScheduleSubstitution[];
+  roster_change?: RosterAdjustment;
 }
 
 interface EventSnapshot {
@@ -298,7 +299,7 @@ serve(async (req) => {
       return respond(400, { error: "Only one substitution can be applied per rebuild" });
     }
     const seatPattern = /^[pg]:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const substitutions = (body.substitutions ?? []).filter((substitution) => {
+    let substitutions = (body.substitutions ?? []).filter((substitution) => {
       const outgoing = substitution?.outgoingSeatId;
       const incoming = substitution?.incomingSeatId;
       return typeof outgoing === "string" && seatPattern.test(outgoing) &&
@@ -314,13 +315,13 @@ serve(async (req) => {
     }
     // The planner may accept optional allocation behavior, but the persistence
     // RPC receives a deliberately narrow identity-only command surface.
-    const requestedSubstitution = substitutions[0]
+    let requestedSubstitution = substitutions[0]
       ? {
           outgoingSeatId: substitutions[0].outgoingSeatId,
           incomingSeatId: substitutions[0].incomingSeatId,
         }
       : null;
-    const nextSeatIds = requestedSubstitution
+    let nextSeatIds = requestedSubstitution
       ? activeSeatIds
           .filter((seat) => seat !== requestedSubstitution.outgoingSeatId)
           .concat(requestedSubstitution.incomingSeatId)
@@ -330,7 +331,23 @@ serve(async (req) => {
     const canonical = persisted.filter(
       (row) => row.voided_at == null && row.superseded_by_schedule_id == null,
     );
-    const fairnessRows = canonical.filter((row) => !row.abandoned).map(coreMatch);
+    let fairnessRows = canonical.filter((row) => !row.abandoned).map(coreMatch);
+    if (body.roster_change) {
+      if (substitutions.length || (body.roster_change.includeCurrent && event.status !== "live")) {
+        return respond(422, { error: "Choose one roster change; current-round changes require a live event." });
+      }
+      try {
+        const projection = projectRosterAdjustment(activeSeatIds,
+          canonical.map(row => ({ ...row, ...coreMatch(row) })),
+          event.current_round ?? 1, body.roster_change);
+        nextSeatIds = projection.nextSeatIds;
+        fairnessRows = projection.matches;
+        requestedSubstitution = projection.substitution;
+        substitutions = requestedSubstitution ? [requestedSubstitution] : [];
+      } catch (error) {
+        return respond(422, { error: error instanceof Error ? error.message : "Invalid roster change" });
+      }
+    }
 
     const requestedFromRound = Math.max(1, Math.floor(body.regenerate_from_round ?? 1));
     const protectedRows = canonical.filter((row) =>
@@ -452,7 +469,7 @@ serve(async (req) => {
       }
     }
 
-    const plan = planScheduleAdjustment({
+    const plan = planWithRosterFallback({
       seed: eventId,
       currentMatches: fairnessRows,
       currentSeatIds,
@@ -473,7 +490,7 @@ serve(async (req) => {
       substitutions,
       existingGameCredits,
       existingFirstEligibleRounds,
-    });
+    }, body.roster_change?.allowBalanced === true);
 
     if (!plan.ok) {
       return respond(422, {
@@ -499,9 +516,7 @@ serve(async (req) => {
       first_eligible_round:
         plan.firstEligibleRounds.get(player.seatId) ?? player.firstEligibleRound,
     }));
-    const { data: applyResult, error: applyError } = await supabase.rpc(
-      "rr_apply_schedule_rebuild",
-      {
+    const applyArgs = {
         p_request_id: requestId,
         p_event_id: eventId,
         p_actor_id: authData.user.id,
@@ -515,8 +530,10 @@ serve(async (req) => {
         p_reason: reason,
         p_substitution: requestedSubstitution,
         p_allocation: allocation,
-      },
-    );
+    };
+    const { data: applyResult, error: applyError } = body.roster_change
+      ? await supabase.rpc("rr_apply_roster_adjustment", { ...applyArgs, p_change: body.roster_change })
+      : await supabase.rpc("rr_apply_schedule_rebuild", applyArgs);
     if (applyError) {
       const message = applyError.message || "Schedule update failed";
       console.error("[generate-rr] atomic apply failed", {

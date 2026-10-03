@@ -78,12 +78,13 @@ interface PlayerManagementDialogProps {
   /** When true, the event currently counts toward PULSE Ratings — used to warn
    *  the host that adding a guest substitute will drop that eligibility. */
   ratingEligible?: boolean;
+  equalGames?: boolean;
   onAddPlayers: (inputs: Array<{
     playerId: string | null;
     guestPlayerId?: string | null;
     guestName?: string;
   }>) => Promise<number>;
-  onMarkInactive: (playerEventId: string) => Promise<void>;
+  onMarkInactive: (playerEventId: string, allowBalanced?: boolean) => Promise<boolean>;
   /**
    * Substitute one roster member for another. The original is identified by
    * its round_robin_players row id (so guests work — they have no player_id),
@@ -92,7 +93,8 @@ interface PlayerManagementDialogProps {
   onSubstitute: (
     originalRosterId: string,
     replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
-    scope: 'global' | number,
+    scope: 'global' | 'current_future' | number,
+    allowBalanced?: boolean,
   ) => Promise<void>;
 }
 
@@ -111,6 +113,7 @@ export function PlayerManagementDialog({
   genderFilter,
   eventFormat,
   ratingEligible = false,
+  equalGames = false,
   onAddPlayers,
   onMarkInactive,
   onSubstitute,
@@ -120,7 +123,8 @@ export function PlayerManagementDialog({
   const [addPicks, setAddPicks] = useState<PickerPlayer[]>([]);
   const [substituteOriginal, setSubstituteOriginal] = useState<string>("");
   const [substituteNewPick, setSubstituteNewPick] = useState<PickerPlayer | null>(null);
-  const [substituteScope, setSubstituteScope] = useState<'global' | number>('global');
+  const [substituteScope, setSubstituteScope] = useState<'global' | 'current_future' | number>('global');
+  const [allowBalanced, setAllowBalanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -153,7 +157,8 @@ export function PlayerManagementDialog({
   // Future rows remain mutable and can be regenerated, so retaining a numeric
   // scope after the event advances would make the user's selection unsafe.
   useEffect(() => {
-    if (typeof substituteScope === "number" && substituteScope !== liveCurrentRound) {
+    if ((typeof substituteScope === "number" && substituteScope !== liveCurrentRound) ||
+        (substituteScope === "current_future" && liveCurrentRound == null)) {
       setSubstituteScope("global");
     }
   }, [liveCurrentRound, substituteScope]);
@@ -182,9 +187,8 @@ export function PlayerManagementDialog({
       );
       setAddPicks([]);
       setMode(null);
-    } catch (e) {
+    } catch {
       pulse.fail();
-      throw e;
     } finally {
       setLoading(false);
     }
@@ -197,7 +201,8 @@ export function PlayerManagementDialog({
     setRemovingId(targetId);
     const pulse = startPulseActivity("Removing player & rebuilding rounds…");
     try {
-      await onMarkInactive(targetId);
+      const removed = await onMarkInactive(targetId, allowBalanced);
+      if (!removed) { pulse.done("Removal cancelled"); return; }
       pulse.done("Roster updated");
       setJustRemovedId(targetId);
       // Brief beat so the user sees the "Removed" flash before the dialog closes.
@@ -205,9 +210,8 @@ export function PlayerManagementDialog({
       setSelectedPlayer("");
       setConfirmingRemoveId(null);
       setMode(null);
-    } catch (e) {
+    } catch {
       pulse.fail();
-      throw e;
     } finally {
       setLoading(false);
       setRemovingId(null);
@@ -227,7 +231,7 @@ export function PlayerManagementDialog({
           ? (substituteNewPick.display_name || substituteNewPick.full_name)
           : undefined,
       };
-      await onSubstitute(substituteOriginal, replacement, substituteScope);
+      await onSubstitute(substituteOriginal, replacement, substituteScope, allowBalanced);
       pulse.done(
         `${substituteNewPick.display_name || substituteNewPick.full_name} is in`,
       );
@@ -235,9 +239,8 @@ export function PlayerManagementDialog({
       setSubstituteNewPick(null);
       setSubstituteScope('global');
       setMode(null);
-    } catch (e) {
+    } catch {
       pulse.fail();
-      throw e;
     } finally {
       setLoading(false);
     }
@@ -251,6 +254,7 @@ export function PlayerManagementDialog({
     setSubstituteOriginal("");
     setSubstituteNewPick(null);
     setSubstituteScope('global');
+    setAllowBalanced(false);
     setConfirmingRemoveId(null);
     onOpenChange(false);
   };
@@ -321,6 +325,14 @@ export function PlayerManagementDialog({
       }
     >
 
+        {equalGames && (mode === 'remove' || (mode === 'substitute' && typeof substituteScope !== 'number')) && (
+          <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 text-sm">
+            <input type="checkbox" className="mt-1" checked={allowBalanced} onChange={e => setAllowBalanced(e.target.checked)} disabled={loading} />
+            <span><strong>Allow balanced games if equal totals become impossible</strong>
+              <span className="mt-1 block text-xs text-muted-foreground">Try equal games first. If departures prevent exact totals, keep saved results and balance remaining play instead.</span>
+            </span>
+          </label>
+        )}
         {!mode ? (
           <div className="relative space-y-4 py-2">
             <div className="grid grid-cols-3 gap-2" aria-label="Roster change safeguards">
@@ -714,7 +726,7 @@ export function PlayerManagementDialog({
             <Alert>
               <Users className="w-4 h-4" />
               <AlertDescription>
-                Substitute one player with another. Global replacement updates all future play.
+                Choose a resting roster member or a new arrival, then choose when the replacement takes effect.
                 {liveCurrentRound == null
                   ? " Start the event before using a current-round-only replacement."
                   : ` A one-round replacement is available only for the current live round, Round ${liveCurrentRound}.`}
@@ -771,12 +783,8 @@ export function PlayerManagementDialog({
                 genderFilter={substituteGenderFilter}
                 eventFormat={eventFormat}
                 groupId={groupId}
-                excludePlayerIds={[
-                  // Active only — substituting a dropout back IN is a valid
-                  // move (handleSubstitute reactivates their roster row).
-                  ...players.filter(p => p.active).map(p => p.player_id).filter(Boolean) as string[],
-                  ...players.filter(p => p.active).map(p => p.guest_player_id).filter(Boolean) as string[],
-                ]}
+                excludePlayerIds={players.filter(p => p.id === substituteOriginal).flatMap(p =>
+                  [p.player_id, p.guest_player_id].filter((id): id is string => Boolean(id)))}
                 trigger={
                   <button
                     type="button"
@@ -821,14 +829,15 @@ export function PlayerManagementDialog({
             <div className="space-y-2">
               <Label>Scope</Label>
               <Select 
-                value={substituteScope === 'global' ? 'global' : substituteScope.toString()} 
-                onValueChange={(value) => setSubstituteScope(value === 'global' ? 'global' : parseInt(value))}
+                value={String(substituteScope)}
+                onValueChange={(value) => setSubstituteScope(value === 'global' || value === 'current_future' ? value : parseInt(value))}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="global">All Future Rounds (Global)</SelectItem>
+                  <SelectItem value="global">Future rounds only</SelectItem>
+                  {liveCurrentRound != null && <SelectItem value="current_future">Current round {liveCurrentRound} + future rounds</SelectItem>}
                   {liveCurrentRound != null && (
                     <SelectItem value={liveCurrentRound.toString()}>
                       Current Round {liveCurrentRound} Only
@@ -839,7 +848,7 @@ export function PlayerManagementDialog({
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {liveCurrentRound == null
                   ? "Draft and future-round roster changes use All Future Rounds so regenerated schedules keep the replacement."
-                  : "Current-round-only is for an unstarted, unscored match in the live round. Use All Future Rounds for later rounds or lasting roster changes."}
+                  : "Current-round changes require an unscored, unlocked match and a replacement who is not already on court. Saved results stay protected."}
               </p>
             </div>
 
@@ -857,7 +866,9 @@ export function PlayerManagementDialog({
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {substituteScope === "global"
                     ? `Completed, scored, and live play stays untouched. The automatic rebalance begins with Round ${adjustmentStart}.`
-                    : `Only the current live round, Round ${substituteScope}, changes. Its match must still be unstarted and unlocked.`}
+                    : substituteScope === "current_future"
+                    ? `Replace them in Round ${liveCurrentRound} and rebalance future rounds in one update. Saved results cannot be changed here.`
+                    : `Only Round ${substituteScope} changes. Future roster and matches stay the same.`}
                 </p>
               </div>
             )}
