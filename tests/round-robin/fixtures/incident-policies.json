@@ -1,0 +1,434 @@
+[
+  {
+    "tablename": "guest_players",
+    "policyname": "Authorized users can create guest players",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_create_guest_player(created_by, group_id)"
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "Authorized users can delete guest players",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_guest_player(id)",
+    "with_check": null
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "Authorized users can update guest players",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_guest_player(id)",
+    "with_check": "can_create_guest_player(created_by, group_id)"
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "Authorized users can view guest players",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_view_guest_player(id)",
+    "with_check": null
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "Creators and group managers can read guest rows",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_create_guest_player(created_by, group_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "private_sandbox_group_id",
+    "permissive": "RESTRICTIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "ALL",
+    "qual": "can_access_private_group(group_id)",
+    "with_check": "can_access_private_group(group_id)"
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "pulse_required_mfa",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)",
+    "with_check": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)"
+  },
+  {
+    "tablename": "guest_players",
+    "policyname": "venue_guest_roster_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM round_robin_players p\n  WHERE ((p.guest_player_id = guest_players.id) AND can_manage_round_robin(p.event_id))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "Admins can view all audit trails",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "has_role(auth.uid(), 'admin'::app_role)",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "Organizers can view event audit trail",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_audit.event_id) AND (round_robin_events.organizer_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "System can insert audit entries",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = editor_id)"
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "pulse_required_mfa",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)",
+    "with_check": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)"
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "venue_rr_scope_delete",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "venue_rr_scope_insert",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))"
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "venue_rr_scope_update",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_audit",
+    "policyname": "venue_rr_staff",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "can_manage_round_robin(event_id)",
+    "with_check": "can_manage_round_robin(event_id)"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Admins can manage all events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "has_role(auth.uid(), 'admin'::app_role)",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Anyone can view live/completed events for kiosk",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(status = ANY (ARRAY['live'::round_robin_status, 'completed'::round_robin_status]))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Organizers can create events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = organizer_id) AND ((group_id IS NULL) OR is_group_admin(auth.uid(), group_id)))"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Organizers can delete their events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(auth.uid() = organizer_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Organizers can update their events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = organizer_id)",
+    "with_check": "((auth.uid() = organizer_id) AND ((group_id IS NULL) OR is_group_admin(auth.uid(), group_id)))"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Users can view their events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((auth.uid() = organizer_id) OR is_event_participant(id, auth.uid()) OR ((is_published = true) AND (registration_mode = 'open_registration'::text)) OR ((group_id IS NOT NULL) AND (group_visibility = ANY (ARRAY['private_group'::text, 'shared_group'::text])) AND is_group_member(auth.uid(), group_id)))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "Venue staff can manage venue round robins",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "((venue_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM venue_staff vs\n  WHERE ((vs.venue_id = round_robin_events.venue_id) AND (vs.user_id = auth.uid()) AND (vs.is_active = true)))) OR (EXISTS ( SELECT 1\n   FROM venues v\n  WHERE ((v.id = round_robin_events.venue_id) AND (v.owner_id = auth.uid())))))",
+    "with_check": "((venue_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM venue_staff vs\n  WHERE ((vs.venue_id = round_robin_events.venue_id) AND (vs.user_id = auth.uid()) AND (vs.is_active = true)))) OR (EXISTS ( SELECT 1\n   FROM venues v\n  WHERE ((v.id = round_robin_events.venue_id) AND (v.owner_id = auth.uid())))))"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "private_sandbox_group_id",
+    "permissive": "RESTRICTIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "ALL",
+    "qual": "can_access_private_group(group_id)",
+    "with_check": "can_access_private_group(group_id)"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "private_sandbox_venue_id",
+    "permissive": "RESTRICTIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "ALL",
+    "qual": "can_access_private_venue(venue_id)",
+    "with_check": "can_access_private_venue(venue_id)"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "pulse_required_mfa",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)",
+    "with_check": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "venue_rr_delete_scope",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_round_robin(id)",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "venue_rr_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_round_robin(id)",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "venue_rr_update",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_round_robin(id)",
+    "with_check": "can_manage_round_robin(id)"
+  },
+  {
+    "tablename": "round_robin_events",
+    "policyname": "venue_rr_write_scope",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_round_robin(id)",
+    "with_check": "can_manage_round_robin(id)"
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "Authenticated users can register for published events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = player_id) AND (EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (round_robin_events.is_published = true) AND (round_robin_events.registration_mode = 'open_registration'::text) AND (now() < round_robin_events.registration_deadline)))))"
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "Organizers can manage event players",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (round_robin_events.organizer_id = auth.uid()))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (round_robin_events.organizer_id = auth.uid()))))"
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "Participants can read their complete event roster",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "is_event_participant(event_id, ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "Users can view players for published events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((player_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (round_robin_events.organizer_id = auth.uid())))) OR (EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (round_robin_events.is_published = true) AND (round_robin_events.registration_mode = 'open_registration'::text)))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "Users can withdraw before deadline",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "((auth.uid() = player_id) AND (EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_players.event_id) AND (now() < round_robin_events.registration_deadline)))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "pulse_required_mfa",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)",
+    "with_check": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)"
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "venue_rr_scope_delete",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "venue_rr_scope_insert",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))"
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "venue_rr_scope_update",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_players",
+    "policyname": "venue_rr_staff",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "can_manage_round_robin(event_id)",
+    "with_check": "can_manage_round_robin(event_id)"
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "Anyone can view schedule for live/completed events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_schedule.event_id) AND (round_robin_events.status = ANY (ARRAY['live'::round_robin_status, 'completed'::round_robin_status])))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "Organizers can manage event schedule",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_schedule.event_id) AND (round_robin_events.organizer_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "Participants can view event schedule",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM round_robin_events\n  WHERE ((round_robin_events.id = round_robin_schedule.event_id) AND (round_robin_events.organizer_id = auth.uid())))) OR is_event_participant(event_id, auth.uid()))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "pulse_required_mfa",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)",
+    "with_check": "( SELECT pulse_has_required_mfa() AS pulse_has_required_mfa)"
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "venue_rr_scope_delete",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "venue_rr_scope_insert",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))"
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "venue_rr_scope_update",
+    "permissive": "RESTRICTIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((NOT is_venue_round_robin(event_id)) OR can_manage_round_robin(event_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "round_robin_schedule",
+    "policyname": "venue_rr_staff",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "can_manage_round_robin(event_id)",
+    "with_check": "can_manage_round_robin(event_id)"
+  }
+]
