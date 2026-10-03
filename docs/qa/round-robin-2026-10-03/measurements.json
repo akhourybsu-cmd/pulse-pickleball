@@ -1,0 +1,287 @@
+{
+  "date": "2026-10-03",
+  "baseline": "72dcd3c691b71b3db46c5e698c82e2ff1eebd52e",
+  "plannerBefore": {
+    "environment": "Local Node / deterministic isolated planner, three seeds per case",
+    "measurements": [
+      {
+        "players": 4,
+        "courts": 1,
+        "games": 4,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 1.45,
+        "maxMs": 23.22,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 5,
+        "courts": 4,
+        "games": 7,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 2.96,
+        "maxMs": 4.96,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 18,
+        "courts": 4,
+        "games": 6,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 11.45,
+        "maxMs": 20.57,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 22,
+        "courts": 5,
+        "games": 6,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 5.58,
+        "maxMs": 6.07,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 32,
+        "courts": 8,
+        "games": 20,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 147.57,
+        "maxMs": 152.15,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 81,
+        "courts": 16,
+        "games": 12,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 30.25,
+        "maxMs": 32.97,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 10,
+        "courts": 2,
+        "games": 6,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 4.35,
+        "maxMs": 5.49,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 18,
+        "courts": 4,
+        "games": 6,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 2.54,
+        "maxMs": 4.14,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 32,
+        "courts": 8,
+        "games": 20,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 74226.16,
+        "maxMs": 77167.42,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 40,
+        "courts": 10,
+        "games": 12,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 92.08,
+        "maxMs": 101.3,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 64,
+        "courts": 16,
+        "games": 12,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 82.15,
+        "maxMs": 85.54,
+        "partnerRepeatMax": 2
+      }
+    ]
+  },
+  "plannerAfter": {
+    "environment": "Local Node / deterministic isolated planner, three seeds per case",
+    "measurements": [
+      {
+        "players": 4,
+        "courts": 1,
+        "games": 4,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 4.58,
+        "maxMs": 22.77,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 5,
+        "courts": 4,
+        "games": 7,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 4.97,
+        "maxMs": 7.88,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 18,
+        "courts": 4,
+        "games": 6,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 5.82,
+        "maxMs": 6.53,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 22,
+        "courts": 5,
+        "games": 6,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 5.61,
+        "maxMs": 6.99,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 32,
+        "courts": 8,
+        "games": 20,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 28.18,
+        "maxMs": 29.92,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 81,
+        "courts": 16,
+        "games": 12,
+        "format": "open",
+        "samples": 3,
+        "medianMs": 38.14,
+        "maxMs": 45.51,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 10,
+        "courts": 2,
+        "games": 6,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 5.64,
+        "maxMs": 8.8,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 18,
+        "courts": 4,
+        "games": 6,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 1.52,
+        "maxMs": 3.17,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 32,
+        "courts": 8,
+        "games": 20,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 288.65,
+        "maxMs": 311.94,
+        "partnerRepeatMax": 2
+      },
+      {
+        "players": 40,
+        "courts": 10,
+        "games": 12,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 9.44,
+        "maxMs": 10.18,
+        "partnerRepeatMax": 1
+      },
+      {
+        "players": 64,
+        "courts": 16,
+        "games": 12,
+        "format": "mixed",
+        "samples": 3,
+        "medianMs": 24.34,
+        "maxMs": 28.46,
+        "partnerRepeatMax": 1
+      }
+    ]
+  },
+  "lifecycle": {
+    "environment": "Isolated PGlite / real SQL functions and rating triggers; no network latency",
+    "measurements": [
+      {
+        "action": "save score with history and rating effects",
+        "count": 50,
+        "medianMs": 10.32,
+        "p95Ms": 17.93,
+        "maxMs": 53.87
+      },
+      {
+        "action": "retry unchanged score",
+        "count": 1,
+        "medianMs": 1.47,
+        "p95Ms": 1.47,
+        "maxMs": 1.47
+      },
+      {
+        "action": "correct saved score",
+        "count": 1,
+        "medianMs": 22.12,
+        "p95Ms": 22.12,
+        "maxMs": 22.12
+      },
+      {
+        "action": "advance round",
+        "count": 7,
+        "medianMs": 1.86,
+        "p95Ms": 2.65,
+        "maxMs": 2.65
+      },
+      {
+        "action": "replace/remove and rebuild future schedule",
+        "count": 4,
+        "medianMs": 19.05,
+        "p95Ms": 50.25,
+        "maxMs": 50.25
+      },
+      {
+        "action": "complete event",
+        "count": 3,
+        "medianMs": 2.56,
+        "p95Ms": 5.44,
+        "maxMs": 5.44
+      }
+    ]
+  },
+  "limits": [
+    "Local CPU and in-process PostgreSQL timings exclude internet latency and production load.",
+    "Three planner seeds per case; SQL sample counts vary by action.",
+    "PGlite serializes requests; stale-version and transaction rollback tests do not replace multi-device load testing.",
+    "No synthetic events or scores were written to production; existing historical ratings were not recalculated."
+  ]
+}

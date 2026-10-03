@@ -40,3 +40,21 @@ it('keeps typed scores through a roster/schedule refresh with unchanged results'
   await act(async()=>button('Save').props.onClick());
   expect(save).toHaveBeenCalledWith('game-1',11,7);
 });
+it('keeps failed saves retryable and validates the server win-by-two rule before submitting',async()=>{
+  const save=vi.fn().mockRejectedValueOnce(new Error('Network interrupted')).mockResolvedValue(undefined);
+  await act(async()=>{root=create(<ScoreManagementDialog {...props} onEditScore={save} schedule={[match]} />);});
+  await act(async()=>button('Enter Scores').props.onClick());
+  await act(async()=>root.root.findAllByType('select')[1].props.onChange({target:{value:match.id}}));
+  await act(async()=>{
+    root.root.findAllByType('input')[0].props.onChange({target:{value:'11'}});
+    root.root.findAllByType('input')[1].props.onChange({target:{value:'10'}});
+  });
+  expect(button('Save').props.disabled).toBe(true);
+  await act(async()=>root.root.findAllByType('input')[1].props.onChange({target:{value:'7'}}));
+  await act(async()=>button('Save').props.onClick());
+  expect(root.root.findAllByType('input').map(n=>n.props.value)).toEqual([11,7]);
+  expect(root.root.findAllByProps({role:'alert'}).some(node=>text(node).includes('Score was not saved'))).toBe(true);
+  expect(button('Save').props.disabled).toBe(false);
+  await act(async()=>button('Save').props.onClick());
+  expect(save).toHaveBeenCalledTimes(2);
+});

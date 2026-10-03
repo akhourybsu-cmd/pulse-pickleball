@@ -327,86 +327,85 @@ function minimumCostPairs<T>(
     return pairs;
   }
 
-  interface Result {
-    cost: number;
-    pairs: Array<[number, number]>;
-  }
-  const memo = new Map<number, Result>();
-  const solve = (mask: number): Result => {
-    if (mask === 0) return { cost: 0, pairs: [] };
-    const cached = memo.get(mask);
-    if (cached) return cached;
-    let leftIndex = 0;
-    while ((mask & (1 << leftIndex)) === 0) leftIndex += 1;
+  const costs = ordered.map(a => ordered.map(b => penaltyFor(a, b)));
+  const memo = new Float64Array(1 << ordered.length).fill(NaN);
+  const choices = new Int8Array(memo.length);
+  memo[0] = 0;
+  const solve = (mask: number): number => {
+    if (!Number.isNaN(memo[mask])) return memo[mask];
+    const leftIndex = 31 - Math.clz32(mask & -mask);
     const withoutLeft = mask & ~(1 << leftIndex);
-    let best: Result = { cost: Number.POSITIVE_INFINITY, pairs: [] };
-    for (let rightIndex = leftIndex + 1; rightIndex < ordered.length; rightIndex += 1) {
-      if ((withoutLeft & (1 << rightIndex)) === 0) continue;
-      const tail = solve(withoutLeft & ~(1 << rightIndex));
-      const cost = penaltyFor(ordered[leftIndex], ordered[rightIndex]) + tail.cost;
-      if (cost < best.cost) {
-        best = { cost, pairs: [[leftIndex, rightIndex], ...tail.pairs] };
-      }
+    let best = Infinity;
+    for (let remaining = withoutLeft; remaining; remaining &= remaining - 1) {
+      const rightIndex = 31 - Math.clz32(remaining & -remaining);
+      const cost = costs[leftIndex][rightIndex] + solve(withoutLeft & ~(1 << rightIndex));
+      if (cost < best) { best = cost; choices[mask] = rightIndex; }
     }
-    memo.set(mask, best);
-    return best;
+    return (memo[mask] = best);
   };
+  let mask = (1 << ordered.length) - 1;
+  solve(mask);
+  const result: Array<[T, T]> = [];
+  while (mask) {
+    const leftIndex = 31 - Math.clz32(mask & -mask), rightIndex = choices[mask];
+    result.push([ordered[leftIndex], ordered[rightIndex]]);
+    mask &= ~(1 << leftIndex) & ~(1 << rightIndex);
+  }
+  return result;
+}
 
-  return solve((1 << ordered.length) - 1).pairs.map(([left, right]) => [
-    ordered[left],
-    ordered[right],
-  ]);
+/** Exact minimum-cost assignment in O(n^3), with deterministic tie breaking.
+ * Mixed doubles previously used exponential subset search (over a minute for
+ * 16 women + 16 men). Costs are evaluated once; larger events stay exact too.
+ */
+export function minimumCostAssignment(costs: number[][]): number[] {
+  const n = costs.length;
+  if (!n) return [];
+  const u = new Float64Array(n + 1), v = new Float64Array(n + 1);
+  const assigned = new Int32Array(n + 1), previous = new Int32Array(n + 1);
+  for (let row = 1; row <= n; row++) {
+    assigned[0] = row;
+    const distance = new Float64Array(n + 1).fill(Infinity);
+    const visited = new Uint8Array(n + 1);
+    let column = 0;
+    do {
+      visited[column] = 1;
+      const currentRow = assigned[column];
+      let delta = Infinity, nextColumn = 0;
+      for (let j = 1; j <= n; j++) {
+        if (visited[j]) continue;
+        const reducedCost = costs[currentRow - 1][j - 1] - u[currentRow] - v[j];
+        if (reducedCost < distance[j]) {
+          distance[j] = reducedCost;
+          previous[j] = column;
+        }
+        if (distance[j] < delta) { delta = distance[j]; nextColumn = j; }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (visited[j]) { u[assigned[j]] += delta; v[j] -= delta; }
+        else distance[j] -= delta;
+      }
+      column = nextColumn;
+    } while (assigned[column] !== 0);
+    do {
+      const nextColumn = previous[column];
+      assigned[column] = assigned[nextColumn];
+      column = nextColumn;
+    } while (column !== 0);
+  }
+  const result = new Array<number>(n);
+  for (let j = 1; j <= n; j++) result[assigned[j] - 1] = j - 1;
+  return result;
 }
 
 function minimumCostBipartitePairs<T, U>(
-  leftValues: T[],
-  rightValues: U[],
-  penaltyFor: (left: T, right: U) => number,
-  rng: SeededRandom
+  leftValues: T[], rightValues: U[],
+  penaltyFor: (left: T, right: U) => number, rng: SeededRandom
 ): Array<[T, U]> {
-  const left = rng.shuffle(leftValues);
-  const right = rng.shuffle(rightValues);
+  const left = rng.shuffle(leftValues), right = rng.shuffle(rightValues);
   const count = Math.min(left.length, right.length);
-  if (count > 16) {
-    const available = [...right];
-    return left.slice(0, count).map((leftValue) => {
-      let bestIndex = 0;
-      let bestPenalty = Number.POSITIVE_INFINITY;
-      available.forEach((rightValue, index) => {
-        const penalty = penaltyFor(leftValue, rightValue);
-        if (penalty < bestPenalty) {
-          bestPenalty = penalty;
-          bestIndex = index;
-        }
-      });
-      return [leftValue, available.splice(bestIndex, 1)[0]];
-    });
-  }
-
-  interface Result {
-    cost: number;
-    rightIndexes: number[];
-  }
-  const memo = new Map<string, Result>();
-  const solve = (leftIndex: number, usedMask: number): Result => {
-    if (leftIndex === count) return { cost: 0, rightIndexes: [] };
-    const key = `${leftIndex}:${usedMask}`;
-    const cached = memo.get(key);
-    if (cached) return cached;
-    let best: Result = { cost: Number.POSITIVE_INFINITY, rightIndexes: [] };
-    for (let rightIndex = 0; rightIndex < count; rightIndex += 1) {
-      if ((usedMask & (1 << rightIndex)) !== 0) continue;
-      const tail = solve(leftIndex + 1, usedMask | (1 << rightIndex));
-      const cost = penaltyFor(left[leftIndex], right[rightIndex]) + tail.cost;
-      if (cost < best.cost) {
-        best = { cost, rightIndexes: [rightIndex, ...tail.rightIndexes] };
-      }
-    }
-    memo.set(key, best);
-    return best;
-  };
-  const selected = solve(0, 0).rightIndexes;
-  return selected.map((rightIndex, leftIndex) => [left[leftIndex], right[rightIndex]]);
+  const costs = left.slice(0, count).map(a => right.slice(0, count).map(b => penaltyFor(a, b)));
+  return minimumCostAssignment(costs).map((rightIndex, leftIndex) => [left[leftIndex], right[rightIndex]]);
 }
 
 function formTeams(
