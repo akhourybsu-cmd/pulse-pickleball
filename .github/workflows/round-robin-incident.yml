@@ -1,0 +1,21 @@
+name: Inspect active round robin
+on:
+  push:
+    branches: [codex/round-robin-active-repair]
+    paths: [scripts/inspect-round-robin-incident.mjs, .github/workflows/round-robin-incident.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Read event state and schedule integrity
+        run: node scripts/inspect-round-robin-incident.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: rqfqwavhtfwwtmfjnxkx
