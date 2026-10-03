@@ -25,3 +25,26 @@ const response = await fetch(`https://api.supabase.com/v1/projects/${project}/da
 const body = await response.json();
 if (!response.ok) throw new Error(`Read-only diagnostic failed (${response.status}): ${JSON.stringify(body)}`);
 console.log(JSON.stringify(body, null, 2));
+// Benchmark the same RLS reads as the page, in a read-only transaction and with
+// the event organizer's identity. These EXPLAINs return timings/counts only.
+for (const [name, statement] of [
+  ['event', "SELECT * FROM round_robin_events WHERE id='771a98ee-ec99-4980-a5bd-51327254e201'"],
+  ['roster', "SELECT * FROM round_robin_players WHERE event_id='771a98ee-ec99-4980-a5bd-51327254e201'"],
+  ['schedule', "SELECT * FROM round_robin_schedule WHERE event_id='771a98ee-ec99-4980-a5bd-51327254e201' AND voided_at IS NULL AND superseded_by_schedule_id IS NULL ORDER BY round_no,court_no,id LIMIT 1000"],
+  ['guests', "SELECT id,display_name,linked_user_id,email,gender FROM guest_players WHERE id IN (SELECT guest_player_id FROM round_robin_players WHERE event_id='771a98ee-ec99-4980-a5bd-51327254e201')"],
+]) {
+  const sql = `BEGIN READ ONLY; SET LOCAL statement_timeout='35s';
+    SELECT set_config('request.jwt.claims',jsonb_build_object('sub',organizer_id,'role','authenticated')::text,true) FROM round_robin_events WHERE id='771a98ee-ec99-4980-a5bd-51327254e201';
+    SET LOCAL ROLE authenticated;
+    EXPLAIN (ANALYZE,FORMAT JSON,TIMING OFF) ${statement}; ROLLBACK;`;
+  const started = Date.now();
+  const result = await fetch(`https://api.supabase.com/v1/projects/${project}/database/query`, {
+    method: 'POST', headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: sql, read_only: false }), signal: AbortSignal.timeout(45000),
+  });
+  const data = await result.json();
+  const plan = data?.[0]?.['QUERY PLAN']?.[0];
+  console.log(JSON.stringify({ read: name, elapsedMs: Date.now()-started, status: result.status,
+    planningMs: plan?.['Planning Time'], executionMs: plan?.['Execution Time'], rows: plan?.Plan?.['Actual Rows'], jit: plan?.JIT,
+    error: result.ok ? undefined : data, resultShape: result.ok && !plan ? data : undefined }));
+}
