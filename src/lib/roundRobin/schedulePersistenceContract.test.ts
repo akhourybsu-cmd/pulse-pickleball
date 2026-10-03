@@ -35,9 +35,9 @@ const substituteSql = migration.slice(substituteStart);
 
 describe("round-robin schedule persistence architecture", () => {
   it("delegates schedule replacement to the atomic RPC with an idempotency key", () => {
-    expect(generator).toMatch(
-      /\.rpc\(\s*["']rr_apply_schedule_rebuild["']\s*,\s*\{[\s\S]{0,300}?p_request_id:\s*requestId/,
-    );
+    expect(generator).toContain('p_request_id: requestId');
+    expect(generator).toContain('supabase.rpc("rr_apply_schedule_rebuild", applyArgs)');
+    expect(generator).toContain('supabase.rpc("rr_apply_roster_adjustment", { ...applyArgs, p_change: body.roster_change })');
     expect(generator).not.toMatch(
       /\.from\(\s*["']round_robin_schedule["']\s*\)\s*\.delete\s*\(/,
     );
@@ -52,7 +52,7 @@ describe("round-robin schedule persistence architecture", () => {
       /activeSeatIds\.includes\(outgoing\)[\s\S]*?!activeSeatIds\.includes\(incoming\)/,
     );
     expect(generator).toMatch(
-      /planScheduleAdjustment\(\{[\s\S]*?lateJoinCredit: "roster_median",[\s\S]*?substitutions,/,
+      /planWithRosterFallback\(\{[\s\S]*?lateJoinCredit: "roster_median",[\s\S]*?substitutions,/,
     );
   });
 

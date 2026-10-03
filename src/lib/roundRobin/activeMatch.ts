@@ -108,6 +108,7 @@ export function findParticipantLiveMatch(
 }
 
 export type ActiveMatchResolutionKind =
+  | "keep_current"
   | "finish_and_record"
   | "restart_with_substitute"
   | "abandon";

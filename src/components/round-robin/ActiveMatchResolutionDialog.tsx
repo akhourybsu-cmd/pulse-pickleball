@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Trash2, Radio, AlertTriangle } from "lucide-react";
@@ -44,12 +41,8 @@ interface ActiveMatchResolutionDialogProps {
  * decision. This dialog collects it in plain language, offering only the
  * resolutions that are actually valid for the match's state:
  *
- *   - Scored match      → keep the result, or discard it.
- *   - In-progress match → discard it ("keep the result" is hidden because
- *                          there's no score to keep yet).
- *
- * (Substitutions don't reach here: the planner swaps the outgoing seat to the
- * replacement in the current round directly, so a replace never dead-ends.)
+ *   - Scored match      → preserve the result and remove from future play.
+ *   - In-progress match → finish it later, or explicitly abandon it.
  *
  * Select-then-confirm (not one-tap) so a stray tap never abandons a live game.
  */
@@ -69,24 +62,18 @@ export function ActiveMatchResolutionDialog({
     const scoreLabel =
       team1Score != null && team2Score != null ? ` (${team1Score}–${team2Score})` : "";
 
-    if (isScored) {
-      out.push({
-        kind: "finish_and_record",
-        icon: CheckCircle2,
-        title: "Keep this match's result",
-        description: `Lock in the score${scoreLabel} — it counts toward standings — then remove them from the next round on.`,
-        tone: "primary",
-        recommended: true,
-      });
-    }
-
     out.push({
-      kind: "abandon",
-      icon: Trash2,
-      title: "Discard this match",
-      description: "The in-progress game is voided and won't count toward anyone's standings.",
+      kind: "keep_current", icon: CheckCircle2,
+      title: isScored ? "Keep this match's result" : "Keep this match; remove from next round",
+      description: isScored
+        ? `Keep the score${scoreLabel} and remove the player from remaining rounds.`
+        : "Leave the current game available for scoring. The player is removed from future rounds.",
+      tone: "primary", recommended: true,
+    });
+    if (!isScored) out.push({
+      kind: "abandon", icon: Trash2, title: "Abandon this unscored match",
+      description: "Use if this game will not finish. It will not count in standings; future rounds are rebalanced.",
       tone: "destructive",
-      recommended: !isScored,
     });
 
     return out;
@@ -110,8 +97,8 @@ export function ActiveMatchResolutionDialog({
         <PremiumDialogHeader
           icon={AlertTriangle}
           eyebrow="Live match"
-          title={`${participantName} is on court right now`}
-          description={`They're in the live match on Court ${courtNo}. Choose what happens to that game before removing them.`}
+          title={`Remove ${participantName} from remaining play?`}
+          description={`They're assigned to Court ${courtNo} in the current round. Choose how to handle that match.`}
         />
 
         <div className="space-y-2 py-1" role="radiogroup" aria-label="Resolve the live match">

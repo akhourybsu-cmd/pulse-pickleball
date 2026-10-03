@@ -20,6 +20,7 @@ export type ScheduleWarningCode =
   | "target_games_not_exact"
   | "target_already_exceeded"
   | "equal_games_unavailable"
+  | "equal_games_relaxed"
   | "equal_target_adjusted"
   | "late_join_credit_applied"
   | "protected_rounds_preserved";
