@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   Check,
@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { cn } from "@/lib/utils";
 import { ModalActions, ResponsiveSettingsModal } from "./ResponsiveSettingsModal";
 
@@ -82,15 +83,19 @@ export function ScheduleEditorDialog({
   const [selectedMatch2, setSelectedMatch2] = useState("");
   const [newCourtNo, setNewCourtNo] = useState(1);
   const [loading, setLoading] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
+  const roundsKey = rounds.join(",");
   useEffect(() => {
-    if (!open) return;
-    setSelectedRound(currentRound || rounds[0] || 1);
+    if (!open || savingRef.current) return;
+    setSelectedRound(currentRound || Number(roundsKey.split(",")[0]) || 1);
+    setSaveError(null);
     setMode(null);
     setSelectedMatch("");
     setSelectedMatch2("");
     setNewCourtNo(1);
-  }, [currentRound, open, rounds]);
+  }, [currentRound, open, roundsKey]);
 
   const allRoundRows = schedule.filter((match) => match.round_no === selectedRound);
   const roundMatches = allRoundRows.filter((match) => !match.is_bye && isCanonical(match));
@@ -133,39 +138,55 @@ export function ScheduleEditorDialog({
   };
 
   const close = () => {
+    if (savingRef.current) return;
     resetAction();
     onOpenChange(false);
   };
 
   const handleRotatePartners = async () => {
-    if (!selectedMatch || isRoundLocked) return;
+    if (!selectedMatchData || isRoundLocked || savingRef.current) return;
+    savingRef.current = true;
+    setSaveError(null);
     setLoading(true);
     try {
       await onRotatePartners(selectedMatch);
       resetAction();
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleSwapOpponents = async () => {
-    if (!selectedMatch || !selectedMatch2 || selectedMatch === selectedMatch2 || isRoundLocked) return;
+    if (!selectedMatchData || !selectedMatch2Data || selectedMatch === selectedMatch2 || isRoundLocked || savingRef.current) return;
+    savingRef.current = true;
+    setSaveError(null);
     setLoading(true);
     try {
       await onSwapOpponents(selectedMatch, selectedMatch2);
       resetAction();
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleMoveCourt = async () => {
-    if (!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked) return;
+    if (!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked || savingRef.current) return;
+    savingRef.current = true;
+    setSaveError(null);
     setLoading(true);
     try {
       await onMoveCourt(selectedMatchData.id, newCourtNo);
       resetAction();
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
@@ -225,7 +246,8 @@ export function ScheduleEditorDialog({
         </ModalActions>
       }
     >
-      <div className="space-y-4 pb-1">
+      {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
+      <fieldset disabled={loading} className="space-y-4 pb-1">
         <section>
           <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Choose round</h3>
@@ -461,7 +483,7 @@ export function ScheduleEditorDialog({
             )}
           </section>
         )}
-      </div>
+      </fieldset>
     </ResponsiveSettingsModal>
   );
 }

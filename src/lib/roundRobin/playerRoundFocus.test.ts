@@ -39,4 +39,10 @@ describe("playerRoundFocus", () => {
     playerRoundFocus(schedule, ids, 2);
     expect(schedule.map(row => row.round_no)).toEqual([4, 2, 3]);
   });
+  it("skips removed and superseded future courts while keeping a resolved current court for explanation", () => {
+    const current = match(1, { abandoned: true });
+    const next = match(4);
+    expect(playerRoundFocus([current, match(2, { abandoned: true }), match(3, { superseded_by_schedule_id: 'new' }), next], ids, 1))
+      .toMatchObject({ current, next });
+  });
 });

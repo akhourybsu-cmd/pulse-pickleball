@@ -56,7 +56,6 @@ import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDia
 import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementDialog";
 import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog";
 import { EditNotifications } from "@/components/round-robin/EditNotifications";
-import { RegistrationManagement } from "@/components/round-robin/RegistrationManagement";
 import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinView";
 import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
@@ -90,6 +89,7 @@ import {
 import { participantGenderEligibility } from "@/lib/roundRobin/participantGender";
 import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import { useAuthState } from "@/hooks/useAuthState";
+import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { roundProgress } from "@/lib/roundRobin/roundProgress";
 
 
@@ -210,6 +210,7 @@ interface ScheduleMatch {
   voided_at?: string | null;
   superseded_by_schedule_id?: string | null;
   abandoned?: boolean | null;
+  abandoned_reason?: string | null;
 }
 
 interface StandingsRow {
@@ -268,7 +269,6 @@ export default function RoundRobinDetail() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const ratingRecalcCheckedRef = useRef(false);
   const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -279,6 +279,11 @@ export default function RoundRobinDetail() {
   const [activeTab, setActiveTab] = useState<"schedule" | "players" | "standings">("schedule");
   const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
+  const scoreActionRef = useRef(false);
+  const startingEventRef = useRef(false);
+  const [startingEvent, setStartingEvent] = useState(false);
+  const deletingEventRef = useRef(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
   const [closingRound, setClosingRound] = useState(false);
   const closingRoundRef = useRef(false);
   const completingEventRef = useRef(false);
@@ -571,41 +576,7 @@ export default function RoundRobinDetail() {
     };
   }, [id, authUser, fetchEventDetails, scheduleRealtimeRefresh]);
 
-  // Auto-trigger rating recalculation for completed events with unprocessed matches
-  useEffect(() => {
-    const checkAndRecalculateRatings = async () => {
-      if (!event || event.status !== 'completed' || !event.rating_eligible) return;
-      // Once per mount — this effect re-fires on every schedule refetch,
-      // and each firing cost a match_participants query (plus a possible
-      // full recalculate_all_ratings). One check per page view is enough.
-      if (ratingRecalcCheckedRef.current) return;
-      ratingRecalcCheckedRef.current = true;
-      
-      // Check if there are any matches with match_id but no rating_after
-      const matchesWithIds = schedule.filter(m => m.match_id && !m.is_bye);
-      if (matchesWithIds.length === 0) return;
-      
-      // Check if ratings have been calculated for these matches
-      const { data: participants } = await supabase
-        .from('match_participants')
-        .select('rating_after')
-        .in('match_id', matchesWithIds.map(m => m.match_id))
-        .limit(1);
-      
-      // If we have matches but no ratings calculated, trigger recalculation
-      if (participants && participants.length > 0 && participants[0].rating_after === null) {
-        console.log('Triggering rating recalculation for completed round robin...');
-        const { error } = await supabase.rpc('recalculate_all_ratings');
-        if (error) {
-          console.error('Failed to recalculate ratings:', error);
-        } else {
-          toast.success('Ratings calculated for round robin matches!');
-        }
-      }
-    };
-    
-    checkAndRecalculateRatings();
-  }, [event, schedule]);
+  // Scoring/completion RPCs own rating effects. Reading an event is side-effect free.
 
   const handleGenerateSchedule = async () => {
     if (!event) return;
@@ -631,24 +602,30 @@ export default function RoundRobinDetail() {
   };
 
   const handleStartEvent = async () => {
+    if (!event || startingEventRef.current) return;
+    startingEventRef.current = true;
+    setStartingEvent(true);
     try {
-      const { error } = await supabase
-        .from("round_robin_events")
-        .update({ status: "live", current_round: 1 })
-        .eq("id", id);
-
+      const { data, error } = await supabase.rpc("rr_start_event", {
+        p_event_id: event.id,
+        p_expected_version: event.schedule_version ?? 0,
+      });
       if (error) throw error;
-      toast.success("Event started!");
-      fetchEventDetails();
+      if (!data) throw new Error("Start was not confirmed. Refresh and try again.");
+      toast.success((data as { already_started?: boolean }).already_started ? "Event is already live" : "Event started!");
+      await fetchEventDetails();
     } catch (error: unknown) {
-      toast.error("Failed to start event");
-      console.error(error);
+      toast.error(getErrorMessage(error, "Failed to start event"));
+      await fetchEventDetails();
+    } finally {
+      startingEventRef.current = false;
+      setStartingEvent(false);
     }
   };
 
   const handleCloseRound = async (roundNo: number) => {
     if (!event || closingRoundRef.current) return;
-    if (savingScore) {
+    if (scoreActionRef.current) {
       toast.info("Wait for the score to finish saving before closing the round.");
       return;
     }
@@ -745,7 +722,7 @@ export default function RoundRobinDetail() {
   };
 
   const handleScoreChange = (matchId: string, team: 'team1' | 'team2', value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = Number(value);
     setScores(prev => ({
       ...prev,
       [matchId]: {
@@ -805,7 +782,7 @@ export default function RoundRobinDetail() {
 
 
   const handleSaveScore = async (match: ScheduleMatch) => {
-    if (!event || !userId) return;
+    if (!event || !userId || scoreActionRef.current || closingRoundRef.current || completingEventRef.current) return;
 
     const score = scores[match.id];
     if (!score) {
@@ -819,6 +796,7 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    scoreActionRef.current = true;
     setSavingScore(match.id);
     try {
       // Phase-2 immediate sync — submit_rr_match_score atomically updates
@@ -835,6 +813,7 @@ export default function RoundRobinDetail() {
       });
 
       if (error) throw error;
+      if (!matchId) throw new Error("Score save was not confirmed. Please retry.");
 
       showCommittedScore(match.id, score.team1_score, score.team2_score, matchId);
       toast.success("Score saved");
@@ -843,13 +822,14 @@ export default function RoundRobinDetail() {
       toast.error(getErrorMessage(error, "Failed to save score"));
       console.error(error);
     } finally {
+      scoreActionRef.current = false;
       setSavingScore(null);
     }
   };
 
   const handleCompleteEvent = async () => {
     if (!event || completingEventRef.current) return;
-    if (savingScore || closingRoundRef.current) {
+    if (scoreActionRef.current || closingRoundRef.current) {
       toast.error("Wait for the current save to finish before completing the event.");
       return;
     }
@@ -878,7 +858,9 @@ export default function RoundRobinDetail() {
   };
 
   const handleDeleteEvent = async () => {
-    if (!event) return;
+    if (!event || deletingEventRef.current) return;
+    deletingEventRef.current = true;
+    setDeletingEvent(true);
 
     try {
       if (deleteMode === 'void') {
@@ -910,47 +892,24 @@ export default function RoundRobinDetail() {
       // be hard-deleted by non-admin" guard — show them verbatim.
       toast.error(getErrorMessage(error, "Failed to update event"));
       console.error(error);
+    } finally {
+      deletingEventRef.current = false;
+      setDeletingEvent(false);
     }
   };
 
   const handleSaveEventSettings = async (updates: Partial<Event>) => {
-    if (!event || !userId) return;
-
-    try {
-      // Create audit entry
-      const before = {
-        name: event.name,
-        notes: event.notes,
-        rating_eligible: event.rating_eligible,
-        rating_type: event.rating_type,
-      };
-
-      const after = { ...before, ...updates };
-
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "event_settings",
-        changes: { before, after },
-        reason: "Event settings updated",
-      });
-
-      // Update event
-      const { error } = await supabase
-        .from("round_robin_events")
-        .update(updates)
-        .eq("id", event.id);
-
-      if (error) throw error;
-
-      toast.success("Event settings updated");
-      await fetchEventDetails();
-      await fetchAuditHistory();
-      setHasUnsavedChanges(false);
-    } catch (error: unknown) {
-      toast.error("Failed to update event settings");
-      console.error(error);
-    }
+    if (!event || !userId) throw new Error("Sign in again before saving.");
+    const { data, error } = await supabase.rpc("rr_update_event_settings", {
+      p_event_id: event.id,
+      p_expected_version: event.schedule_version ?? 0,
+      p_updates: updates,
+    });
+    if (error) throw error;
+    if (data !== true) throw new Error("Settings were not confirmed. Please retry.");
+    toast.success("Event settings updated");
+    await Promise.all([fetchEventDetails(), fetchAuditHistory()]);
+    setHasUnsavedChanges(false);
   };
 
   const handleToggleEditMode = () => {
@@ -1512,7 +1471,7 @@ export default function RoundRobinDetail() {
   }) => {
     if (!event) return;
 
-    const { error } = await supabase.rpc("rr_edit_schedule", {
+    const { data, error } = await supabase.rpc("rr_edit_schedule", {
       p_request_id: crypto.randomUUID(),
       p_event_id: event.id,
       p_expected_version: event.schedule_version ?? 0,
@@ -1523,6 +1482,7 @@ export default function RoundRobinDetail() {
       p_reason: null,
     });
     if (error) throw error;
+    if (!(data as { ok?: boolean } | null)?.ok) throw new Error("Schedule edit was not confirmed. Review the latest schedule before retrying.");
     await fetchEventDetails();
   };
 
@@ -1537,7 +1497,7 @@ export default function RoundRobinDetail() {
           ? "The schedule changed elsewhere. Refresh and review it before editing."
           : message.includes("RR_PROTECTED_ROUND")
             ? "That round is already in play or has a saved result, so it remains locked."
-            : "The partner rotation could not be applied. Nothing changed.",
+            : "The partner rotation was not confirmed. Review the refreshed schedule before retrying.",
       );
       console.error(error);
       await fetchEventDetails();
@@ -1560,7 +1520,7 @@ export default function RoundRobinDetail() {
           ? "The schedule changed elsewhere. Refresh and review it before editing."
           : message.includes("RR_PROTECTED_ROUND")
             ? "One of those matches is already in play or scored, so both stayed unchanged."
-            : "The opponent swap could not be applied. Nothing changed.",
+            : "The opponent swap was not confirmed. Review the refreshed schedule before retrying.",
       );
       console.error(error);
       await fetchEventDetails();
@@ -1595,7 +1555,7 @@ export default function RoundRobinDetail() {
           ? "The schedule changed elsewhere. Refresh and review it before editing."
           : message.includes("RR_PROTECTED_ROUND")
             ? "That court assignment is already in play or scored, so nothing changed."
-            : "The court move could not be applied. Nothing changed.",
+            : "The court move was not confirmed. Review the refreshed schedule before retrying.",
       );
       console.error(error);
       await fetchEventDetails();
@@ -1604,136 +1564,60 @@ export default function RoundRobinDetail() {
   };
 
   const handleEditMatchScore = async (matchId: string, team1Score: number, team2Score: number) => {
-    if (!event || !userId) return;
-
+    if (!event || !userId) throw new Error("Sign in again before saving.");
+    if (scoreActionRef.current || closingRoundRef.current || completingEventRef.current) throw new Error("Wait for the current save to finish.");
+    scoreActionRef.current = true;
+    setSavingScore(matchId);
     try {
-      // matchId is the round_robin_schedule.id. submit_rr_match_score
-      // handles the full edit path: updates schedule + matches +
-      // match_participants, resets verification, writes the audit log,
-      // and (when the match row already exists) updates the linked
-      // matches row in place so ratings stay correct.
       const { data: linkedMatchId, error } = await supabase.rpc("submit_rr_match_score", {
         p_schedule_id: matchId,
-        p_expected_schedule_version: event?.schedule_version ?? 0,
+        p_expected_schedule_version: event.schedule_version ?? 0,
         p_team1_score: team1Score,
         p_team2_score: team2Score,
       });
-
       if (error) throw error;
-
+      if (!linkedMatchId) throw new Error("Score save was not confirmed. Please retry.");
       showCommittedScore(matchId, team1Score, team2Score, linkedMatchId);
       toast.success("Score updated");
       void fetchEventDetails();
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to update score"));
-      console.error(error);
-      throw error;
+    } finally {
+      scoreActionRef.current = false;
+      setSavingScore(null);
     }
   };
 
-  const handleVoidMatch = async (matchId: string) => {
-    if (!event || !userId) return;
-
+  const removeMatchResult = async (matchId: string, action: "void" | "delete") => {
+    const match = schedule.find(row => row.id === matchId);
+    if (!event || !match) throw new Error("Refresh and select the match again.");
+    if (scoreActionRef.current || closingRoundRef.current || completingEventRef.current) throw new Error("Wait for the current save to finish.");
+    scoreActionRef.current = true;
+    setSavingScore(matchId);
     try {
-      const match = schedule.find(m => m.id === matchId);
-      if (!match) return;
-
-      // If match is linked to matches table, void it there
-      if (match.match_id) {
-        await supabase
-          .from("matches")
-          .update({
-            voided: true,
-            voided_by: userId,
-            voided_at: new Date().toISOString(),
-            void_reason: "Voided via Round Robin editor",
-          })
-          .eq("id", match.match_id);
-
-        // Recalculate ratings if event is rating eligible (and not a guest event)
-        if (event.rating_eligible && !event.allow_guests) {
-          await supabase.rpc("recalculate_all_ratings");
-        }
-      }
-
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "match_void",
-        changes: {
-          match_id: matchId,
-          schedule_match_id: match.match_id,
-        },
-        reason: `Match voided for Round ${match.round_no}, Court ${match.court_no}`,
+      const { data, error } = await supabase.rpc("rr_remove_match_result", {
+        p_schedule_id: matchId,
+        p_expected_version: event.schedule_version ?? 0,
+        p_action: action,
+        p_expected_match_id: match.match_id,
+        p_expected_team1_score: match.team1_score,
+        p_expected_team2_score: match.team2_score,
       });
-
-      toast.success("Match voided and removed from ratings");
-      await fetchEventDetails();
-    } catch (error: unknown) {
-      toast.error("Failed to void match");
-      console.error(error);
-      throw error;
+      if (error) throw error;
+      if (data !== true) throw new Error("The correction was not confirmed. Please retry.");
+      fetchRequestRef.current += 1;
+      setSchedule(rows => rows.map(row => row.id === matchId ? {
+        ...row, abandoned: true, abandoned_reason: action === "void" ? "Result voided by host" : "Result deleted by administrator",
+        ...(action === "delete" ? { team1_score: null, team2_score: null, match_id: null } : {}),
+      } : row));
+      setScores(previous => { const next = { ...previous }; delete next[matchId]; return next; });
+      toast.success(action === "void" ? "Result voided; standings and ratings updated" : "Result deleted; standings and ratings updated");
+      await Promise.all([fetchEventDetails(), fetchAuditHistory()]);
+    } finally {
+      scoreActionRef.current = false;
+      setSavingScore(null);
     }
   };
-
-  const handleDeleteMatch = async (matchId: string) => {
-    if (!event || !userId || !isAdmin) return;
-
-    try {
-      const match = schedule.find(m => m.id === matchId);
-      if (!match) return;
-
-      // Delete from matches table if linked
-      if (match.match_id) {
-        // Delete match participants first
-        await supabase
-          .from("match_participants")
-          .delete()
-          .eq("match_id", match.match_id);
-
-        // Delete match
-        await supabase
-          .from("matches")
-          .delete()
-          .eq("id", match.match_id);
-
-        // Recalculate ratings if event is rating eligible (and not a guest event)
-        if (event.rating_eligible && !event.allow_guests) {
-          await supabase.rpc("recalculate_all_ratings");
-        }
-      }
-
-      // Clear scores from schedule
-      await supabase
-        .from("round_robin_schedule")
-        .update({
-          team1_score: null,
-          team2_score: null,
-          match_id: null,
-        })
-        .eq("id", matchId);
-
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "match_delete",
-        changes: {
-          match_id: matchId,
-          schedule_match_id: match.match_id,
-        },
-        reason: `Match deleted by admin for Round ${match.round_no}, Court ${match.court_no}`,
-      });
-
-      toast.success("Match deleted and ratings reflowed");
-      await fetchEventDetails();
-    } catch (error: unknown) {
-      toast.error("Failed to delete match");
-      console.error(error);
-      throw error;
-    }
-  };
+  const handleVoidMatch = (matchId: string) => removeMatchResult(matchId, "void");
+  const handleDeleteMatch = (matchId: string) => removeMatchResult(matchId, "delete");
 
   const handleLeaveEvent = async () => {
     if (!userId || !event) return;
@@ -2122,7 +2006,7 @@ export default function RoundRobinDetail() {
             }))}
             scores={scores}
             savingScore={savingScore}
-            busy={closingRound || completingEvent || !!savingScore}
+            busy={startingEvent || closingRound || completingEvent || !!savingScore}
             loadError={loadError}
             onRefresh={fetchEventDetails}
             onScoreChange={handleScoreChange}
@@ -2170,7 +2054,7 @@ export default function RoundRobinDetail() {
           eventId={event.id}
           location={event.location}
           canEditLocation={isOrganizer}
-          onLocationUpdated={fetchEventDetails}
+          onUpdateLocation={location => handleSaveEventSettings({ location })}
         />
 
         {/* Leave button for participants — kept here, just out of the hero.
@@ -2291,7 +2175,7 @@ export default function RoundRobinDetail() {
               totalRounds={event.num_rounds}
               currentRoundScoredCount={progress.resolved}
               currentRoundTotalCount={progress.total}
-              busy={closingRound || completingEvent || !!savingScore}
+              busy={startingEvent || closingRound || completingEvent || !!savingScore}
               isOrganizer={isOrganizer}
               onAddPlayers={() => setPlayerManagementOpen(true)}
               onGenerateSchedule={handleGenerateSchedule}
@@ -2430,7 +2314,7 @@ export default function RoundRobinDetail() {
                             name truncation below can actually kick in. */}
                         <div className="rr-court-grid">
                           {courtMatches.map((match, idx) => {
-                            const isCompleted = match.team1_score !== null && match.team2_score !== null;
+                            const isCompleted = !match.abandoned && match.team1_score !== null && match.team2_score !== null;
                             const team1Won = isCompleted && match.team1_score! > match.team2_score!;
                             const team2Won = isCompleted && match.team2_score! > match.team1_score!;
 
@@ -2447,6 +2331,7 @@ export default function RoundRobinDetail() {
                                   <CardContent className="p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                       <Badge variant="outline" className="font-mono bg-muted/50">Court {match.court_no}</Badge>
+                                      {match.abandoned && <Badge variant="secondary">{resolvedMatchLabel(match)}</Badge>}
                                       {isCompleted && (
                                         <Badge variant="secondary" className="text-xs">
                                           <CheckCircle className="h-3 w-3 mr-1" />
@@ -2472,7 +2357,7 @@ export default function RoundRobinDetail() {
                                           player1={getSeatName(match, 'a1')}
                                           player2={getSeatName(match, 'a2')}
                                         />
-                                        {match.team1_score !== null ? (
+                                        {match.abandoned ? <span className="text-muted-foreground">—</span> : match.team1_score !== null ? (
                                           <div className={`text-xl font-bold font-mono ml-1 flex-shrink-0 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
                                         ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
@@ -2507,7 +2392,7 @@ export default function RoundRobinDetail() {
                                           player1={getSeatName(match, 'b1')}
                                           player2={getSeatName(match, 'b2')}
                                         />
-                                        {match.team2_score !== null ? (
+                                        {match.abandoned ? <span className="text-muted-foreground">—</span> : match.team2_score !== null ? (
                                           <div className={`text-xl font-bold font-mono ml-1 flex-shrink-0 ${team2Won ? 'text-primary' : ''}`}>{match.team2_score}</div>
                                         ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
@@ -2528,10 +2413,10 @@ export default function RoundRobinDetail() {
                                     </div>
 
                                     
-                                    {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
+                                    {isOrganizer && event.status === "live" && isCurrentRound && !match.abandoned && match.team1_score === null && (
                                       <Button
                                         onClick={() => handleSaveScore(match)}
-                                        disabled={savingScore === match.id}
+                                        disabled={!!savingScore || closingRound || completingEvent}
                                         size="sm"
                                         className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                       >
@@ -2862,7 +2747,7 @@ export default function RoundRobinDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={next => { if (!deletingEventRef.current) setDeleteDialogOpen(next); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this Round Robin?</AlertDialogTitle>
@@ -2948,11 +2833,11 @@ export default function RoundRobinDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteEvent}
-              disabled={deleteMode === 'hard' && hasScores && !isAdmin}
+              onClick={(e) => { e.preventDefault(); void handleDeleteEvent(); }}
+              disabled={deletingEvent || (deleteMode === 'hard' && hasScores && !isAdmin)}
               className={deleteMode === 'hard' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
             >
-              {deleteMode === 'void' ? 'Void event' : 'Delete permanently'}
+              {deletingEvent ? 'Updating event…' : deleteMode === 'void' ? 'Void event' : 'Delete permanently'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3051,6 +2936,7 @@ export default function RoundRobinDetail() {
           />
 
           <ScoreManagementDialog
+            eventStatus={event.status}
             open={scoreManagementOpen}
             onOpenChange={setScoreManagementOpen}
             schedule={schedule}
@@ -3093,7 +2979,7 @@ export default function RoundRobinDetail() {
           when every match across every round has a score and the event is
           still live. Mirrors the mockup's final-action surface. */}
       {isOrganizer && event.status === "live" && !event.voided && hasSchedule && (() => {
-        const playableMatches = schedule.filter((m) => !m.is_bye);
+        const playableMatches = schedule.filter((m) => !m.is_bye && !m.abandoned);
         const allScored =
           playableMatches.length > 0 &&
           playableMatches.every(

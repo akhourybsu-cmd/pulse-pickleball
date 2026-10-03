@@ -1,3 +1,4 @@
+import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { useScopedTheme } from '@/components/ui/scoped-theme';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -132,7 +133,7 @@ function CommandPanel(props: Props) {
             <div className="rr-command-stage" key={`${round}-${match?.id ?? 'rest'}`}>
               {match ? (
                 <article className="rr-command-court" aria-label={`Round ${round}, Court ${match.court_no}`}>
-                  <div className="rr-command-court-heading"><h2>Court {match.court_no}</h2><span aria-live="polite">{match.abandoned ? 'Abandoned' : result ? <><Check size={14} /> Score saved</> : canScore ? 'Awaiting score' : ended ? 'No result' : 'Matchup'}</span></div>
+                  <div className="rr-command-court-heading"><h2>Court {match.court_no}</h2><span aria-live="polite">{match.abandoned ? resolvedMatchLabel(match) : result ? <><Check size={14} /> Score saved</> : canScore ? 'Awaiting score' : ended ? 'No result' : 'Matchup'}</span></div>
                   <div className="rr-command-teams">
                     {([1, 2] as const).map(team => {
                       const names = team === 1 ? match.team1 : match.team2;
@@ -148,7 +149,7 @@ function CommandPanel(props: Props) {
                   </div>
                   <div className="rr-command-court-action">
                     {canScore ? <Button disabled={waiting || scores[match.id]?.team1_score === undefined || scores[match.id]?.team2_score === undefined} onClick={() => void runAction(() => props.onSaveScore(match.id))}>{savingScore === match.id ? 'Saving…' : 'Save score'}<Check size={16} /></Button>
-                      : <p>{match.abandoned ? 'This game was stopped. It counts as resolved.' : result ? 'Result recorded. Browse the next court when ready.' : ended ? 'Event closed · schedule kept for reference.' : status === 'draft' ? 'Start the event when your players are ready.' : `Saved assignment · starts when round ${round} goes live.`}</p>}
+                      : <p>{match.abandoned ? 'This court is resolved. Its result is excluded from standings and player totals.' : result ? 'Result recorded. Browse the next court when ready.' : ended ? 'Event closed · schedule kept for reference.' : status === 'draft' ? 'Start the event when your players are ready.' : `Saved assignment · starts when round ${round} goes live.`}</p>}
                   </div>
                 </article>
               ) : resting.length > 0 ? (
@@ -158,7 +159,7 @@ function CommandPanel(props: Props) {
             {pages > 0 && <nav className="rr-command-court-nav" aria-label="Court navigation">
               <button aria-label="Previous court" disabled={courtIndex === 0} onClick={() => changeCourt(courtIndex - 1)}><ChevronLeft size={20} /></button>
               <select aria-label="Choose court or resting players" value={courtIndex} onChange={event => changeCourt(Number(event.target.value))}>
-                {courts.map((court, index) => <option key={court.id} value={index}>Court {court.court_no}{court.abandoned ? ' · Abandoned' : court.team1_score !== null && court.team2_score !== null ? ' · Scored' : ''} · {index + 1} of {pages}</option>)}
+                {courts.map((court, index) => <option key={court.id} value={index}>Court {court.court_no}{court.abandoned ? ` · ${resolvedMatchLabel(court)}` : court.team1_score !== null && court.team2_score !== null ? ' · Scored' : ''} · {index + 1} of {pages}</option>)}
                 {resting.length > 0 && <option value={courts.length}>Resting · {resting.length} players</option>}
               </select>
               <button aria-label="Next court" disabled={courtIndex >= pages - 1} onClick={() => changeCourt(courtIndex + 1)}><ChevronRight size={20} /></button>

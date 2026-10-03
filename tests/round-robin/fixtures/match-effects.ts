@@ -58,7 +58,9 @@ export async function installMatchEffects(db:PGlite) {
     ),
   );
   await db.exec(fn("20251103175104_bf246f2e-780c-4d1f-9091-9bdda0411274.sql", "handle_match_insert"));
+  await db.exec(fn("20251103175104_bf246f2e-780c-4d1f-9091-9bdda0411274.sql", "handle_match_deletion"));
   await db.exec(`CREATE TRIGGER on_match_insert AFTER INSERT ON matches FOR EACH ROW EXECUTE FUNCTION handle_match_insert();
+ CREATE TRIGGER on_match_delete AFTER DELETE ON matches FOR EACH ROW EXECUTE FUNCTION handle_match_deletion();
  CREATE TRIGGER on_match_approval_recalc AFTER INSERT OR UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION handle_match_approval_recalc();
  CREATE TRIGGER on_match_status_change AFTER UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION handle_match_status_change();
  CREATE TRIGGER trigger_auto_approve_match AFTER INSERT OR UPDATE OF approved ON match_approvals FOR EACH ROW EXECUTE FUNCTION auto_approve_match_on_verification();`);

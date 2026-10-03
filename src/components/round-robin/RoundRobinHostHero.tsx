@@ -15,11 +15,10 @@ function formatStartTime(raw: string): string {
   return min === "00" ? `${h12} ${period}` : `${h12}:${min} ${period}`;
 }
 import { Calendar, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil, Grid3X3 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { shareRoundRobin } from "@/lib/roundRobin/sharing";
-import { supabase } from "@/integrations/supabase/client";
 import { useCourtName } from "@/hooks/useCourtName";
 import "./event.css";
 
@@ -47,6 +46,7 @@ interface RoundRobinHostHeroProps {
   canEditLocation?: boolean;
   /** Called after a successful location update so the parent can refetch. */
   onLocationUpdated?: () => void;
+  onUpdateLocation?: (location: string | null) => Promise<void>;
   className?: string;
   compact?: boolean;
 }
@@ -93,31 +93,32 @@ export function RoundRobinHostHero({
   location,
   canEditLocation,
   onLocationUpdated,
+  onUpdateLocation,
   className,
   compact = false,
 }: RoundRobinHostHeroProps) {
   const [copied, setCopied] = useState(false);
+  const locationSavingRef = useRef(false);
   // Resolve UUIDs (legacy: location used to hold a court_id) to a readable
   // name. Free-text values pass through unchanged.
   const resolvedLocation = useCourtName(location || null);
 
   const handleEditLocation = async () => {
+    if (locationSavingRef.current || !onUpdateLocation) return;
     const next = window.prompt(
       "Where is this Round Robin? (town, city, or venue name)",
       resolvedLocation || ""
     );
     if (next === null) return;
     const trimmed = next.trim();
-    const { error } = await supabase
-      .from("round_robin_events")
-      .update({ location: trimmed || null } as never)
-      .eq("id", eventId);
-    if (error) {
-      toast.error("Could not update location");
-      return;
-    }
-    toast.success(trimmed ? "Location updated" : "Location cleared");
-    onLocationUpdated?.();
+    locationSavingRef.current = true;
+    try {
+      await onUpdateLocation(trimmed || null);
+      onLocationUpdated?.();
+    } catch (error) {
+      toast.error((error as { message?: string })?.message || "Could not update location");
+    } finally { locationSavingRef.current = false; }
+
   };
 
   const showInviteCode = !!inviteCode && (registrationMode === "invite_only" || registrationMode === "immediate");

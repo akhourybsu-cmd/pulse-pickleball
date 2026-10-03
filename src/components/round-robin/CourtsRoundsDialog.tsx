@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Button } from "@/components/ui/button";
 import { Grid3x3, Gamepad2, Info, RotateCcw, Save } from "lucide-react";
 import { NumericStepper } from "./NumericStepper";
@@ -50,6 +51,8 @@ export function CourtsRoundsDialog({
   const [newCourts, setNewCourts] = useState(currentCourts);
   const [newGamesPerPlayer, setNewGamesPerPlayer] = useState(currentGamesPerPlayer);
   const [loading, setLoading] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [equalGames, setEqualGames] = useState(currentEqualGames);
 
   // Re-sync when the dialog is reopened — the event may have changed courts
@@ -63,11 +66,14 @@ export function CourtsRoundsDialog({
   }, [open, currentCourts, currentGamesPerPlayer, currentEqualGames]);
 
   const handleUpdate = async () => {
+    if (savingRef.current) return;
     const courtsChanged = newCourts !== currentCourts;
     const gamesChanged = newGamesPerPlayer !== currentGamesPerPlayer;
 
     if (!courtsChanged && !gamesChanged && equalGames === currentEqualGames) return;
 
+    savingRef.current = true;
+    setSaveError(null);
     setLoading(true);
     try {
       // One callback keeps both settings together: scheduled events rebuild
@@ -78,12 +84,17 @@ export function CourtsRoundsDialog({
         equalGames,
       });
       onOpenChange(false);
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "The setup was not saved. Please retry."));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleClose = () => {
+    if (savingRef.current) return;
+    setSaveError(null);
     setNewCourts(currentCourts);
     setNewGamesPerPlayer(currentGamesPerPlayer);
     setEqualGames(currentEqualGames);
@@ -116,7 +127,7 @@ export function CourtsRoundsDialog({
         : "Preview the impact, then rebuild the remaining rotation in one step."}
       footer={
         <ModalActions>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
           <Button
@@ -141,7 +152,8 @@ export function CourtsRoundsDialog({
         </ModalActions>
       }
     >
-      <div className="space-y-3 pb-1">
+      {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
+      <fieldset disabled={loading} className="space-y-3 pb-1">
         <NumericStepper
           value={newCourts}
           onChange={setNewCourts}
@@ -191,7 +203,7 @@ export function CourtsRoundsDialog({
           plan={impactPlan}
           getPlayerName={getPlayerName}
         />
-      </div>
+      </fieldset>
     </ResponsiveSettingsModal>
   );
 }

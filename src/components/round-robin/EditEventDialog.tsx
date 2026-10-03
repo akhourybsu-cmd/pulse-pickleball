@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +12,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Save, Info, Star, Grid3x3, ArrowRight, Users } from "lucide-react";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal";
 import { NumericStepper } from "./NumericStepper";
 
 interface Event {
   id: string;
+  schedule_version?: number;
   name: string;
   date: string;
   start_time: string | null;
@@ -67,15 +70,23 @@ export function EditEventDialog({
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">(event.rating_type);
   const [maxPlayers, setMaxPlayers] = useState(normalizedMaxPlayers);
   const [registrationDeadline, setRegistrationDeadline] = useState(
-    event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""
+    event.registration_deadline ? format(new Date(event.registration_deadline), "yyyy-MM-dd'T'HH:mm") : ""
   );
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const openedEventRef = useRef<string | null>(null);
+  const openedVersionRef = useRef(event.schedule_version ?? 0);
+  const [saveError, setSaveError] = useState<string | null>(null);
   /** Mobile only: one section at a time, so the sheet never becomes a
    *  never-ending scroll. Desktop keeps every section stacked. */
   const [section, setSection] = useState<SectionKey>("basics");
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { openedEventRef.current = null; return; }
+    if (openedEventRef.current === event.id) return;
+    openedEventRef.current = event.id;
+    openedVersionRef.current = event.schedule_version ?? 0;
+    setSaveError(null);
     setName(event.name);
     setDate(event.date);
     setStartTime(event.start_time || "09:00");
@@ -85,7 +96,7 @@ export function EditEventDialog({
     setMaxPlayers(normalizedMaxPlayers);
     setRegistrationDeadline(
       event.registration_deadline
-        ? new Date(event.registration_deadline).toISOString().slice(0, 16)
+        ? format(new Date(event.registration_deadline), "yyyy-MM-dd'T'HH:mm")
         : "",
     );
     setSection("basics");
@@ -99,15 +110,20 @@ export function EditEventDialog({
     ratingEligible !== event.rating_eligible ||
     ratingType !== event.rating_type ||
     (event.registration_mode === "open_registration" && maxPlayers !== normalizedMaxPlayers) ||
-    (event.registration_mode === 'open_registration' && registrationDeadline !== (event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""));
+    (event.registration_mode === 'open_registration' && registrationDeadline !== (event.registration_deadline ? format(new Date(event.registration_deadline), "yyyy-MM-dd'T'HH:mm") : ""));
 
   const handleSave = async () => {
-    if (!hasChanges) return;
+    if (!hasChanges || savingRef.current || !name.trim() || !date) return;
 
+    savingRef.current = true;
+    setSaveError(null);
     setSaving(true);
     try {
+      if (openedVersionRef.current !== (event.schedule_version ?? 0)) {
+        throw new Error("The event changed elsewhere. Close and reopen settings to review the latest values before saving.");
+      }
       const updates: Partial<Event> = {};
-      if (name !== event.name) updates.name = name;
+      if (name !== event.name) updates.name = name.trim();
       if (date !== event.date) updates.date = date;
       if (startTime !== (event.start_time || "09:00")) updates.start_time = startTime;
       if (notes !== (event.notes || "")) updates.notes = notes || null;
@@ -119,16 +135,16 @@ export function EditEventDialog({
       ) {
         updates.max_players = maxPlayers;
       }
-      if (event.registration_mode === 'open_registration' && registrationDeadline) {
-        const newDeadline = new Date(registrationDeadline).toISOString();
-        const oldDeadline = event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : "";
-        if (registrationDeadline !== oldDeadline) {
-          updates.registration_deadline = newDeadline;
-        }
+      if (event.registration_mode === 'open_registration') {
+        const previous = event.registration_deadline ? format(new Date(event.registration_deadline), "yyyy-MM-dd'T'HH:mm") : "";
+        if (registrationDeadline !== previous) updates.registration_deadline = registrationDeadline ? new Date(registrationDeadline).toISOString() : null;
       }
       await onSave(updates);
       onOpenChange(false);
+    } catch (error) {
+      setSaveError(getErrorMessage(error, "Settings were not saved. Your changes are still here; please retry."));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -253,15 +269,15 @@ export function EditEventDialog({
   return (
     <ResponsiveSettingsModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={next => { if (!savingRef.current) onOpenChange(next); }}
       title="Event settings"
       description="Update event details and rating rules without disturbing the schedule."
       footer={
         <ModalActions>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || saving} className="gap-1.5">
+          <Button onClick={handleSave} disabled={!hasChanges || !name.trim() || !date || saving} className="gap-1.5">
             <Save className="h-4 w-4" />
             {saving ? "Saving…" : hasChanges ? "Save changes" : "No changes"}
           </Button>
@@ -296,7 +312,8 @@ export function EditEventDialog({
         </div>
       </div>
 
-      <div className="space-y-4 sm:space-y-5 pb-2">
+      {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
+      <fieldset disabled={saving} className="space-y-4 sm:space-y-5 pb-2">
         {basics}
         {rating}
         <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.055] p-3.5 sm:mt-4">
@@ -323,7 +340,7 @@ export function EditEventDialog({
             )}
           </div>
         </div>
-      </div>
+      </fieldset>
     </ResponsiveSettingsModal>
   );
 }
