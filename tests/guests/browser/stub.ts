@@ -4,7 +4,7 @@ const params = new URLSearchParams(window.location.search);
 let user: { id: string; email: string } | null = params.has('claim') ? null : { id: 'owner', email: 'owner@example.test' };
 const listeners = new Set<() => void>();
 export const signIn = () => { user = { id: 'player', email: 'player@example.test' }; listeners.forEach(f => f()); };
-export function useAuthState() { return { user: useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => user), loading: false }; }
+export function useAuthState() { return { user: useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => user), loading: false, isAuthenticated: !!user }; }
 export const useFriends = () => ({ friends: [], isLoading: false });
 export const useGroupMembers = () => ({ members: [], isLoading: false });
 export const useRecentCoPlayers = () => ({ players: [], isLoading: false });

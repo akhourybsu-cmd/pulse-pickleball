@@ -51,7 +51,7 @@ export default function ClaimGuest() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
-  const { user: authedUser, loading: authLoading } = useAuthState();
+  const { user: authedUser, loading: authLoading, isAuthenticated } = useAuthState();
   const authReady = !authLoading;
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,8 @@ export default function ClaimGuest() {
   const generation = useRef(0);
   const [result, setResult] = useState<"linked" | "awaiting_approval" | null>(null);
   const { data: invite, isLoading: loading, error: loadError, refetch } = useQuery({
-    queryKey: ["claim-guest", token], enabled: !!token,
+    queryKey: ["claim-guest", token, authedUser?.id],
+    enabled: !!token && authReady && (!authedUser || isAuthenticated),
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_claim_invite", { _token: token! });
       if (error) throw error;
@@ -76,8 +77,13 @@ export default function ClaimGuest() {
     return () => { generation.current += 1; };
   }, [token, authedUser?.id]);
   useEffect(() => {
-    if (authReady && authedUser && token) clearPostAuthRedirect(`/claim-guest/${token}`);
-  }, [authReady, authedUser, token]);
+    if (!authReady || !authedUser || !token) return;
+    const destination = `/claim-guest/${token}`;
+    if (!isAuthenticated) {
+      stashPostAuthRedirect(destination);
+      navigate(`/auth?${new URLSearchParams({ redirect: destination })}`, { replace: true });
+    } else clearPostAuthRedirect(destination);
+  }, [authReady, authedUser, token, isAuthenticated, navigate]);
   const displayError = error ?? (loadError ? friendlyError(loadError.message) : !token ? "Missing invite token." : null);
   const expired = !!invite && new Date(invite.expires_at).getTime() <= Date.now();
 
