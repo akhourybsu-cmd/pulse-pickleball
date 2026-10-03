@@ -538,6 +538,7 @@ export function PlayerManagementDialog({
                   // that row, so they must stay pickable here.
                   ...players.filter(p => p.active).map(p => p.player_id).filter(Boolean) as string[],
                   ...players.filter(p => p.active).map(p => p.guest_player_id).filter(Boolean) as string[],
+                  ...players.map(p => p.guest_players?.linked_user_id).filter(Boolean) as string[],
                 ]}
                 trigger={
                   <button

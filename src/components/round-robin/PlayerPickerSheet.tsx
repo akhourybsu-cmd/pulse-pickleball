@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2, type LucideIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuthState } from "@/hooks/useAuthState";
+import { fetchSavedGuests } from "@/lib/guests";
 import { useFriends } from "@/hooks/useFriends";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useRecentCoPlayers } from "@/hooks/useRecentCoPlayers";
@@ -96,6 +98,8 @@ export function PlayerPickerSheet({
   const [tab, setTab] = useState<PickerTab>("friends");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
+  const guestBusyRef = useRef(false);
+  const [guestBusy, setGuestBusy] = useState(false);
   const [guestName, setGuestName] = useState("");
   const resolvedEventFormat: EventFormat = eventFormat ?? genderFilter ?? "open";
   const fixedGuestGender = requiredGenderForFormat(resolvedEventFormat);
@@ -115,6 +119,7 @@ export function PlayerPickerSheet({
 
   // Reset local state every time the sheet opens
   const handleOpenChange = (v: boolean) => {
+    if (guestBusyRef.current) return;
     if (v) {
       setLocal(selectedPlayers);
       if (tab === "guest" && !showGuest) setTab("friends");
@@ -156,7 +161,7 @@ export function PlayerPickerSheet({
 
   const addGuest = async () => {
     const name = guestName.trim();
-    if (!name) return;
+    if (!name || guestBusyRef.current) return;
     const gender = resolveGuestGenderForCreate(
       resolvedEventFormat,
       guestGender || null,
@@ -165,10 +170,12 @@ export function PlayerPickerSheet({
       toast.error("Choose male or female so this guest can be scheduled in mixed play.");
       return;
     }
+    guestBusyRef.current = true;
+    setGuestBusy(true);
     const pulse = startPulseActivity(`Creating guest ${name}…`);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { pulse.fail(); return; }
+      if (!user) throw new Error("Sign in to add a guest.");
       const { data, error } = await supabase
         .from("guest_players")
         .insert({
@@ -189,6 +196,7 @@ export function PlayerPickerSheet({
       };
       // Refresh the saved-guest roster query so the new entry shows up below
       qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
+      qc.invalidateQueries({ queryKey: ["my-guest-players"] });
       pulse.done(`${name} added as a guest`);
 
       if (mode === "single") {
@@ -205,12 +213,13 @@ export function PlayerPickerSheet({
       pulse.fail();
       console.error("Failed to save guest:", e);
       toast.error("Couldn't add that guest. Try again.");
-    }
+    } finally { guestBusyRef.current = false; setGuestBusy(false); }
 
   };
 
 
   const commit = () => {
+    if (guestBusyRef.current) return;
     onPlayersChange(local);
     setOpen(false);
   };
@@ -387,6 +396,7 @@ export function PlayerPickerSheet({
 
             {showGuest && tab === "guest" && (
               <GuestPanel
+                busy={guestBusy}
                 guestName={guestName}
                 onGuestNameChange={setGuestName}
                 guestGender={guestGender}
@@ -421,6 +431,7 @@ export function PlayerPickerSheet({
 }
 
 function GuestPanel({
+  busy,
   guestName,
   onGuestNameChange,
   guestGender,
@@ -433,6 +444,7 @@ function GuestPanel({
   onToggle,
   excludeSet,
 }: {
+  busy: boolean;
   guestName: string;
   onGuestNameChange: (value: string) => void;
   guestGender: BinaryGender | "";
@@ -447,7 +459,7 @@ function GuestPanel({
 }) {
   const fixedGender = genderConstraint ?? requiredGenderForFormat(eventFormat);
   const genderRequired = eventFormat === "mixed";
-  const canAdd = !!guestName.trim() && (!genderRequired || !!guestGender);
+  const canAdd = !busy && !!guestName.trim() && (!genderRequired || !!guestGender);
 
   return (
     <div className="h-full m-0 flex flex-col">
@@ -497,7 +509,7 @@ function GuestPanel({
           )}
           <Button type="button" onClick={onAddGuest} disabled={!canAdd} className="h-11">
             <UserPlus className="h-4 w-4 mr-1" />
-            Add
+            {busy ? "Adding…" : "Add"}
           </Button>
         </div>
       </div>
@@ -840,24 +852,12 @@ function GuestRosterList({
   eventFormat: EventFormat;
   genderFilter?: BinaryGender;
 }) {
-  const { data = [], isLoading } = useQuery({
-    queryKey: ["guest-players-roster", groupId ?? "personal"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      let q = supabase
-        .from("guest_players")
-        .select("id, display_name, linked_user_id, created_at, gender")
-        .order("display_name", { ascending: true })
-        .limit(100);
-      if (groupId) {
-        q = q.or(`created_by.eq.${user.id},group_id.eq.${groupId}`);
-      } else {
-        q = q.eq("created_by", user.id);
-      }
-      const { data } = await q;
-      return data ?? [];
-    },
+  const { user } = useAuthState();
+  const [search, setSearch] = useState("");
+  const { data = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["guest-players-roster", user?.id, groupId ?? "personal"],
+    enabled: !!user,
+    queryFn: () => fetchSavedGuests(user!.id, groupId),
     staleTime: 30_000,
   });
 
@@ -877,6 +877,7 @@ function GuestRosterList({
     // pick them from the player search instead so their rating counts.
     .filter((g) => !g.linked_user_id)
     .filter((g) => !excludeSet?.has(g.id))
+    .filter((g) => g.display_name.toLowerCase().includes(search.trim().toLowerCase()))
 
     .map((g) => {
       const isDup = (nameCounts.get(g.display_name.toLowerCase()) ?? 0) > 1;
@@ -910,13 +911,17 @@ function GuestRosterList({
       };
     });
 
+  if (isError) return <div role="alert" className="p-4 text-sm">Couldn't load saved guests. <Button variant="link" onClick={() => refetch()}>Retry</Button></div>;
   if (isLoading) return <EmptyState message="Loading guest roster…" />;
-  if (items.length === 0)
+  if (data.length === 0)
     return (
       <EmptyState message="No saved guests yet. Add one above — they'll be reusable next time." />
     );
 
   return (
+    <>
+    <div className="px-4 py-2"><Input aria-label="Search saved guests" placeholder="Search saved guests" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+    {items.length === 0 && <EmptyState message="No available guests match your search." />}
     <ScrollArea className="flex-1">
       <div className="py-2">
         {items.map((p) => (
@@ -956,6 +961,7 @@ function GuestRosterList({
         ))}
       </div>
     </ScrollArea>
+    </>
   );
 }
 

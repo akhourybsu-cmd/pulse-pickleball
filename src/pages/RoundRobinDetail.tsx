@@ -489,7 +489,8 @@ export default function RoundRobinDetail() {
         setLoadError(null);
         setPlayers(hydratedPlayers);
         setSchedule(hydratedSchedule);
-        setIsParticipant(hydratedPlayers.some((player) => player.player_id === user.id && player.active));
+        setIsParticipant(hydratedPlayers.some((player) => player.active &&
+          (player.player_id === user.id || player.guest_players?.linked_user_id === user.id)));
 
         setLoading(false);
       });

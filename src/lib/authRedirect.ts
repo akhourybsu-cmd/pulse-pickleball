@@ -35,7 +35,7 @@ export const isRoundRobinReturnPath = (path: string | null | undefined): boolean
   !!path && (/^\/round-robin\/[0-9a-f-]{36}(?:[?#]|$)/i.test(path) || /^\/player\/play\?[^#]*\binvite=/.test(path));
 
 export const isSharedPageReturnPath = (path: string | null | undefined): boolean =>
-  isCommunityReturnPath(path) || isRoundRobinReturnPath(path);
+  isCommunityReturnPath(path) || isRoundRobinReturnPath(path) || (!!path && /^\/claim-guest\/[A-Za-z0-9_-]+(?:[?#]|$)/.test(path));
 
 export const isAssessmentSaveRedirect = (path: string | null | undefined) =>
   !!path && /^\/skill-assessment\?save=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path);

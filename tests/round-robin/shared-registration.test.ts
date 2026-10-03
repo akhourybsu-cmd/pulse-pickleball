@@ -14,6 +14,7 @@ beforeAll(async () => {
     CREATE TYPE round_robin_status AS ENUM ('draft','live','completed','voided');
     CREATE TYPE rr_participant_status AS ENUM ('active','removed','withdrawn','replaced');
     CREATE TABLE profiles(id uuid PRIMARY KEY,gender text,display_name text,full_name text);
+    CREATE TABLE guest_players(id uuid PRIMARY KEY,linked_user_id uuid);
     CREATE TABLE round_robin_events(id uuid PRIMARY KEY,organizer_id uuid,status round_robin_status DEFAULT 'draft',voided boolean DEFAULT false,
       registration_mode text DEFAULT 'open_registration',is_published boolean DEFAULT true,invite_code text,registration_deadline timestamptz,
       venue_id uuid,group_id uuid,group_visibility text DEFAULT 'personal',date date DEFAULT CURRENT_DATE,start_time time,name text DEFAULT 'Friday Lights',
@@ -38,9 +39,13 @@ beforeAll(async () => {
   const migration = readFileSync("supabase/migrations/20261001230000_round_robin_shared_registration.sql", "utf8");
   await db.exec(migration);
   await db.exec(migration);
+  const guestMigration = readFileSync('supabase/migrations/20261003181000_guest_registration_links.sql', 'utf8');
+  await db.exec(guestMigration);
+  await db.exec(guestMigration);
   await db.exec('CREATE TRIGGER rr_events_invite_code_trigger BEFORE INSERT OR UPDATE OF registration_mode ON round_robin_events FOR EACH ROW EXECUTE FUNCTION rr_events_set_invite_code()');
 }, 30_000);
 beforeEach(async () => {
+  await db.exec('RESET ROLE; TRUNCATE guest_players;');
   await db.exec("RESET ROLE; SELECT set_config('test.uid','',false); SELECT set_config('test.mfa','true',false); TRUNCATE round_robin_events,round_robin_players,profiles,venue_round_robin_links,group_events,group_event_rsvps;");
   await db.query("INSERT INTO round_robin_events(id,organizer_id) VALUES($1,$2)", [event, owner]);
   await db.query("INSERT INTO profiles(id,display_name,gender) VALUES($1,'Host','male'),($2,'New Player','female')", [owner, player]);
@@ -132,4 +137,20 @@ it("makes quick events joinable by invitation while keeping their bare links pri
   await asUser();
   await expect(join()).rejects.toThrow('invitation is unavailable');
   expect(await join('XYZ-1234')).toMatchObject({ registration_status: 'confirmed' });
+});
+
+
+it('reuses a claimed guest registration when rejoining, including waitlists', async () => {
+  await db.query('INSERT INTO guest_players VALUES($1,$2)', [id(80), player]);
+  await db.query("INSERT INTO round_robin_players(event_id,guest_player_id,active,status) VALUES($1,$2,false,'withdrawn')", [event,id(80)]);
+  await asUser();
+  expect(await join()).toMatchObject({ registration_status: 'confirmed' });
+  expect(await join()).toMatchObject({ registration_status: 'confirmed' });
+  expect(await preview()).toMatchObject({ registration_status: 'confirmed' });
+  await db.exec('RESET ROLE');
+  expect((await db.query('SELECT player_id,guest_player_id FROM round_robin_players')).rows).toEqual([{ player_id: null, guest_player_id: id(80) }]);
+  await db.exec("UPDATE round_robin_players SET active=false,status='removed',registration_status='waitlisted'");
+  await asUser();
+  expect(await join()).toMatchObject({ registration_status: 'waitlisted' });
+  expect(await preview()).toMatchObject({ registration_status: 'waitlisted', waitlist_position: 1, can_open: false });
 });

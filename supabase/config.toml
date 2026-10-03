@@ -120,3 +120,7 @@ verify_jwt = false
 [functions.venue-email-unsubscribe]
 # Unpredictable recipient-specific token; GET is read-only, POST changes consent.
 verify_jwt = false
+
+[functions.send-guest-invite]
+# Caller JWT, live MFA and guest-management RLS are verified inside the handler.
+verify_jwt = false

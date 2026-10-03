@@ -169,6 +169,7 @@ export function PlayerSelectionStep({
       const { data: guests } = await supabase
         .from("guest_players")
         .select("id, display_name")
+          .is("archived_at", null).is("linked_user_id", null)
         .eq("created_by", user.id)
         .order("created_at", { ascending: false })
         .limit(10);

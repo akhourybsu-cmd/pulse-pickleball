@@ -39,14 +39,9 @@ export async function fetchUserRoundRobinEvents(
   userId: string,
   options: FetchUserRoundRobinEventsOptions = {},
 ): Promise<RoundRobinUserEventEntry[]> {
-  let registrationQuery = supabase
-    .from("round_robin_players")
-    .select("event_id")
-    .eq("player_id", userId);
-
-  if (!options.includeInactiveRegistrations) {
-    registrationQuery = registrationQuery.eq("active", true);
-  }
+  const registrationQuery = supabase.rpc("my_round_robin_registrations", {
+    _include_inactive: options.includeInactiveRegistrations ?? false,
+  });
 
   const [hostedResult, registrationResult] = await Promise.all([
     supabase

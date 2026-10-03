@@ -14,6 +14,7 @@ export interface TemplateEntry {
 }
 
 import { template as registrationConfirmation } from './registration-confirmation.tsx'
+import { template as guestClaimInvite } from './guest-claim-invite.tsx'
 import { template as registrationApproved } from './registration-approved.tsx'
 import { template as registrationWaitlisted } from './registration-waitlisted.tsx'
 import { template as roundRobinConfirmation } from './round-robin-confirmation.tsx'
@@ -28,6 +29,7 @@ import { template as contestedMatchAlert } from './contested-match-alert.tsx'
 import { template as matchVerificationRequest } from './match-verification-request.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
+  'guest-claim-invite': guestClaimInvite,
   'registration-confirmation': registrationConfirmation,
   'registration-approved': registrationApproved,
   'registration-waitlisted': registrationWaitlisted,
