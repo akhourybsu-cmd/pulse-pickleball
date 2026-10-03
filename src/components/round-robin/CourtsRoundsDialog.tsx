@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Grid3x3, Gamepad2, Info, RotateCcw, Save } from "lucide-react";
 import { NumericStepper } from "./NumericStepper";
@@ -98,13 +98,13 @@ export function CourtsRoundsDialog({
   // There is no valid schedule plan below four active players. Keep this path
   // configuration-only so hosts can save setup without accidentally invoking
   // (or being blocked by) schedule generation.
-  const impactPlan = isPreScheduleSetup
+  const impactPlan = useMemo(() => !open || isPreScheduleSetup
     ? null
     : getImpactPlan?.({
         numCourts: newCourts,
         gamesPerPlayer: newGamesPerPlayer,
         equalGames,
-      }) ?? null;
+      }) ?? null, [open, isPreScheduleSetup, getImpactPlan, newCourts, newGamesPerPlayer, equalGames]);
 
   return (
     <ResponsiveSettingsModal

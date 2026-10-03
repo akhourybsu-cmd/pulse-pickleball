@@ -1,0 +1,33 @@
+{
+  "scenario": "32 players, 8 courts, 20 rounds, mixed doubles, live round 2",
+  "environment": "Local Chromium, Vite development build, React Profiler; 150 ms simulated delay per read. One before/after sample. Fixture generation and JS module loading excluded from readyMs.",
+  "baseline_revision": "f789fc1aadb893e8d9e7f8239f5357b0086559c7",
+  "before": {
+    "hostReadyMs": 703,
+    "hostRenderMs": 572.9,
+    "mountedRounds": 20,
+    "scoreTypingRenderMs": 244.6,
+    "tabCycleRenderMs": 457.9,
+    "playerReadyMs": 1047,
+    "playerReads": 10
+  },
+  "after": {
+    "hostReadyMs": 428,
+    "hostRenderMs": 135.7,
+    "mountedRounds": 3,
+    "scoreTypingRenderMs": 68.5,
+    "tabCycleRenderMs": 139.3,
+    "playerReadyMs": 422,
+    "playerReads": 6
+  },
+  "interaction_steps": [
+    "Fill Court 1 team one with 11, team two with 7.",
+    "Switch Schedule \u2192 Players \u2192 Standings \u2192 Schedule."
+  ],
+  "limits": [
+    "Render timings measure React rendering, not total interaction latency.",
+    "Ready timing starts when the fixture mounts, not at navigation; excludes bundle download.",
+    "Not production latency or a statistical performance guarantee.",
+    "No production event or score mutations."
+  ]
+}

@@ -2,7 +2,7 @@
 
 This mounts the real RoundRobinDetail route, including its organizer controls, nested dialogs, and PlayerRoundRobinView. Backend and auth imports are replaced with local fixtures. Mutations return a preview error; nothing reaches Supabase or sends invitations.
 
-Command center QA: add `?command` to enable score saves and round advancement **in memory only**. `&saveerror` keeps score saves failing for retry/retention checks. `&manycourts` expands the display fixture to 12 courts (reuses names for layout stress, not a valid generated schedule). `&longnames`, `&rest`, and `&dark` cover name wrapping, the resting-player page, and dark appearance. Reload resets all fixture changes. Start/completion and other backend mutations remain disabled.
+Command center QA: add `?command` to enable score saves and round advancement **in memory only**. `&saveerror` keeps score saves failing for retry/retention checks. `&manycourts` expands the display fixture to 12 courts (reuses names for layout stress, not a valid generated schedule). `&longnames`, `&rest`, and `&dark` cover name wrapping, the resting-player page, and dark appearance. Reload resets all fixture changes. Event completion is also simulated with `?command`; other backend mutations remain disabled.
 
 ```powershell
 node node_modules/vite/bin/vite.js --config tests/round-robin/event-browser/vite.config.ts --host 127.0.0.1 --port 5183 --strictPort
@@ -27,3 +27,5 @@ Checked September 21, 2026:
 - No application console errors; existing React Router future-version warnings occur in this local harness.
 
 The fixture checks presentation and navigation. It does not validate production event writes, sharing, invitations, rating recalculation, or realtime delivery.
+
+Performance checks (October 3): `?large&perf&command&latency=150` uses a valid 32-player, eight-court, 20-round mixed schedule. `?large&perf&player&latency=150` measures the participant view. The local panel counts read requests, mounted round groups, and React render time. Ready time begins when the fixture mounts (after module loading and fixture generation). Reset measurements before typing both scores or cycling the tabs. Interaction render time is React CPU work, not wall-clock latency. `?player&simulate` exposes a local realtime round-advance control. No data leaves this fixture.

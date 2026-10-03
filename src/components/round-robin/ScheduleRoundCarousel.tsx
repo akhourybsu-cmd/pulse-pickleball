@@ -24,7 +24,9 @@ export function ScheduleRoundCarousel({
   children,
 }: ScheduleRoundCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const startIndex = Math.max(0, Math.min(currentRound - 1, totalRounds - 1));
+  const [selectedSlide, setCurrentSlide] = useState(startIndex);
+  const currentSlide = Math.max(0, Math.min(selectedSlide, totalRounds - 1));
   const reducedMotion = useReducedMotion();
 
   // Track current slide
@@ -36,10 +38,12 @@ export function ScheduleRoundCarousel({
     };
 
     carouselApi.on("select", onSelect);
+    carouselApi.on("reInit", onSelect);
     onSelect(); // Initial call
     
     return () => {
       carouselApi.off("select", onSelect);
+      carouselApi.off("reInit", onSelect);
     };
   }, [carouselApi]);
 
@@ -47,9 +51,9 @@ export function ScheduleRoundCarousel({
   useEffect(() => {
     if (carouselApi && currentRound && currentRound > 0) {
       // Scroll to current round (0-indexed)
-      carouselApi.scrollTo(currentRound - 1, !!reducedMotion);
+      carouselApi.scrollTo(startIndex, !!reducedMotion);
     }
-  }, [carouselApi, currentRound, reducedMotion]);
+  }, [carouselApi, currentRound, startIndex, reducedMotion]);
 
   if (totalRounds === 0) return null;
 
@@ -91,19 +95,20 @@ export function ScheduleRoundCarousel({
       {/* Carousel */}
       <Carousel
         setApi={setCarouselApi}
-        opts={{ align: "start", loop: false }}
+        opts={{ align: "start", loop: false, startIndex }}
         className="rr-schedule-carousel w-full"
       >
         <CarouselContent className="-ml-0">
           {Array.from({ length: totalRounds }, (_, i) => i + 1).map((roundNo) => (
             <CarouselItem key={roundNo} className="pl-0" aria-label={`Round ${roundNo}`} aria-hidden={roundNo !== currentSlide + 1} {...(roundNo !== currentSlide + 1 ? { inert: "" } : {})}>
-              <motion.div
+              {/* Keep every slide for swipe geometry, but only mount nearby cards. */}
+              {Math.abs(roundNo - 1 - currentSlide) <= 1 && <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
               >
                 {children(roundNo, roundNo === currentSlide + 1)}
-              </motion.div>
+              </motion.div>}
             </CarouselItem>
           ))}
         </CarouselContent>

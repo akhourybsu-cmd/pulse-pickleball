@@ -1,3 +1,5 @@
+import { planCreationSchedulePreview } from '../../../src/lib/roundRobin/creationSchedulePreview';
+import { recordRead } from './performance';
 // UI fixtures only: no backend, credentials, invitations or production mutations.
 const params = new URLSearchParams(window.location.search);
 const playerView = params.has('player');
@@ -8,9 +10,19 @@ const latency = Math.max(0, Math.min(2000, Number(params.get('latency')) || 0));
 const delay = () => new Promise(resolve => setTimeout(resolve, latency));
 const status = params.has('draft') ? 'draft' : params.has('completed') ? 'completed' : params.has('voided') ? 'voided' : 'live';
 const event = { schedule_version:0, id:'preview-event',name:'Golden Hour · Sunday Social',date:'2026-09-21',start_time:'17:30:00',location:'Riverside Pickleball Club',notes:'Check in at the clubhouse. Bring water, your paddle, and your best game.',organizer_id:'preview-host',num_courts:2,num_rounds:3,games_per_player:3,current_round:status==='completed'?3:status==='draft'?1:2,status,voided:status==='voided',rating_eligible:true,rating_type:'league',format:'open',allow_guests:false,registration_mode:'invite_only',invite_code:'PULSE-QA',event_mode:'immediate',max_players:16 };
+if (params.has('large')) {
+  for (let i = profiles.length; i < 32; i++) profiles.push({ id: `player-${i}`, full_name: `Player ${i}`, display_name: `Player ${i}`, current_rating: 3.5, gender: i % 2 ? 'female' : 'male', avatar_url: null });
+  Object.assign(event, { num_courts: 8, num_rounds: 20, games_per_player: 20, format: 'mixed' });
+}
 const roster = profiles.map((p,i)=>({id:`roster-${i}`,event_id:event.id,player_id:p.id,guest_player_id:null,active:true,status:'confirmed',registration_status:'confirmed',profiles:p}));
 const pairings = [[[0,1,2,3],[4,5,6,7]],[[0,2,4,6],[1,3,5,7]],[[0,3,5,6],[1,2,4,7]]];
 const schedule = params.has('empty') ? [] : pairings.flatMap((round,r)=>round.map((seats,c)=>({id:`match-${r}-${c}`,event_id:event.id,round_no:r+1,court_no:c+1,a1_player_id:`player-${seats[0]}`,a2_player_id:`player-${seats[1]}`,b1_player_id:`player-${seats[2]}`,b2_player_id:`player-${seats[3]}`,a1_guest_id:null,a2_guest_id:null,b1_guest_id:null,b2_guest_id:null,is_bye:false,team1_score:status==='completed'||r===0?11:null,team2_score:status==='completed'||r===0?7+c:null,match_id:null,locked_at:null,abandoned:false,voided_at:null,superseded_by_schedule_id:null})));
+if (params.has('large')) {
+  const plan = planCreationSchedulePreview({ participants: profiles, numCourts: 8, gamesPerPlayer: 20, equalGames: true, format: 'mixed' })!;
+  if (!plan.ok) throw new Error('Large fixture needs a valid schedule');
+  const base = schedule[0];
+  schedule.splice(0, schedule.length, ...plan.schedule.map((match, i) => ({ ...base, id: `large-${i}`, round_no: match.round_no, court_no: match.court_no, is_bye: match.is_bye, a1_player_id: match.a1?.slice(2) ?? null, a2_player_id: match.a2?.slice(2) ?? null, b1_player_id: match.b1?.slice(2) ?? null, b2_player_id: match.b2?.slice(2) ?? null, team1_score: match.round_no < event.current_round ? 11 : null, team2_score: match.round_no < event.current_round ? 7 : null })));
+}
 if (params.has('manycourts')) {
   event.num_courts = 12;
   const original = [...schedule];
@@ -44,6 +56,7 @@ export const supabase = {
   channel:createChannel,removeChannel:(channel:object)=>listeners.delete(channel),
   rpc:(name:string, args:Record<string,unknown> = {})=>{
     const execute=async()=>{
+    recordRead(`rpc:${name}`);
     await delay();
     if(name === "can_manage_round_robin") return {data:user.id === event.organizer_id,error:null};
     // Opt-in command-center QA only changes these in-memory fixtures.
@@ -75,7 +88,7 @@ export const supabase = {
       range:(start:number,end:number)=>{rows=rows.slice(start,end+1);return chain;},
       single:()=>{single=true;return chain;},maybeSingle:()=>{single=true;return chain;},
       update:()=>{throw new Error('Preview changes are disabled.');},insert:()=>{throw new Error('Preview changes are disabled.');},delete:()=>{throw new Error('Preview changes are disabled.');},
-      then:(resolve:(v:ReturnType<typeof result>)=>unknown)=>delay().then(result).then(resolve),
+      then:(resolve:(v:ReturnType<typeof result>)=>unknown)=>{recordRead(table);return delay().then(result).then(resolve);},
     };
     return chain;
   },

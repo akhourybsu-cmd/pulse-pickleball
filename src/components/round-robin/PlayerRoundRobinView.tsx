@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -21,8 +20,7 @@ import { EventTabs } from "./EventTabs";
 import { RoundRobinHostHero } from "./RoundRobinHostHero";
 import { PlayerEventBriefing } from "./PlayerEventBriefing";
 import { playerRoundFocus } from "@/lib/roundRobin/playerRoundFocus";
-import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
-import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
+import { buildPlayerEventSnapshot, type HydratedEventPlayer, type HydratedEventMatch } from "@/lib/roundRobin/playerEventSnapshot";
 import {
   Table,
   TableBody,
@@ -33,8 +31,12 @@ import {
 } from "@/components/ui/table";
 
 interface PlayerRoundRobinViewProps {
-  eventId: string;
+  event: Event;
+  roster: HydratedEventPlayer[];
+  rows: HydratedEventMatch[];
   userId: string | null;
+  loadError?: string | null;
+  onRetry: () => void;
 }
 
 interface Event {
@@ -53,288 +55,24 @@ interface Event {
   rating_type: string;
   format?: string;
   allow_guests?: boolean;
-  registration_mode?: string;
+  registration_mode?: string | null;
   invite_code?: string | null;
   voided?: boolean;
 }
 
-interface Player {
-  id: string;
-  player_id: string;
-  registration_status: string;
-  is_guest?: boolean;
-  guest_display_name?: string | null;
-  guest_linked_user_id?: string | null;
-  profiles: {
-    id: string;
-    full_name: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-    current_rating: number | null;
-  } | null;
-}
+type ScheduleMatch = ReturnType<typeof buildPlayerEventSnapshot>['schedule'][number];
 
-interface ScheduleMatch {
-  id: string;
-  round_no: number;
-  court_no: number;
-  a1_player_id: string | null;
-  a2_player_id: string | null;
-  b1_player_id: string | null;
-  b2_player_id: string | null;
-  a1_guest_id: string | null;
-  a2_guest_id: string | null;
-  b1_guest_id: string | null;
-  b2_guest_id: string | null;
-  team1_score: number | null;
-  team2_score: number | null;
-  team_a_score: number | null;
-  team_b_score: number | null;
-  completed: boolean;
-  is_bye: boolean;
-}
-
-interface StandingsRow {
-  playerId: string;
-  playerName: string;
-  wins: number;
-  losses: number;
-  pointsFor: number;
-  pointsAgainst: number;
-  gamesPlayed: number;
-  isRemoved?: boolean;
-}
-
-export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewProps) {
+export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, onRetry }: PlayerRoundRobinViewProps) {
   const navigate = useNavigate();
-  const [event, setEvent] = useState<Event | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
-  const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("court");
-
-  useEffect(() => {
-    let disposed = false;
-    let refreshing = false;
-    let queued = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = async () => {
-      if (disposed) return;
-      if (refreshing) { queued = true; return; }
-      refreshing = true;
-      await fetchEventData();
-      refreshing = false;
-      if (queued && !disposed) { queued = false; void refresh(); }
-    };
-    const queueRefresh = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => void refresh(), 180);
-    };
-    void refresh();
-    // Stay on the player's chosen tab as the host posts scores or advances play.
-    const channel = supabase.channel(`rr-player-view-${eventId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_events", filter: `id=eq.${eventId}` }, queueRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_schedule", filter: `event_id=eq.${eventId}` }, queueRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "round_robin_players", filter: `event_id=eq.${eventId}` }, queueRefresh)
-      .subscribe();
-    const onVisible = () => { if (document.visibilityState === "visible") queueRefresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
-    return () => {
-      disposed = true;
-      clearTimeout(timer);
-      void supabase.removeChannel(channel);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
-    };
-  }, [eventId]);
-
-  const fetchEventData = async () => {
-    try {
-      // Fetch event
-      const { data: eventData, error: eventError } = await supabase
-        .from("round_robin_events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-
-      if (eventError) throw eventError;
-      setEvent(eventData);
-
-      // Fetch players (no active filter — names must resolve even for removed players)
-      const { data: playersRaw, error: playersError } = await supabase
-        .from("round_robin_players")
-        .select("id, player_id, guest_player_id, guest_name, registration_status, active")
-        .eq("event_id", eventId);
-
-      if (playersError) throw playersError;
-
-      // Fetch schedule
-      const scheduleData = await fetchCanonicalRoundRobinSchedule(
-        supabase,
-        eventId,
-      );
-
-      // Collect referenced user-IDs and guest-IDs from roster + schedule
-      const userIdSet = new Set<string>();
-      const guestIdSet = new Set<string>();
-      (playersRaw || []).forEach((p: any) => {
-        if (p.player_id) userIdSet.add(p.player_id);
-        if (p.guest_player_id) guestIdSet.add(p.guest_player_id);
-      });
-      (scheduleData || []).forEach((m: any) => {
-        [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id].forEach((id) => {
-          if (id) userIdSet.add(id);
-        });
-        [m.a1_guest_id, m.a2_guest_id, m.b1_guest_id, m.b2_guest_id].forEach((id) => {
-          if (id) guestIdSet.add(id);
-        });
-      });
-
-      // Batch fetch profiles
-      let profilesById = new Map<string, Player["profiles"]>();
-      if (userIdSet.size > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles_public")
-          .select("id, display_name, full_name, avatar_url, current_rating")
-          .in("id", Array.from(userIdSet));
-        profilesById = new Map(
-          (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
-        );
-      }
-
-      // Batch fetch guests
-      let guestsById = new Map<string, { id: string; display_name: string | null; linked_user_id: string | null }>();
-      if (guestIdSet.size > 0) {
-        const { data: guestsData } = await supabase
-          .from("guest_players")
-          .select("id, display_name, linked_user_id")
-          .in("id", Array.from(guestIdSet));
-        guestsById = new Map((guestsData || []).map((g: any) => [g.id, g]));
-      }
-
-      // Active registrations (Players tab)
-      const activePlayersWithProfiles: Player[] = (playersRaw || [])
-        .filter((p: any) => p.active !== false)
-        .map((p: any) => {
-          const isGuest = !!p.guest_player_id;
-          const guestRow = isGuest ? guestsById.get(p.guest_player_id) : null;
-          const lookupId = p.player_id || p.guest_player_id;
-          return {
-            id: p.id,
-            player_id: lookupId,
-            registration_status: p.registration_status,
-            is_guest: isGuest,
-            guest_display_name: isGuest
-              ? guestRow?.display_name || p.guest_name || "Guest"
-              : null,
-            guest_linked_user_id: guestRow?.linked_user_id ?? null,
-            profiles: isGuest ? null : profilesById.get(p.player_id) ?? null,
-          };
-        });
-
-      // Lookup roster (every id seen in schedule)
-      const allIds = new Set<string>([...userIdSet, ...guestIdSet]);
-      const lookupPlayers: Player[] = Array.from(allIds).map((pid) => {
-        const guest = guestsById.get(pid);
-        const profile = profilesById.get(pid);
-        return {
-          id: pid,
-          player_id: pid,
-          registration_status: "",
-          is_guest: !profile && !!guest,
-          guest_display_name: guest?.display_name ?? null,
-          guest_linked_user_id: guest?.linked_user_id ?? null,
-          profiles: profile ?? null,
-        };
-      });
-
-      setPlayers([
-        ...activePlayersWithProfiles,
-        ...lookupPlayers.filter(
-          (lp) => !activePlayersWithProfiles.some((ap) => ap.player_id === lp.player_id)
-        ),
-      ]);
-
-      // Map schedule
-      const mappedSchedule = (scheduleData || []).map((match) => ({
-        ...match,
-        team_a_score: match.team1_score,
-        team_b_score: match.team2_score,
-        // Null-check, not truthiness — a 0 score is falsy, so `!!score`
-        // marked every shutout (11-0) as not-completed and dropped it
-        // from standings.
-        completed: match.team1_score !== null && match.team2_score !== null,
-      }));
-
-      setSchedule(mappedSchedule);
-
-      // Standings roster covers every id with a name fallback
-      const standingsRoster: Player[] = Array.from(allIds).map((pid) => {
-        const reg = (playersRaw || []).find((p: any) => p.player_id === pid || p.guest_player_id === pid);
-        const guest = guestsById.get(pid);
-        const profile = profilesById.get(pid);
-        return {
-          id: reg?.id ?? pid,
-          player_id: pid,
-          registration_status: reg?.registration_status ?? "",
-          is_guest: !profile && !!guest,
-          guest_display_name: guest?.display_name ?? (reg as any)?.guest_name ?? null,
-          guest_linked_user_id: guest?.linked_user_id ?? null,
-          profiles: profile ?? null,
-        };
-      });
-      calculateStandings(mappedSchedule, standingsRoster);
-    } catch (error) {
-      console.error("Error fetching event data:", error);
-      toast.error("Failed to load event details");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateStandings = (matches: ScheduleMatch[], playersList: Player[]) => {
-    // Canonical math shared with the organizer page and kiosk.
-    const participants = playersList
-      .map((p) => {
-        const key = p.player_id || (p as any).guest_player_id;
-        if (!key) return null;
-        const name =
-          p.profiles?.display_name ||
-          p.profiles?.full_name ||
-          (p.is_guest
-            ? guestSeatLabel(
-                { display_name: p.guest_display_name, linked_user_id: p.guest_linked_user_id },
-                p.guest_display_name,
-              )
-            : "Someone");
-        const active = (p as any).active;
-        return { key, name, active: active === undefined ? true : !!active };
-      })
-      .filter(Boolean) as { key: string; name: string; active: boolean }[];
-
-    setStandings(
-      computeStandings(matches as any, participants).map((r) => ({
-        playerId: r.key,
-        playerName: r.name,
-        wins: r.wins,
-        losses: r.losses,
-        pointsFor: r.pointsFor,
-        pointsAgainst: r.pointsAgainst,
-        gamesPlayed: r.gamesPlayed,
-        isRemoved: r.isRemoved,
-      })),
-    );
-  };
-
+  const { players, byId, schedule, standings, groupedSchedule } = useMemo(
+    () => buildPlayerEventSnapshot(roster, rows), [roster, rows],
+  );
   const getPlayerName = (playerId: string | null) => {
     if (!playerId) return "BYE";
     // playerId may be either a profile uuid or a guest_player uuid.
-    const player = players.find(
-      (p) => p.player_id === playerId || (p as any).guest_player_id === playerId,
-    );
+    const player = byId.get(playerId);
     if (!player) return "Someone";
     if (player.profiles) {
       return player.profiles.display_name || player.profiles.full_name || "Someone";
@@ -361,48 +99,6 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
-
-  const groupedSchedule = schedule.reduce((acc, match) => {
-    if (!acc[match.round_no]) acc[match.round_no] = [];
-    acc[match.round_no].push(match);
-    return acc;
-  }, {} as Record<number, ScheduleMatch[]>);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="relative h-16 w-16 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"></div>
-          </div>
-          <p className="text-muted-foreground font-medium">Loading event...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!event) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-muted-foreground mb-4">Event not found</p>
-          <Button onClick={() => navigate(-1)} variant="outline">
-            Go Back
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
 
   const myIds = new Set(userId ? [userId, ...players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : []);
   const { current: myMatch, next: nextMatch, onTeamA, resting } = playerRoundFocus(schedule, myIds, event.current_round || 1);
@@ -457,6 +153,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       {/* Main Content Area */}
       <main className="rr-event-width rr-event-main rr-player-main" aria-label="Player event view">
+        {loadError && <div role="alert" className="flex items-center gap-3 rounded-xl border border-destructive/30 p-3 text-sm">{loadError}<Button size="sm" variant="outline" onClick={onRetry}>Retry</Button></div>}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -662,6 +359,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                 )}
                               </div>
                             </div>
+                            {!player.active && <Badge variant="outline" className="text-xs">Removed</Badge>}
                             {player.registration_status === "waitlisted" && (
                               <Badge variant="outline" className="text-xs">Waitlist</Badge>
                             )}
