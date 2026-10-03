@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { VenueRoundRobinContext } from "@/components/venue/VenueRoundRobinContext";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -160,6 +160,7 @@ interface Player {
     full_name: string | null;
     display_name: string | null;
     avatar_url?: string | null;
+    current_rating?: number | null;
     gender?: string | null;
   } | null;
   guest_players?: {
@@ -284,7 +285,6 @@ export default function RoundRobinDetail() {
   const [completingEvent, setCompletingEvent] = useState(false);
   const fetchRequestRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [regenConfirmOpen, setRegenConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
@@ -313,69 +313,6 @@ export default function RoundRobinDetail() {
     cancel: () => void;
   } | null>(null);
   const [resolvingActiveMatch, setResolvingActiveMatch] = useState(false);
-
-  useEffect(() => {
-    if (!id || !authUser) return;
-    fetchEventDetails();
-    
-    // Event-scoped channel name — a shared name collides if two detail
-    // views are ever mounted (or remount mid-teardown on fast nav).
-    const channel = supabase
-      .channel(`round-robin-changes-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_events',
-          filter: `id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_schedule',
-          filter: `event_id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_players',
-          filter: `event_id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .subscribe();
-
-    return () => {
-      fetchRequestRef.current += 1;
-      if (realtimeRefreshTimerRef.current) {
-        clearTimeout(realtimeRefreshTimerRef.current);
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [id, authUser?.id]);
-
-  // A transactional rebuild inserts many schedule rows, and Supabase emits a
-  // realtime event for each one. Coalesce that burst into one authoritative
-  // refresh so the host view does not flicker or launch dozens of duplicate
-  // roster/profile queries.
-  const scheduleRealtimeRefresh = () => {
-    if (realtimeRefreshTimerRef.current) {
-      clearTimeout(realtimeRefreshTimerRef.current);
-    }
-    realtimeRefreshTimerRef.current = setTimeout(() => {
-      realtimeRefreshTimerRef.current = null;
-      void fetchEventDetails();
-    }, 180);
-  };
 
   const fetchAuditHistory = useCallback(async () => {
     if (!id) return;
@@ -421,7 +358,7 @@ export default function RoundRobinDetail() {
     if (auditHistoryOpen) void fetchAuditHistory();
   }, [auditHistoryOpen, fetchAuditHistory]);
 
-  const fetchEventDetails = async () => {
+  const fetchEventDetails = useCallback(async () => {
     if (!id || !authUser) return;
     const request = ++fetchRequestRef.current;
     try {
@@ -475,7 +412,7 @@ export default function RoundRobinDetail() {
           profileIds.size > 0
             ? supabase
                 .from("profiles_public")
-                .select("id, full_name, display_name, avatar_url, gender")
+                .select("id, full_name, display_name, avatar_url, gender, current_rating")
                 .in("id", [...profileIds]).abortSignal(signal)
             : Promise.resolve({ data: [], error: null }),
           guestIds.size > 0
@@ -504,7 +441,7 @@ export default function RoundRobinDetail() {
         if (missingLinkedProfileIds.length > 0) {
           const { data: linkedProfiles, error: linkedProfilesError } = await supabase
             .from("profiles_public")
-            .select("id, full_name, display_name, avatar_url, gender")
+            .select("id, full_name, display_name, avatar_url, gender, current_rating")
             .in("id", missingLinkedProfileIds).abortSignal(signal);
           if (linkedProfilesError) {
             console.error("Error hydrating linked guest profiles:", linkedProfilesError);
@@ -562,7 +499,76 @@ export default function RoundRobinDetail() {
       console.error("Round-robin refresh failed:", getErrorCode(error), getErrorMessage(error));
       setLoading(false);
     }
-  };
+  }, [id, authUser]);
+
+  // A transactional rebuild inserts many schedule rows, and Supabase emits a
+  // realtime event for each one. Coalesce that burst into one authoritative
+  // refresh so the host view does not flicker or launch dozens of duplicate
+  // roster/profile queries.
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeRefreshTimerRef.current) {
+      clearTimeout(realtimeRefreshTimerRef.current);
+    }
+    realtimeRefreshTimerRef.current = setTimeout(() => {
+      realtimeRefreshTimerRef.current = null;
+      void fetchEventDetails();
+    }, 180);
+  }, [fetchEventDetails]);
+
+  useEffect(() => {
+    if (!id || !authUser) return;
+    void fetchEventDetails();
+
+    // Event-scoped channel name — a shared name collides if two detail
+    // views are ever mounted (or remount mid-teardown on fast nav).
+    const channel = supabase
+      .channel(`round-robin-changes-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_events',
+          filter: `id=eq.${id}`
+        },
+        () => scheduleRealtimeRefresh()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_schedule',
+          filter: `event_id=eq.${id}`
+        },
+        () => scheduleRealtimeRefresh()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_players',
+          filter: `event_id=eq.${id}`
+        },
+        () => scheduleRealtimeRefresh()
+      )
+      .subscribe();
+
+    // The shared read also owns resume updates for the player view.
+    const onVisible = () => { if (document.visibilityState === "visible") scheduleRealtimeRefresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      fetchRequestRef.current += 1;
+      if (realtimeRefreshTimerRef.current) {
+        clearTimeout(realtimeRefreshTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [id, authUser, fetchEventDetails, scheduleRealtimeRefresh]);
 
   // Auto-trigger rating recalculation for completed events with unprocessed matches
   useEffect(() => {
@@ -748,11 +754,12 @@ export default function RoundRobinDetail() {
     }));
   };
 
-  const calculateStandings = useCallback((scheduleData: ScheduleMatch[], playersData: Player[]) => {
+  const standings = useMemo<StandingsRow[]>(() => {
+    if (!isOrganizer && !isAdmin) return [];
     // Canonical standings math lives in src/lib/roundRobin/standings.ts so the
     // organizer page, kiosk, and player view can never diverge on tie-breaks
     // or on how removed/withdrawn players are ranked.
-    const participants = playersData
+    const participants = players
       .map((p) => {
         const key = p.player_id || (p as any).guest_player_id;
         if (!key) return null;
@@ -766,23 +773,17 @@ export default function RoundRobinDetail() {
       })
       .filter(Boolean) as { key: string; name: string; active: boolean }[];
 
-    setStandings(
-      computeStandings(scheduleData, participants).map((r) => ({
-        player_id: r.key,
-        player_name: r.name,
-        wins: r.wins,
-        losses: r.losses,
-        points_for: r.pointsFor,
-        points_against: r.pointsAgainst,
-        point_diff: r.pointDiff,
-        isRemoved: r.isRemoved,
-      })),
-    );
-  }, []);
-
-  useEffect(() => {
-    calculateStandings(schedule, players);
-  }, [schedule, players, calculateStandings]);
+    return computeStandings(schedule, participants).map((r) => ({
+      player_id: r.key,
+      player_name: r.name,
+      wins: r.wins,
+      losses: r.losses,
+      points_for: r.pointsFor,
+      points_against: r.pointsAgainst,
+      point_diff: r.pointDiff,
+      isRemoved: r.isRemoved,
+    }));
+  }, [schedule, players, isOrganizer, isAdmin]);
 
   const showCommittedScore = (scheduleId: string, team1: number, team2: number, matchId: string) => {
     // The RPC has committed. Show that result immediately, before any refresh,
@@ -1774,69 +1775,21 @@ export default function RoundRobinDetail() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="relative h-16 w-16 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"></div>
-          </div>
-          <p className="text-muted-foreground font-medium">Loading event...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-muted-foreground mb-4">{loadError || "Event not found"}</p>
-          {loadError && <Button onClick={() => void fetchEventDetails()} className="mr-2">Retry</Button>}
-          <Button onClick={() => navigate(backHref)} variant="outline">
-            Go Back
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (groupId && event.group_id !== groupId) {
-    return <div role="alert" className="space-y-3 p-6"><p>This round robin belongs to a different venue.</p><Button variant="outline" onClick={() => navigate(backHref)}>Back to venue competitions</Button></div>;
-  }
-
-  // Non-organizers see simplified view
-  if (!isOrganizer && !isAdmin) {
-    return <PlayerRoundRobinView eventId={id || ""} userId={userId} />;
-  }
-
-  // Organizers and admins see full view
-  const activeRoster = players.filter((player) => player.active !== false);
+  // UI-only changes (score drafts, tabs, menus) must not regenerate a rotation.
+  const activeRoster = useMemo(() => players.filter((player) => player.active !== false), [players]);
   const hasSchedule = schedule.length > 0;
-  const canGenerate = activeRoster.length >= 4;
-  const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
-  const currentRound = event.current_round || 1;
-  const progress = roundProgress(schedule.filter(m => m.round_no === currentRound));
+  const currentRound = event?.current_round || 1;
 
-  const buildScheduleImpactPlan = ({
+  const buildScheduleImpactPlan = useCallback(({
     numCourts,
     gamesPerPlayer,
-    equalGames = event.equal_games ?? false,
+    equalGames = event?.equal_games ?? false,
   }: {
     numCourts: number;
     gamesPerPlayer: number;
     equalGames?: boolean;
   }): ScheduleAdjustmentPlan | null => {
+    if (!event) return null;
     const toSeatId = (playerId: string | null, guestId: string | null): SeatId | null =>
       playerId ? `p:${playerId}` : guestId ? `g:${guestId}` : null;
     const activeSeatIds = activeRoster
@@ -1912,16 +1865,67 @@ export default function RoundRobinDetail() {
       existingGameCredits,
       existingFirstEligibleRounds,
     });
-  };
+  }, [event, activeRoster, schedule, currentRound]);
 
-  const getImpactPlayerName = (seatId: SeatId) => getPlayerName(seatId.slice(2));
-
-  const currentSchedulePlan = hasSchedule
+  const currentSchedulePlan = useMemo(() => event && hasSchedule && (isOrganizer || isAdmin)
     ? buildScheduleImpactPlan({
         numCourts: event.num_courts,
         gamesPerPlayer: event.games_per_player || 3,
       })
-    : null;
+    : null, [event, hasSchedule, isOrganizer, isAdmin, buildScheduleImpactPlan]);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative h-16 w-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"></div>
+          </div>
+          <p className="text-muted-foreground font-medium">Loading event...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+          <p className="text-muted-foreground mb-4">{loadError || "Event not found"}</p>
+          {loadError && <Button onClick={() => void fetchEventDetails()} className="mr-2">Retry</Button>}
+          <Button onClick={() => navigate(backHref)} variant="outline">
+            Go Back
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (groupId && event.group_id !== groupId) {
+    return <div role="alert" className="space-y-3 p-6"><p>This round robin belongs to a different venue.</p><Button variant="outline" onClick={() => navigate(backHref)}>Back to venue competitions</Button></div>;
+  }
+
+  // Non-organizers see simplified view
+  if (!isOrganizer && !isAdmin) {
+    return <PlayerRoundRobinView key={`${id}:${userId}`} event={event} roster={players} rows={schedule} userId={userId} loadError={loadError} onRetry={() => void fetchEventDetails()} />;
+  }
+
+  // Organizers and admins see full view
+  const canGenerate = activeRoster.length >= 4;
+  const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
+  const progress = roundProgress(schedule.filter(m => m.round_no === currentRound));
+
+  const getImpactPlayerName = (seatId: SeatId) => getPlayerName(seatId.slice(2));
+
   const repairFromRound = currentSchedulePlan
     ? currentSchedulePlan.capacity.protectedThroughRound + 1
     : (event.status === "draft" ? 1 : currentRound + 1);

@@ -136,7 +136,6 @@ describe("complete schedule reader contract", () => {
   );
   const readers = [
     "src/pages/RoundRobinDetail.tsx",
-    "src/components/round-robin/PlayerRoundRobinView.tsx",
     "src/lib/roundRobin/kioskData.ts",
   ];
 
