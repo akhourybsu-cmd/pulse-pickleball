@@ -58,6 +58,7 @@ function tabOwns(tabPath: string, pathname: string): boolean {
       ownsPath("/player/messages", pathname)
     );
   }
+  if (tabPath === '/player/profile' && pathname === '/player/payments') return true;
   return ownsPath(tabPath, pathname);
 }
 

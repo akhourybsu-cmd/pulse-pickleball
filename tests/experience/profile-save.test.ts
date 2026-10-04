@@ -4,13 +4,14 @@ const mock = vi.hoisted(() => ({
   update: vi.fn(),
   eq: vi.fn(),
   select: vi.fn(),
+  abortSignal: vi.fn(),
   maybeSingle: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mock }));
 import { saveProfileChange } from "@/lib/saveProfileChange";
 beforeEach(() => {
   vi.resetAllMocks();
-  for (const method of [mock.from, mock.update, mock.eq, mock.select])
+  for (const method of [mock.from, mock.update, mock.eq, mock.select, mock.abortSignal])
     method.mockReturnValue(mock);
 });
 it("verifies that the current player profile actually changed", async () => {

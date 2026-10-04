@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthState } from '@/hooks/useAuthState';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -15,46 +18,51 @@ const PROVIDERS: { id: Provider; label: string }[] = [
 ];
 
 export function LinkedAccounts() {
-  const [identities, setIdentities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuthState();
+  const client = useQueryClient();
   const [busy, setBusy] = useState<Provider | null>(null);
-
-  const refresh = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.auth.getUserIdentities();
-    if (!error && data) setIdentities(data.identities ?? []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    refresh();
-  }, []);
-
+  const lock = useRef(false);
+  const query = useQuery({
+    queryKey: ['account-identities', user?.id], enabled: !!user,
+    staleTime: 60_000, refetchOnWindowFocus: false, retry: false,
+    queryFn: async () => {
+      const { data, error } = await withAuthDeadline(() => supabase.auth.getUserIdentities());
+      if (error) throw error;
+      if (!data) throw new Error('Sign-in methods could not be loaded.');
+      return data.identities;
+    },
+  });
+  const identities = query.data ?? [];
+  const loading = query.isLoading;
   const isLinked = (p: Provider) => identities.some((i) => i.provider === p);
 
   const handleLink = async (p: Provider) => {
+    if (lock.current || !query.data || query.isError) return;
+    lock.current = true;
     setBusy(p);
     try {
-      const { data, error } = await supabase.auth.linkIdentity({
+      const { data, error } = await withAuthDeadline(() => supabase.auth.linkIdentity({
         provider: p,
-        options: { redirectTo: `${window.location.origin}/player/profile` },
-      });
+        options: { redirectTo: `${window.location.origin}/player/profile/security` },
+      }));
       if (error) throw error;
       // Browser redirects to provider; no further action needed
-      if (!data?.url) await refresh();
+      if (!data?.url) await query.refetch();
     } catch (e: any) {
       toast({
         title: `Could not link ${p}`,
         description: e?.message ?? "Please try again.",
         variant: "destructive",
       });
+    } finally {
+      lock.current = false;
       setBusy(null);
     }
   };
 
   const handleUnlink = async (p: Provider) => {
     const identity = identities.find((i) => i.provider === p);
-    if (!identity) return;
+    if (!identity || lock.current || query.isError) return;
     if (identities.length <= 1) {
       toast({
         title: "Cannot unlink",
@@ -63,12 +71,13 @@ export function LinkedAccounts() {
       });
       return;
     }
+    lock.current = true;
     setBusy(p);
     try {
-      const { error } = await supabase.auth.unlinkIdentity(identity);
+      const { error } = await withAuthDeadline(() => supabase.auth.unlinkIdentity(identity));
       if (error) throw error;
       toast({ title: `${p} unlinked` });
-      await refresh();
+      client.setQueryData(['account-identities', user?.id], identities.filter(i => i.id !== identity.id));
     } catch (e: any) {
       toast({
         title: `Could not unlink ${p}`,
@@ -76,6 +85,7 @@ export function LinkedAccounts() {
         variant: "destructive",
       });
     } finally {
+      lock.current = false;
       setBusy(null);
     }
   };
@@ -89,12 +99,13 @@ export function LinkedAccounts() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {query.isError && <p role="alert" className="text-sm">Couldn’t load your sign-in methods. <Button variant="link" onClick={() => void query.refetch()}>Try again</Button></p>}
         {PROVIDERS.map((p, idx) => {
           const linked = isLinked(p.id);
           return (
             <div key={p.id}>
               {idx > 0 && <Separator className="mb-4" />}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <Label className="font-medium flex items-center gap-2">
                     {p.label}
@@ -112,7 +123,7 @@ export function LinkedAccounts() {
                 </div>
                 <Button
                   variant="outline"
-                  disabled={loading || busy === p.id}
+                  disabled={loading || !!busy || query.isError || !user || (linked && identities.length <= 1)}
                   onClick={() => (linked ? handleUnlink(p.id) : handleLink(p.id))}
                 >
                   {linked ? (

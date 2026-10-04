@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useAuthState } from '@/hooks/useAuthState';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { saveProfileChange } from '@/lib/saveProfileChange';
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +23,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const MFAManagement = () => {
+  const { user } = useAuthState();
+  const lock = useRef(false);
+  const [disabling, setDisabling] = useState(false);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "sms" | "none">("none");
   const [loading, setLoading] = useState(true);
@@ -38,7 +44,6 @@ export const MFAManagement = () => {
     setLoading(true);
     setStatusError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setAccountEmail(user.email ?? '');
       const status = await getMfaStatus();
@@ -54,23 +59,24 @@ export const MFAManagement = () => {
   };
 
   const handleDisableMFA = async () => {
+    if (lock.current || !user) return;
+    lock.current = true;
+    setDisabling(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       await confirmMfaSession();
       // Supabase requires aal2 for removing verified factors. Handle all of
       // them, and never announce a downgrade when an API operation failed.
       if (mfaMethod === "authenticator") {
-        const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+        const { data: factors, error: listError } = await withAuthDeadline(() => supabase.auth.mfa.listFactors());
         if (listError) throw listError;
         for (const factor of factors.all.filter(f => f.status === 'verified')) {
-          const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          const { error } = await withAuthDeadline(() => supabase.auth.mfa.unenroll({ factorId: factor.id }));
           if (error) throw error;
         }
       }
-      const { error: settingError } = await supabase.from('profiles').update({ mfa_method: 'none' }).eq('id', user.id);
-      if (settingError) throw settingError;
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      await saveProfileChange(user.id, { mfa_method: 'none' });
+      const { error: refreshError } = await withAuthDeadline(() => supabase.auth.refreshSession());
       if (refreshError) throw refreshError;
 
       toast.success("MFA has been disabled");
@@ -79,7 +85,7 @@ export const MFAManagement = () => {
       setShowDisableDialog(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to disable MFA");
-    }
+    } finally { lock.current = false; setDisabling(false); }
   };
 
   const handleMethodSelect = (method: "authenticator" | "email" | "sms") => {
@@ -93,6 +99,7 @@ export const MFAManagement = () => {
     }
   };
 
+  if (statusError) return <Card><CardHeader><CardTitle>Sign-in protection</CardTitle></CardHeader><CardContent><p role="alert" className="text-sm">{statusError}</p><Button variant="outline" onClick={() => void checkMFAStatus()}>Try again</Button></CardContent></Card>;
   if (loading) {
     return (
       <Card>
@@ -190,7 +197,7 @@ export const MFAManagement = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDisableMFA} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction disabled={disabling} onClick={event => { event.preventDefault(); void handleDisableMFA(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Disable MFA
             </AlertDialogAction>
           </AlertDialogFooter>

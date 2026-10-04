@@ -1,6 +1,7 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { useAuthState } from '@/hooks/useAuthState';
+import { AccountPageHeader } from '@/components/profile/AccountPageHeader';
+import { PasswordSettings } from "@/components/profile/PasswordSettings";
+import { ShieldCheck } from "lucide-react";
 import { LinkedAccounts } from "@/components/profile/LinkedAccounts";
 import { MFAManagement } from "@/components/auth/MFAManagement";
 import { BiometricSetup } from "@/components/auth/BiometricSetup";
@@ -12,30 +13,21 @@ import { BiometricSetup } from "@/components/auth/BiometricSetup";
  * page is where users enroll and manage those methods.
  */
 export default function SecuritySettings() {
-  const navigate = useNavigate();
+  const { user } = useAuthState();
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-3 px-4 h-14">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Security</h1>
-          </div>
-        </div>
-      </header>
+      <AccountPageHeader icon={ShieldCheck} title="Sign-in & security" subtitle="Manage your password and sign-in protection." />
 
-      <main className="max-w-lg mx-auto p-4 space-y-6">
+      <main className="max-w-2xl mx-auto p-4 space-y-6">
         <p className="text-sm text-muted-foreground">
           Protect your account with two-factor authentication and biometric
           sign-in, and manage the accounts you use to log in.
         </p>
-        <MFAManagement />
-        <BiometricSetup />
-        <LinkedAccounts />
+        <PasswordSettings key={`password:${user?.id}`} />
+        <MFAManagement key={`mfa:${user?.id}`} />
+        <BiometricSetup key={`biometric:${user?.id}`} />
+        <LinkedAccounts key={`linked:${user?.id}`} />
       </main>
     </div>
   );

@@ -8,6 +8,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { GroupInboxProvider, useGroupInboxUnreadCount } from '@/hooks/useSocialInbox';
 import { ShellContentTransition } from '@/components/layout/ShellContentTransition';
+import { ACCOUNT_PATHS, accountTabDestination, writeAccountState } from '@/lib/accountSession';
 import { PRIMARY_TABS, primaryTabPath } from '@/lib/navigation/primaryTabs';
 import { routeAnnouncement } from '@/lib/navigation/navClassification';
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
@@ -147,6 +148,13 @@ function PlayerShellContent() {
   // place the paid gate flips). When a player isn't entitled we drop it from
   // the rendered bar entirely, so nav and access flip together.
   const { entitled: leagueEntitled } = useLeagueEntitlement();
+  useEffect(() => {
+    if (authUser?.id && ACCOUNT_PATHS.has(location.pathname)) {
+      // Do not retain OAuth/payment return tokens in the navigation history.
+      writeAccountState(authUser.id, 'last-page', location.pathname);
+    }
+  }, [authUser?.id, location.pathname]);
+  const profileDestination = authUser ? accountTabDestination(authUser.id, location.pathname) : '/player/profile';
   const navItems = useMemo(
     () =>
       PRIMARY_TABS
@@ -257,7 +265,7 @@ function PlayerShellContent() {
                   return (
                     <NavLink
                       key={item.to}
-                      to={item.to}
+                      to={item.to === '/player/profile' ? profileDestination : item.to}
                       onMouseEnter={() => handlePrefetch(item.to)}
                       className={cn(
                         'relative flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-[transform,color,background-color,box-shadow] xl:px-4',
@@ -400,7 +408,7 @@ function PlayerShellContent() {
               return (
                 <NavLink
                   key={item.to}
-                  to={item.to}
+                  to={item.to === '/player/profile' ? profileDestination : item.to}
                   onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
                     // flex-1 + min-w-0 so N tabs split the row into equal

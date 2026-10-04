@@ -1,21 +1,31 @@
-import { useAuthState } from '@/hooks/useAuthState';
-import { useQueryClient } from '@tanstack/react-query';
-import { saveProfileChange } from '@/lib/saveProfileChange';
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { AccountPageHeader } from "@/components/profile/AccountPageHeader";
+import { withAuthDeadline } from "@/lib/authDeadline";
+import { useAccountSessionState } from "@/lib/accountSession";
+import { sanitizeRedirectPath } from "@/lib/authRedirect";
+import { useAuthState } from "@/hooks/useAuthState";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { saveProfileChange } from "@/lib/saveProfileChange";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { sendAuthEmail } from "@/lib/authEmail";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { UserCog, User, MapPin, Trophy, Gamepad2, Bell, KeyRound, ChevronRight, Loader2, Lock, ShieldCheck } from "lucide-react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import {
+  UserCog,
+  User,
+  MapPin,
+  Trophy,
+  Gamepad2,
+  Loader2,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CityAutocomplete } from "@/components/match-wizard/CityAutocomplete";
@@ -28,14 +38,12 @@ import { TournamentInfoTab } from "@/components/profile/TournamentInfoTab";
 import { PlayStyleTab } from "@/components/profile/PlayStyleTab";
 import { TournamentReadinessCard } from "@/components/profile/TournamentReadinessCard";
 
-import { calculateProfileCompleteness } from "@/lib/profileCompleteness";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import {
   prepareImageForUpload,
   storagePathFromPublicUrl,
   type ImageFit,
 } from "@/lib/images/prepareImageUpload";
-
 
 interface ProfileData {
   display_name: string | null;
@@ -59,7 +67,12 @@ interface ProfileData {
   skill_level_self: string | null;
 }
 
-type SectionKey = "identity" | "location" | "discovery" | "tournament" | "playstyle";
+type SectionKey =
+  | "identity"
+  | "location"
+  | "discovery"
+  | "tournament"
+  | "playstyle";
 
 const focusToSection = (focus: string | null): SectionKey | null => {
   if (focus === "tournament") return "tournament";
@@ -69,120 +82,168 @@ const focusToSection = (focus: string | null): SectionKey | null => {
   return null;
 };
 
+const EMPTY_DRAFT: Partial<ProfileData> = {};
+const DEFAULT_PROFILE: ProfileData = {
+  display_name: null,
+  first_name: null,
+  last_name: null,
+  full_name: null,
+  name_locked: false,
+  avatar_url: null,
+  town: null,
+  state: null,
+  location_name: null,
+  location_place_id: null,
+  location_lat: null,
+  location_lng: null,
+  discoverable_by_location: false,
+  handedness: null,
+  play_side: null,
+  phone_number: null,
+  date_of_birth: null,
+  gender: null,
+  skill_level_self: null,
+};
+
 const EditProfile = () => {
-  const { refresh: refreshAuthProfile } = useAuthState();
+  const { user } = useAuthState();
+  return user ? <ProfileEditor key={user.id} /> : null;
+};
+
+const ProfileEditor = () => {
+  const { user, refresh: refreshAuthProfile } = useAuthState();
   const queryClient = useQueryClient();
-  const refreshProfileViews = async () => {
-    await Promise.all([
-      refreshAuthProfile(),
-      ...['view-profile', 'nearby-players', 'group-members', 'group-posts'].map(
-        key => queryClient.invalidateQueries({ queryKey: [key] })
-      ),
-    ]);
-  };
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [avatarFit, setAvatarFit] = useState<ImageFit>('contain');
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
-  const [confirmingName, setConfirmingName] = useState(false);
-  
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  const returnUrl = searchParams.get("return");
+  const returnUrl = searchParams.get("return")
+    ? sanitizeRedirectPath(searchParams.get("return"))
+    : null;
   const focusSection = focusToSection(searchParams.get("focus"));
-
-  const [openSections, setOpenSections] = useState<string[]>(
+  const [openSections, setOpenSections] = useAccountSessionState<string[]>(
+    user!.id,
+    "profile-sections",
     focusSection ? [focusSection] : ["identity"]
   );
-
-  const [formData, setFormData] = useState<ProfileData>({
-    display_name: null,
-    first_name: null,
-    last_name: null,
-    full_name: null,
-    name_locked: false,
-    avatar_url: null,
-    town: null,
-    state: null,
-    location_name: null,
-    location_place_id: null,
-    location_lat: null,
-    location_lng: null,
-    discoverable_by_location: false,
-    handedness: null,
-    play_side: null,
-    phone_number: null,
-    date_of_birth: null,
-    gender: null,
-    skill_level_self: null,
-  });
-
-  const completeness = useMemo(() => calculateProfileCompleteness(formData), [formData]);
-
   useEffect(() => {
-    const fetchData = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      setUser(user);
-
-      const { data: profileData, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        toast.error("Failed to load profile");
-        return;
-      }
-
-      setFormData({
+    if (focusSection)
+      setOpenSections((current) =>
+        current.includes(focusSection) ? current : [...current, focusSection]
+      );
+    // Only a new explicit focus link changes the section; returning keeps its state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSection]);
+  const [draft, setDraft] = useAccountSessionState<Partial<ProfileData>>(
+    user!.id,
+    "profile-draft",
+    EMPTY_DRAFT
+  );
+  const [uploading, setUploading] = useState(false);
+  const [avatarFit, setAvatarFit] = useState<ImageFit>("contain");
+  const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
+  const [confirmingName, setConfirmingName] = useState(false);
+  const savingLock = useRef(false);
+  const query = useQuery({
+    queryKey: ["account-profile", user!.id],
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: async () => {
+      const { data: profileData, error } = await withAuthDeadline((signal) =>
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user!.id)
+          .abortSignal(signal)
+          .single()
+      );
+      if (error) throw error;
+      if (!profileData) throw new Error("Your profile could not be loaded.");
+      return {
         display_name: profileData.display_name,
         first_name: profileData.first_name,
         last_name: profileData.last_name,
         full_name: profileData.full_name,
-        name_locked: (profileData as Record<string, unknown>).name_locked as boolean ?? false,
+        name_locked:
+          ((profileData as Record<string, unknown>).name_locked as boolean) ??
+          false,
         avatar_url: profileData.avatar_url,
         town: profileData.town,
         state: profileData.state,
         // Cast: these columns aren't in the generated types until regenerated
         // after the location-discovery migration is deployed.
-        location_name: (profileData as Record<string, unknown>).location_name as string ?? null,
-        location_place_id: (profileData as Record<string, unknown>).location_place_id as string ?? null,
-        location_lat: (profileData as Record<string, unknown>).location_lat as number ?? null,
-        location_lng: (profileData as Record<string, unknown>).location_lng as number ?? null,
-        discoverable_by_location: (profileData as Record<string, unknown>).discoverable_by_location as boolean ?? false,
+        location_name:
+          ((profileData as Record<string, unknown>).location_name as string) ??
+          null,
+        location_place_id:
+          ((profileData as Record<string, unknown>)
+            .location_place_id as string) ?? null,
+        location_lat:
+          ((profileData as Record<string, unknown>).location_lat as number) ??
+          null,
+        location_lng:
+          ((profileData as Record<string, unknown>).location_lng as number) ??
+          null,
+        discoverable_by_location:
+          ((profileData as Record<string, unknown>)
+            .discoverable_by_location as boolean) ?? false,
         handedness: profileData.handedness,
         play_side: profileData.play_side,
         phone_number: profileData.phone_number,
         date_of_birth: profileData.date_of_birth,
         gender: profileData.gender,
         skill_level_self: profileData.skill_level_self,
-      });
-
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [navigate]);
-
-  const handleFormChange = (updates: Partial<ProfileData>) => {
-    setFormData((prev) => ({ ...prev, ...updates }));
+      } as ProfileData;
+    },
+  });
+  const loading = query.isLoading;
+  // A fresh read never overwrites unsaved fields. Locked names remain authoritative.
+  const formData: ProfileData = {
+    ...DEFAULT_PROFILE,
+    ...query.data,
+    ...draft,
+    name_locked: query.data?.name_locked ?? false,
+    ...(query.data?.name_locked
+      ? {
+          first_name: query.data.first_name,
+          last_name: query.data.last_name,
+          full_name: query.data.full_name,
+        }
+      : {}),
+  };
+  const commitSaved = (payload: Partial<ProfileData>, submitted = payload) => {
+    queryClient.setQueryData<ProfileData>(
+      ["account-profile", user!.id],
+      (old) => ({ ...DEFAULT_PROFILE, ...old, ...payload })
+    );
+    setDraft((current) => {
+      const next = { ...current };
+      for (const key of Object.keys(submitted) as (keyof ProfileData)[]) {
+        if (next[key] === submitted[key]) delete next[key];
+      }
+      return next;
+    });
+    // Refresh dependent screens in the background; a successful write is already saved.
+    void refreshAuthProfile();
+    for (const key of [
+      "player-profile",
+      "view-profile",
+      "nearby-players",
+      "group-members",
+      "group-posts",
+    ]) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFormChange = (updates: Partial<ProfileData>) =>
+    setDraft((prev) => ({ ...prev, ...updates }));
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
-    if (!file || !user?.id) return;
+    if (!file || !user?.id || savingLock.current) return;
+    savingLock.current = true;
 
     setUploading(true);
     try {
@@ -202,7 +263,7 @@ const EditProfile = () => {
         .from("avatars")
         .upload(filePath, prepared.blob, {
           contentType: prepared.blob.type,
-          cacheControl: '31536000',
+          cacheControl: "31536000",
         });
 
       if (uploadError) throw uploadError;
@@ -211,89 +272,108 @@ const EditProfile = () => {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      try {
-        await saveProfileChange(user.id, { avatar_url: publicUrl });
-      } catch (error) {
-        await supabase.storage.from('avatars').remove([filePath]);
-        throw error;
-      }
-      await refreshProfileViews();
-
-      const previousPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
-      setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
+      // Keep the uploaded file on an uncertain write outcome: deleting it could
+      // break a profile update that reached the server before a connection loss.
+      await saveProfileChange(user.id, { avatar_url: publicUrl });
+      const previousPath = storagePathFromPublicUrl(
+        formData.avatar_url,
+        "avatars"
+      );
+      commitSaved({ avatar_url: publicUrl });
       if (previousPath && previousPath !== filePath) {
-        void supabase.storage.from('avatars').remove([previousPath]);
+        void supabase.storage.from("avatars").remove([previousPath]);
       }
       toast.success(
-        `Profile picture updated · ${avatarFit === 'contain' ? 'full photo shown' : 'frame filled'}`,
+        `Profile picture updated · ${
+          avatarFit === "contain" ? "full photo shown" : "frame filled"
+        }`
       );
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error(getErrorMessage(error, "Failed to upload profile picture"));
     } finally {
+      savingLock.current = false;
       setUploading(false);
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   const handleRemoveAvatar = async () => {
-    if (!user?.id || !formData.avatar_url) return;
+    if (!user?.id || !formData.avatar_url || savingLock.current) return;
+    savingLock.current = true;
+    setUploading(true);
     try {
-      const oldPath = storagePathFromPublicUrl(formData.avatar_url, 'avatars');
+      const oldPath = storagePathFromPublicUrl(formData.avatar_url, "avatars");
       await saveProfileChange(user.id, { avatar_url: null });
-      setFormData(prev => ({ ...prev, avatar_url: null }));
-      await refreshProfileViews();
+      commitSaved({ avatar_url: null });
       if (oldPath) {
-        void supabase.storage.from('avatars').remove([oldPath])
-          .catch(error => console.warn('Old avatar cleanup failed', error));
+        void supabase.storage
+          .from("avatars")
+          .remove([oldPath])
+          .catch((error) => console.warn("Old avatar cleanup failed", error));
       }
       toast.success("Profile picture removed");
     } catch (error) {
       console.error("Error removing avatar:", error);
       toast.error("Failed to remove profile picture");
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!user?.email) return;
-    setResettingPassword(true);
-    try {
-      await sendAuthEmail({
-        type: "recovery",
-        email: user.email,
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      toast.success("Password reset email sent! Check your inbox.");
-    } catch (error) {
-      console.error("Error sending password reset:", error);
-      toast.error("Failed to send password reset email");
     } finally {
-      setResettingPassword(false);
+      savingLock.current = false;
+      setUploading(false);
     }
   };
 
-  const saveSection = async (section: SectionKey, payload: Partial<ProfileData>) => {
-    if (!user?.id) return;
+  const saveSection = async (
+    section: SectionKey,
+    payload: Partial<ProfileData>
+  ) => {
+    if (!user?.id || savingLock.current) return;
 
     // First/last are only in the payload while the name is still editable
     // (unlocked). Once locked, the identity save carries display_name only,
     // so skip the required-name check in that case.
     if (section === "identity" && !formData.name_locked) {
-      if (!payload.first_name?.toString().trim() || !payload.last_name?.toString().trim()) {
+      if (
+        !payload.first_name?.toString().trim() ||
+        !payload.last_name?.toString().trim()
+      ) {
         toast.error("First and last name are required");
         return;
       }
     }
 
+    if (
+      section === "discovery" &&
+      payload.discoverable_by_location &&
+      (payload.location_lat == null || payload.location_lng == null)
+    ) {
+      toast.error("Choose a home city before enabling nearby discovery.");
+      return;
+    }
+    if (
+      payload.date_of_birth &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date_of_birth) ||
+        payload.date_of_birth > new Date().toISOString().slice(0, 10))
+    ) {
+      toast.error("Enter a valid date of birth in the past.");
+      return;
+    }
+    const normalized = Object.fromEntries(
+      Object.entries(payload).map(([key, value]) => [
+        key,
+        typeof value === "string" ? value.trim() || null : value,
+      ])
+    ) as Partial<ProfileData>;
+    savingLock.current = true;
     setSavingSection(section);
     try {
-      await saveProfileChange(user.id, payload);
-      await refreshProfileViews();
+      await saveProfileChange(user.id, normalized);
+      commitSaved(normalized, payload);
       toast.success("Saved");
     } catch (error) {
       console.error("Error saving section:", error);
       toast.error("Failed to save");
     } finally {
+      savingLock.current = false;
       setSavingSection(null);
     }
   };
@@ -302,7 +382,7 @@ const EditProfile = () => {
   // client path that flips name_locked false -> true; the DB guard freezes
   // first/last from that point on.
   const confirmName = async () => {
-    if (!user?.id) return;
+    if (!user?.id || savingLock.current) return;
     const first = formData.first_name?.trim();
     const last = formData.last_name?.trim();
     if (!first || !last) {
@@ -310,6 +390,7 @@ const EditProfile = () => {
       return;
     }
 
+    savingLock.current = true;
     setConfirmingName(true);
     try {
       await saveProfileChange(user.id, {
@@ -318,22 +399,50 @@ const EditProfile = () => {
         full_name: `${first} ${last}`,
         name_locked: true,
       });
-      await refreshProfileViews();
-      setFormData((prev) => ({
-        ...prev,
-        first_name: first,
-        last_name: last,
-        name_locked: true,
-      }));
+      commitSaved(
+        {
+          first_name: first,
+          last_name: last,
+          full_name: `${first} ${last}`,
+          name_locked: true,
+        },
+        {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+        }
+      );
       toast.success("Name locked in");
     } catch (error) {
       console.error("Error confirming name:", error);
       toast.error("Failed to lock in name");
     } finally {
+      savingLock.current = false;
       setConfirmingName(false);
     }
   };
 
+  if (query.isError && !query.data) {
+    return (
+      <div className="mx-auto max-w-2xl p-4">
+        <AccountPageHeader
+          icon={UserCog}
+          title="Edit profile"
+          subtitle="Your details and playing preferences."
+        />
+        <div role="alert" className="space-y-3 rounded-xl border p-4">
+          <p>
+            We couldn’t load your profile. Your unfinished edits have been kept.
+          </p>
+          <Button
+            onClick={() => void query.refetch()}
+            disabled={query.isFetching}
+          >
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -352,7 +461,7 @@ const EditProfile = () => {
     <Button
       size="sm"
       onClick={onClick}
-      disabled={savingSection === section}
+      disabled={!!savingSection || uploading || confirmingName}
       className="w-full sm:w-auto"
     >
       {savingSection === section ? (
@@ -390,15 +499,32 @@ const EditProfile = () => {
 
   return (
     <div>
-      <PlayerPageHeader
+      <AccountPageHeader
         icon={UserCog}
-        title="Edit Profile"
-        subtitle={formData.display_name || formData.first_name || "Your account settings"}
-        background="gradient"
+        title="Edit profile"
+        subtitle="Your details and playing preferences."
       />
 
       <div className="container mx-auto px-4 pt-4 pb-24 max-w-2xl space-y-4">
-        <TournamentReadinessCard completeness={completeness} />
+        {Object.keys(draft).length > 0 && (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm"
+          >
+            <p>
+              Unfinished edits are kept on this device for this tab. Save each
+              section to update your account.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!!savingSection || uploading || confirmingName}
+              onClick={() => setDraft({})}
+            >
+              Discard edits
+            </Button>
+          </div>
+        )}
 
         <Accordion
           type="multiple"
@@ -441,13 +567,17 @@ const EditProfile = () => {
               {!formData.name_locked && (
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
                   <div className="flex items-start gap-2">
-                    <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden />
+                    <ShieldCheck
+                      className="h-4 w-4 mt-0.5 shrink-0 text-primary"
+                      aria-hidden
+                    />
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Confirm your name</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        This is your name of record for leagues and tournaments. Once you
-                        lock it in, it can't be changed here — so make sure it's spelled
-                        correctly. Your <span className="font-medium">display name</span> stays
+                        This is your name of record for leagues and tournaments.
+                        Once you lock it in, it can't be changed here — so make
+                        sure it's spelled correctly. Your{" "}
+                        <span className="font-medium">display name</span> stays
                         editable.
                       </p>
                     </div>
@@ -525,7 +655,10 @@ const EditProfile = () => {
                 <SectionSaveButton
                   section="location"
                   onClick={() =>
-                    saveSection("location", { town: formData.town, state: formData.state })
+                    saveSection("location", {
+                      town: formData.town,
+                      state: formData.state,
+                    })
                   }
                 />
               </div>
@@ -536,15 +669,20 @@ const EditProfile = () => {
               <div className="rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Let nearby players find me</p>
+                    <p className="text-sm font-medium">
+                      Let nearby players find me
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Appear in other players' <span className="font-medium">Nearby</span> search by
+                      Appear in other players'{" "}
+                      <span className="font-medium">Nearby</span> search by
                       distance. You'll only see nearby players while this is on.
                     </p>
                   </div>
                   <Switch
                     checked={formData.discoverable_by_location}
-                    onCheckedChange={(v) => handleFormChange({ discoverable_by_location: v })}
+                    onCheckedChange={(v) =>
+                      handleFormChange({ discoverable_by_location: v })
+                    }
                     aria-label="Discoverable by nearby players"
                   />
                 </div>
@@ -558,7 +696,9 @@ const EditProfile = () => {
                       <div className="flex items-center justify-between gap-2 rounded-md border border-border/40 bg-background px-3 py-2">
                         <span className="text-sm flex items-center gap-1.5 min-w-0">
                           <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{formData.location_name}</span>
+                          <span className="truncate">
+                            {formData.location_name}
+                          </span>
                         </span>
                         <Button
                           variant="ghost"
@@ -588,9 +728,10 @@ const EditProfile = () => {
                         }
                       />
                     )}
-                    {!formData.location_lat && (
+                    {formData.location_lat == null && (
                       <p className="text-xs text-amber-600 dark:text-amber-500">
-                        Pick a home city so nearby players can be matched by distance.
+                        Pick a home city so nearby players can be matched by
+                        distance.
                       </p>
                     )}
                   </div>
@@ -605,7 +746,8 @@ const EditProfile = () => {
                         location_place_id: formData.location_place_id,
                         location_lat: formData.location_lat,
                         location_lng: formData.location_lng,
-                        discoverable_by_location: formData.discoverable_by_location,
+                        discoverable_by_location:
+                          formData.discoverable_by_location,
                       })
                     }
                   />
@@ -621,12 +763,8 @@ const EditProfile = () => {
             <AccordionTrigger className="hover:no-underline py-3">
               <SectionHeader
                 icon={Trophy}
-                title="Tournament Info"
-                hint={
-                  completeness.sections.tournament.status === "complete"
-                    ? "Ready for tournaments"
-                    : "Phone, DOB, gender, skill"
-                }
+                title="Player details"
+                hint="Optional contact, birth date and skill information"
               />
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-4 space-y-4">
@@ -663,7 +801,7 @@ const EditProfile = () => {
               <SectionHeader
                 icon={Gamepad2}
                 title="Play Style"
-              hint="Handedness, side"
+                hint="Handedness, side"
               />
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-4 space-y-4">
@@ -689,48 +827,15 @@ const EditProfile = () => {
           </AccordionItem>
         </Accordion>
 
-        {/* Account utilities */}
-        <div className="border rounded-xl bg-card divide-y divide-border overflow-hidden">
-          <Link
-            to="/settings/notifications"
-            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-          >
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Bell className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Notification preferences</div>
-              <div className="text-xs text-muted-foreground">Email, SMS, and push alerts</div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </Link>
-
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            disabled={resettingPassword}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors disabled:opacity-60"
-          >
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <KeyRound className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="text-sm font-medium">
-                {resettingPassword ? "Sending reset email..." : "Reset password"}
-              </div>
-              <div className="text-xs text-muted-foreground">Sends a link to your email</div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+        <TournamentReadinessCard />
 
         <div className="flex justify-center pt-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(returnUrl || "/player/dashboard")}
+            onClick={() => navigate(returnUrl || "/player/profile")}
           >
-            Done
+            Back to profile
           </Button>
         </div>
       </div>

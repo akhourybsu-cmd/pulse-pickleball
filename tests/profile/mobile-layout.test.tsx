@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { Gauge } from 'lucide-react';
@@ -7,12 +8,13 @@ import { SocialHero, SocialStatTile } from '@/components/social/_shared';
 import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+vi.mock('@/hooks/useAuthState', () => ({ useAuthState: () => ({ user: null }) }));
 vi.mock('@/lib/permissions', () => ({ isPlatformAdmin: vi.fn() }));
 vi.mock('@/lib/skill/featureFlag', () => ({ isSkillAssessmentEnabled: () => true }));
 
 describe('mobile Profile layout guards', () => {
   it('uses shrinkable tracks on phones and keeps the desktop two-column layout', () => {
-    const html = renderToStaticMarkup(<MemoryRouter><PlayerProfile /></MemoryRouter>);
+    const html = renderToStaticMarkup(<MemoryRouter><QueryClientProvider client={new QueryClient()}><PlayerProfile /></QueryClientProvider></MemoryRouter>);
     expect(html).toContain('grid min-w-0 grid-cols-1');
     expect(html).toContain('lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]');
     expect(html.match(/class="min-w-0 space-y-7"/g)).toHaveLength(2);
@@ -20,16 +22,16 @@ describe('mobile Profile layout guards', () => {
   });
 
   it('wraps menu descriptions without hiding information or removing destinations', () => {
-    const html = renderToStaticMarkup(<MemoryRouter><PlayerProfile /></MemoryRouter>);
+    const html = renderToStaticMarkup(<MemoryRouter><QueryClientProvider client={new QueryClient()}><PlayerProfile /></QueryClientProvider></MemoryRouter>);
     expect(html).toContain('break-words text-xs leading-relaxed');
     expect(html).not.toContain('truncate');
-    for (const label of ['Payments &amp; purchases', 'Edit profile', 'Notifications', 'Security', 'My Events', 'My Guests', 'Sign out']) {
+    for (const label of ['Payments &amp; purchases', 'Edit profile', 'Notifications', 'Sign-in &amp; security', 'My Events', 'My Guests', 'Sign out']) {
       expect(html).toContain(label);
     }
   });
 
   it('gives stats the full content width instead of squeezing them beside the avatar', () => {
-    const html = renderToStaticMarkup(<MemoryRouter><PlayerProfile /></MemoryRouter>);
+    const html = renderToStaticMarkup(<MemoryRouter><QueryClientProvider client={new QueryClient()}><PlayerProfile /></QueryClientProvider></MemoryRouter>);
     expect(html).toContain('data-testid="profile-stats" class="mt-3 grid min-w-0 max-w-2xl grid-cols-3');
     expect(html).toContain('data-testid="profile-identity"');
     expect(html).toContain('h-auto min-h-12');

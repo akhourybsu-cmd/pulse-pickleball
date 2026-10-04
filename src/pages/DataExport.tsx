@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { AccountPageHeader } from '@/components/profile/AccountPageHeader';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,18 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Shield, AlertCircle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
-import { Footer } from "@/components/Footer";
 
 export default function DataExport() {
   const navigate = useNavigate();
+  const lock = useRef(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
 
   const handleExportData = async () => {
+    if (lock.current) return;
+    lock.current = true;
     setExporting(true);
     try {
-      const { data, error } = await supabase.rpc('export_user_data');
+      const { data, error } = await withAuthDeadline(signal => supabase.rpc('export_user_data').abortSignal(signal), 30_000);
       
       if (error) throw error;
       
@@ -34,7 +37,7 @@ export default function DataExport() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       setExported(true);
       toast.success('Your data has been exported successfully!');
@@ -42,30 +45,21 @@ export default function DataExport() {
       console.error('Export error:', error);
       toast.error('Failed to export data: ' + error.message);
     } finally {
+      lock.current = false;
       setExporting(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <PageHeader />
+      <AccountPageHeader icon={Download} title="Export your data" subtitle="Download a copy of your player records." />
       
-      <div className="flex-1 container max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="w-8 h-8 text-primary" />
-            Export Your Data
-          </h1>
-          <p className="text-muted-foreground">
-            Download all your personal data stored in PULSE
-          </p>
-        </div>
+      <div className="flex-1 container max-w-2xl mx-auto px-4 py-8 space-y-6">
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            This feature is provided in compliance with GDPR's right to data portability. 
-            You can download a complete copy of all your personal data stored in PULSE.
+            Your export contains the records listed below in JSON format. Keep the downloaded file somewhere private.
           </AlertDescription>
         </Alert>
 
@@ -232,13 +226,13 @@ export default function DataExport() {
         </Card>
 
         <div className="flex justify-center">
-          <Button variant="outline" onClick={() => navigate('/profile/edit')}>
+          <Button variant="outline" onClick={() => navigate('/player/profile')}>
             Back to Profile Settings
           </Button>
         </div>
       </div>
 
-      <Footer />
+
     </div>
   );
 }

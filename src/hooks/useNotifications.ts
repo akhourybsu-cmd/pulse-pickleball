@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useId } from "react";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { useState, useEffect, useCallback, useRef, useId, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveView } from "@/contexts/ActiveViewContext";
@@ -309,33 +311,23 @@ export function useNotifications(
 
 // Preferences are account-scoped and report failed saves instead of silently reverting.
 export function useNotificationPreferences(userId: string | null | undefined) {
-  const [state, setState] = useState<{
-    userId: typeof userId;
-    rows: NotificationPreference[];
-  }>({ userId, rows: [] });
-  const [loading, setLoading] = useState(true),
-    [saving, setSaving] = useState(false);
+  const client = useQueryClient();
+  const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
-  const preferences = state.userId === userId ? state.rows : [];
-  useEffect(() => {
-    let active = true;
-    setLoading(!!userId);
-    setState({ userId, rows: [] });
-    if (userId)
-      void (async () => {
-        const { data, error } = await supabase
-          .from("notification_preferences")
-          .select("*")
-          .eq("user_id", userId);
-        if (!active) return;
-        if (error) toast.error("Notification preferences could not load.");
-        else setState({ userId, rows: data ?? [] });
-        setLoading(false);
-      })();
-    return () => {
-      active = false;
-    };
-  }, [userId]);
+  const query = useQuery({
+    queryKey: ['notification-preferences', userId],
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await withAuthDeadline(signal => supabase
+        .from('notification_preferences').select('*').eq('user_id', userId!).abortSignal(signal));
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const preferences = useMemo(() => query.data ?? [], [query.data]);
   const updatePreference = useCallback(
     async (
       category: string,
@@ -346,30 +338,24 @@ export function useNotificationPreferences(userId: string | null | undefined) {
         >
       >,
     ) => {
-      if (!userId || savingRef.current) return false;
+      if (!userId || savingRef.current || !query.data || query.isError) return false;
       savingRef.current = true;
       setSaving(true);
       try {
-        const { data, error } = await supabase
+        const { data, error } = await withAuthDeadline(signal => supabase
           .from("notification_preferences")
           .upsert(
             { user_id: userId, category, ...updates },
             { onConflict: "user_id,category" },
           )
           .select()
-          .single();
+          .abortSignal(signal)
+          .single());
         if (error) throw error;
-        setState((old) =>
-          old.userId === userId
-            ? {
-                userId,
-                rows: [
-                  ...old.rows.filter((p) => p.category !== category),
-                  data,
-                ],
-              }
-            : old,
-        );
+        if (!data) throw new Error('Preference was not confirmed.');
+        client.setQueryData<NotificationPreference[]>(['notification-preferences', userId], old => [
+          ...(old ?? []).filter(p => p.category !== category), data,
+        ]);
         return true;
       } catch (error) {
         toast.error("Notification preference was not saved. Please try again.");
@@ -380,7 +366,7 @@ export function useNotificationPreferences(userId: string | null | undefined) {
         setSaving(false);
       }
     },
-    [userId],
+    [userId, client, query.data, query.isError],
   );
   const getPreference = useCallback(
     (category: string) =>
@@ -389,7 +375,9 @@ export function useNotificationPreferences(userId: string | null | undefined) {
   );
   return {
     preferences,
-    loading,
+    loading: !!userId && query.isLoading,
+    error: query.isError,
+    refetch: query.refetch,
     saving,
     updatePreference,
     getPreference,

@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 // dismissible toast above every screen. The component file is kept on
 // disk in case we want to revive a global indicator later.
 // import { RoundRobinBanner } from "@/components/RoundRobinBanner";
+import { clearAccountSession } from '@/lib/accountSession';
 import { ScrollManager } from "@/components/ScrollManager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -416,6 +417,7 @@ const AppContent = () => {
         // this device never restores the previous user's data.
         queryClient.clear();
         clearPersistedQueryCache();
+        clearAccountSession();
       }
     });
 
@@ -790,6 +792,10 @@ const AppContent = () => {
               element={<DirectMessageChat />}
             />
             <Route path="profile/edit" element={<EditProfile />} />
+            <Route path="profile/notifications" element={<NotificationSettings />} />
+            <Route path="profile/security" element={<SecuritySettings />} />
+            <Route path="profile/blocked" element={<BlockedUsers />} />
+            <Route path="profile/data-export" element={<DataExport />} />
           </Route>
           {/* Legacy routes - redirect to new structure */}
           <Route
@@ -1000,20 +1006,18 @@ const AppContent = () => {
           {/* NOTE: /events/browse is intentionally redirected to /play above
               (the unified hub). The former <BrowseEvents /> route here was dead
               (shadowed by that earlier redirect) and has been removed. */}{" "}
-          <Route path="/profile/data-export" element={<DataExport />} />
+          <Route path="/profile/data-export" element={<RedirectWithParams to="/player/profile/data-export" />} />
           <Route
             path="/settings/notifications"
-            element={<NotificationSettings />}
+            element={<RedirectWithParams to="/player/profile/notifications" />}
           />
           <Route
             path="/settings/security"
             element={
-              <AuthGuard>
-                <SecuritySettings />
-              </AuthGuard>
+              <RedirectWithParams to="/player/profile/security" />
             }
           />
-          <Route path="/settings/blocked" element={<BlockedUsers />} />
+          <Route path="/settings/blocked" element={<RedirectWithParams to="/player/profile/blocked" />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
           <Route path="/events/:eventId" element={<AuthGuard><EventDetail /></AuthGuard>} />
