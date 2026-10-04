@@ -9,12 +9,17 @@ import { cn } from "@/lib/utils";
 
 export function TournamentReadinessCard({ className }: { className?: string }) {
   return (
-    <Card className={cn("border-primary/20 bg-primary/[0.03]", className)}>
+    <Card
+      className={cn(
+        "rounded-2xl border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card shadow-none hover:shadow-none",
+        className
+      )}
+    >
       <CardHeader className="space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-          <Trophy className="h-4 w-4" /> Coming soon
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <Trophy className="h-4 w-4 text-primary" aria-hidden /> Coming soon
         </div>
-        <CardTitle className="text-base">
+        <CardTitle className="text-base leading-snug sm:text-lg md:text-lg">
           Tournaments are coming to PULSE
         </CardTitle>
         <CardDescription className="leading-relaxed">

@@ -246,10 +246,10 @@ export function BiometricSetup() {
     finally { lock.current = false; setIsLoading(false); }
   };
 
-  if (loadingDevices || loadError) return <Card><CardHeader><CardTitle>Biometric authentication</CardTitle></CardHeader><CardContent>{loadError ? <div role="alert"><p>Couldn’t load your registered devices.</p><Button variant="outline" onClick={() => void loadCredentials()}>Try again</Button></div> : <p>Loading registered devices…</p>}</CardContent></Card>;
+  if (loadingDevices || loadError) return <Card data-account-card><CardHeader><CardTitle>Biometric authentication</CardTitle></CardHeader><CardContent data-account-content>{loadError ? <div role="alert"><p>Couldn’t load your registered devices.</p><Button variant="outline" onClick={() => void loadCredentials()}>Try again</Button></div> : <p>Loading registered devices…</p>}</CardContent></Card>;
   if (!isSupported) {
     return (
-      <Card>
+      <Card data-account-card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Fingerprint className="h-5 w-5" />
@@ -259,7 +259,7 @@ export function BiometricSetup() {
             Sign in faster with fingerprint or Face ID
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent data-account-content>
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -273,7 +273,7 @@ export function BiometricSetup() {
 
   return (
     <>
-      <Card>
+      <Card data-account-card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Fingerprint className="h-5 w-5" />
@@ -283,7 +283,7 @@ export function BiometricSetup() {
             Sign in faster with fingerprint or Face ID on this device. Your password will always work as a backup.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent data-account-content className="space-y-4">
           {biometricEnabled && credentials.length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">

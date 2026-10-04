@@ -1,31 +1,51 @@
-import { AccountPageHeader } from '@/components/profile/AccountPageHeader';
-import { Shield, UserCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useBlockedUsers } from '@/hooks/useMessagingSafety';
+import { AccountPageHeader } from "@/components/profile/AccountPageHeader";
+import { Shield, UserCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBlockedUsers } from "@/hooks/useMessagingSafety";
 
 const initials = (n: string | null) =>
-  (n || 'U').split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2);
+  (n || "U")
+    .split(" ")
+    .map((s) => s[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
 export default function BlockedUsers() {
-  const { blocked, loading, error, refetch, unblocking, unblock } = useBlockedUsers();
+  const { blocked, loading, error, refetch, unblocking, unblock } =
+    useBlockedUsers();
 
   return (
     <div className="min-h-screen bg-background">
-      <AccountPageHeader icon={Shield} title="Blocked players" subtitle="Manage who can contact you in PULSE." />
+      <AccountPageHeader
+        icon={Shield}
+        title="Blocked players"
+        subtitle="Manage who can contact you in PULSE."
+      />
 
-      <div className="p-4 max-w-2xl mx-auto space-y-3">
+      <div className="account-settings-content">
         <p className="text-sm text-muted-foreground">
-          Blocked users can't message you, add you to groups, or trigger notifications to you.
+          Blocked users can't message you, add you to groups, or trigger
+          notifications to you.
         </p>
 
-        {error ? <p role="alert" className="rounded-xl border p-4 text-sm">Couldn’t load your blocked players. <Button variant="link" onClick={() => void refetch()}>Try again</Button></p> : loading ? (
-          [1, 2].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)
+        {error ? (
+          <p role="alert" className="rounded-xl border p-4 text-sm">
+            Couldn’t load your blocked players.{" "}
+            <Button variant="link" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </p>
+        ) : loading ? (
+          [1, 2].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))
         ) : blocked.length === 0 ? (
-          <div className="flex flex-col items-center text-center py-16">
-            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <Shield className="h-5 w-5 text-muted-foreground/70" />
+          <div className="flex flex-col items-center rounded-2xl border border-border/60 bg-card px-5 py-14 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <Shield className="h-6 w-6 text-foreground" />
             </div>
             <h3 className="text-base font-medium mb-1">No one blocked</h3>
             <p className="text-sm text-muted-foreground max-w-[280px]">
@@ -33,19 +53,31 @@ export default function BlockedUsers() {
             </p>
           </div>
         ) : (
-          blocked.map(b => {
-            const name = b.profile?.display_name || b.profile?.full_name || 'Player';
+          blocked.map((b) => {
+            const name =
+              b.profile?.display_name || b.profile?.full_name || "Player";
             return (
-              <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+              <div
+                key={b.id}
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-4"
+              >
                 <Avatar className="h-11 w-11">
-                  <AvatarImage src={b.profile?.avatar_url || undefined} alt={name} />
+                  <AvatarImage
+                    src={b.profile?.avatar_url || undefined}
+                    alt={name}
+                  />
                   <AvatarFallback>{initials(name)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{name}</div>
                   <div className="text-xs text-muted-foreground">Blocked</div>
                 </div>
-                <Button variant="outline" size="sm" disabled={!!unblocking} onClick={() => void unblock(b.blocked_id)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!!unblocking}
+                  onClick={() => void unblock(b.blocked_id)}
+                >
                   <UserCheck className="h-4 w-4 mr-1.5" /> Unblock
                 </Button>
               </div>

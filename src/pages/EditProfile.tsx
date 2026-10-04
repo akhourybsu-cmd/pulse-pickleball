@@ -138,7 +138,11 @@ const ProfileEditor = () => {
     EMPTY_DRAFT
   );
   const [uploading, setUploading] = useState(false);
-  const [avatarFit, setAvatarFit] = useAccountSessionState<ImageFit>(user!.id, "profile-photo-fit", "contain");
+  const [avatarFit, setAvatarFit] = useAccountSessionState<ImageFit>(
+    user!.id,
+    "profile-photo-fit",
+    "contain"
+  );
   const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
   const [confirmingName, setConfirmingName] = useState(false);
   const savingLock = useRef(false);
@@ -462,7 +466,7 @@ const ProfileEditor = () => {
       size="sm"
       onClick={onClick}
       disabled={!!savingSection || uploading || confirmingName}
-      className="w-full sm:w-auto"
+      className="min-h-10 w-full rounded-xl px-6 sm:w-auto"
     >
       {savingSection === section ? (
         <>
@@ -484,14 +488,16 @@ const ProfileEditor = () => {
     title: string;
     hint?: string;
   }) => (
-    <div className="flex items-center gap-3 text-left w-full">
-      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-primary" />
+    <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
+      <div className="account-setting-icon">
+        <Icon className="h-[18px] w-[18px]" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{title}</div>
+        <div className="text-sm font-semibold sm:text-base">{title}</div>
         {hint && (
-          <div className="text-xs text-muted-foreground truncate">{hint}</div>
+          <div className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+            {hint}
+          </div>
         )}
       </div>
     </div>
@@ -505,7 +511,7 @@ const ProfileEditor = () => {
         subtitle="Your details and playing preferences."
       />
 
-      <div className="container mx-auto px-4 pt-4 pb-24 max-w-2xl space-y-4">
+      <div className="account-settings-content">
         {Object.keys(draft).length > 0 && (
           <div
             role="status"
@@ -532,11 +538,8 @@ const ProfileEditor = () => {
           onValueChange={setOpenSections}
           className="space-y-3"
         >
-          <AccordionItem
-            value="identity"
-            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
-          >
-            <AccordionTrigger className="hover:no-underline py-3">
+          <AccordionItem value="identity" className="account-editor-section">
+            <AccordionTrigger className="account-editor-trigger">
               <SectionHeader
                 icon={User}
                 title="Photo & Identity"
@@ -547,7 +550,7 @@ const ProfileEditor = () => {
                 }
               />
             </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4 space-y-4">
+            <AccordionContent className="account-editor-content">
               <ProfileIdentitySection
                 formData={{
                   first_name: formData.first_name,
@@ -608,7 +611,7 @@ const ProfileEditor = () => {
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="account-section-actions">
                 <SectionSaveButton
                   section="identity"
                   onClick={() =>
@@ -631,11 +634,8 @@ const ProfileEditor = () => {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem
-            value="location"
-            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
-          >
-            <AccordionTrigger className="hover:no-underline py-3">
+          <AccordionItem value="location" className="account-editor-section">
+            <AccordionTrigger className="account-editor-trigger">
               <SectionHeader
                 icon={MapPin}
                 title="Location"
@@ -646,12 +646,12 @@ const ProfileEditor = () => {
                 }
               />
             </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4 space-y-4">
+            <AccordionContent className="account-editor-content">
               <ProfileLocationSection
                 formData={{ town: formData.town, state: formData.state }}
                 onFormChange={handleFormChange}
               />
-              <div className="flex justify-end">
+              <div className="account-section-actions">
                 <SectionSaveButton
                   section="location"
                   onClick={() =>
@@ -756,18 +756,15 @@ const ProfileEditor = () => {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem
-            value="tournament"
-            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
-          >
-            <AccordionTrigger className="hover:no-underline py-3">
+          <AccordionItem value="tournament" className="account-editor-section">
+            <AccordionTrigger className="account-editor-trigger">
               <SectionHeader
                 icon={Trophy}
                 title="Player details"
                 hint="Optional contact, birth date and skill information"
               />
             </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4 space-y-4">
+            <AccordionContent className="account-editor-content">
               <TournamentInfoTab
                 formData={{
                   phone_number: formData.phone_number,
@@ -777,7 +774,7 @@ const ProfileEditor = () => {
                 }}
                 onFormChange={handleFormChange}
               />
-              <div className="flex justify-end">
+              <div className="account-section-actions">
                 <SectionSaveButton
                   section="tournament"
                   onClick={() =>
@@ -793,18 +790,15 @@ const ProfileEditor = () => {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem
-            value="playstyle"
-            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
-          >
-            <AccordionTrigger className="hover:no-underline py-3">
+          <AccordionItem value="playstyle" className="account-editor-section">
+            <AccordionTrigger className="account-editor-trigger">
               <SectionHeader
                 icon={Gamepad2}
                 title="Play Style"
                 hint="Handedness, side"
               />
             </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4 space-y-4">
+            <AccordionContent className="account-editor-content">
               <PlayStyleTab
                 formData={{
                   handedness: formData.handedness,
@@ -812,7 +806,7 @@ const ProfileEditor = () => {
                 }}
                 onFormChange={handleFormChange}
               />
-              <div className="flex justify-end">
+              <div className="account-section-actions">
                 <SectionSaveButton
                   section="playstyle"
                   onClick={() =>

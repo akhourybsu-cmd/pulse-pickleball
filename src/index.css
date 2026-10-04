@@ -3,6 +3,7 @@
 @import './styles/venue-theme.css';
 @import './styles/venue-events.css';
 @import './styles/venue-admin.css';
+@import './styles/account-settings.css';
 
 @tailwind base;
 @tailwind components;
