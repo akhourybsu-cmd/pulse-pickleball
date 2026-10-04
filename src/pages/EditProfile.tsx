@@ -138,7 +138,7 @@ const ProfileEditor = () => {
     EMPTY_DRAFT
   );
   const [uploading, setUploading] = useState(false);
-  const [avatarFit, setAvatarFit] = useState<ImageFit>("contain");
+  const [avatarFit, setAvatarFit] = useAccountSessionState<ImageFit>(user!.id, "profile-photo-fit", "contain");
   const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
   const [confirmingName, setConfirmingName] = useState(false);
   const savingLock = useRef(false);
