@@ -1,3 +1,4 @@
+import { playerProfileUrl, shareLink, copyText } from "@/lib/share";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useLocation, Link } from "react-router-dom";
@@ -283,6 +284,7 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
                 ) : (
                   <MyCodePanel
                     handle={handleQuery.data}
+                    userId={currentUserId!}
                     onClose={() => onOpenChange(false)}
                   />
                 ))}
@@ -604,9 +606,11 @@ const formatDistance = (km: number) => {
 // ---------- My Code ----------
 function MyCodePanel({
   handle,
+  userId,
   onClose,
 }: {
   handle: string | null;
+  userId: string;
   onClose: () => void;
 }) {
   if (!handle) {
@@ -624,11 +628,11 @@ function MyCodePanel({
     );
   }
 
-  const inviteUrl = `${window.location.origin}/u/${handle}`;
+  const inviteUrl = playerProfileUrl(userId);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(`@${handle}`);
+      await copyText(`@${handle}`);
       toast.success("Handle copied");
     } catch {
       toast.error(
@@ -638,22 +642,10 @@ function MyCodePanel({
   };
 
   const share = async () => {
-    const text = `Add me on Pulse: @${handle}\n${inviteUrl}`;
     try {
-      if (navigator.share)
-        await navigator.share({
-          title: "Add me on Pulse",
-          text,
-          url: inviteUrl,
-        });
-      else {
-        await navigator.clipboard.writeText(text);
-        toast.success("Invite copied");
-      }
-    } catch (error) {
-      if (!(error instanceof Error && error.name === "AbortError"))
-        toast.error("Sharing unavailable. Try copying your handle.");
-    }
+      const result = await shareLink({ title: 'Connect on PULSE', text: `Add me on PULSE: @${handle}`, url: inviteUrl });
+      if (result === 'copied') toast.success('Profile invitation copied');
+    } catch { toast.error('Sharing unavailable. Select and copy your profile link below.'); }
   };
 
   return (
@@ -673,7 +665,7 @@ function MyCodePanel({
               value={inviteUrl}
               size={180}
               level="M"
-              includeMargin={false}
+              includeMargin={true}
             />
           </div>
           <div className="mt-4 text-center">
@@ -689,15 +681,16 @@ function MyCodePanel({
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" onClick={copy} className="h-11 rounded-xl">
-          <Copy className="h-4 w-4 mr-2" /> Copy
+          <Copy className="h-4 w-4 mr-2" /> Copy handle
         </Button>
         <Button onClick={share} className="h-11 rounded-xl">
-          <Share2 className="h-4 w-4 mr-2" /> Share
+          <Share2 className="h-4 w-4 mr-2" /> Share profile
         </Button>
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        Anyone with your handle or QR can send you a friend request.
+        Scan to view your profile. Sign in to PULSE to connect.
+        <span className="mt-2 block break-all select-text">{inviteUrl}</span>
       </p>
     </div>
   );

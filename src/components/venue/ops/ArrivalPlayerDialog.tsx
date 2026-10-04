@@ -1,3 +1,4 @@
+import { publicAppUrl, copyText } from "@/lib/share";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
@@ -77,7 +78,7 @@ export function ArrivalPlayerDialog({
                   const token = await rpc<string>("venue_visit_link", {
                     p_customer: customer,
                   });
-                  setLink(`${window.location.origin}/venue-visit/${token}`);
+                  setLink(publicAppUrl(`/venue-visit/${token}`));
                 } catch (e) {
                   setError(
                     e instanceof Error
@@ -103,8 +104,7 @@ export function ArrivalPlayerDialog({
                 <Button
                   variant="outline"
                   onClick={() =>
-                    void navigator.clipboard
-                      .writeText(link)
+                    void copyText(link)
                       .catch(() =>
                         setError(
                           "Copy failed. Ask the player to scan the QR code.",

@@ -1,3 +1,4 @@
+import { publicAppUrl, copyText } from "@/lib/share";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, BookmarkPlus, CheckCircle2, Loader2, Share2 } from 'lucide-react';
@@ -95,9 +96,9 @@ export default function GuestSkillAssessment() {
     trackAssessmentFunnel('auth_started');
     navigate(`/auth?mode=${needsSignIn || needsVerification ? 'login' : mode}&redirect=${encodeURIComponent(returnTo)}`);
   };
-  const inviteUrl = typeof window === 'undefined' ? ASSESSMENT_PATH : `${window.location.origin}${ASSESSMENT_PATH}?source=friend`;
+  const inviteUrl = publicAppUrl(`${ASSESSMENT_PATH}?source=friend`);
   const copyInvite = async () => {
-    try { await navigator.clipboard.writeText(inviteUrl); trackAssessmentFunnel('invite_copied'); toast.success('Assessment invitation copied.'); }
+    try { await copyText(inviteUrl); trackAssessmentFunnel('invite_copied'); toast.success('Assessment invitation copied.'); }
     catch { toast.info('Copy the assessment link shown below.'); }
   };
 

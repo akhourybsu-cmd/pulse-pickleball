@@ -1,3 +1,4 @@
+import { copyText } from "@/lib/share";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +19,7 @@ export function ShareVenueAddress({ url, label }: { url: string; label: string }
     <p className="break-all rounded-xl bg-muted/60 p-3 text-sm font-medium">{url}</p>
     <div className="flex flex-wrap gap-2">
       <Button className="min-h-11" onClick={async () => {
-        try { await navigator.clipboard.writeText(url); setMessage('Copied! Your venue link is ready to share.'); }
+        try { await copyText(url); setMessage('Copied! Your venue link is ready to share.'); }
         catch { setMessage('Select and copy the address above to share it.'); }
       }}>Copy {label}</Button>
       <Button asChild variant="outline" className="min-h-11"><a href={url} target="_blank" rel="noopener noreferrer">Open venue page</a></Button>

@@ -26,28 +26,59 @@ const safeStorageRemove = (storage: () => Storage, key: string) => {
   }
 };
 
-export const isAuthEntryPath = (path: string) => path === "/" || path === "/auth";
+export const isAuthEntryPath = (path: string) =>
+  path === "/" || path === "/auth";
 
-export const isCommunityReturnPath = (path: string | null | undefined): boolean =>
-  !!path && /^\/(?:venues\/[^/?#]+|player\/community(?:\/group\/[^/?#]+|\/join\/[^/?#]+)?)(?:[?#]|$)/.test(path);
+export const isCommunityReturnPath = (
+  path: string | null | undefined
+): boolean =>
+  !!path &&
+  /^\/(?:venues\/[^/?#]+|player\/community(?:\/group\/[^/?#]+|\/join\/[^/?#]+)?)(?:[?#]|$)/.test(
+    path
+  );
 
-export const isRoundRobinReturnPath = (path: string | null | undefined): boolean =>
-  !!path && (/^\/round-robin\/[0-9a-f-]{36}(?:[?#]|$)/i.test(path) || /^\/player\/play\?[^#]*\binvite=/.test(path));
+export const isRoundRobinReturnPath = (
+  path: string | null | undefined
+): boolean =>
+  !!path &&
+  (/^\/round-robin\/[0-9a-f-]{36}(?:[?#]|$)/i.test(path) ||
+    /^\/player\/play\?[^#]*\binvite=/.test(path));
 
-export const isSharedPageReturnPath = (path: string | null | undefined): boolean =>
-  isCommunityReturnPath(path) || isRoundRobinReturnPath(path) || (!!path && /^\/claim-guest\/[A-Za-z0-9_-]+(?:[?#]|$)/.test(path));
+export const isSharedPageReturnPath = (
+  path: string | null | undefined
+): boolean =>
+  isCommunityReturnPath(path) ||
+  isRoundRobinReturnPath(path) ||
+  (!!path &&
+    (/^\/events\/[0-9a-f-]{36}(?:\/add-match)?(?:[?#]|$)/i.test(path) ||
+      /^\/(?:qr-checkin|session\/queue)\?[^#]*\bsession=/.test(path))) ||
+  (!!path &&
+    /^\/(?:player\/leagues\/join\/[^/?#]+|(?:player\/)?profile\/[0-9a-f-]{36}|u\/[^/?#]+|venue-check-in\/[A-Za-z0-9_-]+)(?:[?#]|$)/i.test(
+      path
+    )) ||
+  (!!path && /^\/claim-guest\/[A-Za-z0-9_-]+(?:[?#]|$)/.test(path));
 
 export const isAssessmentSaveRedirect = (path: string | null | undefined) =>
-  !!path && /^\/skill-assessment\?save=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path);
+  !!path &&
+  /^\/skill-assessment\?save=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    path
+  );
 
 export const sanitizeRedirectPath = (path: string | null | undefined) => {
   // Reject URL-parser normalization of backslashes, whitespace and controls.
   // eslint-disable-next-line no-control-regex
-  if (!path || !path.startsWith("/") || path.startsWith("//") || /[\\\u0000-\u0020\u007f]/.test(path)) {
+  const unsafe = !!path && /[\\\u0000-\u0020\u007f]/.test(path);
+  if (
+    !path ||
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    unsafe
+  ) {
     return DEFAULT_AUTH_DESTINATION;
   }
 
-  const normalizedPath = path === "/dashboard" ? DEFAULT_AUTH_DESTINATION : path;
+  const normalizedPath =
+    path === "/dashboard" ? DEFAULT_AUTH_DESTINATION : path;
 
   if (
     normalizedPath === "/" ||
@@ -80,13 +111,17 @@ export const consumePostAuthRedirect = () => {
   // App's callback listener, Index and Auth can all resolve the same login.
   // Keep assessment and community handoffs until the destination acknowledges arrival;
   // otherwise a second resolver can replace it with the default dashboard.
-  if (!isAssessmentSaveRedirect(redirect) && !isSharedPageReturnPath(redirect)) clearPostAuthRedirect();
+  if (!isAssessmentSaveRedirect(redirect) && !isSharedPageReturnPath(redirect))
+    clearPostAuthRedirect();
   return redirect || DEFAULT_AUTH_DESTINATION;
 };
 
 export const clearPostAuthRedirect = (expectedPath?: string) => {
   for (const storage of [() => sessionStorage, () => localStorage]) {
-    if (!expectedPath || safeStorageGet(storage, AUTH_RETURN_STORAGE_KEY) === expectedPath) {
+    if (
+      !expectedPath ||
+      safeStorageGet(storage, AUTH_RETURN_STORAGE_KEY) === expectedPath
+    ) {
       safeStorageRemove(storage, AUTH_RETURN_STORAGE_KEY);
     }
   }

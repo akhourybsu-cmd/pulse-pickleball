@@ -1,3 +1,4 @@
+import { publicAppUrl, shareLink, copyText } from "@/lib/share";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,22 +116,13 @@ const EventDetail = () => {
     const shareData = {
       title: event?.name || "Event",
       text: `Join me at ${event?.name}!`,
-      url: window.location.href
+      url: publicAppUrl(`/events/${eventId}`)
     };
 
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        toast.success("Shared successfully!");
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Link copied to clipboard!");
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Error sharing:', error);
-      }
-    }
+      const result = await shareLink(shareData);
+      if (result === 'copied') toast.success('Event link copied');
+    } catch { toast.error('Sharing is unavailable. Please try again.'); }
   };
 
   const formatDate = (date: string | null) => {
@@ -317,9 +309,9 @@ const EventDetail = () => {
             <p className="text-sm text-muted-foreground text-center">
               Scan to add a match to this event
             </p>
-            <Button variant="outline" onClick={() => {
-              navigator.clipboard.writeText(matchUrl);
-              toast.success("Link copied!");
+            <Button variant="outline" onClick={async () => {
+              try { await copyText(matchUrl); toast.success("Link copied!"); }
+              catch { toast.error("Could not copy the link. Please try again."); }
             }}>
               Copy Link
             </Button>

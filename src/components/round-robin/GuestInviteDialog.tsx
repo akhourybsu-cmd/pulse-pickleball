@@ -1,3 +1,4 @@
+import { copyText } from "@/lib/share";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -96,7 +97,7 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
     finally { busyRef.current = false; setBusy(false); }
   };
   const copy = async (value: string) => {
-    try { await navigator.clipboard.writeText(value); toast.success("Invitation copied"); }
+    try { await copyText(value); toast.success("Invitation copied"); }
     catch { toast.error("Could not copy. Select and copy the claim link manually."); }
   };
   const revoke = async (id: string) => {

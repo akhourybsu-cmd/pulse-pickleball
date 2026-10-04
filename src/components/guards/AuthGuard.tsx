@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { clearPostAuthRedirect } from '@/lib/authRedirect';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthState } from '@/hooks/useAuthState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,6 +39,11 @@ export function AuthGuard({
 }: AuthGuardProps) {
   const { loading, isAuthenticated, isOnboarding, profile, sessionError, refresh } = useAuthState();
   const location = useLocation();
+  useEffect(() => {
+    if (!loading && isAuthenticated && !(requireActive && isOnboarding && !allowOnboarding)) {
+      clearPostAuthRedirect(`${location.pathname}${location.search}${location.hash}`);
+    }
+  }, [loading, isAuthenticated, requireActive, isOnboarding, allowOnboarding, location]);
 
   if (loading) {
     return <PageLoader />;

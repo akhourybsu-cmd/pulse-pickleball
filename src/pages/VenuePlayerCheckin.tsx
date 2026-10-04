@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { clearPostAuthRedirect } from "@/lib/authRedirect";
+import { communityAuthUrl } from "@/lib/communityAccess";
+import { publicAppUrl } from "@/lib/share";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
@@ -29,6 +32,9 @@ export default function VenuePlayerCheckin({
 }) {
   const { token = "" } = useParams();
   const auth = useAuthState();
+  useEffect(() => {
+    if (!station && auth.isAuthenticated) clearPostAuthRedirect(`/venue-check-in/${token}`);
+  }, [auth.isAuthenticated, station, token]);
   const client = useQueryClient();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -137,7 +143,7 @@ export default function VenuePlayerCheckin({
                   </p>
                   <div className="my-8 rounded-3xl border bg-white p-6 shadow-sm">
                     <QRCodeSVG
-                      value={`${window.location.origin}/venue-check-in/${token}`}
+                      value={publicAppUrl(`/venue-check-in/${token}`)}
                       size={260}
                       marginSize={2}
                       level="M"
@@ -195,7 +201,7 @@ export default function VenuePlayerCheckin({
                 Sign in to see your own registrations. Check-in opens one hour
                 before your event or reservation.
               </p>
-              <Link to="/auth" state={{ returnTo: `/venue-check-in/${token}` }}>
+              <Link to={communityAuthUrl(`/venue-check-in/${token}`, "signin")}>
                 <Button className="mt-5 h-12">Sign in & continue</Button>
               </Link>
               <p className="mt-4 text-sm text-muted-foreground">

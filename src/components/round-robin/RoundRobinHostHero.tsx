@@ -1,3 +1,4 @@
+import { copyText } from "@/lib/share";
 import { format, parseISO } from "date-fns";
 
 /**
@@ -126,7 +127,7 @@ export function RoundRobinHostHero({
   const handleCopyCode = async () => {
     if (!inviteCode) return;
     try {
-      await navigator.clipboard.writeText(inviteCode);
+      await copyText(inviteCode);
       setCopied(true);
       toast.success("Invite code copied");
       setTimeout(() => setCopied(false), 1800);

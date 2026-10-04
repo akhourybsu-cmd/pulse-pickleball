@@ -19,36 +19,4 @@ export function communityShareData(name: string, url: string): ShareData {
   };
 }
 
-export async function copyCommunityText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  const input = document.createElement("textarea");
-  input.value = text;
-  input.style.position = "fixed";
-  input.style.opacity = "0";
-  document.body.appendChild(input);
-  try {
-    input.select();
-    if (!document.execCommand("copy")) throw new Error("Copy unavailable");
-  } finally {
-    input.remove();
-  }
-}
-
-export async function shareCommunity(
-  data: ShareData
-): Promise<"shared" | "copied" | "cancelled"> {
-  if (navigator.share) {
-    try {
-      await navigator.share(data);
-      return "shared";
-    } catch (error) {
-      if ((error as { name?: string })?.name === "AbortError")
-        return "cancelled";
-    }
-  }
-  await copyCommunityText(`${data.text}\n${data.url}`);
-  return "copied";
-}
+export { copyText as copyCommunityText, shareLink as shareCommunity } from './share';

@@ -1,3 +1,4 @@
+import { withAuthDeadline } from "@/lib/authDeadline";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   useMutation,
@@ -149,7 +150,7 @@ export function useFriends(options?: {
   const query = useQuery({
     queryKey: key,
     queryFn: ({ signal }) =>
-      fetchFriendsSnapshot(supabase, currentUserId!, signal),
+      withAuthDeadline(() => fetchFriendsSnapshot(supabase, currentUserId!, signal)),
     enabled,
     staleTime: 30_000,
     refetchInterval: () =>
@@ -167,30 +168,31 @@ export function useFriends(options?: {
     mutationFn: async (change: FriendChange) => {
       if (!currentUserId) throw new Error("Please sign in again.");
       if (change.action === "send") {
-        const { data, error } = await supabase.rpc("send_friend_request", {
+        const { data, error } = await withAuthDeadline(signal => supabase.rpc("send_friend_request", {
           p_friend_id: change.targetId,
-        });
+        }).abortSignal(signal));
         if (error) throw error;
+        if (data !== "pending" && data !== "accepted") throw new Error("We could not confirm this connection. Please refresh your connections.");
         return data;
       }
       if (change.action === "block") {
-        const { error } = await supabase.rpc("block_player", {
+        const { error } = await withAuthDeadline(signal => supabase.rpc("block_player", {
           p_user_id: change.targetId,
-        });
+        }).abortSignal(signal));
         if (error) throw error;
         return "blocked";
       }
       if (!change.friendshipId || change.friendshipId.startsWith("optimistic:"))
         throw new Error("This request is still syncing. Please try again.");
       if (change.action === "accept") {
-        const { data, error } = await supabase
+        const { data, error } = await withAuthDeadline(signal => supabase
           .from("friendships")
           .update({ status: "accepted", accepted_at: new Date().toISOString() })
           .eq("id", change.friendshipId)
           .eq("friend_id", currentUserId)
           .eq("status", "pending")
           .select("id")
-          .maybeSingle();
+          .abortSignal(signal).maybeSingle());
         if (error) throw error;
         if (!data)
           throw new Error(
@@ -207,7 +209,7 @@ export function useFriends(options?: {
         request = request.eq("user_id", currentUserId);
       if (change.action === "decline")
         request = request.eq("friend_id", currentUserId);
-      const { data, error } = await request.select("id").maybeSingle();
+      const { data, error } = await withAuthDeadline(signal => request.select("id").abortSignal(signal).maybeSingle());
       if (error) throw error;
       if (!data)
         throw new Error(
@@ -246,6 +248,11 @@ export function useFriends(options?: {
       );
     },
     onSuccess: (status, change) => {
+      if (change.action === "send" && status === "accepted") {
+        client.setQueryData<FriendsSnapshot>(key, current => optimisticFriendChange(
+          current ?? emptyFriends(), { ...change, action: "accept" }, currentUserId!, new Date().toISOString()
+        ));
+      }
       const messages = {
         send:
           status === "accepted" ? "You're now friends!" : "Friend request sent",
@@ -257,11 +264,11 @@ export function useFriends(options?: {
       };
       toast.success(messages[change.action]);
     },
-    onSettled: async () => {
+    onSettled: () => {
       // The last concurrent write reconciles everything; earlier responses must
       // not overwrite another person's optimistic update.
       if (client.isMutating({ mutationKey }) <= 1)
-        await Promise.all([
+        void Promise.all([
           client.invalidateQueries({ queryKey: key }),
           client.invalidateQueries({
             queryKey: ["friend-suggestions", currentUserId],

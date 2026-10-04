@@ -150,6 +150,7 @@ const VenueEmailUnsubscribe = lazy(() => import("./pages/VenueEmailUnsubscribe")
 const ClaimGuest = lazy(() => import("./pages/ClaimGuest"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
+const PlayerByHandle = lazy(() => import("./pages/PlayerByHandle"));
 const ViewProfile = lazy(() => import("./pages/ViewProfile"));
 const MyGuests = lazy(() => import("./pages/player/MyGuests"));
 const NewMatch = lazy(() => import("./pages/NewMatch"));
@@ -800,6 +801,7 @@ const AppContent = () => {
             path="/profile/edit"
             element={<RedirectWithParams to="/player/profile/edit" />}
           />
+          <Route path="/u/:handle" element={<AuthGuard><PlayerByHandle /></AuthGuard>} />
           <Route path="/profile/:userId" element={<ViewProfile />} />
           <Route path="/player/profile/:userId" element={<ViewProfile />} />
           {/* Match routes: legacy /match/* paths now redirect into the player shell */}
@@ -819,7 +821,7 @@ const AppContent = () => {
             element={<RedirectWithParams to="/player/matches" />}
           />{" "}
           <Route path="/faq" element={<FAQ />} />
-          <Route path="/session/queue" element={<SessionQueue />} />
+          <Route path="/session/queue" element={<AuthGuard><SessionQueue /></AuthGuard>} />
           <Route
             path="/admin"
             element={
@@ -1014,10 +1016,10 @@ const AppContent = () => {
           <Route path="/settings/blocked" element={<BlockedUsers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
-          <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/events/:eventId" element={<AuthGuard><EventDetail /></AuthGuard>} />
           <Route
             path="/events/:eventId/add-match"
-            element={<EventMatchEntry />}
+            element={<AuthGuard><EventMatchEntry /></AuthGuard>}
           />
           <Route path="/round-robin" element={<RoundRobinHub />} />
           {/* Wizard writes to the DB on submit and reads getUser() on submit.
