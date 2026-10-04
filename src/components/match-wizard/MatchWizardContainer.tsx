@@ -1,3 +1,4 @@
+import { publicAppUrl } from "@/lib/share";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
@@ -272,7 +273,7 @@ export function MatchWizardContainer() {
             hour: 'numeric',
             minute: '2-digit',
           });
-          const verifyUrl = `${window.location.origin}/player/matches?tab=pending`;
+          const verifyUrl = publicAppUrl(`/player/matches?tab=pending`);
           const formatLabel =
             formData.matchFormat === 'singles' ? 'Singles' : 'Doubles';
 

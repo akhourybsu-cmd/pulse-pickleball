@@ -1,3 +1,4 @@
+import { publicAppUrl, copyText } from "@/lib/share";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -94,7 +95,7 @@ export default function VenueCheckinStations() {
         <div className="grid gap-4 md:grid-cols-2">
           {q.data.map((k) => {
             const active = !k.revoked_at && new Date(k.expires_at) > new Date();
-            const url = `${window.location.origin}/venue-kiosk/${k.token}`;
+            const url = publicAppUrl(`/venue-kiosk/${k.token}`);
             return (
               <article key={k.id} className="rounded-2xl border bg-card p-5">
                 <h2 className="font-semibold">
@@ -127,8 +128,7 @@ export default function VenueCheckinStations() {
                       <Button
                         variant="outline"
                         onClick={() =>
-                          void navigator.clipboard
-                            .writeText(url)
+                          void copyText(url)
                             .then(() => setNotice("Kiosk link copied."))
                             .catch(() =>
                               setError(

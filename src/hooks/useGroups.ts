@@ -1,3 +1,4 @@
+import { withAuthDeadline } from "@/lib/authDeadline";
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -300,9 +301,9 @@ export function useGroups(options: UseGroupsOptions = {}) {
     }
 
     try {
-      const { data, error } = await supabase.rpc("join_group_by_code" as any, {
+      const { data, error } = await withAuthDeadline(signal => supabase.rpc("join_group_by_code" as any, {
         p_code: trimmed,
-      });
+      }).abortSignal(signal));
       if (error) throw error;
 
       const result = (data ?? {}) as {
@@ -312,6 +313,9 @@ export function useGroups(options: UseGroupsOptions = {}) {
         message?: string;
       };
 
+      if (['joined', 'pending', 'already_member'].includes(result.status || '') && !result.group_id) {
+        throw new Error('We could not confirm your membership. Check My groups before trying again.');
+      }
       switch (result.status) {
         case "joined":
           toast({

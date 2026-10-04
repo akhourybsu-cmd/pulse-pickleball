@@ -1,3 +1,4 @@
+import { copyText } from "@/lib/share";
 import { useState } from "react";
 import { Lock, Copy, Check, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export function InviteCodeCard({ code, eventId, eventName, className }: InviteCo
 
   const handleCopyCode = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await copyText(code);
       toast.success("Invite code copied");
     } catch {
       toast.error("Could not copy — try selecting it manually");

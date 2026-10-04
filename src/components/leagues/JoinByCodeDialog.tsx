@@ -1,20 +1,30 @@
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { LeagueScope } from "./_leagueScope";
 import { LeagueBrandMark } from "./LeagueIdentity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  lookupLeagueInvitation,
+  joinLeagueInvitation,
+  leagueInvitationError,
+} from "@/lib/leagues/invitations";
 import { toast } from "sonner";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KeyRound, Info, CalendarClock, XCircle } from "lucide-react";
 import type { LeagueTeaser } from "@/lib/leagues/types";
-import { Logo } from '@/components/Logo';
-import './playerLeague.css';
+import { Logo } from "@/components/Logo";
+import "./playerLeague.css";
 
 /**
  * Two-step flow:
@@ -28,7 +38,10 @@ import './playerLeague.css';
  * clear error when the code doesn't match anything.
  */
 export function JoinByCodeDialog({
-  open, onOpenChange, onJoined, initialCode,
+  open,
+  onOpenChange,
+  onJoined,
+  initialCode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,9 +60,17 @@ export function JoinByCodeDialog({
   const [teaser, setTeaser] = useState<LeagueTeaser | null>(null);
   const [looking, setLooking] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const previewCode = useRef("");
+  const generation = useRef(0);
+  const busy = useRef(false);
   const autoLookupRef = useRef<string | null>(null);
 
   const reset = useCallback(() => {
+    generation.current++;
+    busy.current = false;
+    previewCode.current = "";
+    setErrorMsg("");
     setCode("");
     setTeaser(null);
     setLooking(false);
@@ -68,23 +89,39 @@ export function JoinByCodeDialog({
       toast.error("Enter a code");
       return;
     }
+    if (busy.current) return;
+    busy.current = true;
+    const request = ++generation.current;
     setLooking(true);
-    const { data, error } = await supabase
-      .rpc("find_league_by_invite_code" as never, { p_code: trimmed } as never);
-    if (error) {
-      toast.error(error.message);
-      setLooking(false);
-      return;
+    setErrorMsg("");
+    setTeaser(null);
+    try {
+      const result = await lookupLeagueInvitation(trimmed);
+      if (request !== generation.current) return;
+      previewCode.current = trimmed;
+      setTeaser(result);
+    } catch (error) {
+      if (request === generation.current)
+        setErrorMsg(leagueInvitationError(error));
+    } finally {
+      if (request === generation.current) {
+        busy.current = false;
+        setLooking(false);
+      }
     }
-    const rows = (data ?? []) as unknown as LeagueTeaser[];
-    if (rows.length === 0) {
-      toast.error("No league matches that code");
-      setLooking(false);
-      return;
-    }
-    setTeaser(rows[0]);
-    setLooking(false);
   }, []);
+
+  useEffect(() => {
+    if (!open) reset();
+  }, [open, reset]);
+  useEffect(
+    () => () => {
+      generation.current++;
+      busy.current = false;
+      autoLookupRef.current = null;
+    },
+    []
+  );
 
   // Deep-link + share-link flow: when opened with a prefilled code,
   // seed the input AND auto-run the lookup so the teaser shows up
@@ -93,167 +130,214 @@ export function JoinByCodeDialog({
     if (!open || !initialCode) return;
     if (autoLookupRef.current === initialCode) return;
     autoLookupRef.current = initialCode;
+    generation.current++;
+    busy.current = false;
+    setJoining(false);
     setCode(initialCode);
     void lookup(initialCode);
   }, [open, initialCode, lookup]);
 
   const join = async () => {
-    if (!teaser || joining) return;
+    if (!teaser || busy.current || !previewCode.current) return;
+    busy.current = true;
+    const request = ++generation.current;
     setJoining(true);
-    const { data, error } = await supabase
-      .rpc("join_league_by_code" as never, { p_code: code.trim() } as never);
-    if (error) {
-      // Map the two well-known Postgres error codes to friendlier copy.
-      // 02000 = "no data found" (bad code / admin_only), 22023 =
-      // "invalid parameter value" (registration closed). Fall back to
-      // the raw message for anything else.
-      const friendly =
-        error.code === "02000" ? "No league matches that code" :
-        error.code === "22023" ? "Registration isn't open. Ask the organizer about the next season." :
-        error.message;
-      toast.error(friendly);
-      setJoining(false);
-      return;
+    setErrorMsg("");
+    try {
+      const leagueId = await joinLeagueInvitation(
+        previewCode.current,
+        teaser.id
+      );
+      void client.invalidateQueries({ queryKey: ["my-leagues"] });
+      void client.invalidateQueries({ queryKey: ["player-league-detail"] });
+      if (request !== generation.current) return;
+      toast.success(`Joined ${teaser.name}`);
+      handleOpenChange(false);
+      if (onJoined) onJoined(leagueId);
+      else navigate(`/player/leagues/${leagueId}`);
+    } catch (error) {
+      if (request === generation.current)
+        setErrorMsg(leagueInvitationError(error));
+    } finally {
+      if (request === generation.current) {
+        busy.current = false;
+        setJoining(false);
+      }
     }
-    const leagueId = data as unknown as string;
-    void client.invalidateQueries({ queryKey: ['my-leagues'] });
-    void client.invalidateQueries({ queryKey: ['player-league-detail'] });
-    toast.success(`Joined ${teaser.name}`);
-    handleOpenChange(false);
-    if (onJoined) onJoined(leagueId);
-    else navigate(`/player/leagues/${leagueId}`);
   };
 
   return (
     <LeagueScope brand={teaser?.branding} className="!min-h-0">
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="league-menu sm:max-w-md w-[calc(100%-2rem)] rounded-2xl overflow-y-auto">
-        <div className="league-invite-mark"><Logo compact className="w-20" /><p className="mt-3 text-xs text-[color:var(--league-brand-accent,#e3ca92)]">Your next season starts here.</p></div>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4" />
-            Join a league
-          </DialogTitle>
-          <DialogDescription>Enter your invitation and preview the league before joining.</DialogDescription>
-        </DialogHeader>
-
-        {!teaser ? (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="join-code">Invite code</Label>
-              <Input
-                id="join-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. SPRING26"
-                className="font-mono uppercase tracking-wider h-11"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !looking) {
-                    e.preventDefault();
-                    void lookup(code);
-                  }
-                }}
-              />
-              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 pt-1">
-                <Info className="w-3 h-3 mt-0.5 shrink-0" />
-                Ask your league organizer for the code. Case-insensitive.
-              </p>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => void lookup(code)}
-                disabled={looking || !code.trim()}
-                className="w-full h-12"
-              >
-                {looking ? "Looking up…" : "Find league"}
-              </Button>
-            </DialogFooter>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="league-menu sm:max-w-md w-[calc(100%-2rem)] rounded-2xl overflow-y-auto">
+          <div className="league-invite-mark">
+            <Logo compact className="w-20" />
+            <p className="mt-3 text-xs text-[color:var(--league-brand-accent,#e3ca92)]">
+              Your next season starts here.
+            </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <LeagueBrandMark name={teaser.name} branding={teaser.branding} className="h-16 w-16 text-[64px]" />
-            {/* Teaser preview — confirm before commit */}
-            <div className={`rounded-xl border p-4 ${
-              teaser.registration_open
-                ? "border-primary/30 bg-primary/5"
-                : "border-muted bg-muted/40 opacity-90"
-            }`}>
-              <div className={`text-[10px] uppercase tracking-wider font-bold ${
-                teaser.registration_open ? "text-primary" : "text-muted-foreground"
-              }`}>
-                {teaser.league_type}
-              </div>
-              <div className="mt-1 text-lg font-bold">{teaser.name}</div>
-              {teaser.description && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
-                  {teaser.description}
-                </p>
-              )}
-              {teaser.location && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  {teaser.location}
-                </p>
-              )}
-            </div>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4" />
+              Join a league
+            </DialogTitle>
+            <DialogDescription>
+              Enter your invitation and preview the league before joining.
+            </DialogDescription>
+          </DialogHeader>
 
-            {teaser.registration_open ? (
-              <>
-                {teaser.registration_closes_at && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <CalendarClock className="w-3.5 h-3.5" />
-                    {(() => {
-                      // Parse "YYYY-MM-DD" as a LOCAL date. `new Date(str)`
-                      // treats a bare date string as UTC-midnight, which
-                      // shifts the day backwards for anyone west of UTC.
-                      const [y, m, d] = teaser.registration_closes_at.split("-").map(Number);
-                      const local = new Date(y, (m ?? 1) - 1, d ?? 1);
-                      return `Registration closes ${local.toLocaleDateString(undefined, {
-                        month: "short", day: "numeric", year: "numeric",
-                      })}`;
-                    })()}
+          {errorMsg && (
+            <p
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              {errorMsg}
+            </p>
+          )}
+          {!teaser ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="join-code">Invite code</Label>
+                <Input
+                  id="join-code"
+                  value={code}
+                  disabled={looking}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={100}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="e.g. SPRING26"
+                  className="font-mono uppercase tracking-wider h-11"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !looking) {
+                      e.preventDefault();
+                      void lookup(code);
+                    }
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 pt-1">
+                  <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                  Ask your league organizer for the code. Case-insensitive.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => void lookup(code)}
+                  disabled={looking || !code.trim()}
+                  className="w-full h-12"
+                >
+                  {looking ? "Looking up…" : "Find league"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <LeagueBrandMark
+                name={teaser.name}
+                branding={teaser.branding}
+                className="h-16 w-16 text-[64px]"
+              />
+              {/* Teaser preview — confirm before commit */}
+              <div
+                className={`rounded-xl border p-4 ${
+                  teaser.registration_open
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-muted bg-muted/40 opacity-90"
+                }`}
+              >
+                <div
+                  className={`text-[10px] uppercase tracking-wider font-bold ${
+                    teaser.registration_open
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {LEAGUE_TYPE_META[teaser.league_type]?.label || "League"}
+                </div>
+                <div className="mt-1 text-lg font-bold">{teaser.name}</div>
+                {teaser.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
+                    {teaser.description}
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  You'll join as an active member. The organizer can update your
-                  team or role later.
-                </p>
-              </>
-            ) : (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <div>
-                  <div className="font-semibold">Registration isn't open</div>
-                  <div className="text-xs mt-0.5 opacity-90">
-                    There isn't an active season accepting new players. Ask the
-                    organizer about joining the next season.
+                {teaser.location && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {teaser.location}
+                  </p>
+                )}
+              </div>
+
+              {teaser.registration_open ? (
+                <>
+                  {teaser.registration_closes_at && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {(() => {
+                        // Parse "YYYY-MM-DD" as a LOCAL date. `new Date(str)`
+                        // treats a bare date string as UTC-midnight, which
+                        // shifts the day backwards for anyone west of UTC.
+                        const [y, m, d] = teaser.registration_closes_at
+                          .split("-")
+                          .map(Number);
+                        const local = new Date(y, (m ?? 1) - 1, d ?? 1);
+                        return `Registration closes ${local.toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          }
+                        )}`;
+                      })()}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    You'll join as an active member. The organizer can update
+                    your team or role later.
+                  </p>
+                </>
+              ) : (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
+                  <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Registration isn't open</div>
+                    <div className="text-xs mt-0.5 opacity-90">
+                      There isn't an active season accepting new players. Ask
+                      the organizer about joining the next season.
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => setTeaser(null)}
-                disabled={joining}
-                className="flex-1"
-              >
-                {teaser.registration_open ? "Not this one" : "Back"}
-              </Button>
-              {teaser.registration_open && (
-                <Button
-                  onClick={join} disabled={joining}
-                  className="flex-1 h-12 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
-                >
-                  {joining ? "Joining…" : "Join league"}
-                </Button>
               )}
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setTeaser(null);
+                    setErrorMsg("");
+                    previewCode.current = "";
+                  }}
+                  disabled={joining}
+                  className="flex-1"
+                >
+                  {teaser.registration_open ? "Not this one" : "Back"}
+                </Button>
+                {teaser.registration_open && (
+                  <Button
+                    onClick={join}
+                    disabled={joining}
+                    className="flex-1 h-12 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+                  >
+                    {joining ? "Joining…" : "Join league"}
+                  </Button>
+                )}
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </LeagueScope>
   );
 }

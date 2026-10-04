@@ -1,3 +1,4 @@
+import { copyText } from "@/lib/share";
 import { leagueInviteUrl } from "@/lib/leagues/playerNavigation";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -109,7 +110,7 @@ export default function LeaguePoster() {
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await copyText(shareUrl);
       setCopied(true);
       haptic("success");
       setTimeout(() => setCopied(false), 1500);

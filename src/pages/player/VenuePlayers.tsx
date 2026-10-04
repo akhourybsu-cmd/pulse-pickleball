@@ -1,3 +1,4 @@
+import { publicAppUrl, copyText } from "@/lib/share";
 import { VenueWaiverStatus } from "@/components/venue/VenueWaiverStatus";
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
@@ -389,7 +390,7 @@ export default function VenuePlayers({
                             p_customer: p.player.id,
                           });
                           setLink(
-                            `${window.location.origin}/venue-visit/${token}`,
+                            publicAppUrl(`/venue-visit/${token}`),
                           );
                         })
                       }
@@ -437,8 +438,7 @@ export default function VenuePlayers({
                         <Button
                           variant="outline"
                           onClick={() =>
-                            void navigator.clipboard
-                              .writeText(link)
+                            void copyText(link)
                               .then(() => setNotice("Player link copied."))
                               .catch(() =>
                                 setError(

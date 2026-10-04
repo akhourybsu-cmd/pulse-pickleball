@@ -1,3 +1,4 @@
+import { playerProfileUrl, shareLink } from "@/lib/share";
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -230,28 +231,12 @@ export default function PlayerProfile() {
       toast.error('Profile not ready yet');
       return;
     }
-    const url = `${window.location.origin}/profile/${profile.id}`;
+    const url = playerProfileUrl(profile.id);
     const name = profile.display_name || profile.full_name || 'My PULSE profile';
-    const shareText = `Check out ${name} on PULSE Pickleball`;
-
     try {
-      if (typeof navigator !== 'undefined' && (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share) {
-        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
-          title: shareText,
-          url,
-        });
-        return;
-      }
-    } catch {
-      // user cancelled or share failed — fall through to clipboard
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Profile link copied to clipboard');
-    } catch {
-      toast.error('Could not copy link');
-    }
+      const result = await shareLink({ title: `Check out ${name} on PULSE Pickleball`, url });
+      if (result === 'copied') toast.success('Profile link copied');
+    } catch { toast.error('Could not share the profile. Please try again.'); }
   };
 
   const locationStr = [profile?.town, profile?.state].filter(Boolean).join(', ') || null;

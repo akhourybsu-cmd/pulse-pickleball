@@ -61,8 +61,8 @@ export const supabase = {
     ...base.auth,
     getUser: async () => ({ data: { user: null }, error: null }),
   },
-  rpc: async (name: string, args?: { p_code?: string }) =>
-    name === "find_league_by_invite_code"
+  rpc: (name: string, args?: { p_code?: string }) => {
+    const result = Promise.resolve(name === "find_league_by_invite_code"
       ? {
           data:
             args?.p_code === "INVALID"
@@ -76,5 +76,7 @@ export const supabase = {
                 ],
           error: null,
         }
-      : base.rpc(name),
+      : base.rpc(name));
+    return Object.assign(result, { abortSignal: () => result });
+  },
 };

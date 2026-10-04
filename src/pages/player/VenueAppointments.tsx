@@ -1,3 +1,4 @@
+import { publicAppUrl, copyText } from "@/lib/share";
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useState } from "react";
@@ -612,7 +613,7 @@ export default function VenueAppointments() {
                   <>
                     <div className="mx-auto rounded-xl bg-white p-3">
                       <QRCodeSVG
-                        value={`${window.location.origin}/venue-quote/${share.quote_token}`}
+                        value={publicAppUrl(`/venue-quote/${share.quote_token}`)}
                         size={180}
                       />
                     </div>
@@ -627,9 +628,8 @@ export default function VenueAppointments() {
                     <Button
                       variant="outline"
                       onClick={() =>
-                        void navigator.clipboard
-                          .writeText(
-                            `${window.location.origin}/venue-quote/${share.quote_token}`,
+                        void copyText(
+                            publicAppUrl(`/venue-quote/${share.quote_token}`),
                           )
                           .then(() => setNotice("Quote link copied."))
                           .catch(() =>

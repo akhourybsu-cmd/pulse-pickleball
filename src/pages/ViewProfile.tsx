@@ -1,6 +1,11 @@
+import { useAuthState } from "@/hooks/useAuthState";
+import { clearPostAuthRedirect, stashPostAuthRedirect } from "@/lib/authRedirect";
+import { communityAuthUrl } from "@/lib/communityAccess";
+import { withAuthDeadline } from "@/lib/authDeadline";
+import { playerProfileUrl, shareLink } from "@/lib/share";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -77,6 +82,14 @@ interface RecentMatch {
 
 const ViewProfile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuthState();
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
+  useEffect(() => { if (auth.isAuthenticated) clearPostAuthRedirect(returnTo); }, [auth.isAuthenticated, returnTo]);
+  const signInToConnect = () => {
+    stashPostAuthRedirect(returnTo);
+    navigate(communityAuthUrl(returnTo, 'signin'));
+  };
   const { userId } = useParams<{ userId: string }>();
   const { currentUserId, getFriendshipStatus, sendFriendRequest, acceptRequest, cancelRequest, pendingRequests, sentRequests, isPending, loading: friendsLoading, error: friendsError, refetch: refetchFriends } = useFriends();
   const [openingMessage, setOpeningMessage] = useState(false);
@@ -98,11 +111,13 @@ const ViewProfile = () => {
     data: profileData,
     isLoading,
     isError,
+    refetch,
   } = useQuery({
     queryKey: ["view-profile", userId],
     enabled: !!userId,
     staleTime: 60 * 1000,
-    queryFn: async () => {
+    retry: false,
+    queryFn: () => withAuthDeadline(async () => {
       // Normalized participant used by the shared mapper below.
       type NormPart = {
         player_id: string;
@@ -284,28 +299,13 @@ const ViewProfile = () => {
       }
 
       return { profile: profileRes.data as Profile, recentMatches, matchesComplete };
-    },
+    }),
   });
 
   const profile = profileData?.profile ?? null;
-  const recentMatches = profileData?.recentMatches ?? [];
+  const recentMatches = useMemo(() => profileData?.recentMatches ?? [], [profileData]);
   const matchesComplete = profileData?.matchesComplete ?? false;
   const loading = isLoading;
-
-  // Invalid id, or a failed load → bounce back with a toast (mirrors the old
-  // inline error handling).
-  useEffect(() => {
-    if (!userId) {
-      toast.error("Invalid user ID");
-      navigate(-1);
-    }
-  }, [userId, navigate]);
-  useEffect(() => {
-    if (isError) {
-      toast.error("Failed to load profile");
-      navigate(-1);
-    }
-  }, [isError, navigate]);
 
   const displayName = useMemo(() => {
     if (!profile) return "Player";
@@ -350,32 +350,25 @@ const ViewProfile = () => {
 
   const handleShare = async () => {
     if (!profile) return;
-    const url = `${window.location.origin}/profile/${profile.id}`;
-    const shareText = `Check out ${displayName} on PULSE Pickleball`;
+    const url = playerProfileUrl(profile.id);
+    const name = displayName;
     try {
-      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
-      if (nav.share) {
-        await nav.share({ title: shareText, url });
-        return;
-      }
-    } catch { /* fallthrough */ }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Profile link copied");
-    } catch {
-      toast.error("Could not copy link");
-    }
+      const result = await shareLink({ title: `Check out ${name} on PULSE Pickleball`, url });
+      if (result === 'copied') toast.success('Profile link copied');
+    } catch { toast.error('Could not share the profile. Please try again.'); }
   };
 
   const handleMessage = async () => {
+    if (!auth.isAuthenticated) { signInToConnect(); return; }
     if (!userId || openingRef.current) return;
     openingRef.current = true;
     setOpeningMessage(true);
     try {
-      const { data, error } = await supabase.rpc("get_or_create_dm_conversation", {
+      const { data, error } = await withAuthDeadline(signal => supabase.rpc("get_or_create_dm_conversation", {
         other_user_id: userId,
-      });
+      }).abortSignal(signal));
       if (error) throw error;
+      if (!data || typeof data !== "string") throw new Error("Could not open this conversation. Please try again.");
       if (activeProfile.current === userId) navigate(`/player/messages/${data}`);
     } catch (error) {
       toast.error(interpretDmError(error));
@@ -393,7 +386,14 @@ const ViewProfile = () => {
     );
   }
 
-  if (!profile) return null;
+  if (!profile || isError) return <main className="min-h-dvh grid place-items-center bg-background p-5"><section className="w-full max-w-md rounded-3xl border bg-card p-6 text-center space-y-4">
+    <Logo compact className="mx-auto w-24" />
+    <h1 className="text-xl font-semibold">{isError ? 'Profile could not load' : 'Player not found'}</h1>
+    <p role="alert" className="text-sm text-muted-foreground">{isError ? 'Please try again. Your shared link is still here.' : 'This profile may no longer be available. Ask your friend for a current link.'}</p>
+    {isError && <Button className="w-full" onClick={() => void refetch()}>Try again</Button>}
+    {!auth.isAuthenticated && <Button className="w-full" variant="outline" onClick={signInToConnect}>Sign in to connect</Button>}
+    <Button variant="ghost" className="w-full" onClick={() => navigate('/player/community')}>Communities</Button>
+  </section></main>;
 
   const subtitle = "PULSE Player";
 
@@ -526,7 +526,7 @@ const ViewProfile = () => {
               <Button disabled variant="secondary" className="h-11">Connection unavailable</Button>
             ) : (
               <Button
-                onClick={() => currentUserId ? userId && sendFriendRequest(userId, { ...profile, gender: null }) : navigate('/auth')}
+                onClick={() => auth.isAuthenticated ? userId && sendFriendRequest(userId, { ...profile, gender: null }) : signInToConnect()}
                 className="h-11 gap-2 font-medium"
               >
                 <UserPlus className="h-4 w-4" />

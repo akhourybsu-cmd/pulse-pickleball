@@ -1,3 +1,4 @@
+import { publicAppUrl } from "@/lib/share";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
@@ -199,7 +200,7 @@ export default function AdminSession() {
 
       // Generate and save QR join URL
       if (newSession) {
-        const joinUrl = `${window.location.origin}/session/queue?session=${newSession.id}`;
+        const joinUrl = publicAppUrl(`/session/queue?session=${newSession.id}`);
         await supabase
           .from("sessions")
           .update({ qr_join_url: joinUrl })
@@ -258,7 +259,7 @@ export default function AdminSession() {
   };
 
   const getQRUrl = (sessionId: string) => {
-    return `${window.location.origin}/qr-checkin?session=${sessionId}`;
+    return publicAppUrl(`/qr-checkin?session=${sessionId}`);
   };
 
   const handleEndSession = async (sessionId: string) => {
