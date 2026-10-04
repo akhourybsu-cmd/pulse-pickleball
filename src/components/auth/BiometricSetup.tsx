@@ -56,12 +56,19 @@ export function BiometricSetup() {
     if (!user) return;
     setLoadError(false);
     try {
-      const { data, error } = await withAuthDeadline(signal => supabase
-        .from('biometric_credentials').select('id, credential_id, device_name, last_used_at, created_at')
-        .eq('user_id', user.id).order('created_at', { ascending: false }).abortSignal(signal));
+      const [devices, settings] = await Promise.all([
+        withAuthDeadline(signal => supabase
+          .from('biometric_credentials').select('id, credential_id, device_name, last_used_at, created_at')
+          .eq('user_id', user.id).order('created_at', { ascending: false }).abortSignal(signal)),
+        withAuthDeadline(signal => supabase.from('profiles').select('biometric_enabled')
+          .eq('id', user.id).abortSignal(signal).single()),
+      ]);
+      const { data, error } = devices;
       if (error) throw error;
+      if (settings.error) throw settings.error;
+      if (!settings.data) throw new Error('Device sign-in settings could not be confirmed.');
       setCredentials(data ?? []);
-      setBiometricEnabled(!!data?.length);
+      setBiometricEnabled(settings.data.biometric_enabled === true && !!data?.length);
       return data ?? [];
     } catch { setLoadError(true); return null; }
     finally { setLoadingDevices(false); }
