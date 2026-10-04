@@ -1,11 +1,13 @@
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { AccountPageHeader } from '@/components/profile/AccountPageHeader';
 import { useAuthState } from '@/hooks/useAuthState';
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight, Send, Loader2 } from "lucide-react";
+import { Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight, Send, Loader2 } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useMessagingPrivacy } from "@/hooks/useMessagingSafety";
@@ -27,12 +29,13 @@ const categoryConfig = [
 export default function NotificationSettings() {
   const navigate = useNavigate();
   const {user}=useAuthState();
-  const { loading, saving, updatePreference, isEnabled } = useNotificationPreferences(user?.id);
+  const push = usePushSubscription();
+  const { loading, saving, error, refetch, updatePreference, isEnabled } = useNotificationPreferences(user?.id);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
-        <div className="max-w-lg mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -44,33 +47,24 @@ export default function NotificationSettings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b">
-        <div className="flex items-center gap-3 px-4 h-14">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Notification Settings</h1>
-          </div>
-        </div>
-      </header>
+      <AccountPageHeader icon={Bell} title="Notifications & privacy" subtitle="Choose your alerts and who can reach you." />
 
-      <div className="p-4 max-w-lg mx-auto space-y-4">
+      <div className="p-4 max-w-2xl mx-auto space-y-4">
         <p className="text-sm text-muted-foreground">
           Control which notifications you receive in the app.
         </p>
 
-        <BrowserPushCard />
-        <TestNotificationCard />
+        <BrowserPushCard push={push} />
 
         <MessagingPrivacyCard />
-        <BlockedUsersLinkCard onClick={() => navigate('/settings/blocked')} />
+        <BlockedUsersLinkCard onClick={() => navigate('/player/profile/blocked')} />
 
 
 
 
 
+        <h2 className="pt-2 text-base font-semibold">In-app notifications</h2>
+        {error && <p role="alert" className="rounded-xl border p-4 text-sm">Couldn’t load your notification preferences. <Button variant="link" onClick={() => void refetch()}>Try again</Button></p>}
         {categoryConfig.map((cat) => {
           const Icon = cat.icon;
           const enabled = isEnabled(cat.id);
@@ -78,9 +72,9 @@ export default function NotificationSettings() {
           return (
             <Card key={cat.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                       <Icon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -90,7 +84,7 @@ export default function NotificationSettings() {
                   </div>
                   <Switch
                     checked={enabled}
-                    disabled={saving}
+                    disabled={saving || error || !user}
                     aria-label={cat.label + " notifications"}
                     onCheckedChange={(checked) => updatePreference(cat.id, { in_app_enabled: checked })}
                   />
@@ -99,13 +93,14 @@ export default function NotificationSettings() {
             </Card>
           );
         })}
+        <TestNotificationCard push={push} />
       </div>
     </div>
   );
 }
 
-function BrowserPushCard() {
-  const { state, busy, supported, enable, disable } = usePushSubscription();
+function BrowserPushCard({ push }: { push: ReturnType<typeof usePushSubscription> }) {
+  const { state, busy, enable, disable, error, refresh } = push;
   const enabled = state === "enabled";
   const disabledControl = busy || state === "loading" || state === "unsupported" || state === "denied";
 
@@ -119,18 +114,20 @@ function BrowserPushCard() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
               <BellRing className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-base">Mobile push notifications</CardTitle>
+              {error && <p role="alert" className="text-xs">{error} <Button variant="link" onClick={() => void refresh()}>Try again</Button></p>}
               <CardDescription className="text-xs">{helper}</CardDescription>
             </div>
           </div>
           <Switch
+            aria-label="Mobile push notifications"
             checked={enabled}
             disabled={disabledControl}
-            onCheckedChange={(checked) => (checked ? enable() : disable())}
+            onCheckedChange={(checked) => { void (checked ? enable() : disable()); }}
           />
         </div>
       </CardHeader>
@@ -145,8 +142,10 @@ function isEmbeddedPreviewContext() {
   return inIframe;
 }
 
-function TestNotificationCard() {
-  const { state, supported, enable, busy: pushBusy } = usePushSubscription();
+function TestNotificationCard({ push }: { push: ReturnType<typeof usePushSubscription> }) {
+  const { state, supported, enable, busy: pushBusy } = push;
+  const { user } = useAuthState();
+  const sendingLock = useRef(false);
   const [sending, setSending] = useState(false);
   const isPreview = isEmbeddedPreviewContext();
 
@@ -163,12 +162,14 @@ function TestNotificationCard() {
       toast.error("Notifications are blocked. Enable them in your device/browser settings.");
       return;
     }
+    if (sendingLock.current || !user) return;
+    sendingLock.current = true;
     setSending(true);
     try {
       // Ensure push permission + subscription on this device
       if (state !== "enabled") {
         toast.message("Enabling notifications on this device…");
-        await enable();
+        if (!await enable()) return;
         if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
           toast.error("Notifications are not enabled for this device.");
           setSending(false);
@@ -193,22 +194,15 @@ function TestNotificationCard() {
         return;
       }
 
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) {
-        toast.error("You must be signed in.");
-        setSending(false);
-        return;
-      }
-
       // Make sure this device's subscription is recorded server-side
       const j = sub.toJSON() as any;
-      const { error: upsertErr } = await supabase.from("push_subscriptions").upsert({
-        user_id: u.user.id,
+      const { error: upsertErr } = await withAuthDeadline(signal => supabase.from("push_subscriptions").upsert({
+        user_id: user.id,
         endpoint: sub.endpoint,
         p256dh: j.keys?.p256dh ?? "",
         auth: j.keys?.auth ?? "",
         user_agent: navigator.userAgent,
-      }, { onConflict: "endpoint" });
+      }, { onConflict: "endpoint" }).abortSignal(signal));
       if (upsertErr) {
         console.error("[send-test-push] upsert sub failed", upsertErr);
         toast.error(`Couldn't register this device: ${upsertErr.message}`);
@@ -217,10 +211,10 @@ function TestNotificationCard() {
       }
 
 
-      const { data, error } = await supabase.functions.invoke("send-test-push", {
+      const { data, error } = await withAuthDeadline(signal => supabase.functions.invoke("send-test-push", {
+        signal,
         body: { endpoint: sub.endpoint },
-      });
-      console.log("[send-test-push] response", { data, error });
+      }));
 
       // supabase-js puts the parsed body on error.context for non-2xx
       let payload: any = data;
@@ -250,6 +244,7 @@ function TestNotificationCard() {
       console.error("test push failed", e);
       toast.error(`Could not send test notification: ${e?.message || "unknown error"}`);
     } finally {
+      sendingLock.current = false;
       setSending(false);
     }
   };
@@ -260,7 +255,7 @@ function TestNotificationCard() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
               <Send className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -306,12 +301,12 @@ function TestNotificationCard() {
 
 
 function MessagingPrivacyCard() {
-  const { privacy, loading, update } = useMessagingPrivacy();
+  const { privacy, loading, saving, error, refetch, update } = useMessagingPrivacy();
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
             <MessageCircle className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -321,10 +316,11 @@ function MessagingPrivacyCard() {
         </div>
       </CardHeader>
       <CardContent>
+        {error && <p role="alert" className="mb-3 text-sm">Couldn’t load your messaging privacy. <Button variant="link" onClick={() => void refetch()}>Try again</Button></p>}
         <RadioGroup
           value={privacy}
           onValueChange={(v) => update(v as any)}
-          disabled={loading}
+          disabled={loading || saving || error}
           className="space-y-2"
         >
           <div className="flex items-center gap-3 rounded-lg border p-3">
@@ -354,7 +350,7 @@ function BlockedUsersLinkCard({ onClick }: { onClick: () => void }) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <div>

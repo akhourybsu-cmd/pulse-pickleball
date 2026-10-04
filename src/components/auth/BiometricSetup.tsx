@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useAuthState } from '@/hooks/useAuthState';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { saveProfileChange } from '@/lib/saveProfileChange';
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +30,10 @@ interface BiometricCredential {
 }
 
 export function BiometricSetup() {
+  const { user } = useAuthState();
+  const [loadError, setLoadError] = useState(false);
+  const [loadingDevices, setLoadingDevices] = useState(true);
+  const lock = useRef(false);
   const [credentials, setCredentials] = useState<BiometricCredential[]>([]);
   const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,8 +43,7 @@ export function BiometricSetup() {
 
   useEffect(() => {
     checkBiometricSupport();
-    loadCredentials();
-    checkBiometricStatus();
+    void loadCredentials();
   }, []);
 
   const checkBiometricSupport = () => {
@@ -46,41 +52,24 @@ export function BiometricSetup() {
     setIsSupported(supported);
   };
 
-  const checkBiometricStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('biometric_enabled')
-      .eq('id', user.id)
-      .single();
-
-    if (profile) {
-      setBiometricEnabled(profile.biometric_enabled || false);
-    }
-  };
-
   const loadCredentials = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data, error } = await supabase
-      .from('biometric_credentials')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading credentials:', error);
-      return;
-    }
-
-    setCredentials(data || []);
+    setLoadError(false);
+    try {
+      const { data, error } = await withAuthDeadline(signal => supabase
+        .from('biometric_credentials').select('id, credential_id, device_name, last_used_at, created_at')
+        .eq('user_id', user.id).order('created_at', { ascending: false }).abortSignal(signal));
+      if (error) throw error;
+      setCredentials(data ?? []);
+      setBiometricEnabled(!!data?.length);
+      return data ?? [];
+    } catch { setLoadError(true); return null; }
+    finally { setLoadingDevices(false); }
   };
 
   const getBrowserName = () => {
     const userAgent = navigator.userAgent;
+    if (userAgent.includes('Edg/')) return 'Edge';
     if (userAgent.includes('Chrome')) return 'Chrome';
     if (userAgent.includes('Safari')) return 'Safari';
     if (userAgent.includes('Firefox')) return 'Firefox';
@@ -131,12 +120,13 @@ export function BiometricSetup() {
       return;
     }
 
+    if (lock.current || !user || loadingDevices || loadError) return;
+    lock.current = true;
     setIsLoading(true);
 
     try {
-      await logAnalytics('enrollment_started');
+      void logAnalytics('enrollment_started');
 
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       // Generate a random challenge
@@ -180,26 +170,20 @@ export function BiometricSetup() {
       const publicKey = arrayBufferToBase64(response.getPublicKey()!);
 
       // Store credential in database
-      const { error } = await supabase
+      const { error } = await withAuthDeadline(signal => supabase
         .from('biometric_credentials')
         .insert({
           user_id: user.id,
           credential_id: credentialId,
           public_key: publicKey,
           device_name: getDeviceName(),
-        });
+        }).abortSignal(signal));
 
       if (error) throw error;
 
-      // Enable biometric in profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ biometric_enabled: true })
-        .eq('id', user.id);
+      await saveProfileChange(user.id, { biometric_enabled: true });
 
-      if (profileError) throw profileError;
-
-      await logAnalytics('enrollment_success');
+      void logAnalytics('enrollment_success');
 
       setBiometricEnabled(true);
       await loadCredentials();
@@ -225,7 +209,7 @@ export function BiometricSetup() {
         errorType = "network_error";
       }
 
-      await logAnalytics('enrollment_failed', errorType);
+      void logAnalytics('enrollment_failed', errorType);
 
       toast({
         title: "Enrollment Failed",
@@ -233,47 +217,29 @@ export function BiometricSetup() {
         variant: "destructive",
       });
     } finally {
+      lock.current = false;
       setIsLoading(false);
     }
   };
 
   const handleDeleteCredential = async (credentialId: string) => {
-    const { error } = await supabase
-      .from('biometric_credentials')
-      .delete()
-      .eq('id', credentialId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove device.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    await loadCredentials();
-    
-    // If no credentials left, disable biometric
-    if (credentials.length <= 1) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ biometric_enabled: false })
-          .eq('id', user.id);
-        setBiometricEnabled(false);
-      }
-    }
-
-    setCredentialToDelete(null);
-
-    toast({
-      title: "Device Removed",
-      description: "This device can no longer be used for biometric login.",
-    });
+    if (!user || lock.current) return;
+    lock.current = true;
+    setIsLoading(true);
+    try {
+      const { error } = await withAuthDeadline(signal => supabase.from('biometric_credentials')
+        .delete().eq('id', credentialId).eq('user_id', user.id).abortSignal(signal));
+      if (error) throw error;
+      const remaining = await loadCredentials();
+      if (!remaining) throw new Error('Could not confirm the remaining devices.');
+      if (!remaining.length) await saveProfileChange(user.id, { biometric_enabled: false });
+      setCredentialToDelete(null);
+      toast({ title: 'Device removed', description: 'This device can no longer be used for biometric login.' });
+    } catch { toast({ title: 'Could not remove device', description: 'Check your connection and try again.', variant: 'destructive' }); }
+    finally { lock.current = false; setIsLoading(false); }
   };
 
+  if (loadingDevices || loadError) return <Card><CardHeader><CardTitle>Biometric authentication</CardTitle></CardHeader><CardContent>{loadError ? <div role="alert"><p>Couldn’t load your registered devices.</p><Button variant="outline" onClick={() => void loadCredentials()}>Try again</Button></div> : <p>Loading registered devices…</p>}</CardContent></Card>;
   if (!isSupported) {
     return (
       <Card>
@@ -341,6 +307,8 @@ export function BiometricSetup() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={isLoading}
+                      aria-label={`Remove ${cred.device_name}`}
                       onClick={() => setCredentialToDelete(cred.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -392,7 +360,8 @@ export function BiometricSetup() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => credentialToDelete && handleDeleteCredential(credentialToDelete)}
+              disabled={isLoading}
+              onClick={event => { event.preventDefault(); if (credentialToDelete) void handleDeleteCredential(credentialToDelete); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove Device

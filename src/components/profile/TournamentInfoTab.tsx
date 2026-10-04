@@ -21,7 +21,7 @@ export function TournamentInfoTab({ formData, onFormChange }: TournamentInfoTabP
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="phone_number">Phone Number *</Label>
+        <Label htmlFor="phone_number">Phone number (optional)</Label>
         <Input
           id="phone_number"
           type="tel"
@@ -29,7 +29,7 @@ export function TournamentInfoTab({ formData, onFormChange }: TournamentInfoTabP
           onChange={(e) => onFormChange({ phone_number: e.target.value })}
           placeholder="(555) 123-4567"
         />
-        <p className="text-xs text-muted-foreground">Used for tournament communications and match updates</p>
+        <p className="text-xs text-muted-foreground">Add a contact number for your player profile.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -38,6 +38,7 @@ export function TournamentInfoTab({ formData, onFormChange }: TournamentInfoTabP
           <Input
             id="date_of_birth"
             type="date"
+            max={new Date().toISOString().slice(0, 10)}
             value={formData.date_of_birth || ""}
             onChange={(e) => onFormChange({ date_of_birth: e.target.value })}
           />
@@ -81,7 +82,7 @@ export function TournamentInfoTab({ formData, onFormChange }: TournamentInfoTabP
             <SelectItem value="pro">Pro (5.5+)</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Helps with fair tournament matchmaking</p>
+        <p className="text-xs text-muted-foreground">Your estimate of your playing level; separate from your match-based PULSE rating.</p>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -53,7 +54,8 @@ const row = (id: string, patch: Partial<Notification> = {}): Notification => ({
   dismissed_at: null,
   ...patch,
 });
-function Harness({
+let client: QueryClient;
+function InnerHarness({
   user = "a",
   categories,
 }: {
@@ -64,6 +66,7 @@ function Harness({
   prefs = useNotificationPreferences(user);
   return null;
 }
+function Harness(props: React.ComponentProps<typeof InnerHarness>) { return <QueryClientProvider client={client}><InnerHarness {...props} /></QueryClientProvider>; }
 // A lazy, stateful query builder: writes execute only when awaited, like PostgREST.
 function query(table: string) {
   let updates: Record<string, unknown> | undefined,
@@ -104,6 +107,7 @@ function query(table: string) {
       return builder;
     },
     order: () => builder,
+    abortSignal: () => builder,
     limit: (value: number) => {
       limit = value;
       return builder;
@@ -163,6 +167,7 @@ function query(table: string) {
   return builder;
 }
 beforeEach(() => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [row("one"), row("two", { read: true })];
   preferences = [];
   fail = false;
@@ -189,13 +194,15 @@ beforeEach(() => {
 });
 afterEach(async () => {
   if (renderer) await act(async () => renderer.unmount());
+  client.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-async function mount(props: React.ComponentProps<typeof Harness> = {}) {
+async function mount(props: React.ComponentProps<typeof InnerHarness> = {}) {
   await act(async () => {
     renderer = create(<Harness {...props} />);
   });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
 }
 it("dismisses and restores the stored notification, with counts stable across repeated reads", async () => {
   await mount();

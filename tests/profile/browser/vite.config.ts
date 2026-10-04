@@ -9,7 +9,7 @@ export default defineConfig({
   cacheDir: 'node_modules/.vite-profile-qa',
   optimizeDeps: { entries: ['tests/profile/browser/index.html'] },
   resolve: { alias: [
-    ...['integrations/supabase/client', 'lib/permissions', 'lib/skill/featureFlag'].map(name => ({ find: `@/${name}`, replacement: stub })),
+    ...['integrations/supabase/client', 'lib/permissions', 'lib/skill/featureFlag', 'hooks/useAuthState', 'hooks/usePushSubscription', 'lib/mfa'].map(name => ({ find: `@/${name}`, replacement: stub })),
     { find: '@', replacement: path.resolve(__dirname, '../../../src') },
   ] },
 });

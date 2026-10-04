@@ -1,10 +1,13 @@
+import { useAuthState } from "@/hooks/useAuthState";
+import { useQuery } from "@tanstack/react-query";
+import { withAuthDeadline } from "@/lib/authDeadline";
 import { playerProfileUrl, shareLink } from "@/lib/share";
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { isPlatformAdmin } from '@/lib/permissions';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { isPlatformAdmin } from "@/lib/permissions";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   User as UserIcon,
   Settings,
@@ -29,13 +32,17 @@ import {
   Trophy,
   MapPin,
   CreditCard,
-} from 'lucide-react';
-import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
-import { cn } from '@/lib/utils';
-import { SectionHeader } from '@/components/layout/SectionHeader';
-import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
-import { SocialHero, SocialStatTile, GlassPanel } from '@/components/social/_shared';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+} from "lucide-react";
+import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
+import { cn } from "@/lib/utils";
+import { SectionHeader } from "@/components/layout/SectionHeader";
+import { SkillAssessmentCTA } from "@/components/skill/SkillAssessmentCTA";
+import {
+  SocialHero,
+  SocialStatTile,
+  GlassPanel,
+} from "@/components/social/_shared";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ProfileSummary {
   id: string;
@@ -59,16 +66,16 @@ interface HubLink {
 
 const ACTIVITY_LINKS: HubLink[] = [
   {
-    to: '/player/my-events',
+    to: "/player/my-events",
     icon: Calendar,
-    label: 'My Events',
-    description: 'Upcoming and past registrations',
+    label: "My Events",
+    description: "Upcoming and past registrations",
   },
   {
-    to: '/player/guests',
+    to: "/player/guests",
     icon: UserPlus,
-    label: 'My Guests',
-    description: 'Guest players you add to matches and events',
+    label: "My Guests",
+    description: "Guest players you add to matches and events",
   },
 ];
 
@@ -78,68 +85,68 @@ const ACTIVITY_LINKS: HubLink[] = [
 
 const COMMUNITY_LINKS: HubLink[] = [
   {
-    to: '/player/community',
+    to: "/player/community",
     icon: Users,
-    label: 'Community',
-    description: 'Groups and friends',
+    label: "Community",
+    description: "Your groups and local communities",
   },
   {
-    to: '/player/messages',
+    to: "/player/messages",
     icon: MessageSquare,
-    label: 'Messages',
-    description: 'Direct conversations',
+    label: "Messages",
+    description: "Direct conversations",
   },
 ];
 
 const SKILL_ASSESSMENT_LINK: HubLink = {
-  to: '/player/self-assessment',
+  to: "/player/self-assessment",
   icon: Gauge,
-  label: 'Skill self-assessment',
-  description: 'Estimate your current level',
+  label: "Skill self-assessment",
+  description: "Estimate your current level",
 };
 
 const ACCOUNT_LINKS: HubLink[] = [
   {
-    to: '/player/payments',
+    to: "/player/payments",
     icon: CreditCard,
-    label: 'Payments & purchases',
-    description: 'Saved payment methods, subscriptions and purchase history',
+    label: "Payments & purchases",
+    description: "Saved payment methods, subscriptions and purchase history",
   },
   {
-    to: '/profile/edit',
+    to: "/player/profile/edit",
     icon: Pencil,
-    label: 'Edit profile',
-    description: 'Name, avatar, location',
+    label: "Edit profile",
+    description: "Name, avatar, location",
   },
   {
-    to: '/settings/notifications',
+    to: "/player/profile/notifications",
     icon: Bell,
-    label: 'Notifications',
-    description: 'Manage what reaches you',
+    label: "Notifications & privacy",
+    description: "Alerts and who can message you",
   },
   {
-    to: '/settings/security',
+    to: "/player/profile/security",
     icon: Shield,
-    label: 'Security',
-    description: 'Two-factor, biometrics, linked accounts',
+    label: "Sign-in & security",
+    description: "Password, two-factor protection and sign-in methods",
   },
   {
-    to: '/profile/data-export',
+    to: "/player/profile/data-export",
     icon: Download,
-    label: 'Export data',
-    description: 'Download your match history',
+    label: "Export data",
+    description: "Download your profile and activity records",
   },
   {
-    to: '/faq',
+    to: "/faq",
     icon: HelpCircle,
-    label: 'Help & FAQ',
-    description: 'Guides and answers',
+    label: "Help & FAQ",
+    description: "Guides and answers",
   },
   {
-    to: '/delete-account',
+    to: "/delete-account",
     icon: Trash2,
-    label: 'Delete account',
-    description: 'Permanently remove your account',
+    label: "Delete account",
+    description: "Permanently remove your account",
   },
 ];
 
@@ -159,100 +166,105 @@ const ACCOUNT_LINKS: HubLink[] = [
  */
 export default function PlayerProfile() {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState<string | undefined>(undefined);
-  const [profile, setProfile] = useState<ProfileSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { user, profile: authProfile } = useAuthState();
+  const userId = user?.id;
+  const signOutLock = useRef(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const summary = useQuery({
+    queryKey: ["player-profile", userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+    placeholderData: authProfile?.id === userId ? authProfile : undefined,
+    queryFn: async () => {
+      const { data, error } = await withAuthDeadline((signal) =>
+        supabase
+          .from("profiles")
+          .select(
+            "id, display_name, full_name, avatar_url, current_rating, total_matches, wins, losses, state, town"
+          )
+          .eq("id", userId!)
+          .abortSignal(signal)
+          .single()
+      );
+      if (error) throw error;
+      return data as ProfileSummary;
+    },
+  });
+  const admin = useQuery({
+    queryKey: ["profile-admin", userId],
+    enabled: !!userId,
+    queryFn: () => withAuthDeadline(() => isPlatformAdmin(userId!)),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const profile = summary.data;
+  const loading = summary.isLoading;
+  const isAdmin = admin.data ?? false;
+  const refreshing = summary.isFetching;
   const accountLinks = isSkillAssessmentEnabled()
     ? [SKILL_ASSESSMENT_LINK, ...ACCOUNT_LINKS]
     : ACCOUNT_LINKS;
 
   const activityLinks = ACTIVITY_LINKS;
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
-      setUserId(user.id);
-
-      const [profileResult, adminResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, display_name, full_name, avatar_url, current_rating, total_matches, wins, losses, state, town')
-          .eq('id', user.id)
-          .maybeSingle(),
-        isPlatformAdmin(user.id),
-      ]);
-
-      if (!cancelled) {
-        setProfile(profileResult.data as ProfileSummary | null);
-        setIsAdmin(adminResult);
-        setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    if (signOutLock.current) return;
+    signOutLock.current = true;
+    setSigningOut(true);
+    try {
+      const { error } = await withAuthDeadline(() => supabase.auth.signOut());
+      if (error) throw error;
+      navigate("/");
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    } finally {
+      signOutLock.current = false;
+      setSigningOut(false);
+    }
   };
 
   const handleRefreshStats = async () => {
-    if (!userId) return;
-    setRefreshing(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, display_name, full_name, avatar_url, current_rating, total_matches, wins, losses, state, town')
-        .eq('id', userId)
-        .single();
-      if (error) {
-        toast.error('Failed to refresh stats');
-        return;
-      }
-      setProfile(data as ProfileSummary);
-      toast.success('Stats refreshed');
-    } catch {
-      toast.error('Failed to refresh stats');
-    } finally {
-      setRefreshing(false);
-    }
+    const result = await summary.refetch();
+    if (result.error) toast.error("Could not refresh stats. Please try again.");
+    else toast.success("Stats refreshed");
   };
 
   const handleShare = async () => {
     if (!profile?.id) {
-      toast.error('Profile not ready yet');
+      toast.error("Profile not ready yet");
       return;
     }
     const url = playerProfileUrl(profile.id);
-    const name = profile.display_name || profile.full_name || 'My PULSE profile';
+    const name =
+      profile.display_name || profile.full_name || "My PULSE profile";
     try {
-      const result = await shareLink({ title: `Check out ${name} on PULSE Pickleball`, url });
-      if (result === 'copied') toast.success('Profile link copied');
-    } catch { toast.error('Could not share the profile. Please try again.'); }
+      const result = await shareLink({
+        title: `Check out ${name} on PULSE Pickleball`,
+        url,
+      });
+      if (result === "copied") toast.success("Profile link copied");
+    } catch {
+      toast.error("Could not share the profile. Please try again.");
+    }
   };
 
-  const locationStr = [profile?.town, profile?.state].filter(Boolean).join(', ') || null;
-  const profileName = profile?.display_name || profile?.full_name || (loading ? 'Profile' : 'Your profile');
+  const locationStr =
+    [profile?.town, profile?.state].filter(Boolean).join(", ") || null;
+  const profileName =
+    profile?.display_name ||
+    profile?.full_name ||
+    (loading ? "Profile" : "Your profile");
   const profileInitials = profileName
-    .split(' ')
+    .split(" ")
     .map((part) => part[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 
-  const renderLinkGroup = (links: HubLink[], delayMs: number) => (
-    <GlassPanel
-      className="min-w-0 max-w-full opacity-0 animate-fade-up"
-      style={{ animationDelay: `${delayMs}ms`, animationFillMode: 'forwards' }}
-    >
+  const renderLinkGroup = (links: HubLink[]) => (
+    <GlassPanel className="min-w-0 max-w-full">
       {links.map((link) => {
         const Icon = link.icon;
         return (
@@ -261,19 +273,31 @@ export default function PlayerProfile() {
             onClick={() => navigate(link.to)}
             type="button"
             className={cn(
-              'group flex min-h-[68px] min-w-0 w-full items-center gap-3.5 px-3.5 py-3 text-left transition-[transform,background-color] hover:bg-accent/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transform-none',
-              link.to === '/delete-account' && 'hover:bg-destructive/5',
+              "group flex min-h-[68px] min-w-0 w-full items-center gap-3.5 px-3.5 py-3 text-left transition-[transform,background-color] hover:bg-accent/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transform-none",
+              link.to === "/delete-account" && "hover:bg-destructive/5"
             )}
           >
-            <div className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15",
-              link.to === '/delete-account' && 'bg-destructive/10 text-destructive group-hover:bg-destructive/15',
-            )}>
+            <div
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15",
+                link.to === "/delete-account" &&
+                  "bg-destructive/10 text-destructive group-hover:bg-destructive/15"
+              )}
+            >
               <Icon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className={cn('break-words font-semibold leading-tight', link.to === '/delete-account' && 'text-destructive')}>{link.label}</div>
-              <div className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{link.description}</div>
+              <div
+                className={cn(
+                  "break-words font-semibold leading-tight",
+                  link.to === "/delete-account" && "text-destructive"
+                )}
+              >
+                {link.label}
+              </div>
+              <div className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+                {link.description}
+              </div>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
           </button>
@@ -283,7 +307,18 @@ export default function PlayerProfile() {
   );
 
   return (
-    <div data-testid="profile-page" className="min-h-screen min-w-0 w-full max-w-full bg-background">
+    <div
+      data-testid="profile-page"
+      className="min-h-screen min-w-0 w-full max-w-full bg-background"
+    >
+      {summary.isError && (
+        <div role="alert" className="mx-auto max-w-3xl px-4 py-3 text-sm">
+          Couldn’t refresh your profile.{" "}
+          <Button variant="link" onClick={() => void summary.refetch()}>
+            Try again
+          </Button>
+        </div>
+      )}
       <SocialHero
         eyebrow="Player"
         title={profileName}
@@ -292,7 +327,7 @@ export default function PlayerProfile() {
             type="button"
             variant="outline"
             size="icon"
-            onClick={() => navigate('/player/profile/edit')}
+            onClick={() => navigate("/player/profile/edit")}
             className="h-10 w-10 rounded-xl border-border/60 bg-card/80 active:scale-95"
             aria-label="Edit profile"
           >
@@ -300,10 +335,18 @@ export default function PlayerProfile() {
           </Button>
         }
       >
-        <div data-testid="profile-identity" className="mt-3 flex min-w-0 max-w-2xl items-center gap-3">
+        <div
+          data-testid="profile-identity"
+          className="mt-3 flex min-w-0 max-w-2xl items-center gap-3"
+        >
           <Avatar className="h-[58px] w-[58px] shrink-0 rounded-2xl border-2 border-primary/30 shadow-sm">
-            <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
-            <AvatarFallback className="rounded-2xl bg-primary/15 font-bold text-primary">{profileInitials}</AvatarFallback>
+            <AvatarImage
+              src={profile?.avatar_url || undefined}
+              alt={profileName}
+            />
+            <AvatarFallback className="rounded-2xl bg-primary/15 font-bold text-primary">
+              {profileInitials}
+            </AvatarFallback>
           </Avatar>
           {locationStr && (
             <p className="flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
@@ -312,126 +355,171 @@ export default function PlayerProfile() {
             </p>
           )}
         </div>
-        <div data-testid="profile-stats" className="mt-3 grid min-w-0 max-w-2xl grid-cols-3 gap-2">
-            <SocialStatTile icon={Gauge} label="Rating" value={profile?.current_rating ? profile.current_rating.toFixed(2) : '—'} accent />
-            <SocialStatTile icon={Trophy} label="Matches" value={String(profile?.total_matches || 0)} />
-            <SocialStatTile icon={ClipboardList} label="Record" value={`${profile?.wins || 0}–${profile?.losses || 0}`} />
+        <div
+          data-testid="profile-stats"
+          className="mt-3 grid min-w-0 max-w-2xl grid-cols-3 gap-2"
+        >
+          <SocialStatTile
+            icon={Gauge}
+            label="Rating"
+            value={
+              profile?.current_rating ? profile.current_rating.toFixed(2) : "—"
+            }
+            accent
+          />
+          <SocialStatTile
+            icon={Trophy}
+            label="Matches"
+            value={String(profile?.total_matches || 0)}
+          />
+          <SocialStatTile
+            icon={ClipboardList}
+            label="Record"
+            value={`${profile?.wins || 0}–${profile?.losses || 0}`}
+          />
         </div>
       </SocialHero>
 
       <div className="container mx-auto min-w-0 max-w-[1400px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6">
         {/* A zero-minimum mobile track prevents long menu copy sizing the page wider than the viewport. */}
-        <div data-testid="profile-menu-grid" className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start xl:gap-10">
-          <div className="min-w-0 space-y-7">
-
-        {/* Skill assessment — hero CTA at the top of the profile. */}
-        <SkillAssessmentCTA userId={userId} />
-
-        {/* Share CTA */}
         <div
-          className="opacity-0 animate-fade-up"
-          style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
+          data-testid="profile-menu-grid"
+          className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start xl:gap-10"
         >
-          <Button
-            onClick={handleShare}
-            variant="outline"
-            className="h-auto min-h-12 w-full gap-2 whitespace-normal rounded-2xl border-border/60 bg-card/80 py-3 text-base font-semibold shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.5)] active:scale-[0.99]"
-            disabled={loading || !profile?.id}
-          >
-            <Share2 className="h-4 w-4" />
-            Share your PULSE
-          </Button>
-        </div>
-
-
-        {/* Activity group. Leagues lives in the bottom-nav Leagues tab, not here. */}
-        <div>
-          <SectionHeader label="Activity" />
-          {renderLinkGroup(activityLinks, 180)}
-        </div>
-
-        {/* Community group */}
-        <div>
-          <SectionHeader label="Community" />
-          {renderLinkGroup(COMMUNITY_LINKS, 240)}
-        </div>
-
-          </div>
           <div className="min-w-0 space-y-7">
+            {/* Skill assessment — hero CTA at the top of the profile. */}
+            <SkillAssessmentCTA userId={userId} />
 
-        {/* Account group */}
-        <div>
-          <SectionHeader label="Account" />
-          {renderLinkGroup(accountLinks, 300)}
-        </div>
-
-        {/* Admin row — only when isPlatformAdmin. Migrated from
-            HomeFooterUtilities. Demoted styling so it doesn't compete
-            with the player-first content above. */}
-        {isAdmin && (
-          <div
-            className="opacity-0 animate-fade-up"
-            style={{ animationDelay: '360ms', animationFillMode: 'forwards' }}
-          >
-            <SectionHeader label="Admin" />
-            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-2">
-              <button
-                onClick={() => navigate('/admin')}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
+            {/* Share CTA */}
+            <div>
+              <Button
+                onClick={handleShare}
+                variant="outline"
+                className="h-auto min-h-12 w-full gap-2 whitespace-normal rounded-2xl border-border/60 bg-card/80 py-3 text-base font-semibold shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.5)] active:scale-[0.99]"
+                disabled={loading || !profile?.id}
               >
-                <Shield className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm font-medium flex-1">Admin dashboard</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-              </button>
+                <Share2 className="h-4 w-4" />
+                Share your PULSE
+              </Button>
+            </div>
 
-              <button
-                onClick={() => navigate('/events')}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
-              >
-                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium flex-1">Events manager</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-              </button>
+            {/* Activity group. Leagues lives in the bottom-nav Leagues tab, not here. */}
+            <div>
+              <SectionHeader label="Activity" />
+              {renderLinkGroup(activityLinks)}
+            </div>
 
-              <button
-                onClick={() => navigate('/session/queue')}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
-              >
-                <ListOrdered className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium flex-1">Session queue</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-              </button>
-
-              <button
-                onClick={handleRefreshStats}
-                disabled={refreshing}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={cn('h-4 w-4 text-muted-foreground shrink-0', refreshing && 'animate-spin')}
-                />
-                <span className="text-sm font-medium flex-1">
-                  {refreshing ? 'Refreshing…' : 'Refresh stats'}
-                </span>
-              </button>
+            {/* Community group */}
+            <div>
+              <SectionHeader label="Community" />
+              {renderLinkGroup(COMMUNITY_LINKS)}
             </div>
           </div>
-        )}
+          <div className="min-w-0 space-y-7">
+            <div>
+              <SectionHeader label="Profile & preferences" />
+              {renderLinkGroup(
+                accountLinks.filter(
+                  (link) =>
+                    ![
+                      "/faq",
+                      "/delete-account",
+                      "/player/profile/data-export",
+                      "/player/payments",
+                    ].includes(link.to)
+                )
+              )}
+            </div>
+            <div>
+              <SectionHeader label="Purchases & support" />
+              {renderLinkGroup(
+                ACCOUNT_LINKS.filter((link) =>
+                  [
+                    "/player/payments",
+                    "/faq",
+                    "/player/profile/data-export",
+                  ].includes(link.to)
+                )
+              )}
+            </div>
+            <div>
+              <SectionHeader label="Account controls" />
+              {renderLinkGroup(
+                ACCOUNT_LINKS.filter((link) => link.to === "/delete-account")
+              )}
+            </div>
 
-        {/* Demoted sign-out */}
-        <div
-          className="opacity-0 animate-fade-up"
-          style={{ animationDelay: '420ms', animationFillMode: 'forwards' }}
-        >
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign out
-          </Button>
-        </div>
+            {/* Admin row — only when isPlatformAdmin. Migrated from
+            HomeFooterUtilities. Demoted styling so it doesn't compete
+            with the player-first content above. */}
+            {isAdmin && (
+              <div>
+                <SectionHeader label="Admin" />
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-2">
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
+                  >
+                    <Shield className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm font-medium flex-1">
+                      Admin dashboard
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/events")}
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
+                  >
+                    <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium flex-1">
+                      Events manager
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/session/queue")}
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left"
+                  >
+                    <ListOrdered className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium flex-1">
+                      Session queue
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+                  </button>
+
+                  <button
+                    onClick={handleRefreshStats}
+                    disabled={refreshing}
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-background/60 active:scale-[0.99] transition-all text-left disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "h-4 w-4 text-muted-foreground shrink-0",
+                        refreshing && "animate-spin"
+                      )}
+                    />
+                    <span className="text-sm font-medium flex-1">
+                      {refreshing ? "Refreshing…" : "Refresh stats"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Demoted sign-out */}
+            <div>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                disabled={signingOut}
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {signingOut ? "Signing out…" : "Sign out"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

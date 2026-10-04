@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useAuthState } from '@/hooks/useAuthState';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { communityAuthUrl } from '@/lib/communityAccess';
+import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Check, Loader2, Mail, Trash2 } from "lucide-react";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
@@ -21,42 +24,41 @@ const DELETED_DATA = [
 
 export default function DeleteAccount() {
   const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
-  const [email, setEmail] = useState<string | null>(null);
+  const { user, loading: checking } = useAuthState();
+  const email = user?.email;
+  const lock = useRef(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      setEmail(data.user?.email ?? null);
-      setChecking(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const handleDelete = async () => {
+    if (!email || confirmText.trim().toUpperCase() !== "DELETE" || lock.current) return;
+    lock.current = true;
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("delete-account", {
+      const { data, error } = await withAuthDeadline(signal => supabase.functions.invoke("delete-account", {
+        signal,
         method: "POST",
-      });
-      if (error || (data && (data as { error?: string }).error)) {
+      }), 30_000);
+      if (error || data?.ok !== true) {
         throw new Error((data as { message?: string })?.message || error?.message || "Deletion failed");
       }
       // Account is gone — clear the local session and show confirmation.
-      await supabase.auth.signOut();
       setDone(true);
+      // Deletion is already confirmed. A local cleanup failure must not claim it failed.
+      try {
+        const { error: signOutError } = await withAuthDeadline(() => supabase.auth.signOut({ scope: "local" }));
+        if (signOutError) throw signOutError;
+      } catch {
+        toast.error('Your account was deleted. Close this tab to finish clearing this device’s session.');
+      }
     } catch (e) {
       console.error("Account deletion failed:", e);
       toast.error(
         `We couldn't delete your account automatically. Please email ${SUPPORT_EMAIL} and we'll remove it within 30 days.`,
       );
     } finally {
+      lock.current = false;
       setDeleting(false);
     }
   };
@@ -164,7 +166,7 @@ export default function DeleteAccount() {
                   For your security, deletion must be done from your own signed-in account. Sign in,
                   then return to this page (or use <strong>Profile → Delete account</strong> in the app).
                 </p>
-                <Button onClick={() => navigate("/auth")} className="w-full h-11">Sign in</Button>
+                <Button onClick={() => navigate(communityAuthUrl("/delete-account", "signin"))} className="w-full h-11">Sign in</Button>
                 <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
                   <Mail className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>

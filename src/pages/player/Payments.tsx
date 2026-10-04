@@ -1,3 +1,4 @@
+import { useAccountSessionState } from '@/lib/accountSession';
 import { VenuePaymentHandoff } from '@/components/venue/VenuePaymentHandoff';
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { useEffect, useRef, useState } from "react";
@@ -53,8 +54,8 @@ function PaymentWorkspace({ venueId: scopedVenueId }: { venueId?: string } = {})
   const venueId = scopedVenueId || params.get("venue") || stripeReturnVenue(params.get('state'));
   const [venueTab,setVenueTab] = useState<'connections'|'activity'>(()=>params.get('payment_provider')==='square'?'connections':params.has('state')||params.has('connect')||params.has('order')?'activity':'connections');
   const [invalidReturn, setInvalidReturn] = useState(false);
-  const [page, setPage] = useState(0);
-  const [merchant, setMerchant] = useState("");
+  const [page, setPage] = useAccountSessionState(user?.id ?? '', `payments-page:${venueId ?? 'player'}`, 0);
+  const [merchant, setMerchant] = useAccountSessionState(user?.id ?? '', `payments-merchant:${venueId ?? 'player'}`, '');
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelOrder, setCancelOrder] = useState<PaymentOrder | null>(null);
   const [reason, setReason] = useState("");
@@ -62,7 +63,7 @@ function PaymentWorkspace({ venueId: scopedVenueId }: { venueId?: string } = {})
   const scope = `${venueId}:${user?.id}`;
   const currentScope = useRef(scope);
   currentScope.current = scope;
-  useEffect(() => { setPage(0); setMerchant(''); setCancelOrder(null); setReason(''); }, [scope]);
+  useEffect(() => { setCancelOrder(null); setReason(''); }, [scope]);
   useEffect(() => {
     if (!venueId && (params.has('code') || params.has('state') || params.has('error'))) {
       setInvalidReturn(true);
