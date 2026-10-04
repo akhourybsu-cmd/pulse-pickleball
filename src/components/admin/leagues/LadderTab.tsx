@@ -1989,8 +1989,8 @@ function LastBatchResults({
     const removed = (data as { downstream_batches_removed?: number })?.downstream_batches_removed ?? 0;
     toast.success(
       removed > 0
-        ? `Batch reopened — ${removed} downstream batch(es) cleared for regeneration`
-        : "Batch reopened for correction",
+        ? `Batch reopened — ${removed} downstream batch(es) cleared; auto-advance is off`
+        : "Batch reopened for correction — auto-advance is off",
     );
     setConfirmOpen(false);
     setForceOpen(false);
@@ -2023,8 +2023,9 @@ function LastBatchResults({
               This reopens Week {lastFinalBatch.week_number}, Batch{" "}
               {lastFinalBatch.batch_number} so you can correct a score, and clears
               any stage generated after it (it was based on the old ladder).
-              You'll re-process the corrected batch, then generate the next stage
-              again.
+              Auto-advance turns off and previous tiebreak decisions are cleared.
+              Correct the score, then process this batch again. You can turn
+              auto-advance back on when the corrections are ready.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
