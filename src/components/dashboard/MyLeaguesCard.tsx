@@ -1,14 +1,15 @@
+import { playerLeaguePath } from "@/lib/leagues/playerNavigation";
 import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
 import { normalizeHex } from "@/lib/venues/branding";
 import { useNavigate } from "react-router-dom";
 import {
-  ChevronRight, ListChecks, Trophy, Shuffle, Zap, Sparkles, Layers,
+  ChevronRight, ListChecks,
   KeyRound, CalendarDays, Crown,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { Button } from "@/components/ui/button";
-import type { LeagueType } from "@/lib/leagues/types";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,14 +25,6 @@ import { cn } from "@/lib/utils";
  * consistent activity dashboard, with a per-type accent stripe so
  * doubles / team / ladder etc. are visually distinct at a glance.
  */
-
-const TYPE_META: Record<LeagueType, { stripe: string; chip: string; icon: typeof Trophy; label: string }> = {
-  singles: { stripe: "bg-blue-500",    chip: "bg-blue-500/10 text-blue-500",       icon: Zap,      label: "Singles" },
-  doubles: { stripe: "bg-emerald-500", chip: "bg-emerald-500/10 text-emerald-500", icon: Shuffle,  label: "Doubles" },
-  team:    { stripe: "bg-primary",     chip: "bg-primary/10 text-primary",         icon: Trophy,   label: "Team" },
-  flex:    { stripe: "bg-amber-500",   chip: "bg-amber-500/10 text-amber-500",     icon: Sparkles, label: "Flex" },
-  ladder:  { stripe: "bg-violet-500",  chip: "bg-violet-500/10 text-violet-500",   icon: Layers,   label: "Ladder" },
-};
 
 export function MyLeaguesCard() {
   const navigate = useNavigate();
@@ -49,14 +42,14 @@ export function MyLeaguesCard() {
   return (
     <div className="space-y-2">
       {visible.map(({ league, season, membership, isSubstitute }) => {
-        const meta = TYPE_META[league.league_type];
+        const meta = LEAGUE_TYPE_META[league.league_type];
         const isOfficer = membership.role !== "player";
 
         return (
           <button
             key={membership.id}
             type="button"
-            onClick={() => navigate(`/player/leagues/${league.id}`)}
+            onClick={() => navigate(playerLeaguePath(league.id, season?.id))}
             className={cn(
               "w-full text-left rounded-xl border border-border/60 bg-card overflow-hidden group",
               "hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all",
@@ -81,7 +74,7 @@ export function MyLeaguesCard() {
                     )}
                     {isSubstitute && !isOfficer && <span className="text-[10px] font-semibold text-muted-foreground">Substitute</span>}
                   </div>
-                  <div className="text-sm font-semibold text-foreground truncate leading-tight">
+                  <div className="text-sm font-semibold text-foreground line-clamp-2 break-words leading-snug">
                     {league.name}
                   </div>
                   <div className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">

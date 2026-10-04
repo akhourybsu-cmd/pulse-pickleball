@@ -1,3 +1,4 @@
+import { playerLeaguePath, leagueInvitePath } from "@/lib/leagues/playerNavigation";
 import { useTheme } from 'next-themes';
 import { leagueBrandStyle } from '@/lib/leagues/branding';
 import { LeagueBrandMark } from '@/components/leagues/LeagueIdentity';
@@ -222,7 +223,7 @@ export default function PlayerLeagues() {
                         league={league}
                         season={season}
                         role={isSubstitute ? "Substitute" : membership.role}
-                        onClick={() => navigate(`/player/leagues/${league.id}`)}
+                        onClick={() => navigate(playerLeaguePath(league.id, season?.id))}
                       />
                     </motion.li>
                   )
@@ -264,7 +265,7 @@ export default function PlayerLeagues() {
                             season={season}
                             role="Archived"
                             onClick={() =>
-                              navigate(`/player/leagues/${league.id}`)
+                              navigate(playerLeaguePath(league.id, season?.id))
                             }
                           />
                         </li>
@@ -305,7 +306,7 @@ export default function PlayerLeagues() {
                       onClick={() =>
                         league.invite_code
                           ? navigate(
-                              `/player/leagues/join/${league.invite_code}`
+                              leagueInvitePath(league.invite_code)
                             )
                           : setJoinOpen(true)
                       }

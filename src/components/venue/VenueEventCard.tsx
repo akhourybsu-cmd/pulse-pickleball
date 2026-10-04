@@ -1,3 +1,7 @@
+import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
+import type { LeagueBrand } from "@/lib/leagues/branding";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
+import type { LeagueType } from "@/lib/leagues/types";
 import { CalendarDays, Check, ChevronRight, Clock3, GraduationCap, LayoutGrid, Sparkles, Target, Trophy, Users } from 'lucide-react';
 import { formatMoney } from '@/lib/payments';
 import { cn } from '@/lib/utils';
@@ -7,6 +11,7 @@ import { programPhase } from '@/lib/venues/programExperience';
 import { programService } from '@/lib/venues/servicePresentation';
 
 export interface VenueCardEvent {
+  league_branding?: LeagueBrand; league_type?: LeagueType;
   price_cents?:number; currency?:string; registration_paused?:boolean;
   id: string; title: string; start_time: string | null; end_time?: string | null;
   event_format?: string; description?: string | null; capacity?: number | null;
@@ -44,17 +49,17 @@ export function VenueEventCard({ event, timeZone, going, viewerRsvp, venueName, 
     data-venue-service={programService(format)} data-event-format={format}
     className={cn('venue-event-card group w-full overflow-hidden rounded-[20px] border bg-card text-left', onPick && 'venue-interactive', phase === 'ended' && 'venue-event-ended')}>
     <div className="grid grid-cols-[64px_minmax(0,1fr)] gap-3 p-4 sm:grid-cols-[76px_minmax(0,1fr)] sm:gap-4 sm:p-5">
-      <EventDateBadge start={event.start_time} end={event.end_time} timeZone={timeZone} />
+      {format === "league" ? <LeagueBrandMark name={event.title} branding={event.league_branding} className="h-16 w-16 text-[64px] sm:h-[76px] sm:w-[76px]" /> : <EventDateBadge start={event.start_time} end={event.end_time} timeZone={timeZone} />}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="venue-event-type"><Icon aria-hidden className="h-3.5 w-3.5" />{EVENT_LABELS[format] ?? 'Venue Event'}</span>
+          <span className="venue-event-type"><Icon aria-hidden className="h-3.5 w-3.5" />{format === 'league' && event.league_type ? `${LEAGUE_TYPE_META[event.league_type]?.label ?? 'League'} league` : EVENT_LABELS[format] ?? 'Venue Event'}</span>
           {format!=='league'&&<span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">{event.price_cents?`${formatMoney(event.price_cents)} / player`:'Free'}</span>}
           {phase === 'live' && <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">In progress</span>}
         </div>
         <h3 className="mt-2.5 break-words text-base font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] sm:text-lg">{event.title}</h3>
         {schedule ? <p className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold leading-5 tabular-nums sm:text-sm">
           <Clock3 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span>{schedule.time}{schedule.zone && <span className="ml-1 text-xs font-normal text-muted-foreground"> {schedule.zone}</span>}</span>
-        </p> : <p className="mt-2 text-sm text-muted-foreground">Active league · View season details</p>}
+        </p> : <p className="mt-2 text-sm text-muted-foreground">{format === 'league' ? 'Active league · View season details' : 'Schedule to be announced'}</p>}
         {event.description && <p className="mt-2 line-clamp-2 break-words text-[13px] leading-5 text-muted-foreground">{event.description}</p>}
       </div>
     </div>

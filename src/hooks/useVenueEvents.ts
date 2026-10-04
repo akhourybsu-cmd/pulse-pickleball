@@ -1,3 +1,5 @@
+import type { LeagueBrand } from "@/lib/leagues/branding";
+import type { LeagueType } from "@/lib/leagues/types";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthState } from './useAuthState';
@@ -10,7 +12,7 @@ export async function fetchVenueOccasions(venueId: string, groupId: string): Pro
       .eq('venue_id', venueId).is('parent_event_id', null).is('canceled_at',null).in('event_format', [...VENUE_OCCASION_FORMATS])
       .or(`end_time.gt.${now},start_time.gte.${now}`).order('start_time').limit(100),
     // RLS retains membership/private visibility rules; only this venue's linked leagues.
-    supabase.from('leagues').select('id,name,description').eq('community_id', groupId).eq('status', 'active').order('name'),
+    supabase.from('leagues').select('id,name,description,branding,league_type').eq('community_id', groupId).eq('status', 'active').order('name'),
   ]);
   if (programs.error) throw programs.error;
   if (leagues.error) throw leagues.error;
@@ -19,6 +21,7 @@ export async function fetchVenueOccasions(venueId: string, groupId: string): Pro
       kind: row.event_format === 'round_robin' ? 'competition' as const : row.event_format === 'social' ? 'social' as const : 'special' as const,
       price_cents:row.price_cents,currency:row.currency,registration_paused:row.registration_paused,start: row.start_time, end: row.end_time })),
     ...(leagues.data ?? []).map(row => ({ id: 'league-' + row.id, leagueId: row.id, title: row.name, description: row.description,
+      league_branding: row.branding as LeagueBrand, league_type: row.league_type as LeagueType,
       kind: 'leagues' as const, start: null, end: null })),
   ];
 }

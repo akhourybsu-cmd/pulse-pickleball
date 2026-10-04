@@ -17,6 +17,7 @@ export function useLeagueLiveRefresh(leagueId: string | undefined, refresh: () =
     for (const table of ['league_members', 'league_matches', 'league_seasons', 'league_sessions', 'league_teams', 'league_substitutes', 'league_match_substitutions', 'ladder_sub_requests', 'ladder_week_sitouts', 'ladder_batches']) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `league_id=eq.${leagueId}` }, update);
     }
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'leagues', filter: `id=eq.${leagueId}` }, update);
     channel.subscribe();
     const fallback = setInterval(update, 60_000);
     window.addEventListener('online', update);

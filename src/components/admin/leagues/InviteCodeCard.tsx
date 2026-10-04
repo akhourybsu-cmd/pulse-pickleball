@@ -1,3 +1,4 @@
+import { leagueInviteUrl } from "@/lib/leagues/playerNavigation";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -100,9 +101,9 @@ export function InviteCodeCard({
 
   // The share link deep-links into the dedicated join page, which
   // previews the league (even for logged-out recipients) and then joins.
-  // Uses window.location.origin so it works in dev + prod.
+  // Always use the public PULSE host, including from venue custom domains.
   const shareUrl = currentCode
-    ? `${window.location.origin}/player/leagues/join/${encodeURIComponent(currentCode)}`
+    ? leagueInviteUrl(currentCode)
     : null;
 
   const copyLink = async () => {
@@ -128,8 +129,8 @@ export function InviteCodeCard({
           text: `Join ${league.name} on PULSE (code: ${currentCode})`,
           url: shareUrl,
         });
-      } catch {
-        // User dismissed the sheet — no toast, silent.
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) await copyLink();
       }
     } else {
       void copyLink();

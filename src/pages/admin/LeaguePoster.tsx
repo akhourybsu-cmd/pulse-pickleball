@@ -1,3 +1,4 @@
+import { leagueInviteUrl } from "@/lib/leagues/playerNavigation";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
@@ -87,7 +88,7 @@ export default function LeaguePoster() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4 text-center">
         <p className="text-sm text-muted-foreground max-w-md">
-          Set an invite code on the league's Overview tab before printing a poster.
+          Set an invite code in League settings before printing a poster.
         </p>
         <Button
           variant="outline"
@@ -104,7 +105,7 @@ export default function LeaguePoster() {
   // then joins, instead of bouncing them off the auth wall like the
   // in-app /player/leagues?join= path would.
   const shareUrl =
-    `${window.location.origin}/player/leagues/join/${encodeURIComponent(league.invite_code)}`;
+    leagueInviteUrl(league.invite_code);
 
   const copyLink = async () => {
     try {

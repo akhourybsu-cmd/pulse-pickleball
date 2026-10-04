@@ -1,3 +1,4 @@
+import { leagueInvitePath } from "@/lib/leagues/playerNavigation";
 import { LeagueBrandMark, LeagueCover } from "@/components/leagues/LeagueIdentity";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -61,6 +62,7 @@ export default function JoinLeagueByCode() {
     joinAttempted.current = false;
     setPhase('loading');
     setPreviewCode(null);
+    setLeague(null);
     (async () => {
       if (!code) {
         setPhase("error");
@@ -81,6 +83,7 @@ export default function JoinLeagueByCode() {
       setPreviewCode(code);
       setLeague({
         id: row.id,
+        branding: row.branding,
         name: row.name,
         description: row.description ?? null,
         location: row.location ?? null,
@@ -137,7 +140,7 @@ export default function JoinLeagueByCode() {
   }, [phase, code, previewCode, client]);
 
   const goToAuth = (mode: "signin" | "signup") => {
-    stashPostAuthRedirect(`/player/leagues/join/${code}`);
+    stashPostAuthRedirect(leagueInvitePath(code ?? ""));
     navigate(`/auth${mode === "signup" ? "?tab=signup" : ""}`, { replace: false });
   };
 

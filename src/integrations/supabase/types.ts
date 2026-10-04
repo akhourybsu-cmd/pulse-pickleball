@@ -3986,6 +3986,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          branding: Json
           community_id: string | null
           created_at: string
           created_by: string
@@ -4004,6 +4005,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          branding?: Json
           community_id?: string | null
           created_at?: string
           created_by: string
@@ -4022,6 +4024,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          branding?: Json
           community_id?: string | null
           created_at?: string
           created_by?: string
@@ -9712,6 +9715,10 @@ export type Database = {
       get_my_upcoming_league_matches: {
         Args: { p_limit?: number }
         Returns: {
+          league_branding: Json
+          has_match_time: boolean
+          session_date: string
+          session_start_time: string
           court_number: number
           league_id: string
           league_name: string

@@ -15,13 +15,14 @@ import { useLeagueEntitlement } from "@/hooks/useLeagueEntitlement";
  */
 export function MyLeaguesSection() {
   const { entitled } = useLeagueEntitlement();
-  const { rows, loading } = useMyLeagues();
+  const { rows, loading, error, retry } = useMyLeagues();
 
   // Not entitled → hide the whole section, even if legacy memberships
   // exist. The /player/leagues route handles its own paywall messaging.
   if (!entitled) return null;
   // Don't render at all until we know. Prevents flash-of-header.
   if (loading) return null;
+  if (error) return <div role="alert" className="rounded-xl border p-4 text-sm">Couldn’t load your leagues. <button type="button" className="font-semibold underline" onClick={() => void retry()}>Try again</button></div>;
   if (rows.length === 0) return null;
 
   return (

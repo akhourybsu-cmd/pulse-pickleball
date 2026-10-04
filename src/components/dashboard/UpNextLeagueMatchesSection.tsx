@@ -11,10 +11,11 @@ import { useLeagueEntitlement } from "@/hooks/useLeagueEntitlement";
  */
 export function UpNextLeagueMatchesSection() {
   const { entitled } = useLeagueEntitlement();
-  const { rows, loading } = useMyUpcomingLeagueMatches(3);
+  const { rows, loading, error, retry } = useMyUpcomingLeagueMatches(3);
 
   if (!entitled) return null;
   if (loading) return null;
+  if (error) return <div role="alert" className="rounded-xl border p-4 text-sm">Couldn’t load your upcoming league games. <button type="button" className="font-semibold underline" onClick={() => void retry()}>Try again</button></div>;
   if (rows.length === 0) return null;
 
   return (

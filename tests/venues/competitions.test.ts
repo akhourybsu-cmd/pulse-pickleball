@@ -72,7 +72,7 @@ beforeAll(async () => {
       "create_league"
     )
   );
-  await db.exec("ALTER TABLE leagues ADD COLUMN invite_code text;");
+  await db.exec("ALTER TABLE leagues ADD COLUMN invite_code text, ADD COLUMN branding jsonb NOT NULL DEFAULT '{}';");
   for (const name of [
     "rr_apply_schedule_rebuild",
     "rr_edit_schedule",
@@ -133,6 +133,7 @@ beforeAll(async () => {
   await db.exec(read("20260929210000_venue_desk_completion.sql"));
   await db.exec(read("20260929220000_venue_player_visit_portal.sql"));
   await db.exec(read("20260929230000_venue_desk_competitions.sql"));
+  await db.exec(read("20261004121000_venue_league_identity.sql"));
 }, 30000);
 beforeEach(async () => {
   await db.exec(
@@ -515,6 +516,7 @@ it("creates a real venue league once, honors existing quota, and shares manageme
   expect(w.leagues[0]).toMatchObject({
     id: league,
     name: "Weekly ladder",
+    branding: {},
     members: 0,
     seasons: 0,
   });
