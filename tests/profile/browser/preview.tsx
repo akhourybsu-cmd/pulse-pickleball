@@ -14,6 +14,7 @@ import EditProfile from "../../../src/pages/EditProfile";
 import NotificationSettings from "../../../src/pages/NotificationSettings";
 import SecuritySettings from "../../../src/pages/SecuritySettings";
 import DataExport from "../../../src/pages/DataExport";
+import BlockedUsers from "../../../src/pages/BlockedUsers";
 import {
   ACCOUNT_PATHS,
   accountTabDestination,
@@ -23,6 +24,8 @@ import "../../../src/index.css";
 const client = new QueryClient();
 if (new URLSearchParams(window.location.search).has("large-text"))
   document.documentElement.style.fontSize = "20px";
+if (new URLSearchParams(window.location.search).has("dark"))
+  document.documentElement.classList.add("dark");
 function Preview() {
   const location = useLocation();
   useEffect(() => {
@@ -46,6 +49,7 @@ function Preview() {
         />
         <Route path="/player/profile/security" element={<SecuritySettings />} />
         <Route path="/player/profile/data-export" element={<DataExport />} />
+        <Route path="/player/profile/blocked" element={<BlockedUsers />} />
         <Route
           path="*"
           element={

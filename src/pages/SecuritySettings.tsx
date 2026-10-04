@@ -1,5 +1,5 @@
-import { useAuthState } from '@/hooks/useAuthState';
-import { AccountPageHeader } from '@/components/profile/AccountPageHeader';
+import { useAuthState } from "@/hooks/useAuthState";
+import { AccountPageHeader } from "@/components/profile/AccountPageHeader";
 import { PasswordSettings } from "@/components/profile/PasswordSettings";
 import { ShieldCheck } from "lucide-react";
 import { LinkedAccounts } from "@/components/profile/LinkedAccounts";
@@ -17,17 +17,31 @@ export default function SecuritySettings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AccountPageHeader icon={ShieldCheck} title="Sign-in & security" subtitle="Manage your password and sign-in protection." />
+      <AccountPageHeader
+        icon={ShieldCheck}
+        title="Sign-in & security"
+        subtitle="Manage your password and sign-in protection."
+      />
 
-      <main className="max-w-2xl mx-auto p-4 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Protect your account with two-factor authentication and biometric
-          sign-in, and manage the accounts you use to log in.
-        </p>
-        <PasswordSettings key={`password:${user?.id}`} />
-        <MFAManagement key={`mfa:${user?.id}`} />
-        <BiometricSetup key={`biometric:${user?.id}`} />
-        <LinkedAccounts key={`linked:${user?.id}`} />
+      <main className="account-settings-content">
+        <section aria-labelledby="account-protection-heading">
+          <h2 id="account-protection-heading" className="account-section-label">
+            Account protection
+          </h2>
+          <div className="space-y-3">
+            <PasswordSettings key={`password:${user?.id}`} />
+            <MFAManagement key={`mfa:${user?.id}`} />
+          </div>
+        </section>
+        <section aria-labelledby="sign-in-methods-heading">
+          <h2 id="sign-in-methods-heading" className="account-section-label">
+            Ways to sign in
+          </h2>
+          <div className="space-y-3">
+            <BiometricSetup key={`biometric:${user?.id}`} />
+            <LinkedAccounts key={`linked:${user?.id}`} />
+          </div>
+        </section>
       </main>
     </div>
   );

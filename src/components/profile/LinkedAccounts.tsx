@@ -91,14 +91,14 @@ export function LinkedAccounts() {
   };
 
   return (
-    <Card>
+    <Card data-account-card>
       <CardHeader>
         <CardTitle>Linked Sign-In Accounts</CardTitle>
         <CardDescription>
           Link Google or Apple so you can sign in faster next time.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent data-account-content className="space-y-4">
         {query.isError && <p role="alert" className="text-sm">Couldn’t load your sign-in methods. <Button variant="link" onClick={() => void query.refetch()}>Try again</Button></p>}
         {PROVIDERS.map((p, idx) => {
           const linked = isLinked(p.id);

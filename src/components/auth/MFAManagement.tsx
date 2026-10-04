@@ -99,17 +99,17 @@ export const MFAManagement = () => {
     }
   };
 
-  if (statusError) return <Card><CardHeader><CardTitle>Sign-in protection</CardTitle></CardHeader><CardContent><p role="alert" className="text-sm">{statusError}</p><Button variant="outline" onClick={() => void checkMFAStatus()}>Try again</Button></CardContent></Card>;
+  if (statusError) return <Card data-account-card><CardHeader><CardTitle>Sign-in protection</CardTitle></CardHeader><CardContent data-account-content><p role="alert" className="text-sm">{statusError}</p><Button variant="outline" onClick={() => void checkMFAStatus()}>Try again</Button></CardContent></Card>;
   if (loading) {
     return (
-      <Card>
+      <Card data-account-card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Sign-in protection
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent data-account-content>
           <p className="text-sm text-muted-foreground">Loading...</p>
         </CardContent>
       </Card>
@@ -119,7 +119,7 @@ export const MFAManagement = () => {
   return (
     <>
       {statusError && <p role="alert" className="p-4 text-sm text-destructive">{statusError} <Button variant="outline" onClick={() => void checkMFAStatus()}>Retry</Button></p>}
-      <Card>
+      <Card data-account-card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {mfaEnabled ? (
@@ -135,7 +135,7 @@ export const MFAManagement = () => {
               : "Add an extra layer of security to your account"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent data-account-content className="space-y-4">
           {mfaEnabled ? (
             <>
               <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
@@ -171,7 +171,7 @@ export const MFAManagement = () => {
 
       {showMethodSelector && (
         <Card className="mt-4">
-          <CardContent className="pt-6">
+          <CardContent data-account-content className="pt-6">
             <MFAMethodSelector onSelectMethod={handleMethodSelect} />
           </CardContent>
         </Card>

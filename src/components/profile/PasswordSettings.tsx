@@ -42,7 +42,7 @@ export function PasswordSettings() {
     }
   };
   return (
-    <Card>
+    <Card data-account-card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5" /> Password
@@ -51,7 +51,7 @@ export function PasswordSettings() {
           Send a secure reset link to {user?.email || "your account email"}.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent data-account-content className="space-y-3">
         <Button
           variant="outline"
           disabled={!user?.email || sending}
