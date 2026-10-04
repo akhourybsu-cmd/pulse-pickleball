@@ -87,11 +87,11 @@ export const LEAGUE_TYPE_META: Record<LeagueType, LeagueTypeMeta> = {
   ladder: {
     key: "ladder",
     label: "Ladder",
-    tagline: "Climb the ranks — challenge up, defend below",
+    tagline: "Rotating partners, weekly court movement",
     description:
-      "Players are ranked 1..N. You challenge someone within a few "
-      + "rungs to swap positions. Rankings shift every week.",
-    example: "e.g. Club Ladder — challenge up to 3 spots above you",
+      "Play doubles in groups of four, rotating partners within each group. "
+      + "Individual results determine movement between courts each week.",
+    example: "e.g. Wednesday Doubles Ladder — rotate partners and climb the courts",
     icon: Layers,
     stripe: "bg-violet-500",
     chip: "bg-violet-500/10 text-violet-500",

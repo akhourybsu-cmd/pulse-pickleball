@@ -1,3 +1,4 @@
+import { LeagueBrandMark } from "@/components/leagues/LeagueIdentity";
 import { VenueAdminPageHeader } from "@/components/venue/VenueAdminPageHeader";
 import { VenueAdminSubnav } from "@/components/venue/VenueAdminSubnav";
 import { useVenueAdminLayout } from "@/components/venue/VenueAdminLayout";
@@ -174,14 +175,15 @@ export default function VenueCompetitions() {
           aria-label="Venue leagues"
         >
           {leagues.map((l) => (
-            <article key={l.id} className="rounded-2xl border bg-card p-5">
+            <article key={l.id} className="min-w-0 rounded-2xl border bg-card p-5">
+              <LeagueBrandMark name={l.name} branding={l.branding} className="mb-3 h-14 w-14 text-[56px]" />
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {l.league_type === "ladder"
                   ? "Individual doubles ladder"
                   : l.league_type}{" "}
                 · {l.status}
               </p>
-              <h2 className="mt-2 text-xl font-semibold">{l.name}</h2>
+              <h2 className="mt-2 break-words text-xl font-semibold [overflow-wrap:anywhere]">{l.name}</h2>
               <p className="my-4 text-sm text-muted-foreground">
                 {l.seasons} seasons · {l.members} players
               </p>

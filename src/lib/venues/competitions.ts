@@ -1,3 +1,4 @@
+import type { LeagueBrand } from "@/lib/leagues/branding";
 export interface VenueRoundRobin {
   id: string;
   title: string;
@@ -28,6 +29,7 @@ export interface VenueCompetitions {
     name: string;
     status: string;
     league_type: string;
+    branding?: LeagueBrand;
     seasons: number;
     members: number;
   }[];

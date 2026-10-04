@@ -719,6 +719,14 @@ export default function PlayerLeagueDetail() {
                       : (membership?.role ?? "Guest / substitute")}
                   </dd>
                 </div>
+                {league.community_id && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Venue or community</dt>
+                    <dd className="mt-1 text-sm font-semibold">
+                      <button type="button" className="underline underline-offset-4" onClick={() => navigate(`/player/community/group/${encodeURIComponent(league.community_id!)}`)}>View host page</button>
+                    </dd>
+                  </div>
+                )}
                 {league.location && (
                   <div>
                     <dt className="text-xs text-muted-foreground">Location</dt>

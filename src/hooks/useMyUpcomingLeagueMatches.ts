@@ -1,3 +1,5 @@
+import { leagueErrorMessage } from "@/lib/leagues/data";
+import type { LeagueBrand } from "@/lib/leagues/branding";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
@@ -10,7 +12,11 @@ export interface UpcomingLeagueMatch {
   league_type: LeagueType;
   season_id: string | null;
   season_name: string | null;
-  scheduled_time: string;
+  scheduled_time: string | null;
+  has_match_time?: boolean;
+  session_date?: string | null;
+  session_start_time?: string | null;
+  league_branding?: LeagueBrand;
   court_number: number | null;
   location: string | null;
   status: LeagueMatchStatus;
@@ -23,10 +29,10 @@ export interface UpcomingLeagueMatch {
 /**
  * One-round-trip fetch of the caller's next N upcoming league matches
  * across every league. Backs the Dashboard "Up next in leagues" card.
- * Server-side filters admin_only leagues + past times.
+ * Uses published, active participation and both match and session schedules.
  *
  * Error is propagated (not silently swallowed) so the wrapping
- * section can hide-on-empty vs. show-a-real-message when the RPC
+ * section can distinguish an empty schedule from a failure when the RPC
  * actually failed. The console.error keeps the failure visible in
  * dev without crashing the Dashboard.
  */
@@ -36,6 +42,8 @@ export function useMyUpcomingLeagueMatches(limit = 3) {
     queryKey: ["my-upcoming-league-matches", user?.id, limit],
     enabled: Boolean(user),
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: 'always',
     queryFn: async (): Promise<UpcomingLeagueMatch[]> => {
       const { data, error: rpcErr } = await supabase
         .rpc("get_my_upcoming_league_matches" as never, { p_limit: limit } as never);
@@ -50,6 +58,7 @@ export function useMyUpcomingLeagueMatches(limit = 3) {
   return {
     rows: query.data ?? [],
     loading: Boolean(user) && query.isPending,
-    error: query.error instanceof Error ? query.error.message : null,
+    error: query.error ? leagueErrorMessage(query.error) : null,
+    retry: query.refetch,
   };
 }

@@ -219,7 +219,7 @@ export default function AdminLeagueDetail() {
   const onDataMutated = () => {
     bumpDataVersion();
     void refetchCounts();
-    for (const key of ['my-leagues', 'my-upcoming-league-matches', 'player-league-detail', 'league-seasons', 'league-actions', 'league-sub-requests']) {
+    for (const key of ['my-leagues', 'my-upcoming-league-matches', 'player-league-detail', 'league-seasons', 'league-actions', 'league-sub-requests', 'venue-occasions', 'venue-competitions']) {
       void queryClient.invalidateQueries({ queryKey: [key] });
     }
   };

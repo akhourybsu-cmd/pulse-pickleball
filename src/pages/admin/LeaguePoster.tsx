@@ -1,3 +1,4 @@
+import { leagueInviteUrl } from "@/lib/leagues/playerNavigation";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
@@ -87,7 +88,7 @@ export default function LeaguePoster() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4 text-center">
         <p className="text-sm text-muted-foreground max-w-md">
-          Set an invite code on the league's Overview tab before printing a poster.
+          Set an invite code in League settings before printing a poster.
         </p>
         <Button
           variant="outline"
@@ -104,7 +105,7 @@ export default function LeaguePoster() {
   // then joins, instead of bouncing them off the auth wall like the
   // in-app /player/leagues?join= path would.
   const shareUrl =
-    `${window.location.origin}/player/leagues/join/${encodeURIComponent(league.invite_code)}`;
+    leagueInviteUrl(league.invite_code);
 
   const copyLink = async () => {
     try {
@@ -197,6 +198,7 @@ export default function LeaguePoster() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline" size="sm"
+              aria-label={copied ? "Link copied" : "Copy league link"}
               onClick={copyLink}
               className={cn("h-9 border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white", PRESSABLE)}
             >
@@ -209,12 +211,14 @@ export default function LeaguePoster() {
             <Button
               variant="outline" size="sm"
               className={cn("h-9 border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white", PRESSABLE)}
+              aria-label="Print league poster"
               onClick={() => window.print()}
             >
               <Printer className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Print</span>
             </Button>
             <Button
               size="sm"
+              aria-label={rendering ? "Rendering poster" : shareFiles ? "Share poster image" : "Save poster image"}
               onClick={shareOrSaveImage}
               disabled={rendering}
               aria-busy={rendering || undefined}
@@ -240,7 +244,7 @@ export default function LeaguePoster() {
           ref={posterRef}
           className={[
             "relative mx-auto my-6 sm:my-8 print:my-0",
-            "aspect-[8.5/11] w-full max-w-[850px]",
+            "w-full max-w-[850px] sm:min-h-[1100px] print:min-h-0",
             "rounded-3xl print:rounded-none overflow-hidden",
             "bg-[var(--league-header,#0B171F)]",
             "print:bg-white print:text-slate-900",
@@ -268,7 +272,7 @@ export default function LeaguePoster() {
           />
 
           {/* Header */}
-          <div className="relative pt-8 sm:pt-10 px-8 text-center">
+          <div className="relative shrink-0 pt-8 sm:pt-10 px-5 sm:px-8 text-center">
             {league.branding?.logo_url && <LeagueBrandMark name={league.name} branding={league.branding} className="mx-auto mb-4 h-16 w-16 text-[64px]" />}
             <div
               className={[
@@ -280,7 +284,7 @@ export default function LeaguePoster() {
               PULSE Pickleball League
             </div>
 
-            <h1 className="font-display text-5xl sm:text-7xl tracking-tight leading-[0.95] mt-6 uppercase">
+            <h1 className="font-display break-words text-3xl sm:text-5xl print:text-4xl tracking-tight leading-tight mt-6 uppercase">
               {league.name}
             </h1>
             {league.location && (
@@ -294,7 +298,7 @@ export default function LeaguePoster() {
           </div>
 
           {/* Hero: QR is the primary call-to-action, code is the fallback. */}
-          <div className="relative flex-1 flex flex-col items-center justify-center gap-5 sm:gap-7 px-8">
+          <div className="relative flex-1 flex flex-col items-center justify-center gap-5 sm:gap-7 px-5 sm:px-8 py-8">
             <div className="flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-[color:var(--league-brand-accent,#A6DB5A)] print:text-[#5f8f26]">
               <ScanLine className="w-4 h-4" />
               Scan to join
@@ -302,7 +306,7 @@ export default function LeaguePoster() {
 
             {/* QR — level Q (25% error recovery) + a 2-module quiet zone so
                 it still scans off a printed flyer with glare or a smudge. */}
-            <div className="rounded-3xl print:rounded-xl bg-white p-5 shadow-2xl print:shadow-none ring-1 ring-black/5">
+            <div className="max-w-full shrink-0 rounded-3xl print:rounded-xl bg-white p-5 shadow-2xl print:shadow-none ring-1 ring-black/5">
               <QRCodeSVG
                 value={shareUrl}
                 size={248}
@@ -322,7 +326,7 @@ export default function LeaguePoster() {
               </div>
               <div
                 className={[
-                  "font-mono font-black text-5xl sm:text-7xl tracking-[0.12em] leading-none",
+                  "font-mono font-black text-3xl sm:text-5xl print:text-4xl tracking-[0.12em] leading-tight",
                   "text-[color:var(--league-brand-accent,#A6DB5A)] print:text-slate-900",
                   "break-all",
                 ].join(" ")}
@@ -333,7 +337,7 @@ export default function LeaguePoster() {
           </div>
 
           {/* Footer — compact "how to" + share URL */}
-          <div className="relative px-8 pb-10 sm:pb-12 text-center space-y-3">
+          <div className="relative shrink-0 px-5 sm:px-8 pb-8 sm:pb-10 text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-[12px] sm:text-sm text-slate-300 print:text-slate-700 flex-wrap">
               <Step n={1}>Open PULSE</Step>
               <Dot />
@@ -341,7 +345,7 @@ export default function LeaguePoster() {
               <Dot />
               <Step n={3}>Join with code</Step>
             </div>
-            <div className="text-[11px] text-slate-500 print:text-slate-500 font-mono truncate">
+            <div className="text-[11px] text-slate-500 print:text-slate-500 font-mono break-all">
               {shareUrl}
             </div>
           </div>

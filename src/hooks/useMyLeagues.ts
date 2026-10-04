@@ -203,6 +203,6 @@ export function useMyLeagues() {
   const activeRows = rows.filter((r) => r.league.status !== "archived");
   const archivedRows = rows.filter((r) => r.league.status === "archived");
 
-  return { rows: activeRows, archivedRows, allRows: rows, loading, error };
+  return { rows: activeRows, archivedRows, allRows: rows, loading, error, retry: query.refetch };
 }
 
