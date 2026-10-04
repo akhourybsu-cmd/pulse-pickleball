@@ -25,7 +25,16 @@ export default function PlayerByHandle() {
           .abortSignal(signal)
       );
       if (error) throw error;
-      return data?.[0]?.id ?? null;
+      if (data?.[0]?.id) return data[0].id;
+      // Friend discovery deliberately excludes the viewer. A shared profile
+      // link must still work when its owner scans it. Keep other players on the
+      // discovery RPC so its block filtering remains intact.
+      if (!user?.id) return null;
+      const { data: own, error: ownError } = await withAuthDeadline(signal => supabase
+        .from('profiles_public').select('id,handle').eq('id', user.id)
+        .abortSignal(signal).maybeSingle());
+      if (ownError) throw ownError;
+      return own?.handle?.toLowerCase() === cleaned ? own.id : null;
     },
   });
   useEffect(() => {
