@@ -176,6 +176,26 @@ describe("Player Pulse recorded analytics", () => {
       lastDate: "2026-10-05",
     });
   });
+  it.each([1, -1])(
+    "keeps the exact momentum boundary steady despite floating-point sums (direction %s)",
+    (direction) => {
+      const changes = [
+        0.01, -0.01, -0.01, -0.01, 0, 0.01, -0.02, 0.02, 0.02, 0.02,
+      ];
+      const rows = changes.map((change, i) =>
+        row({
+          matchId: String(i),
+          ratingChange: direction * change,
+        })
+      );
+      expect(computeMomentum(rows)?.net).toBeCloseTo(direction * 0.03, 12);
+      expect(computeMomentum(rows)?.state).toBe("steady");
+      rows[9].ratingChange! += direction * 0.001;
+      expect(computeMomentum(rows)?.state).toBe(
+        direction === 1 ? "rising" : "recalibrating"
+      );
+    }
+  );
   it("retains the true peak and its first achieved date, separate from the headline rating", () => {
     const result = buildPlayerPulse(
       [

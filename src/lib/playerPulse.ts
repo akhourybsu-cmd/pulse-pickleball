@@ -174,8 +174,11 @@ export function computeMomentum(sorted: PulseMatchRow[]): MomentumInfo | null {
   const wins = recent.filter((row) => outcomeFor(row) === "win").length;
   const losses = recent.filter((row) => outcomeFor(row) === "loss").length;
   const ups = recent.filter((row) => row.ratingChange! > 0).length;
+  // Decimal changes can sum to 0.030000000000000002. Ignore binary noise
+  // at the trend boundary without rounding the recorded values or net change.
+  const threshold = 0.03 + 1e-9;
   const state =
-    net > 0.03 ? "rising" : net < -0.03 ? "recalibrating" : "steady";
+    net > threshold ? "rising" : net < -threshold ? "recalibrating" : "steady";
   return {
     state,
     label:
