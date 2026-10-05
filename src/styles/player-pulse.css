@@ -1,0 +1,45 @@
+.pulse-page .pulse-panel {
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 1.25rem;
+  background: hsl(var(--card));
+  box-shadow: 0 3px 14px hsl(var(--foreground) / 0.025);
+}
+.pulse-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.pulse-hero {
+  color: hsl(44 32% 96%);
+  background: radial-gradient(
+      ellipse at 90% 10%,
+      hsl(41 65% 48% / 0.22),
+      transparent 65%
+    ),
+    hsl(220 12% 13%);
+  border: 1px solid hsl(41 55% 50% / 0.35);
+  box-shadow: 0 14px 40px hsl(220 15% 10% / 0.12);
+  animation: pulse-hero-arrive 450ms ease-out both;
+}
+.pulse-score {
+  color: hsl(42 80% 77%);
+  text-shadow: 0 0 35px hsl(41 65% 48% / 0.15);
+}
+@keyframes pulse-hero-arrive {
+  from {
+    transform: translateY(8px);
+    opacity: 0.75;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-hero {
+    animation: none;
+  }
+}
