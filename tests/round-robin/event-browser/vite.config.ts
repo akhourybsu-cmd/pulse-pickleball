@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()], cacheDir: 'node_modules/.vite-rr-event-qa',
   optimizeDeps: { entries: ['tests/round-robin/event-browser/index.html'] },
   resolve: { alias: [
-    ...['integrations/supabase/client', 'hooks/useAuthState'].map(name => ({ find: `@/${name}`, replacement: stub })),
+    ...['integrations/supabase/client', 'integrations/supabase/kioskClient', 'hooks/useAuthState'].map(name => ({ find: `@/${name}`, replacement: stub })),
     ...['hooks/useFriends', 'hooks/useGroupMembers', 'hooks/useRecentCoPlayers', 'hooks/useAdminGroups'].map(name => ({ find: `@/${name}`, replacement: creationStub })),
     { find: '@', replacement: path.resolve(__dirname, '../../../src') },
   ] },

@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { canScoreCommandMatch, commandSchedule, type CommandMatch } from '../../src/lib/roundRobin/commandCenter';
+import { canScoreCommandMatch, commandRoundAction, commandSchedule, type CommandMatch } from '../../src/lib/roundRobin/commandCenter';
 
 function match(overrides: Partial<CommandMatch> = {}): CommandMatch {
   return { id: 'match', round_no: 2, court_no: 1, is_bye: false, team1_score: null, team2_score: null, team1: ['Alex', 'Sam'], team2: ['Casey', 'Drew'], ...overrides };
 }
 
 describe('organizer command center', () => {
+  it('only offers advancement or completion when saved rounds agree with event settings', () => {
+    expect(commandRoundAction([1,2,3],2,3)).toBe('advance');
+    expect(commandRoundAction([1,2,3],3,3)).toBe('complete');
+    expect(commandRoundAction([1,4,7],4,3)).toBeNull();
+    expect(commandRoundAction([1,2],2,3)).toBeNull();
+    expect(commandRoundAction([1,3],1,3)).toBeNull();
+    expect(commandRoundAction([],1,1)).toBeNull();
+    expect(commandRoundAction([1,2,3,4],3,3)).toBeNull();
+  });
   it('browses only saved canonical rounds in order without mutating the schedule', () => {
     const rows = [match({ id: 'later', round_no: 5 }), match(), match({ id: 'old', round_no: 3, superseded_by_schedule_id: 'later' }), match({ id: 'void', round_no: 4, voided_at: 'now' })];
     const snapshot = JSON.stringify(rows);

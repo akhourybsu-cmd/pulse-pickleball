@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize } from "lucide-react";
 
-export function FullscreenToggleButton() {
+export function FullscreenToggleButton({ inline = false }: { inline?: boolean }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -11,6 +11,7 @@ export function FullscreenToggleButton() {
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    handleFullscreenChange();
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
@@ -32,7 +33,7 @@ export function FullscreenToggleButton() {
         onClick={toggleFullscreen}
         variant="ghost"
         size="sm"
-        className="fixed top-4 right-20 z-50 bg-background/50 backdrop-blur"
+        className={inline ? "bg-background/50 backdrop-blur" : "fixed top-4 right-20 z-50 bg-background/50 backdrop-blur"}
       >
         <Minimize className="w-4 h-4 mr-2" />
         Exit Fullscreen

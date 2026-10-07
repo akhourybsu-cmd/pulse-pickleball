@@ -36,6 +36,9 @@ if (params.has('manycourts')) {
 }
 const mutationAttempts = new Set<string>();
 const listeners = new Map<object, (() => void)[]>();
+let disconnected = false;
+export function togglePreviewConnection() { disconnected = !disconnected; for (const callbacks of listeners.values()) callbacks.forEach(callback => callback()); }
+export function hidePreviewEvent() { event.status = 'voided'; event.voided = true; for (const callbacks of listeners.values()) callbacks.forEach(callback => callback()); }
 function createChannel() {
   const callbacks: (() => void)[] = [];
   const channel = { on: (_type: string, _filter: unknown, callback: () => void) => { callbacks.push(callback); return channel; }, subscribe: () => channel, unsubscribe: () => listeners.delete(channel) };
@@ -72,6 +75,7 @@ export const supabase = {
     const execute=async()=>{
     recordRead(`rpc:${name}`);
     await (name === 'can_manage_round_robin' ? delay() : mutationDelay());
+    if (name === 'rr_kiosk_participants') return disconnected ? {data:null,error:{message:'Simulated connection interruption'}} : {data:profiles.map(profile => ({ participant_id:profile.id,name:profile.display_name,is_guest:false,active:roster.find(row=>row.player_id===profile.id)?.active ?? false })),error:null};
     if(name === "can_manage_round_robin") return {data:user.id === event.organizer_id,error:null};
     // Opt-in command-center QA only changes these in-memory fixtures.
     const controls = ['rr_start_event','rr_update_event_settings','rr_edit_schedule','rr_remove_match_result','submit_rr_match_score'];
@@ -139,7 +143,7 @@ export const supabase = {
   from:(table:string)=>{
     let single=false;
     let rows:Record<string,unknown>[] = table==='round_robin_events'?[event]:table==='round_robin_players'?roster:table==='round_robin_schedule'?schedule:table==='profiles_public'?profiles:table==='round_robin_audit'?[{id:'audit-1',change_type:'event_create',editor_id:'player-0',changes:{after:{name:event.name}},created_at:'2026-09-21T12:00:00Z',reason:'Event created'}]:[];
-    const result=()=>({data:structuredClone(single?rows[0]??null:rows),error:null});
+    const result=()=>disconnected ? {data:null,error:{message:'Simulated connection interruption'}} : {data:structuredClone(single?rows[0]??null:rows),error:null};
     const chain={
       select:()=>chain,order:()=>chain,eq:()=>chain,is:(key:string,value:unknown)=>{rows=rows.filter(row=>row[key]==value);return chain;},in:()=>chain,not:()=>chain,or:()=>chain,limit:()=>chain,abortSignal:()=>chain,
       range:(start:number,end:number)=>{rows=rows.slice(start,end+1);return chain;},
@@ -150,3 +154,4 @@ export const supabase = {
     return chain;
   },
 };
+export const kioskClient = supabase;
