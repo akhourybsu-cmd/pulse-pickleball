@@ -1,4 +1,5 @@
-import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
+import { countsTowardScore, resolvedMatchLabel } from "@/lib/roundRobin/standings";
+import { restingPlayers } from '@/lib/roundRobin/scheduleDisplay';
 import { useScopedTheme } from '@/components/ui/scoped-theme';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -7,7 +8,7 @@ import { Activity, ArrowRight, Check, ChevronLeft, ChevronRight, Coffee, ListOrd
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Input } from '@/components/ui/input';
-import { canScoreCommandMatch, commandSchedule, type CommandMatch } from '@/lib/roundRobin/commandCenter';
+import { canScoreCommandMatch, commandRoundAction, commandSchedule, type CommandMatch } from '@/lib/roundRobin/commandCenter';
 import './command-center.css';
 
 type Mode = 'live' | 'next' | 'schedule';
@@ -76,7 +77,12 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
   const roundIndex = round === null ? -1 : data.rounds.indexOf(round);
   const roundMatches = data.matches.filter(match => match.round_no === round);
   const courts = roundMatches.filter(match => !match.is_bye).sort((a, b) => a.court_no - b.court_no);
-  const resting = roundMatches.filter(match => match.is_bye).flatMap(match => [...match.team1, ...match.team2]);
+  const resting = restingPlayers(roundMatches).map(({ id, match, seat }) => {
+    const team = seat.startsWith('a') ? match.team1 : match.team2;
+    const teamSeats: (typeof seat)[] = seat.startsWith('a') ? ['a1', 'a2'] : ['b1', 'b2'];
+    const index = teamSeats.filter(value => match[`${value}_player_id`] || match[`${value}_guest_id`]).indexOf(seat);
+    return { id, name: team[index] ?? 'Player' };
+  });
   const pages = courts.length + (resting.length > 0 ? 1 : 0);
   const selectedIndex = selectedCourt === 'rest' && resting.length ? courts.length : courts.findIndex(match => match.id === selectedCourt);
   const courtIndex = Math.max(0, selectedIndex);
@@ -84,7 +90,7 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
   const waiting = busy;
   const runAction = props.runAction;
   const canScore = !!match && canScoreCommandMatch(match, status, currentRound, voided) && !loadError;
-  const result = !!match && match.team1_score !== null && match.team2_score !== null;
+  const result = !!match && countsTowardScore(match);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -108,8 +114,9 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
   function changeRound(value: number) { setBrowsedRound(value); setSelectedCourt(null); }
   function changeCourt(index: number) { setSelectedCourt(courts[index]?.id ?? 'rest'); }
 
-  const primaryAction = status === 'draft' ? props.onStart : currentRound < totalRounds ? props.onAdvance : props.onComplete;
-  const primaryLabel = status === 'draft' ? 'Start event' : currentRound < totalRounds ? `Start round ${currentRound + 1}` : 'Complete event';
+  const roundAction = commandRoundAction(data.rounds, currentRound, totalRounds);
+  const primaryAction = status === 'draft' ? props.onStart : roundAction === 'advance' ? props.onAdvance : props.onComplete;
+  const primaryLabel = status === 'draft' ? 'Start event' : roundAction === 'advance' ? `Start round ${data.nextRound}` : 'Complete event';
 
   return (
     <div ref={panelRef} className="rr-command-frame">
@@ -133,7 +140,8 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
           ) : <div className="rr-command-round-title"><span>{mode === 'next' ? 'NEXT UP' : ended ? 'EVENT CLOSED' : status === 'draft' ? 'READY TO PLAY' : 'ON COURT'}</span><strong>{round === null ? 'All rounds covered' : `Round ${round}`}</strong></div>}
           <span className="rr-command-state">{ended ? voided || status === 'voided' ? 'Voided' : 'Complete' : status === 'draft' ? 'Preview' : round === currentRound ? <><i /> Live</> : 'Preview'}</span>
         </div>
-        {loadError && <div className="rr-command-error" role="status">Could not refresh. Retry before scoring.<button onClick={() => void props.onRefresh()}>Retry</button></div>}
+        {loadError && <div className="rr-command-error" role="status">Could not refresh. Retry before scoring.<button onClick={() => void runAction(props.onRefresh)}>{waiting ? 'Refreshing…' : 'Retry'}</button></div>}
+        {!ended && status === 'live' && !roundAction && <div className="rr-command-error" role="status">The saved rounds don’t match the event settings. Close the command center and review the schedule before advancing.</div>}
         {(['live', 'next', 'schedule'] as const).map(value => (
           <TabsContent key={value} value={value} className="rr-command-panel" tabIndex={-1}>
             <div className="rr-command-stage" key={`${round}-${match?.id ?? 'rest'}`}>
@@ -159,7 +167,7 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
                   </div>
                 </article>
               ) : resting.length > 0 ? (
-                <article className="rr-command-rest"><Coffee size={28} /><h2>Resting this round</h2><p>Check Schedule for their next assignment.</p><ul>{resting.map((player, index) => <li key={index}>{player}</li>)}</ul></article>
+                <article className="rr-command-rest"><Coffee size={28} /><h2>Resting this round</h2><p>Check Schedule for their next assignment.</p><ul>{resting.map(player => <li key={player.id}>{player.name}</li>)}</ul></article>
               ) : <div className="rr-command-empty"><Check size={32} /><h2>{round === null ? ended ? 'Event closed' : 'No next round' : 'No courts scheduled'}</h2><p>{ended ? 'Explore saved rounds in Schedule.' : round === null ? 'You’re on the final saved round. Finish the current games when ready.' : 'Close the command center to manage your schedule.'}</p></div>}
             </div>
             {pages > 0 && <nav className="rr-command-court-nav" aria-label="Court navigation">
@@ -174,8 +182,8 @@ function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) 
         ))}
         <footer className="rr-command-footer">
           {!ended && <div className="rr-command-mission">
-            <div aria-live="polite"><strong>{status === 'draft' ? props.canStart ? 'Your courts are ready' : 'Confirm at least 4 players' : `${data.progress.resolved} / ${data.progress.total} results recorded`}</strong><small>{status === 'draft' ? `${totalRounds} rounds planned` : `Live round ${currentRound}`}</small></div>
-            {(status === 'draft' || data.progress.canClose) ? <Button disabled={waiting || !!loadError || !data.rounds.length || (status === 'draft' && !props.canStart)} onClick={() => void runAction(primaryAction)}>{waiting ? 'Working…' : primaryLabel}<ArrowRight size={16} /></Button>
+            <div aria-live="polite"><strong>{status === 'draft' ? props.canStart ? 'Your courts are ready' : 'Confirm at least 4 players' : `${data.progress.resolved} / ${data.progress.total} courts resolved`}</strong><small>{status === 'draft' ? `${totalRounds} rounds planned` : `Live round ${currentRound}`}</small></div>
+            {(status === 'draft' || data.progress.canClose) ? <Button disabled={waiting || !!loadError || !data.rounds.length || (status === 'draft' ? !props.canStart : !roundAction)} onClick={() => void runAction(primaryAction)}>{waiting ? 'Working…' : primaryLabel}<ArrowRight size={16} /></Button>
               : <span className="rr-command-pending">{data.progress.pending} to go</span>}
           </div>}
           <TabsList className="rr-command-nav" aria-label="Command center views">

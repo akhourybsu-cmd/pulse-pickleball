@@ -37,3 +37,10 @@ Data-tab checks (October 7, 2026): `noscores`, `departed`, `waitlist`, `sparse`,
 - The round chooser reached saved rounds 1, 4, and 7; grouped rest seats were deduplicated and shown separately from court matches.
 
 Performance checks (October 3): `?large&perf&command&latency=150` uses a valid 32-player, eight-court, 20-round mixed schedule. `?large&perf&player&latency=150` measures the participant view. The local panel counts read requests, mounted round groups, and React render time. Ready time begins when the fixture mounts (after module loading and fixture generation). Reset measurements before typing both scores or cycling the tabs. Interaction render time is React CPU work, not wall-clock latency. `?player&simulate` exposes a local realtime round-advance control. No data leaves this fixture.
+# Command center and public kiosk checks
+
+Add `?kiosk` to mount the actual public display against the isolated backend. It supports the same `large`, `longnames`, `rest`, `scored`, `noscores`, `departed`, `completed`, `voided`, and `sparse` scenarios as the event fixture. `simulate` adds controls to advance the fixture round, interrupt/restore reads, or hide the event; these never contact production.
+
+Check large and compact broadcast sizes plus a 320px phone: every court and ranked player must be reachable through pages, manual navigation pauses cycling, themes persist, and exit confirmation returns to the event. Empty completed events must not award a podium. A failed refresh retains the last snapshot with a warning on live and final screens; a hidden event clears it.
+
+For the host, `?command&slow&retry&rest` exercises saving, synchronous pending locks, failed-save draft retention, retry, resting seats, advancing, and completion. `completed&removedresult` verifies a removed score never highlights a winner. `sparse` verifies browsing saved rounds while unsafe advancement stays disabled.

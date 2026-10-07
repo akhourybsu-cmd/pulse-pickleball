@@ -10135,6 +10135,15 @@ export type Database = {
         Args: { p_event_id: string; p_expected_round: number }
         Returns: number
       }
+      rr_kiosk_participants: {
+        Args: { _event_id: string }
+        Returns: {
+          active: boolean
+          is_guest: boolean
+          name: string
+          participant_id: string
+        }[]
+      }
       rr_kiosk_participant_names: {
         Args: { _event_id: string }
         Returns: {
