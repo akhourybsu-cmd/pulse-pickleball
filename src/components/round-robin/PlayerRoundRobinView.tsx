@@ -1,3 +1,4 @@
+import { scheduleMatchLabel } from "@/lib/roundRobin/scheduleDisplay";
 import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -5,9 +6,7 @@ import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinB
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Calendar, Trophy, Search, Medal, Target, TrendingUp, Star, ArrowLeft, Share2 } from "lucide-react";
+import { Calendar, ArrowLeft, Share2 } from "lucide-react";
 import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
@@ -22,14 +21,9 @@ import { RoundRobinHostHero } from "./RoundRobinHostHero";
 import { PlayerEventBriefing } from "./PlayerEventBriefing";
 import { playerRoundFocus } from "@/lib/roundRobin/playerRoundFocus";
 import { buildPlayerEventSnapshot, type HydratedEventPlayer, type HydratedEventMatch } from "@/lib/roundRobin/playerEventSnapshot";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { EventStandings } from "./EventStandings";
+import { EventRoster } from "./EventRoster";
+import { RoundScheduleSummary, RestingPlayers } from "./RoundScheduleSummary";
 
 interface PlayerRoundRobinViewProps {
   event: Event;
@@ -65,13 +59,13 @@ type ScheduleMatch = ReturnType<typeof buildPlayerEventSnapshot>['schedule'][num
 
 export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, onRetry }: PlayerRoundRobinViewProps) {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [playerSearch, setPlayerSearch] = useState("");
   const [activeView, setActiveView] = useState("court");
-  const { players, byId, schedule, standings, groupedSchedule } = useMemo(
+  const { players, byId, schedule, standings, groupedSchedule, roundNumbers } = useMemo(
     () => buildPlayerEventSnapshot(roster, rows), [roster, rows],
   );
   const getPlayerName = (playerId: string | null) => {
-    if (!playerId) return "BYE";
+    if (!playerId) return "Awaiting player";
     // playerId may be either a profile uuid or a guest_player uuid.
     const player = byId.get(playerId);
     if (!player) return "Someone";
@@ -85,21 +79,6 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
   /** Resolve a seat's name regardless of whether it's a registered player or a guest. */
   const seatName = (match: ScheduleMatch, seat: 'a1' | 'a2' | 'b1' | 'b2') =>
     getPlayerName(match[`${seat}_player_id`] ?? match[`${seat}_guest_id`] ?? null);
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const filteredPlayers = players.filter((p) =>
-    (p.profiles?.display_name || p.profiles?.full_name || p.guest_display_name || "")
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
 
   const myIds = new Set(userId ? [userId, ...players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : []);
   const { current: myMatch, next: nextMatch, onTeamA, resting } = playerRoundFocus(schedule, myIds, event.current_round || 1);
@@ -148,7 +127,7 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
         name={event.name} date={event.date} startTime={event.start_time} status={event.status}
         voided={event.voided} ratingEligible={event.rating_eligible} allowGuests={event.allow_guests}
         format={event.format} numRounds={event.num_rounds} numCourts={event.num_courts}
-        playerCount={players.filter(p => p.registration_status).length} hasSchedule={schedule.length > 0}
+        playerCount={players.filter(p => p.rosterStatus === "active").length} hasSchedule={schedule.length > 0}
         eventId={event.id} location={event.location}
       />
 
@@ -162,7 +141,7 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
           className="rr-host-workspace rr-player-workspace"
         >
           <Tabs value={activeView} onValueChange={setActiveView} className="rr-player-view-tabs">
-            <EventTabs playerHome playerCount={players.filter(p => p.registration_status).length} />
+            <EventTabs playerHome playerCount={players.filter(p => p.rosterStatus === "active").length} />
 
             <TabsContent value="court" className="rr-courtside-panel">
               <PlayerEventBriefing status={event.voided ? "voided" : event.status} round={event.current_round || 1} totalRounds={event.num_rounds}
@@ -191,12 +170,14 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                 </Card>
               ) : (
                 <ScheduleRoundCarousel
-                  totalRounds={Object.keys(groupedSchedule).length}
+                  totalRounds={roundNumbers.length}
+                  roundNumbers={roundNumbers}
                   currentRound={event.current_round || 1}
+                  liveRound={event.status === 'live' && !event.voided ? event.current_round || 1 : undefined}
                 >
                   {(roundNo) => {
                     const matches = groupedSchedule[roundNo] || [];
-                    const isCurrentRound = event.current_round === roundNo;
+                    const isCurrentRound = (event.current_round || 1) === roundNo;
                     
                     return (
                       <Card className={`transition-all duration-300 ${isCurrentRound ? "border-primary shadow-[0_0_20px_hsl(var(--primary)/0.15)]" : "border-border/50"}`}>
@@ -210,12 +191,10 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                             )}
                           </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
+                          <RoundScheduleSummary matches={matches} round={roundNo} currentRound={event.current_round || 1} status={event.voided ? "voided" : event.status} />
                           <div className="rr-court-grid">
-                            {matches.map((match, idx) => {
-                              const a1Id = match.a1_player_id ?? match.a1_guest_id;
-                              const b1Id = match.b1_player_id ?? match.b1_guest_id;
-                              const isBye = !a1Id || !b1Id || a1Id === b1Id;
+                            {matches.filter(match => !match.is_bye).map((match, idx) => {
                               const teamAScore = match.abandoned ? null : match.team_a_score ?? match.team1_score ?? null;
                               const teamBScore = match.abandoned ? null : match.team_b_score ?? match.team2_score ?? null;
                               const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
@@ -226,26 +205,13 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                                   key={match.id}
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: idx * 0.05 }}
+                                  transition={{ delay: Math.min(idx * 0.03, 0.15) }}
                                   className={`p-4 rounded-xl border transition-all ${match.id === myMatch?.id ? "rr-your-match" : ""} ${
                                     match.completed 
                                       ? "bg-gradient-to-r from-card to-muted/30 border-border" 
                                       : "bg-card border-border/50 hover:border-border"
                                   }`}
                                 >
-                                  {isBye ? (
-                                    <div className="flex items-center gap-3">
-                                      <Badge
-                                        variant="outline"
-                                        className="min-w-[62px] justify-center font-mono text-[11px] bg-muted/50"
-                                      >
-                                        Bye
-                                      </Badge>
-                                      <div className="text-sm text-muted-foreground min-w-0 truncate">
-                                        <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — resting
-                                      </div>
-                                    </div>
-                                  ) : (
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between gap-2">
                                         <Badge
@@ -254,11 +220,9 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                                         >
                                           Court {match.court_no}
                                         </Badge>
-                                        {!match.completed && (
-                                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                            {resolvedMatchLabel(match) ?? (event.status === "completed" || event.status === "voided" ? "No result" : isCurrentRound && event.status === "live" ? "On court" : "Upcoming")}
-                                          </span>
-                                        )}
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                            {scheduleMatchLabel(match, roundNo, event.current_round || 1, event.voided ? "voided" : event.status)}
+                                        </span>
                                       </div>
 
                                       <div className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${teamAWon ? "bg-primary/10 border border-primary/25" : "bg-muted/40"}`}>
@@ -285,12 +249,11 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
                                         </span>
                                       </div>
                                     </div>
-                                  )}
-
                                 </motion.div>
                               );
                             })}
                           </div>
+                          <RestingPlayers matches={matches} seatName={seatName} />
                         </CardContent>
                       </Card>
                     );
@@ -299,162 +262,11 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
               )}
             </TabsContent>
 
-            {/* Players Tab */}
-            <TabsContent value="players" className="space-y-4">
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search players..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary focus:ring-primary/20"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPlayers.map((player, idx) => {
-                  const playerStats = standings.find((s) => s.playerId === player.player_id);
-                  return (
-                    <motion.div
-                      key={player.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                    >
-                      <Card className="group hover:shadow-md hover:border-primary/40 transition-all duration-300">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12 ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all">
-                              {player.profiles?.avatar_url && (
-                                <AvatarImage src={player.profiles.avatar_url} alt={player.profiles?.display_name || player.profiles?.full_name || "Player"} />
-                              )}
-                              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground font-semibold">
-                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "?")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate flex items-center gap-2">
-                                <span className="truncate">
-                                  {player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "Player"}
-                                </span>
-                                {player.is_guest && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">Guest</Badge>
-                                )}
-                                {player.player_id === userId && !player.is_guest && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">You</Badge>
-                                )}
-                              </div>
-                              <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
-                                {player.profiles?.current_rating != null && (
-                                  <span className="inline-flex items-center gap-1 text-foreground/80">
-                                    <Star className="h-3 w-3 text-primary fill-primary" />
-                                    {Number(player.profiles.current_rating).toFixed(2)}
-                                  </span>
-                                )}
-                                {playerStats && playerStats.gamesPlayed > 0 ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="text-primary font-medium">{playerStats.wins}W</span>
-                                    <span className="text-muted-foreground/60">·</span>
-                                    <span className="text-destructive font-medium">{playerStats.losses}L</span>
-                                  </span>
-                                ) : (
-                                  <span className="text-xs">No games yet</span>
-                                )}
-                              </div>
-                            </div>
-                            {!player.active && <Badge variant="outline" className="text-xs">Removed</Badge>}
-                            {player.registration_status === "waitlisted" && (
-                              <Badge variant="outline" className="text-xs">Waitlist</Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {filteredPlayers.length === 0 && (
-                <Card className="border-dashed">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    {searchTerm ? "No players match your search." : "No players registered yet."}
-                  </CardContent>
-                </Card>
-              )}
+            <TabsContent value="players">
+              <EventRoster players={players} standings={standings} myIds={myIds} searchTerm={playerSearch} onSearchTermChange={setPlayerSearch} />
             </TabsContent>
-
-            {/* Standings Tab */}
             <TabsContent value="standings">
-              <Card className="overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-card to-muted/30 border-b border-border/50">
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-primary" />
-                    Event Standings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table className="rr-event-table">
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="w-16 text-center font-semibold">Rank</TableHead>
-                        <TableHead className="font-semibold">Player</TableHead>
-                        <TableHead className="text-center font-semibold">
-                          <span className="text-primary">W</span>
-                        </TableHead>
-                        <TableHead className="text-center font-semibold">
-                          <span className="text-destructive">L</span>
-                        </TableHead>
-                        <TableHead className="hidden sm:table-cell text-center font-semibold">PF</TableHead>
-                        <TableHead className="hidden sm:table-cell text-center font-semibold">PA</TableHead>
-                        <TableHead className="text-center font-semibold">+/-</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {standings.map((row, index) => {
-                        const isCurrentUser = row.playerId === userId;
-                        const isTopThree = index < 3;
-                        const diff = row.pointsFor - row.pointsAgainst;
-                        
-                        return (
-                          <TableRow 
-                            key={row.playerId} 
-                            className={`transition-colors ${
-                              isCurrentUser 
-                                ? "bg-primary/10 hover:bg-primary/15" 
-                                : isTopThree 
-                                ? "bg-secondary/5 hover:bg-secondary/10" 
-                                : ""
-                            }`}
-                          >
-                            <TableCell className="text-center">
-                              {index === 0 ? (
-                                <Medal className="h-5 w-5 text-yellow-500 mx-auto" />
-                              ) : index === 1 ? (
-                                <Medal className="h-5 w-5 text-gray-400 mx-auto" />
-                              ) : index === 2 ? (
-                                <Medal className="h-5 w-5 text-amber-700 mx-auto" />
-                              ) : (
-                                <span className="font-medium text-muted-foreground">{index + 1}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {row.playerName}
-                              {isCurrentUser && (
-                                <Badge variant="outline" className="ml-2 text-xs">You</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center font-semibold text-primary">{row.wins}</TableCell>
-                            <TableCell className="text-center font-semibold text-destructive">{row.losses}</TableCell>
-                            <TableCell className="hidden sm:table-cell text-center text-muted-foreground">{row.pointsFor}</TableCell>
-                            <TableCell className="hidden sm:table-cell text-center text-muted-foreground">{row.pointsAgainst}</TableCell>
-                            <TableCell className={`text-center font-semibold ${diff > 0 ? "text-primary" : diff < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                              {diff > 0 ? "+" : ""}{diff}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              <EventStandings rows={standings} completed={event.status === 'completed'} voided={event.voided || event.status === 'voided'} myIds={myIds} />
             </TabsContent>
           </Tabs>
         </motion.div>

@@ -185,7 +185,7 @@ export function WhatsNextBanner({
         icon: CheckCircle2,
         pill: "DONE",
         title: "Event complete",
-        hint: "All scored matches are in the players' history. Ratings have been updated.",
+        hint: "All scored matches are recorded in the players' history.",
         cta: "",
         informational: true,
       };

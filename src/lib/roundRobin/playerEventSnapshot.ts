@@ -32,7 +32,7 @@ export type HydratedEventMatch = StandingsSeatRow & {
   & Partial<Record<`${typeof seats[number]}_profile`, Profile | null>>
   & Partial<Record<`${typeof seats[number]}_guest`, Guest | null>>;
 
-interface ViewPlayer {
+export interface ViewPlayer {
   id: string;
   player_id: string;
   registration_status: string;
@@ -41,12 +41,14 @@ interface ViewPlayer {
   guest_display_name: string | null;
   guest_linked_user_id: string | null;
   profiles: Profile | null;
+  rosterStatus: 'active' | 'waitlisted' | 'removed';
 }
 
 /** Project the already-authorized, hydrated event read into the player UI.
  * No second fetch/subscription, and historical seats keep names after removal.
  */
 export function buildPlayerEventSnapshot(roster: HydratedEventPlayer[], rows: HydratedEventMatch[]) {
+  const canonicalRows = rows.filter(row => !row.voided_at && !row.superseded_by_schedule_id);
   const byId = new Map<string, ViewPlayer>();
   for (const row of roster) {
     const id = row.player_id ?? row.guest_player_id;
@@ -58,9 +60,10 @@ export function buildPlayerEventSnapshot(roster: HydratedEventPlayer[], rows: Hy
       guest_display_name: row.guest_players?.display_name || row.guest_name || null,
       guest_linked_user_id: row.guest_players?.linked_user_id ?? null,
       profiles: row.profiles,
+      rosterStatus: row.registration_status === 'waitlisted' ? 'waitlisted' : row.active !== false ? 'active' : 'removed',
     });
   }
-  for (const match of rows) for (const seat of seats) {
+  for (const match of canonicalRows) for (const seat of seats) {
     const id = match[`${seat}_player_id`] ?? match[`${seat}_guest_id`];
     if (!id || byId.has(id)) continue;
     const guest = match[`${seat}_guest`];
@@ -70,25 +73,30 @@ export function buildPlayerEventSnapshot(roster: HydratedEventPlayer[], rows: Hy
       guest_display_name: guest?.display_name ?? null,
       guest_linked_user_id: guest?.linked_user_id ?? null,
       profiles: match[`${seat}_profile`] ?? null,
+      rosterStatus: 'removed',
     });
   }
   const players = [...byId.values()];
-  const schedule = rows.map(match => ({
+  const schedule = canonicalRows.map(match => ({
     ...match,
     team_a_score: match.team1_score,
     team_b_score: match.team2_score,
     completed: countsTowardScore(match),
   }));
-  const standings = computeStandings(rows, players.map(player => ({
-    key: player.player_id, active: player.active,
+  const standings = computeStandings(canonicalRows, players.map(player => ({
+    key: player.player_id, active: player.rosterStatus === 'active',
     name: player.profiles?.display_name || player.profiles?.full_name ||
       (player.is_guest ? guestSeatLabel({ display_name: player.guest_display_name, linked_user_id: player.guest_linked_user_id }) : 'Someone'),
-  }))).map(row => ({
+  }))).filter(row => byId.get(row.key)?.rosterStatus !== 'waitlisted' || row.gamesPlayed > 0).map(row => ({
     playerId: row.key, playerName: row.name, wins: row.wins, losses: row.losses,
     pointsFor: row.pointsFor, pointsAgainst: row.pointsAgainst,
     gamesPlayed: row.gamesPlayed, isRemoved: row.isRemoved,
   }));
   const groupedSchedule: Record<number, typeof schedule> = {};
   for (const match of schedule) (groupedSchedule[match.round_no] ??= []).push(match);
-  return { players, byId, schedule, standings, groupedSchedule };
+  for (const matches of Object.values(groupedSchedule)) matches.sort((a, b) => Number(a.is_bye) - Number(b.is_bye) || a.court_no - b.court_no);
+  const roundNumbers = Object.keys(groupedSchedule).map(Number).sort((a, b) => a - b);
+  return { players, byId, schedule, standings, groupedSchedule, roundNumbers };
 }
+
+export type EventStanding = ReturnType<typeof buildPlayerEventSnapshot>['standings'][number];

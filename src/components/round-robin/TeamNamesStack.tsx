@@ -16,8 +16,7 @@ interface TeamNamesStackProps {
  * Round Robin cards used to join a doubles pairing into one line
  * ("Alexander Khoury / Jordan Whitfield") and truncate it — on a phone
  * that meant both names were unreadable. Stacking gives each name the
- * full card width, so a single name only clips in the extreme case, and
- * the pairing stays scannable at a glance.
+ * full card width. Long names wrap so both partners remain readable on phones.
  */
 export function TeamNamesStack({
   player1,
@@ -42,7 +41,7 @@ export function TeamNamesStack({
         <span
           key={`${name}-${i}`}
           className={cn(
-            "w-full truncate text-[13px] sm:text-sm",
+            "w-full break-words text-[13px] sm:text-sm",
             isWinner ? "font-semibold text-foreground" : "text-foreground/90",
           )}
           title={name}

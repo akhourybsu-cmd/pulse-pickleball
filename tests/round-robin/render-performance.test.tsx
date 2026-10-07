@@ -79,6 +79,16 @@ it('preserves parent-owned score drafts when distant round cards unmount', () =>
   expect(root.root.findByProps({ 'aria-label': 'Score 1' }).props.value).toBe('11');
 });
 
+it('navigates actual saved round numbers without creating phantom rounds', () => {
+  act(() => { root = create(<ScheduleRoundCarousel totalRounds={3} roundNumbers={[1, 4, 7]} currentRound={4}>{round => <div data-round={round} />}</ScheduleRoundCarousel>); });
+  const sections = root.root.findAllByType('section');
+  expect(sections.map(node => node.props['aria-label'])).toEqual(['Round 1', 'Round 4', 'Round 7']);
+  expect(sections.filter(node => !node.props['aria-hidden'])[0].props['aria-label']).toBe('Round 4');
+  act(() => root.root.findByProps({ 'aria-label': 'Choose round' }).props.onChange({ target: { value: '7' } }));
+  expect(carousel.api.selectedScrollSnap()).toBe(2);
+  expect(root.root.findAllByType('section').filter(node => !node.props['aria-hidden'])[0].props['aria-label']).toBe('Round 7');
+});
+
 it('does no schedule planning for a closed settings menu or unrelated renders, but replans changed settings', () => {
   const plan = vi.fn(() => null);
   const props = { onOpenChange: vi.fn(), currentCourts: 4, currentGamesPerPlayer: 6, currentRound: 3,

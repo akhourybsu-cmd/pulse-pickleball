@@ -27,13 +27,32 @@ describe('shared player event snapshot', () => {
     const result = buildPlayerEventSnapshot(roster, [match]);
     expect(result.schedule[0].completed).toBe(true);
     expect(result.standings.find(row => row.playerId === 'a')).toMatchObject({ wins: 1, gamesPlayed: 1 });
-    expect(result.standings.at(-1)).toMatchObject({ playerId: 'b', isRemoved: true, wins: 1 });
+    expect(result.standings.find(row => row.playerId === 'b')).toMatchObject({ isRemoved: true, wins: 1 });
+    expect(result.standings.find(row => row.playerId === 'g')).toMatchObject({ isRemoved: true });
     expect(result.byId.get('b')?.registration_status).toBe('');
   });
   it.each([{ abandoned: true }, { is_bye: true }, { voided_at: 'yesterday' }, { superseded_by_schedule_id: 'new' }])('excludes obsolete results: %o', flags => {
     const result = buildPlayerEventSnapshot(roster, [{ ...match, ...flags }]);
-    expect(result.schedule[0].completed).toBe(false);
+    expect(result.schedule.every(row => !row.completed)).toBe(true);
     expect(result.standings.every(row => row.gamesPlayed === 0)).toBe(true);
+  });
+  it('separates waitlisted players from the active count and keeps unplayed waitlists out of standings', () => {
+    const result = buildPlayerEventSnapshot(roster, []);
+    expect(result.players.filter(player => player.rosterStatus === 'active').map(player => player.player_id)).toEqual(['a', 'c']);
+    expect(result.byId.get('g')?.rosterStatus).toBe('waitlisted');
+    expect(result.standings.map(row => row.playerId)).not.toContain('g');
+    expect(result.byId.get('b')?.rosterStatus).toBe('removed');
+  });
+  it('uses saved round numbers and court order, excluding replaced rounds and their historical-only seats', () => {
+    const result = buildPlayerEventSnapshot([roster[0]], [
+      { ...match, id: 'late', round_no: 7, court_no: 2 },
+      { ...match, id: 'early', round_no: 2, court_no: 1 },
+      { ...match, id: 'first-court', round_no: 7, court_no: 1 },
+      { ...match, id: 'obsolete', round_no: 3, a1_player_id: 'obsolete-player', superseded_by_schedule_id: 'late' },
+    ]);
+    expect(result.roundNumbers).toEqual([2, 7]);
+    expect(result.groupedSchedule[7].map(row => row.court_no)).toEqual([1, 2]);
+    expect(result.byId.has('obsolete-player')).toBe(false);
   });
   it('resolves schedule-only and unavailable guest profiles without dropping names', () => {
     const result = buildPlayerEventSnapshot([roster[0]], [{ ...match,

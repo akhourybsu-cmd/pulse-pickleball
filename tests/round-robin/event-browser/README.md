@@ -28,4 +28,12 @@ Checked September 21, 2026:
 
 The fixture checks presentation and navigation. It does not validate production event writes, sharing, invitations, rating recalculation, or realtime delivery.
 
+Data-tab checks (October 7, 2026): `noscores`, `departed`, `waitlist`, `sparse`, and `removedresult` exercise empty rankings, a former participant, an inactive waitlist entry, saved rounds 1/4/7, and a voided match result. `departed` changes roster status only, intentionally leaving the old assignments visible for historical-display checks; it does not simulate a schedule adjustment.
+
+- Host and player final standings matched row for row, including former-player records without ranks.
+- At 320px, roster search, wrapping names, standings statistics, and organizer schedule controls fit without horizontal page overflow; light and dark appearances checked.
+- Unscored players received no rank; waitlisted players did not inflate the active count or enter standings; voided events showed historical results without rankings.
+- Saving a simulated 11–2 score updated the schedule summary, player record, and standings consistently. Player search survived switching tabs.
+- The round chooser reached saved rounds 1, 4, and 7; grouped rest seats were deduplicated and shown separately from court matches.
+
 Performance checks (October 3): `?large&perf&command&latency=150` uses a valid 32-player, eight-court, 20-round mixed schedule. `?large&perf&player&latency=150` measures the participant view. The local panel counts read requests, mounted round groups, and React render time. Ready time begins when the fixture mounts (after module loading and fixture generation). Reset measurements before typing both scores or cycling the tabs. Interaction render time is React CPU work, not wall-clock latency. `?player&simulate` exposes a local realtime round-advance control. No data leaves this fixture.
