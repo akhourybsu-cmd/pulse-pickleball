@@ -7,7 +7,7 @@ import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
 import { useRoundRobinAction } from "@/hooks/useRoundRobinAction";
 import { RoundRobinPendingAction } from "@/components/round-robin/RoundRobinPendingAction";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { RRLeftSidebar, RRRightSidebar } from "@/components/roundrobin/RoundRobinManageSidebars";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, UserMinus, Calendar, MapPin, Zap, RefreshCw, Medal, Clock, ShieldCheck, ChevronRight } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, UserMinus, Calendar, MapPin, Zap, RefreshCw, Clock, ShieldCheck, ChevronRight } from "lucide-react";
 import { motion, MotionConfig } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
@@ -40,7 +40,6 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
-import { RankBadge } from "@/components/round-robin/RankBadge";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
 import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
@@ -69,7 +68,11 @@ import {
 } from "@/lib/roundRobin/activeMatch";
 import { ActiveMatchResolutionDialog } from "@/components/round-robin/ActiveMatchResolutionDialog";
 import { resolveRRParticipant } from "@/lib/roundRobin/resolveParticipant";
-import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
+import { buildPlayerEventSnapshot } from "@/lib/roundRobin/playerEventSnapshot";
+import { EventStandings } from "@/components/round-robin/EventStandings";
+import { EventRoster } from "@/components/round-robin/EventRoster";
+import { RoundScheduleSummary, RestingPlayers } from "@/components/round-robin/RoundScheduleSummary";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -91,7 +94,7 @@ import {
 import { participantGenderEligibility } from "@/lib/roundRobin/participantGender";
 import { fetchCanonicalRoundRobinSchedule } from "@/lib/roundRobin/fetchScheduleRows";
 import { useAuthState } from "@/hooks/useAuthState";
-import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
+import { scheduleMatchLabel } from "@/lib/roundRobin/scheduleDisplay";
 import { roundProgress } from "@/lib/roundRobin/roundProgress";
 
 
@@ -215,17 +218,6 @@ interface ScheduleMatch {
   abandoned_reason?: string | null;
 }
 
-interface StandingsRow {
-  player_id: string;
-  player_name: string;
-  wins: number;
-  losses: number;
-  points_for: number;
-  points_against: number;
-  point_diff: number;
-  isRemoved?: boolean;
-}
-
 interface MatchScore {
   [matchId: string]: {
     team1_score: number;
@@ -280,6 +272,7 @@ export default function RoundRobinDetail() {
   // Controlled tab state — lets the custom strip animate a sliding
   // underline indicator (the uncontrolled shadcn TabsList can't).
   const [activeTab, setActiveTab] = useState<"schedule" | "players" | "standings">("schedule");
+  const [playerSearch, setPlayerSearch] = useState("");
   const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const scoreActionRef = useRef(false);
@@ -721,7 +714,7 @@ export default function RoundRobinDetail() {
   };
 
   const getRoundMatches = (roundNo: number) => {
-    return schedule.filter((s) => s.round_no === roundNo);
+    return schedule.filter((s) => s.round_no === roundNo && !s.voided_at && !s.superseded_by_schedule_id).sort((a, b) => a.court_no - b.court_no);
   };
 
   const handleScoreChange = (matchId: string, team: 'team1' | 'team2', value: string) => {
@@ -735,36 +728,9 @@ export default function RoundRobinDetail() {
     }));
   };
 
-  const standings = useMemo<StandingsRow[]>(() => {
-    if (!isOrganizer && !isAdmin) return [];
-    // Canonical standings math lives in src/lib/roundRobin/standings.ts so the
-    // organizer page, kiosk, and player view can never diverge on tie-breaks
-    // or on how removed/withdrawn players are ranked.
-    const participants = players
-      .map((p) => {
-        const key = p.player_id || (p as any).guest_player_id;
-        if (!key) return null;
-        const guestRow = (p as any).guest_players as
-          | { display_name?: string | null; linked_user_id?: string | null }
-          | undefined;
-        const name = p.profiles
-          ? p.profiles.display_name || p.profiles.full_name
-          : guestSeatLabel(guestRow, (p as any).guest_name);
-        return { key, name, active: !!p.active };
-      })
-      .filter(Boolean) as { key: string; name: string; active: boolean }[];
-
-    return computeStandings(schedule, participants).map((r) => ({
-      player_id: r.key,
-      player_name: r.name,
-      wins: r.wins,
-      losses: r.losses,
-      points_for: r.pointsFor,
-      points_against: r.pointsAgainst,
-      point_diff: r.pointDiff,
-      isRemoved: r.isRemoved,
-    }));
-  }, [schedule, players, isOrganizer, isAdmin]);
+  const eventSnapshot = useMemo(() => buildPlayerEventSnapshot(
+    isOrganizer || isAdmin ? players : [], isOrganizer || isAdmin ? schedule : [],
+  ), [players, schedule, isOrganizer, isAdmin]);
 
   const showCommittedScore = (scheduleId: string, team1: number, team2: number, matchId: string) => {
     // The RPC has committed. Show that result immediately, before any refresh,
@@ -2193,7 +2159,7 @@ export default function RoundRobinDetail() {
 
         <div>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-          <EventTabs playerCount={activeRoster.length} />
+          <EventTabs playerCount={eventSnapshot.players.filter(p => p.rosterStatus === "active").length} />
 
           <TabsContent value="schedule" className="mt-4 space-y-4">
             {!hasSchedule ? (
@@ -2242,8 +2208,10 @@ export default function RoundRobinDetail() {
             ) : (
               <>
                 <ScheduleRoundCarousel 
-                  totalRounds={event.num_rounds} 
+                  totalRounds={eventSnapshot.roundNumbers.length}
+                  roundNumbers={eventSnapshot.roundNumbers}
                   currentRound={event.current_round || 1}
+                  liveRound={event.status === 'live' && !event.voided ? event.current_round || 1 : undefined}
                   rightAction={
                     isOrganizer && !event.voided && event.status !== 'completed' ? (
                       <div className="flex items-center gap-1">
@@ -2274,13 +2242,13 @@ export default function RoundRobinDetail() {
                   {(roundNo, isActiveSlide) => {
                     const allMatches = getRoundMatches(roundNo);
                     const courtMatches = allMatches.filter(m => !m.is_bye);
-                    const byeMatches = allMatches.filter(m => m.is_bye);
                     const isCurrentRound = roundNo === currentRound;
                     const isFutureRound = roundNo > currentRound;
                     const allRoundScored = roundProgress(courtMatches).canClose;
                     
                     return (
-                      <div className={`space-y-3 ${isFutureRound ? 'opacity-60' : ''}`}>
+                      <div className="space-y-3">
+                        <RoundScheduleSummary matches={allMatches} round={roundNo} currentRound={currentRound} status={event.voided ? "voided" : event.status} />
                         {/* Section label + optional close-round action */}
                         <div className="flex items-center justify-between pt-1">
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2318,7 +2286,7 @@ export default function RoundRobinDetail() {
                             name truncation below can actually kick in. */}
                         <div className="rr-court-grid">
                           {courtMatches.map((match, idx) => {
-                            const isCompleted = !match.abandoned && match.team1_score !== null && match.team2_score !== null;
+                            const isCompleted = countsTowardScore(match);
                             const team1Won = isCompleted && match.team1_score! > match.team2_score!;
                             const team2Won = isCompleted && match.team2_score! > match.team1_score!;
 
@@ -2335,13 +2303,10 @@ export default function RoundRobinDetail() {
                                   <CardContent className="p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                       <Badge variant="outline" className="font-mono bg-muted/50">Court {match.court_no}</Badge>
-                                      {match.abandoned && <Badge variant="secondary">{resolvedMatchLabel(match)}</Badge>}
-                                      {isCompleted && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          <CheckCircle className="h-3 w-3 mr-1" />
-                                          Completed
-                                        </Badge>
-                                      )}
+                                      <Badge variant="secondary" className="text-xs">
+                                        {isCompleted && <CheckCircle className="h-3 w-3 mr-1" />}
+                                        {scheduleMatchLabel(match, roundNo, currentRound, event.voided ? "voided" : event.status)}
+                                      </Badge>
                                     </div>
                                     
                                     <div className="space-y-2">
@@ -2434,27 +2399,7 @@ export default function RoundRobinDetail() {
                           })}
                         </div>
 
-                        {byeMatches.length > 0 && (
-                          <div className="mt-3 rounded-2xl border border-border/50 bg-muted/30 p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold tracking-wider uppercase">
-                                Bye
-                              </span>
-                              <span className="text-xs text-muted-foreground">Players resting this round</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {byeMatches.map((match) => (
-                                <span
-                                  key={match.id}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/60 text-xs font-medium text-foreground"
-                                >
-                                  <Users className="h-3 w-3 text-muted-foreground" />
-                                  {getSeatName(match, 'a1')}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <RestingPlayers matches={allMatches} seatName={getSeatName} />
                       </div>
                     );
                   }}
@@ -2474,213 +2419,30 @@ export default function RoundRobinDetail() {
             )}
           </TabsContent>
 
-          <TabsContent value="players" className="mt-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Participants</CardTitle>
-                  {isOrganizer && !event.voided && event.status !== 'completed' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPlayerManagementOpen(true)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Manage Players
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {players.length > 0 && (
-                    <>
-                      <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Players ({activeRoster.length} active)
-                      </p>
-                      {players.map((player) => {
-                        const guest = (player as any).guest_players as { id?: string; display_name?: string; linked_user_id?: string | null; email?: string | null } | undefined;
-                        const guestId = (player as any).guest_player_id as string | null | undefined;
-                        const guestName = guest?.display_name || (player as any).guest_name;
-                        const isUnlinkedGuest = !!guestId && !guest?.linked_user_id;
-                        const displayName =
-                          player.profiles?.display_name ||
-                          player.profiles?.full_name ||
-                          (guestName ? (guest?.linked_user_id ? guestName : `${guestName} (G)`) : "Guest");
-                        return (
-                        <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="font-medium">
-                            {displayName}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={player.active === false ? "secondary" : "default"}>
-                              {player.registration_status === "waitlisted" ? "Waitlisted" : player.active === false ? "Inactive" : "Active"}
-                            </Badge>
-                            {isOrganizer && isUnlinkedGuest && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setInviteGuest({
-                                  id: guestId!,
-                                  name: guestName || "Guest",
-                                  email: guest?.email ?? null,
-                                })}
-                              >
-                                <Send className="h-3 w-3 mr-1" />
-                                Invite
-                              </Button>
-                            )}
-                            {isOrganizer && player.active !== false && !event.voided && event.status !== 'completed' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={async () => {
-                                  if (eventAction.isBusy()) return;
-                                  if (!confirm(`Remove ${displayName} from this event?`)) return;
-                                  try { await handleMarkInactive(player.id); }
-                                  catch (error) { toast.error(getErrorMessage(error, "Could not remove this player.")); }
-                                }}
-                                title="Remove player"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="players" className="mt-4">
+            <EventRoster players={eventSnapshot.players} standings={eventSnapshot.standings}
+              searchTerm={playerSearch} onSearchTermChange={setPlayerSearch}
+              myIds={new Set(userId ? [userId, ...eventSnapshot.players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : [])}
+              action={isOrganizer && !event.voided && event.status !== 'completed' ? <Button variant="outline" size="sm" onClick={() => setPlayerManagementOpen(true)}><Edit className="h-4 w-4" />Manage players</Button> : undefined}
+              playerActions={isOrganizer ? viewPlayer => {
+                const player = players.find(row => row.id === viewPlayer.id);
+                if (!player) return null;
+                const guest = player.guest_players;
+                const name = player.profiles?.display_name || player.profiles?.full_name || guest?.display_name || player.guest_name || "Guest";
+                return <>
+                  {player.guest_player_id && !guest?.linked_user_id && <Button size="sm" variant="outline" aria-label={`Invite ${name}`} onClick={() => setInviteGuest({ id: player.guest_player_id!, name, email: guest?.email ?? null })}><Send className="h-3.5 w-3.5" />Invite</Button>}
+                  {viewPlayer.rosterStatus === 'active' && !event.voided && event.status !== 'completed' && <Button size="sm" variant="ghost" aria-label={`Remove ${name}`} onClick={async () => {
+                    if (eventAction.isBusy()) return;
+                    if (!confirm(`Remove ${name} from this event?`)) return;
+                    try { await handleMarkInactive(player.id); }
+                    catch (error) { toast.error(getErrorMessage(error, "Could not remove this player.")); }
+                  }}><UserMinus className="h-3.5 w-3.5" />Remove</Button>}
+                </>;
+              } : undefined}
+            />
           </TabsContent>
-
-          <TabsContent value="standings" className="mt-6 space-y-6">
-            {/* Top 3 Leaderboard - only active players */}
-            {standings.filter(s => !s.isRemoved).length >= 3 && (
-              <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-primary" />
-                    <CardTitle className="text-lg">Top 3 Leaders</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-3">
-                    {standings.filter(s => !s.isRemoved).slice(0, 3).map((row, idx) => (
-                      <div
-                        key={row.player_id}
-                        className={`relative p-4 rounded-xl border ${
-                          idx === 0
-                            ? 'bg-amber-50/60 dark:bg-amber-500/5 border-amber-400/50 dark:border-amber-500/30'
-                            : idx === 1
-                            ? 'bg-slate-50/60 dark:bg-slate-500/5 border-slate-400/50 dark:border-slate-500/30'
-                            : 'bg-orange-50/60 dark:bg-orange-500/5 border-orange-400/50 dark:border-orange-500/30'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center space-y-2">
-                          <RankBadge rank={idx + 1} variant="tile" />
-                          <div className="font-semibold text-sm line-clamp-1 text-center">
-                            {row.player_name}
-                          </div>
-                          <div className="flex justify-center gap-3 text-xs">
-                            <div className="flex flex-col items-center">
-                              <span className="text-green-600 dark:text-green-400 font-bold">{row.wins}</span>
-                              <span className="text-muted-foreground">W</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-muted-foreground font-bold">{row.losses}</span>
-                              <span className="text-muted-foreground">L</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className={`font-bold ${row.point_diff > 0 ? 'text-green-600 dark:text-green-400' : row.point_diff < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                                {row.point_diff > 0 ? '+' : ''}{row.point_diff}
-                              </span>
-                              <span className="text-muted-foreground">Diff</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Full Standings Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Full Standings</CardTitle>
-                <CardDescription>Based on completed matches</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {standings.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No matches completed yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-2 font-semibold">#</th>
-                          <th className="text-left py-3 px-2 font-semibold">Player</th>
-                          <th className="text-center py-3 px-2 font-semibold">W</th>
-                          <th className="text-center py-3 px-2 font-semibold">L</th>
-                          <th className="text-center py-3 px-2 font-semibold hidden sm:table-cell">PF</th>
-                          <th className="text-center py-3 px-2 font-semibold hidden sm:table-cell">PA</th>
-                          <th className="text-center py-3 px-2 font-semibold">+/-</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {standings.filter(s => !s.isRemoved).map((row, idx) => (
-                          <tr key={row.player_id} className="border-b hover:bg-muted/50">
-                            <td className="py-3 px-2">
-                              <RankBadge rank={idx + 1} />
-                            </td>
-                            <td className="py-3 px-2 font-medium">{row.player_name}</td>
-                            <td className="text-center py-3 px-2 font-semibold text-green-600 dark:text-green-400">{row.wins}</td>
-                            <td className="text-center py-3 px-2 text-muted-foreground">{row.losses}</td>
-                            <td className="text-center py-3 px-2 hidden sm:table-cell">{row.points_for}</td>
-                            <td className="text-center py-3 px-2 hidden sm:table-cell">{row.points_against}</td>
-                            <td className={`text-center py-3 px-2 font-semibold ${row.point_diff > 0 ? 'text-green-600 dark:text-green-400' : row.point_diff < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                              {row.point_diff > 0 ? '+' : ''}{row.point_diff}
-                            </td>
-                          </tr>
-                        ))}
-                        
-                        {/* DNF Section for removed players */}
-                        {standings.filter(s => s.isRemoved).length > 0 && (
-                          <>
-                            <tr className="bg-muted/30">
-                              <td colSpan={7} className="py-3 px-2 font-medium text-muted-foreground">
-                                Did Not Finish (DNF)
-                              </td>
-                            </tr>
-                            {standings.filter(s => s.isRemoved).map((row) => (
-                              <tr key={row.player_id} className="border-b hover:bg-muted/30 opacity-60">
-                                <td className="py-3 px-2">
-                                  <Badge variant="outline" className="w-8 h-8 flex items-center justify-center bg-muted/50">
-                                    —
-                                  </Badge>
-                                </td>
-                                <td className="py-3 px-2 font-medium text-muted-foreground">{row.player_name}</td>
-                                <td className="text-center py-3 px-2 text-muted-foreground">{row.wins}</td>
-                                <td className="text-center py-3 px-2 text-muted-foreground">{row.losses}</td>
-                                <td className="text-center py-3 px-2 hidden sm:table-cell text-muted-foreground">{row.points_for}</td>
-                                <td className="text-center py-3 px-2 hidden sm:table-cell text-muted-foreground">{row.points_against}</td>
-                                <td className="text-center py-3 px-2 text-muted-foreground">
-                                  {row.point_diff > 0 ? '+' : ''}{row.point_diff}
-                                </td>
-                              </tr>
-                            ))}
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="standings" className="mt-4">
+            <EventStandings rows={eventSnapshot.standings} completed={event.status === 'completed'} voided={event.voided || event.status === 'voided'} myIds={new Set(userId ? [userId, ...eventSnapshot.players.filter(p => p.guest_linked_user_id === userId).map(p => p.player_id)] : [])} />
           </TabsContent>
         </Tabs>
         </div>

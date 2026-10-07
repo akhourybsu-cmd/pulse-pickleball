@@ -48,6 +48,18 @@ export function advancePreviewRound() {
 }
 if (params.has('rest') && schedule[2]) { schedule[2].is_bye = true; }
 if (params.has('scored') && schedule[2]) { schedule[2].team1_score = 11; schedule[2].team2_score = 0; }
+if (params.has('noscores')) schedule.forEach(match => { match.team1_score = null; match.team2_score = null; });
+if (params.has('departed')) roster[3].active = false;
+if (params.has('waitlist')) {
+  const waiting = { ...profiles[0], id: 'waiting-player', full_name: 'Morgan Waitlisted', display_name: 'Morgan Waitlisted' };
+  profiles.push(waiting);
+  roster.push({ ...roster[0], id: 'waiting-roster', player_id: waiting.id, active: false, registration_status: 'waitlisted', profiles: waiting });
+}
+if (params.has('sparse')) {
+  schedule.forEach(match => { match.round_no = [1, 4, 7][match.round_no - 1]; });
+  event.current_round = 4;
+}
+if (params.has('removedresult') && schedule[0]) Object.assign(schedule[0], { abandoned: true, abandoned_reason: 'Result voided by host' });
 if (params.has('longnames')) {
   event.name = 'Golden Hour Community Championship · End of Summer Round Robin';
   profiles[0].full_name = profiles[0].display_name = 'Alexandra Montgomery-Richardson';
