@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 
 export type GroupVisibility = "personal" | "private_group" | "shared_group";
 

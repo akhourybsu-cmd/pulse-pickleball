@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
 import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { RRLeftSidebar, RRRightSidebar } from "@/components/roundrobin/RoundRobinManageSidebars";

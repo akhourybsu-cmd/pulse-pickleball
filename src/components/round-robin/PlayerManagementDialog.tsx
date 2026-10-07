@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PlayerPickerSheet, type PickerPlayer } from "./PlayerPickerSheet";
@@ -289,7 +289,7 @@ export function PlayerManagementDialog({
             {mode ? "Cancel" : "Close"}
           </Button>
           {mode === 'add' && (
-            <Button onClick={handleAddPlayers} disabled={addPicks.length === 0 || loading} className="gap-1.5">
+            <Button onClick={handleAddPlayers} disabled={addPicks.length === 0 || loading} busy={loading} className="gap-1.5">
               <UserPlus className="h-4 w-4" />
               {loading
                 ? "Adding…"
@@ -314,6 +314,7 @@ export function PlayerManagementDialog({
           {mode === 'substitute' && (
             <Button
               onClick={handleSubstitute}
+              busy={loading}
               disabled={!substituteOriginal || !substituteNewPick || loading}
               className="gap-1.5"
             >
@@ -397,7 +398,7 @@ export function PlayerManagementDialog({
                     onClick={() => !action.disabled && setMode(action.id)}
                     disabled={action.disabled}
                     className={cn(
-                      "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45 disabled:cursor-not-allowed",
+                      "rr-pressable group w-full min-h-[72px] flex items-center gap-3 px-3.5 py-3 text-left active:bg-muted/60 disabled:opacity-45 disabled:cursor-not-allowed",
                       isDestructive ? "bg-destructive/[0.04] hover:bg-destructive/[0.08]" : "hover:bg-muted/40",
                     )}
                   >
@@ -522,7 +523,7 @@ export function PlayerManagementDialog({
             )}
 
             <div className="space-y-2">
-              <Label>Player to Add</Label>
+              <Label>Choose your additions</Label>
               <PlayerPickerSheet
                 contentClassName="rr-event-picker"
                 mode="multi"
@@ -543,7 +544,7 @@ export function PlayerManagementDialog({
                 trigger={
                   <button
                     type="button"
-                    className="flex min-h-12 w-full items-center justify-between rounded-lg border-2 border-dashed border-border p-3 text-left transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="rr-roster-trigger rr-pressable flex w-full items-center justify-between gap-3 p-4 text-left"
                   >
                     {addPicks.length === 1 ? (
                       <div className="flex items-center gap-2 min-w-0">
@@ -581,7 +582,7 @@ export function PlayerManagementDialog({
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <UserPlus className="h-4 w-4" />
-                        <span className="text-sm">Choose from friends, group, recent, search, or guest</span>
+                        <span><strong className="block text-sm text-foreground">Select players & guests</strong><span className="mt-1 block text-xs">Friends, your groups, recent players, or someone new</span></span>
                       </div>
                     )}
                     <Pencil className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -690,6 +691,7 @@ export function PlayerManagementDialog({
                                 variant="destructive"
                                 className="min-h-11 flex-1 gap-1.5"
                                 onClick={handleMarkInactive}
+                                busy={isRemoving}
                                 disabled={isRemoving}
                               >
                                 {isRemoving ? (
@@ -789,7 +791,7 @@ export function PlayerManagementDialog({
                 trigger={
                   <button
                     type="button"
-                    className="flex min-h-12 w-full items-center justify-between rounded-lg border-2 border-dashed border-border p-3 text-left transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="rr-roster-trigger rr-pressable flex w-full items-center justify-between gap-3 p-4 text-left"
                   >
                     {substituteNewPick ? (
                       <div className="flex items-center gap-2 min-w-0">

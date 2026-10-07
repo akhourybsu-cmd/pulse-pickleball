@@ -260,7 +260,7 @@ export function PlayersStep({
           trigger={
             <button
               type="button"
-              className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all text-left"
+              className="rr-roster-trigger rr-pressable w-full flex items-center justify-between gap-3 p-4 text-left"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-muted">

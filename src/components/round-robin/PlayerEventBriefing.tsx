@@ -1,5 +1,5 @@
 import { Activity, ArrowRight, Check, Coffee, Flag, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 
 interface PlayerEventBriefingProps {
   status: string;

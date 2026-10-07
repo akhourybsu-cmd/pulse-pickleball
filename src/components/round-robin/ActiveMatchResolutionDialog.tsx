@@ -4,7 +4,7 @@ import {
   DialogContent,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { CheckCircle2, Trash2, Radio, AlertTriangle } from "lucide-react";
 import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { cn } from "@/lib/utils";

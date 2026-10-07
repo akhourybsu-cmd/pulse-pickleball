@@ -1,7 +1,7 @@
 import { copyText } from "@/lib/share";
 import { useState } from "react";
 import { Lock, Copy, Check, Share2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyRoundRobinLink, shareRoundRobin } from "@/lib/roundRobin/sharing";

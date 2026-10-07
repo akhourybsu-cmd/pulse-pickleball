@@ -6,7 +6,7 @@ import { fetchSavedGuests, requireGuestResult } from "@/lib/guests";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,7 +41,9 @@ import {
   Search,
   Send,
   Link2,
-  Trash2,
+  Archive,
+  Pencil,
+  RotateCcw,
   GitMerge,
   X,
   Info,
@@ -416,16 +418,20 @@ export default function MyGuests() {
         </div>
       </section>
 
-      <main className="container max-w-2xl mx-auto px-4 py-5 space-y-4">
+      <main className="rr-guest-surface container max-w-2xl mx-auto px-4 py-5 space-y-4">
         {claimsError && <div role="alert" className="rounded-xl border p-3 text-sm">Couldn't load claim requests. <Button variant="link" onClick={() => retryClaims()}>Retry</Button></div>}
-        <Button variant="outline" onClick={() => { setShowArchived(!showArchived); exitMergeMode(); }}>
+        <Button variant="outline" aria-pressed={showArchived} onClick={() => { setShowArchived(!showArchived); exitMergeMode(); }}>
+          <Archive className="h-4 w-4" />
           {showArchived ? "Show current guests" : "Show archived guests"}
         </Button>
         {/* Add + search */}
         <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-3 space-y-2.5 shadow-[0_8px_30px_-18px_hsl(var(--foreground)/0.25)]">
-          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_auto] gap-2">
+          <div className="space-y-1"><h2 className="text-sm font-semibold">Add to your guest roster</h2><p className="text-xs text-muted-foreground">Save once. Select them for your next round robin.</p></div>
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-[minmax(0,1fr)_7.5rem] sm:grid-cols-[minmax(0,1fr)_7.5rem_auto] gap-2">
             <Input
               placeholder="Add a guest by name"
+              aria-label="New guest name"
+              disabled={creating}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addGuest()}
@@ -433,6 +439,7 @@ export default function MyGuests() {
             />
             <Select
               value={newGuestGender}
+              disabled={creating}
               onValueChange={(value) => setNewGuestGender(value as BinaryGender)}
             >
               <SelectTrigger className="h-11" aria-label="New guest gender (optional)">
@@ -445,6 +452,7 @@ export default function MyGuests() {
             </Select>
             <Button
               onClick={addGuest}
+              busy={creating}
               disabled={creating || !name.trim()}
               className="h-11 px-4 gap-1.5 shadow-[0_2px_10px_-2px_hsl(var(--primary)/0.5)]"
             >
@@ -453,7 +461,7 @@ export default function MyGuests() {
               ) : (
                 <UserPlus className="h-4 w-4" />
               )}
-              <span className="hidden sm:inline">Add</span>
+              <span>{creating ? "Adding guest…" : "Add guest"}</span>
             </Button>
           </div>
           <div className="relative">
@@ -624,12 +632,12 @@ export default function MyGuests() {
                 <div
                   key={g.id}
                   className={cn(
-                    "flex items-center gap-3 p-3 transition-colors",
+                    "flex flex-wrap items-center gap-3 p-4 transition-colors",
                     mergeMode && "cursor-pointer hover:bg-muted/40",
-                    mergeMode && isSelected && "bg-primary/[0.07]",
+                    mergeMode && isSelected && "bg-primary/[0.12] shadow-[inset_3px_0_hsl(var(--primary))]",
                   )}
                   onClick={mergeMode ? () => toggleSelected(g.id) : undefined}
-                  role={mergeMode ? "button" : undefined}
+                  role={mergeMode ? "group" : undefined}
                 >
                   {mergeMode && (
                     <Checkbox
@@ -675,7 +683,7 @@ export default function MyGuests() {
                         disabled={updatingGenderId === g.id}
                       >
                         <SelectTrigger
-                          className="mt-1 h-7 w-[116px] px-2 text-[11px]"
+                          className="mt-2 min-h-11 w-[132px] rounded-xl px-3 text-xs"
                           aria-label={`Gender for ${g.display_name}`}
                         >
                           <SelectValue placeholder="Set gender" />
@@ -688,7 +696,7 @@ export default function MyGuests() {
                     )}
                   </div>
                   {!mergeMode && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="rr-guest-actions">
                       <Button
                         size="sm"
                         variant="outline"
@@ -698,17 +706,18 @@ export default function MyGuests() {
                         className="h-9"
                       >
                         <Send className="h-3 w-3 sm:mr-1" />
-                        <span className="hidden sm:inline">Invite</span>
+                        <span>Invite</span>
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setEditGuest(g); setEditName(g.display_name); setEditEmail(g.email ?? ""); }}>Edit</Button>
+                      <Button size="sm" variant="ghost" aria-label={`Edit ${g.display_name}`} onClick={() => { setEditGuest(g); setEditName(g.display_name); setEditEmail(g.email ?? ""); }}><Pencil className="h-4 w-4" />Edit</Button>
                       <Button
-                        size="icon"
+                        size="sm"
                         variant="ghost"
                         onClick={() => g.archived_at ? removeGuest(g) : setRemoveTarget(g)}
                         aria-label={`${g.archived_at ? "Restore" : "Archive"} ${g.display_name}`}
-                        className="h-9 w-9"
+                        className="text-muted-foreground"
                       >
-                        {g.archived_at ? <UserPlus className="h-4 w-4" /> : <Trash2 className="h-4 w-4 text-muted-foreground" />}
+                        {g.archived_at ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        {g.archived_at ? "Restore" : "Archive"}
                       </Button>
                     </div>
                   )}
@@ -738,14 +747,14 @@ export default function MyGuests() {
       )}
 
       <Dialog open={!!editGuest} onOpenChange={(open) => { if (!open && !saving) setEditGuest(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="rr-guest-dialog rr-guest-surface sm:max-w-md">
           <DialogHeader><DialogTitle>Edit guest</DialogTitle></DialogHeader>
           <Label htmlFor="guest-edit-name">Name</Label>
           <Input id="guest-edit-name" value={editName} maxLength={120} onChange={(e) => setEditName(e.target.value)} />
           <Label htmlFor="guest-edit-email">Email (optional)</Label>
           <Input id="guest-edit-email" type="email" maxLength={254} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
           <p className="text-xs text-muted-foreground">Changes apply to this guest's roster and history. Existing invitations keep their original recipient.</p>
-          <DialogFooter><Button disabled={saving || !editName.trim()} onClick={saveGuest}>{saving ? "Saving…" : "Save guest"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" disabled={saving} onClick={() => setEditGuest(null)}>Cancel</Button><Button busy={saving} disabled={saving || !editName.trim()} onClick={saveGuest}>{saving ? "Saving…" : "Save guest"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

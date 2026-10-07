@@ -1,0 +1,198 @@
+/* PULSE controls: shared by creation, event management, and saved guests. */
+.rr-event-page,
+.rr-wizard,
+.rr-event-modal,
+.rr-roster-picker,
+.rr-guest-surface,
+.rr-guest-dialog,
+.rr-control-menu {
+  --rr-action-ink: 220 10% 12%;
+}
+.rr-button {
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+  touch-action: manipulation;
+  transition: background-color 140ms, border-color 140ms, box-shadow 140ms,
+    transform 140ms;
+}
+.rr-button[data-rr-size="icon"] {
+  min-width: 44px;
+}
+.rr-button[data-rr-variant="default"] {
+  box-shadow: 0 2px 6px hsl(var(--primary) / 0.16);
+}
+.rr-button[data-rr-variant="default"],
+.rr-button.bg-primary {
+  color: hsl(var(--rr-action-ink, var(--primary-foreground)));
+}
+.rr-button[data-rr-variant="outline"] {
+  border-width: 1px;
+}
+.rr-button[data-rr-variant="link"] {
+  padding-inline: 8px;
+}
+.rr-button:focus-visible,
+.rr-pressable:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+}
+.rr-button[aria-busy="true"] {
+  cursor: progress;
+}
+.rr-button[aria-busy="true"]::before {
+  content: "";
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: rr-control-spin 0.7s linear infinite;
+}
+.rr-button[aria-busy="true"] > svg {
+  display: none;
+}
+.rr-pressable {
+  touch-action: manipulation;
+  transition: background-color 140ms, border-color 140ms, box-shadow 140ms,
+    transform 140ms;
+}
+.rr-button:not(:disabled):active,
+.rr-pressable:not(:disabled):active {
+  transform: translateY(1px) scale(0.99);
+}
+@media (hover: hover) {
+  .rr-button:not(:disabled):hover {
+    box-shadow: 0 3px 10px hsl(var(--foreground) / 0.08);
+  }
+  .rr-roster-choice:not(:disabled):hover {
+    border-color: hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.06);
+  }
+}
+.rr-roster-choice {
+  width: calc(100% - 24px);
+  margin: 4px 12px;
+  min-height: 68px;
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 14px;
+  background: hsl(var(--card));
+}
+.rr-roster-choice[aria-pressed="true"] {
+  border-color: hsl(var(--primary) / 0.75);
+  background: hsl(var(--primary) / 0.12);
+  box-shadow: inset 3px 0 hsl(var(--primary));
+}
+.rr-roster-check {
+  transition: background-color 140ms, border-color 140ms;
+}
+.rr-roster-choice[aria-pressed="true"] .rr-roster-check svg {
+  color: hsl(var(--rr-action-ink, var(--primary-foreground)));
+  animation: rr-control-select 160ms ease-out;
+}
+.rr-roster-trigger {
+  min-height: 76px;
+  border: 1px solid hsl(var(--primary) / 0.4);
+  border-radius: 16px;
+  background: hsl(var(--primary) / 0.055);
+}
+.rr-roster-trigger:hover {
+  border-color: hsl(var(--primary) / 0.8);
+  background: hsl(var(--primary) / 0.1);
+}
+.rr-roster-picker {
+  max-height: calc(100dvh - env(safe-area-inset-top) - 8px);
+  overflow: hidden;
+}
+.rr-roster-picker > button:last-child {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  right: 8px;
+  top: 8px;
+  border-radius: 12px;
+}
+.rr-roster-picker [role="tab"] {
+  min-height: 48px;
+}
+.rr-roster-picker input,
+.rr-guest-surface input {
+  min-height: 44px;
+  border-radius: 12px;
+}
+.rr-picker-footer {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 20px hsl(var(--foreground) / 0.04);
+}
+.rr-guest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rr-guest-dialog {
+  border-radius: 24px;
+  border-color: hsl(var(--primary) / 0.3);
+}
+.rr-guest-dialog > button:last-child {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  top: 8px;
+  right: 8px;
+  border-radius: 12px;
+}
+@media (min-width: 768px) {
+  .rr-roster-picker[data-state] {
+    width: min(760px, calc(100vw - 64px));
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    height: 86dvh;
+  }
+}
+@media (max-width: 479px) {
+  .rr-roster-picker [role="tab"] {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .rr-guest-actions {
+    width: 100%;
+    gap: 4px;
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    padding-top: 8px;
+  }
+}
+@keyframes rr-control-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes rr-control-select {
+  from {
+    opacity: 0.4;
+    transform: scale(0.65);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rr-button,
+  .rr-pressable,
+  .rr-roster-check {
+    transition: none;
+  }
+  .rr-button:not(:disabled):active,
+  .rr-pressable:not(:disabled):active {
+    transform: none;
+  }
+  .rr-button[aria-busy="true"]::before,
+  .rr-roster-choice[aria-pressed="true"] .rr-roster-check svg {
+    animation: none;
+  }
+}

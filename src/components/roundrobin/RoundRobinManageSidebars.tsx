@@ -1,3 +1,4 @@
+import "@/components/round-robin/controls.css";
 import {
   UserPlus, Zap, Pencil, CheckCircle2, Circle, Users, Star,
   ClipboardList, CalendarClock, MapPin, CalendarDays, Trophy,
@@ -118,7 +119,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
             type="button"
             onClick={props.onAddPlayers}
             disabled={eventLocked}
-            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] disabled:opacity-50 disabled:pointer-events-none"
+            className="rr-button rr-pressable w-full h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] disabled:opacity-50 disabled:pointer-events-none"
           >
             <UserPlus className="w-4 h-4" />
             Add Players
@@ -127,7 +128,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
             type="button"
             onClick={props.onEditEvent}
             disabled={eventLocked}
-            className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+            className="rr-button rr-pressable w-full h-11 rounded-xl border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             <Pencil className="w-4 h-4" />
             Edit schedule mode
@@ -136,7 +137,7 @@ export function RRLeftSidebar(props: RRSidebarProps) {
             type="button"
             onClick={props.onGenerateSchedule}
             disabled={eventLocked || props.playerCount < MIN_PLAYERS}
-            className="w-full h-10 rounded-lg border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+            className="rr-button rr-pressable w-full h-11 rounded-xl border border-border bg-card text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             <Zap className="w-4 h-4" />
             Generate Schedule

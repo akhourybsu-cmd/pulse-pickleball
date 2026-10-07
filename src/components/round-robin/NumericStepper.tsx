@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Minus, Plus } from "lucide-react";
 
 /**

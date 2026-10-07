@@ -1,5 +1,5 @@
 import { Loader2, ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 
 interface WizardNavigationProps {
   onContinue: () => void;

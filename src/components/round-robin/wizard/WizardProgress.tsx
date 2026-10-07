@@ -1,6 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { DUR, EASE_OUT, PRESSABLE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 

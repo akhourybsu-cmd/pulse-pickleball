@@ -2,10 +2,10 @@ import { copyText } from "@/lib/share";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Mail, Link as LinkIcon, UserPlus } from "lucide-react";
+import { Copy, Check, Mail, Link as LinkIcon, UserPlus } from "lucide-react";
 import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { requireGuestResult, sendGuestInvitation } from "@/lib/guests";
@@ -26,6 +26,8 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
   const qc = useQueryClient();
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const busyRef = useRef(false);
   const requestRef = useRef<{ id: string; email: string | null; guest: string } | null>(null);
   const generation = useRef(0);
@@ -34,7 +36,7 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
   const [failedEmail, setFailedEmail] = useState(false);
   useEffect(() => {
     generation.current += 1;
-    setCreated(null); setDelivery(null); setFailedEmail(false);
+    setCreated(null); setDelivery(null); setFailedEmail(false); setCopied(null);
     setEmail(defaultEmail ?? ""); requestRef.current = null;
     return () => { generation.current += 1; };
   }, [open, guestPlayerId, defaultEmail]);
@@ -72,7 +74,7 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
     if (withEmail && (!address || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))) {
       toast.error("Enter a valid email address."); return;
     }
-    busyRef.current = true; setBusy(true);
+    busyRef.current = true; setBusy(true); setPendingAction(withEmail ? "email" : "link");
     const current = generation.current;
     try {
       if (!requestRef.current || requestRef.current.email !== address || requestRef.current.guest !== guestPlayerId) {
@@ -88,32 +90,32 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
       refresh();
     } catch (error) {
       if (generation.current === current) toast.error(error instanceof Error ? error.message : "Could not create invitation.");
-    } finally { busyRef.current = false; setBusy(false); }
+    } finally { busyRef.current = false; setBusy(false); setPendingAction(null); }
   };
   const retryEmail = async (id: string) => {
     if (busyRef.current) return;
-    busyRef.current = true; setBusy(true);
+    busyRef.current = true; setBusy(true); setPendingAction(`email:${id}`);
     try { await emailInvite(id, generation.current); refresh(); }
-    finally { busyRef.current = false; setBusy(false); }
+    finally { busyRef.current = false; setBusy(false); setPendingAction(null); }
   };
   const copy = async (value: string) => {
-    try { await copyText(value); toast.success("Invitation copied"); }
+    try { await copyText(value); setCopied(value); toast.success("Invitation copied"); }
     catch { toast.error("Could not copy. Select and copy the claim link manually."); }
   };
   const revoke = async (id: string) => {
     if (busyRef.current) return;
-    busyRef.current = true; setBusy(true);
+    busyRef.current = true; setBusy(true); setPendingAction(`revoke:${id}`);
     try {
       const { data, error } = await supabase.rpc("revoke_guest_claim_invite", { _invite_id: id });
       requireGuestResult(data, error);
       if (created?.id === id) { setCreated(null); setDelivery(null); requestRef.current = null; }
       refresh(); toast.success("Invitation revoked");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not revoke invitation."); }
-    finally { busyRef.current = false; setBusy(false); }
+    finally { busyRef.current = false; setBusy(false); setPendingAction(null); }
   };
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!busyRef.current) onOpenChange(value); }}>
-      <DialogContent className="sm:max-w-md max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="rr-guest-dialog rr-guest-surface sm:max-w-lg max-h-[85dvh] overflow-y-auto">
         <PremiumDialogHeader icon={UserPlus} eyebrow="Guest profile"
           title={created ? "Invitation ready" : "Invite to claim profile"}
           description={<>Let <strong className="text-foreground">{guestDisplayName}</strong> connect their playing history to a PULSE account.</>} />
@@ -124,15 +126,15 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
             <p className="text-xs text-muted-foreground">A verified matching account links automatically. Other accounts need your approval.</p>
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => createInvite(false)}><LinkIcon className="h-4 w-4 mr-2" />Create share link</Button>
-            <Button disabled={busy || !email.trim()} onClick={() => createInvite(true)}>{busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}Send email invite</Button>
+            <Button variant="outline" disabled={busy} busy={pendingAction === "link"} onClick={() => createInvite(false)}><LinkIcon className="h-4 w-4 mr-2" />Create share link</Button>
+            <Button disabled={busy || !email.trim()} busy={pendingAction === "email"} onClick={() => createInvite(true)}><Mail className="h-4 w-4" />Send email invite</Button>
           </DialogFooter>
         </div> : <div className="space-y-3 py-2">
           {delivery && <p role="status" className={failedEmail ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{delivery}</p>}
-          {failedEmail && created.email && <Button variant="outline" disabled={busy} onClick={() => retryEmail(created.id)}>Retry email</Button>}
+          {failedEmail && created.email && <Button variant="outline" disabled={busy} busy={pendingAction === `email:${created.id}`} onClick={() => retryEmail(created.id)}>Retry email</Button>}
           <Label htmlFor="guest-claim-link">Claim link</Label>
-          <div className="flex gap-2"><Input id="guest-claim-link" readOnly value={created.link} className="font-mono text-xs" /><Button variant="outline" aria-label="Copy claim link" onClick={() => copy(created.link)}><Copy className="h-4 w-4" /></Button></div>
-          <Button variant="secondary" className="w-full" onClick={() => copy(`Your PULSE guest profile is ready. Sign in or create an account to connect your playing history: ${created.link}`)}>Copy invitation message</Button>
+          <div className="flex gap-2"><Input id="guest-claim-link" readOnly value={created.link} className="font-mono text-xs" /><Button variant="outline" aria-label="Copy claim link" onClick={() => copy(created.link)}>{copied === created.link ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button></div>
+          <Button className="w-full" onClick={() => copy(`Your PULSE guest profile is ready. Sign in or create an account to connect your playing history: ${created.link}`)}>Copy invitation message</Button>
           <p className="text-xs text-muted-foreground">This link expires in 30 days. Manage active invitations below.</p>
         </div>}
         {invites.isError && <div role="alert" className="text-sm">Couldn't load active invitations. <Button variant="link" onClick={() => invites.refetch()}>Retry</Button></div>}
@@ -142,13 +144,13 @@ export function GuestInviteDialog({ open, onOpenChange, guestPlayerId, guestDisp
             <p className="text-sm break-all">{invite.invited_email ?? "Share link"}</p>
             <p className="text-xs text-muted-foreground">{invite.status === "awaiting_approval" ? "Needs your approval in Guest Roster" : invite.email_queued_at ? "Email queued" : "Link ready"} · Expires {new Date(invite.expires_at).toLocaleDateString()}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => copy(claimLink(invite.token))}>Copy link</Button>
-              {invite.status === "pending" && invite.invited_email && !invite.email_queued_at && <Button size="sm" variant="outline" disabled={busy} onClick={() => retryEmail(invite.id)}>Send email</Button>}
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => revoke(invite.id)}>Revoke</Button>
+              <Button size="sm" variant="outline" onClick={() => copy(claimLink(invite.token))}>{copied === claimLink(invite.token) ? <><Check />Copied</> : <><Copy />Copy link</>}</Button>
+              {invite.status === "pending" && invite.invited_email && !invite.email_queued_at && <Button size="sm" variant="outline" disabled={busy} busy={pendingAction === `email:${invite.id}`} onClick={() => retryEmail(invite.id)}>Send email</Button>}
+              <Button size="sm" variant="ghost" disabled={busy} busy={pendingAction === `revoke:${invite.id}`} onClick={() => revoke(invite.id)}>Revoke</Button>
             </div>
           </div>)}
         </div>}
-        <DialogFooter><Button disabled={busy} onClick={() => onOpenChange(false)}>Done</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>Done</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

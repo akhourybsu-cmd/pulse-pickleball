@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Grid3x3, Gamepad2, Info, RotateCcw, Save } from "lucide-react";
 import { NumericStepper } from "./NumericStepper";
 import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal";

@@ -1,7 +1,7 @@
 import { resolvedMatchLabel } from "@/lib/roundRobin/standings";
 import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
