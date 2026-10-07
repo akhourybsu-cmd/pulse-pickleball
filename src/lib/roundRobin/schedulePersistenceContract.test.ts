@@ -57,9 +57,9 @@ describe("round-robin schedule persistence architecture", () => {
   });
 
   it("holds the substitution mutation guard across async validation and either scope", () => {
-    const handlerStart = roundRobinDetail.indexOf("const handleSubstitute = async");
+    const handlerStart = roundRobinDetail.indexOf("const handleSubstitute = ");
     const handlerEnd = roundRobinDetail.indexOf(
-      "const handleApplyScheduleSettings = async",
+      "const handleApplyScheduleSettings = ",
       handlerStart,
     );
     const handler = roundRobinDetail.slice(handlerStart, handlerEnd);
@@ -75,6 +75,7 @@ describe("round-robin schedule persistence architecture", () => {
 
     expect(handlerStart).toBeGreaterThan(-1);
     expect(handlerEnd).toBeGreaterThan(handlerStart);
+    expect(handler).toContain("eventAction.guard(");
     expect(guardAcquire).toBeGreaterThan(-1);
     expect(guardAcquire).toBeLessThan(asyncValidation);
     expect(asyncValidation).toBeLessThan(globalMutation);

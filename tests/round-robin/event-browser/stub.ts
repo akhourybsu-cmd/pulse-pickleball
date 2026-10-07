@@ -8,6 +8,7 @@ export const useAuthState = () => ({ user, loading: false });
 const profiles = ['Alex Morgan', 'Jordan Lee', 'Sam Rivera', 'Taylor Chen', 'Casey Brooks', 'Jamie Park', 'Drew Ellis', 'Riley Quinn'].map((name,i) => ({ id:`player-${i}`, full_name:name, display_name:name, current_rating:3.5+i/10, gender:i%2?'female':'male',avatar_url:null }));
 const latency = Math.max(0, Math.min(2000, Number(params.get('latency')) || 0));
 const delay = () => new Promise(resolve => setTimeout(resolve, latency));
+const mutationDelay = () => new Promise(resolve => setTimeout(resolve, params.has('slow') ? 5000 : latency));
 const status = params.has('draft') ? 'draft' : params.has('completed') ? 'completed' : params.has('voided') ? 'voided' : 'live';
 const event = { schedule_version:0, id:'preview-event',name:'Golden Hour · Sunday Social',date:'2026-09-21',start_time:'17:30:00',location:'Riverside Pickleball Club',notes:'Check in at the clubhouse. Bring water, your paddle, and your best game.',organizer_id:'preview-host',num_courts:2,num_rounds:3,games_per_player:3,current_round:status==='completed'?3:status==='draft'?1:2,status,voided:status==='voided',rating_eligible:true,rating_type:'league',format:'open',allow_guests:false,registration_mode:'invite_only',invite_code:'PULSE-QA',event_mode:'immediate',max_players:16 };
 if (params.has('large')) {
@@ -58,10 +59,10 @@ export const supabase = {
   rpc:(name:string, args:Record<string,unknown> = {})=>{
     const execute=async()=>{
     recordRead(`rpc:${name}`);
-    await delay();
+    await (name === 'can_manage_round_robin' ? delay() : mutationDelay());
     if(name === "can_manage_round_robin") return {data:user.id === event.organizer_id,error:null};
     // Opt-in command-center QA only changes these in-memory fixtures.
-    const controls = ['rr_start_event','rr_update_event_settings','rr_edit_schedule','rr_remove_match_result'];
+    const controls = ['rr_start_event','rr_update_event_settings','rr_edit_schedule','rr_remove_match_result','submit_rr_match_score'];
     if (params.has('retry') && controls.includes(name) && !mutationAttempts.has(name)) {
       mutationAttempts.add(name);
       return {data:null,error:{message:'Fixture network interruption. Please retry.'}};
@@ -110,7 +111,19 @@ export const supabase = {
     const chain={abortSignal:()=>chain,then:(resolve:(v:unknown)=>unknown,reject?:(e:unknown)=>unknown)=>execute().then(resolve,reject)};
     return chain;
   },
-  functions:{invoke:async()=>({data:null,error:{message:'This preview does not submit event changes.'}})},
+  functions:{invoke:async(name:string)=>{
+    recordRead(`function:${name}`);
+    await mutationDelay();
+    if (params.has('retry') && !mutationAttempts.has(name)) {
+      mutationAttempts.add(name);
+      return { data:null,error:{message:'Fixture network interruption. Please retry.'} };
+    }
+    if (params.has('command') && name === 'generate-round-robin-schedule') {
+      event.schedule_version++;
+      return {data:{num_rounds:event.num_rounds,impact:{summary:'Preview schedule refreshed.'}},error:null};
+    }
+    return {data:null,error:{message:'This preview does not submit event changes.'}};
+  }},
   from:(table:string)=>{
     let single=false;
     let rows:Record<string,unknown>[] = table==='round_robin_events'?[event]:table==='round_robin_players'?roster:table==='round_robin_schedule'?schedule:table==='profiles_public'?profiles:table==='round_robin_audit'?[{id:'audit-1',change_type:'event_create',editor_id:'player-0',changes:{after:{name:event.name}},created_at:'2026-09-21T12:00:00Z',reason:'Event created'}]:[];

@@ -11,11 +11,15 @@ const cases = [
   [22, 5, 6, 'open'], [32, 8, 20, 'open'], [81, 16, 12, 'open'],
   [10, 2, 6, 'mixed'], [18, 4, 6, 'mixed'], [32, 8, 20, 'mixed'],
   [40, 10, 12, 'mixed'], [64, 16, 12, 'mixed'],
+  [6, 8, 2, 'open'], [7, 1, 3, 'open'], [9, 2, 5, 'open'],
+  [13, 3, 7, 'open'], [17, 1, 8, 'open'], [12, 3, 11, 'open'],
+  [24, 6, 5, 'male'], [24, 6, 5, 'female'], [12, 8, 3, 'mixed'],
+  [128, 16, 8, 'open'],
 ] as const;
 
 it.each(cases)('%i players / %i courts / %i games / %s: valid, deterministic, timed schedules', (count, courts, games, format) => {
   const seats = Array.from({ length: count }, (_, i) => `p:${i}`);
-  const genders = new Map(seats.map((s, i) => [s, i % 2 ? 'female' : 'male']));
+  const genders = new Map(seats.map((s, i) => [s, format === 'male' || format === 'female' ? format : i % 2 ? 'female' : 'male']));
   const samples: number[] = [];
   let repeats = 0;
   for (let seed = 0; seed < 3; seed++) {

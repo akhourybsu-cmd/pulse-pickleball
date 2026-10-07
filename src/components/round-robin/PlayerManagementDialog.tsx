@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
@@ -126,6 +126,8 @@ export function PlayerManagementDialog({
   const [substituteScope, setSubstituteScope] = useState<'global' | 'current_future' | number>('global');
   const [allowBalanced, setAllowBalanced] = useState(false);
   const [loading, setLoading] = useState(false);
+  const savingRef = useRef(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [justRemovedId, setJustRemovedId] = useState<string | null>(null);
@@ -164,7 +166,8 @@ export function PlayerManagementDialog({
   }, [liveCurrentRound, substituteScope]);
 
   const handleAddPlayers = async () => {
-    if (addPicks.length === 0) return;
+    if (addPicks.length === 0 || savingRef.current) return;
+    savingRef.current = true;
     setLoading(true);
     const label = addPicks.length === 1
       ? `Adding ${addPicks[0].display_name || addPicks[0].full_name}…`
@@ -190,13 +193,15 @@ export function PlayerManagementDialog({
     } catch {
       pulse.fail();
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleMarkInactive = async () => {
     const targetId = confirmingRemoveId || selectedPlayer;
-    if (!targetId) return;
+    if (!targetId || savingRef.current) return;
+    savingRef.current = true;
     setLoading(true);
     setRemovingId(targetId);
     const pulse = startPulseActivity("Removing player & rebuilding rounds…");
@@ -213,6 +218,7 @@ export function PlayerManagementDialog({
     } catch {
       pulse.fail();
     } finally {
+      savingRef.current = false;
       setLoading(false);
       setRemovingId(null);
       setJustRemovedId(null);
@@ -220,7 +226,8 @@ export function PlayerManagementDialog({
   };
 
   const handleSubstitute = async () => {
-    if (!substituteOriginal || !substituteNewPick) return;
+    if (!substituteOriginal || !substituteNewPick || savingRef.current) return;
+    savingRef.current = true;
     setLoading(true);
     const pulse = startPulseActivity("Substituting player…");
     try {
@@ -242,12 +249,14 @@ export function PlayerManagementDialog({
     } catch {
       pulse.fail();
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
 
   const handleClose = () => {
+    if (savingRef.current) return;
     setMode(null);
     setSelectedPlayer("");
     setAddPicks([]);
@@ -262,6 +271,8 @@ export function PlayerManagementDialog({
   return (
     <ResponsiveSettingsModal
       open={open}
+      busy={loading}
+      busyLabel={mode === 'add' || promotingId ? "Adding players & updating rounds…" : mode === 'substitute' ? "Substituting player…" : "Updating roster…"}
       onOpenChange={(next) => { if (!next) handleClose(); }}
       title="Manage players"
       description="Handle arrivals, dropouts, and substitutes without losing completed play."
@@ -271,7 +282,9 @@ export function PlayerManagementDialog({
           {mode && (
             <Button
               variant="ghost"
+              disabled={loading}
               onClick={() => {
+                if (savingRef.current) return;
                 setMode(null);
                 setSelectedPlayer("");
                 setAddPicks([]);
@@ -285,7 +298,7 @@ export function PlayerManagementDialog({
               Back
             </Button>
           )}
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" disabled={loading} onClick={handleClose}>
             {mode ? "Cancel" : "Close"}
           </Button>
           {mode === 'add' && (
@@ -462,12 +475,15 @@ export function PlayerManagementDialog({
               <p className="text-xs text-muted-foreground">Waiting players are not included in the playing schedule. Add a player when a place is available.</p>
               {waitlistedPlayers.map((p, index) => <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 p-3">
                 <span className="min-w-0 truncate text-sm">{index+1}. {resolveRRParticipant(p).name}</span>
-                <Button size="sm" variant="outline" disabled={loading || eventLocked || !p.player_id} onClick={async () => {
+                <Button size="sm" variant="outline" busy={promotingId === p.id} disabled={loading || eventLocked || !p.player_id} onClick={async () => {
+                  if (savingRef.current) return;
+                  savingRef.current = true;
+                  setPromotingId(p.id);
                   setLoading(true);
                   try { await onAddPlayers([{ playerId: p.player_id }]); toast.success("Player added to the roster"); }
                   catch (error) { toast.error(error instanceof Error ? error.message : "Could not add this player"); }
-                  finally { setLoading(false); }
-                }}>Add to roster</Button>
+                  finally { savingRef.current = false; setLoading(false); setPromotingId(null); }
+                }}>{promotingId === p.id ? "Adding…" : "Add to roster"}</Button>
               </div>)}
             </div>}
 

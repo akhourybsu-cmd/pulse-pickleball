@@ -33,8 +33,18 @@ interface Props {
 
 export function OrganizerCommandCenter(props: Props) {
   const theme=useScopedTheme();
+  const [open, setOpen] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const actionRef = useRef(false);
+  async function runAction(action: () => Promise<void>) {
+    if (props.busy || actionRef.current) return;
+    actionRef.current = true;
+    setActionBusy(true);
+    try { await action(); }
+    finally { actionRef.current = false; setActionBusy(false); }
+  }
   return (
-    <Dialog.Root>
+    <Dialog.Root open={open} onOpenChange={next => { if (!props.busy && !actionRef.current) setOpen(next); }}>
       <Dialog.Trigger asChild>
         <button className="rr-command-launch">
           <span className="rr-command-launch-icon"><Maximize2 size={20} /></span>
@@ -45,19 +55,18 @@ export function OrganizerCommandCenter(props: Props) {
       <Dialog.Portal>
         <Dialog.Overlay className={cn(theme?.className,"rr-command-overlay")} style={theme?.style} />
         <Dialog.Content className={cn(theme?.className,"rr-command")} style={theme?.style} onOpenAutoFocus={event => event.preventDefault()}>
-          <CommandPanel {...props} />
+          <CommandPanel {...props} busy={props.busy || actionBusy} runAction={runAction} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
-function CommandPanel(props: Props) {
+function CommandPanel(props: Props & { runAction: (action: () => Promise<void>) => Promise<void> }) {
   const { name, status, voided, currentRound, totalRounds, scores, savingScore, busy, loadError } = props;
   const [mode, setMode] = useState<Mode>(status === 'completed' || status === 'voided' || voided ? 'schedule' : 'live');
   const [browsedRound, setBrowsedRound] = useState(currentRound);
   const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const data = commandSchedule(props.matches, currentRound);
@@ -72,7 +81,8 @@ function CommandPanel(props: Props) {
   const selectedIndex = selectedCourt === 'rest' && resting.length ? courts.length : courts.findIndex(match => match.id === selectedCourt);
   const courtIndex = Math.max(0, selectedIndex);
   const match = courts[courtIndex];
-  const waiting = busy || actionBusy;
+  const waiting = busy;
+  const runAction = props.runAction;
   const canScore = !!match && canScoreCommandMatch(match, status, currentRound, voided) && !loadError;
   const result = !!match && match.team1_score !== null && match.team2_score !== null;
 
@@ -97,17 +107,13 @@ function CommandPanel(props: Props) {
 
   function changeRound(value: number) { setBrowsedRound(value); setSelectedCourt(null); }
   function changeCourt(index: number) { setSelectedCourt(courts[index]?.id ?? 'rest'); }
-  async function runAction(action: () => Promise<void>) {
-    if (waiting) return;
-    setActionBusy(true);
-    try { await action(); } finally { setActionBusy(false); }
-  }
 
   const primaryAction = status === 'draft' ? props.onStart : currentRound < totalRounds ? props.onAdvance : props.onComplete;
   const primaryLabel = status === 'draft' ? 'Start event' : currentRound < totalRounds ? `Start round ${currentRound + 1}` : 'Complete event';
 
   return (
     <div ref={panelRef} className="rr-command-frame">
+      <fieldset disabled={waiting} aria-busy={waiting} className="contents">
       <header className="rr-command-header">
         <div><p><Activity size={14} /> PULSE <span>COMMAND CENTER</span></p><Dialog.Title title={name}>{name}</Dialog.Title></div>
         <Dialog.Close asChild><button ref={closeRef} className="rr-command-close" aria-label="Close command center"><X size={20} /><span>Close</span></button></Dialog.Close>
@@ -179,6 +185,7 @@ function CommandPanel(props: Props) {
           </TabsList>
         </footer>
       </Tabs>
+      </fieldset>
     </div>
   );
 }

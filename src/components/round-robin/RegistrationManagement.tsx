@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Badge } from "@/components/ui/badge";
@@ -73,12 +73,16 @@ export function RegistrationManagement({
 
   const [pendingRemove, setPendingRemove] = useState<{ registrationId: string; name: string } | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const mutationRef = useRef(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const busy = isRemoving || !!promotingId;
 
   const confirmed = players.filter(p => p.registration_status === 'confirmed');
   const waitlisted = players.filter(p => p.registration_status === 'waitlisted');
 
   const handleRemovePlayer = async () => {
-    if (!pendingRemove) return;
+    if (!pendingRemove || mutationRef.current) return;
+    mutationRef.current = true;
     setIsRemoving(true);
     try {
       const { error } = await supabase
@@ -100,17 +104,21 @@ export function RegistrationManagement({
         </div>,
         { duration: 5000 }
       );
-      refetch();
+      await refetch();
+      setPendingRemove(null);
     } catch (error) {
       console.error('Remove error:', error);
       toast.error('Failed to remove player');
     } finally {
+      mutationRef.current = false;
       setIsRemoving(false);
-      setPendingRemove(null);
     }
   };
 
   const handlePromoteFromWaitlist = async (registrationId: string, playerName: string) => {
+    if (mutationRef.current) return;
+    mutationRef.current = true;
+    setPromotingId(registrationId);
     try {
       const { error } = await supabase
         .from('round_robin_players')
@@ -120,10 +128,13 @@ export function RegistrationManagement({
 
       if (error) throw error;
       toast.success(`${playerName} confirmed!`);
-      refetch();
+      await refetch();
     } catch (error) {
       console.error('Promote error:', error);
       toast.error('Failed to promote player');
+    } finally {
+      mutationRef.current = false;
+      setPromotingId(null);
     }
   };
 
@@ -165,6 +176,9 @@ export function RegistrationManagement({
                 size="sm"
                 variant="outline"
                 onClick={onPromote}
+                disabled={busy}
+                busy={promotingId === player.id}
+                aria-label={`Confirm ${playerName}`}
                 title="Confirm registration"
               >
                 <UserPlus className="h-3.5 w-3.5" />
@@ -175,6 +189,8 @@ export function RegistrationManagement({
                 size="sm"
                 variant="ghost"
                 onClick={onRemove}
+                disabled={busy}
+                aria-label={`Remove ${playerName}`}
                 title="Remove player"
               >
                 <UserMinus className="h-3.5 w-3.5" />
@@ -278,7 +294,7 @@ export function RegistrationManagement({
         )}
       </CardContent>
 
-      <AlertDialog open={!!pendingRemove} onOpenChange={(open) => !open && setPendingRemove(null)}>
+      <AlertDialog open={!!pendingRemove} onOpenChange={(open) => { if (!open && !mutationRef.current) setPendingRemove(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {pendingRemove?.name}?</AlertDialogTitle>
@@ -290,7 +306,7 @@ export function RegistrationManagement({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRemovePlayer}
+              onClick={event => { event.preventDefault(); void handleRemovePlayer(); }}
               disabled={isRemoving}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
             >

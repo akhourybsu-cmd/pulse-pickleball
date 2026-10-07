@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, CheckCircle2, Clock3, Copy, Loader2, MapPin, Share2, Trophy, Users } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
@@ -17,6 +17,7 @@ export function RoundRobinRegistration({ entry, eventId, inviteCode, onJoined }:
   const navigate = useNavigate();
   const cache = useQueryClient();
   const [joining, setJoining] = useState(false);
+  const joiningRef = useRef(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const event = entry.data;
@@ -44,9 +45,11 @@ export function RoundRobinRegistration({ entry, eventId, inviteCode, onJoined }:
   const registered = event.registration_status === "confirmed";
   const waitlisted = event.registration_status === "waitlisted";
   const join = async () => {
+    if (joiningRef.current) return;
     if (!entry.auth.isAuthenticated) { signIn(); return; }
     if (event.can_open) { navigate(path); onJoined?.(); return; }
     if (event.venue_registration_path) { navigate(event.venue_registration_path); onJoined?.(); return; }
+    joiningRef.current = true;
     setJoining(true); setJoinError(null);
     try {
       const { data, error } = await supabase.rpc("join_round_robin_event", { p_event_id: eventId, p_invite_code: inviteCode || undefined });
@@ -62,7 +65,7 @@ export function RoundRobinRegistration({ entry, eventId, inviteCode, onJoined }:
     } catch (error) {
       setJoinError(error instanceof Error ? error.message : (error as { message?: string })?.message || "Registration could not be saved. Please try again.");
       void entry.refetch();
-    } finally { setJoining(false); }
+    } finally { joiningRef.current = false; setJoining(false); }
   };
   const share = async (copy: boolean) => {
     try {
@@ -92,7 +95,7 @@ export function RoundRobinRegistration({ entry, eventId, inviteCode, onJoined }:
       {joinError && <p role="alert" className="text-sm text-destructive">{joinError}</p>}
       <div className="space-y-3">
         {event.price_cents != null && event.price_cents > 0 && <p className="text-sm font-semibold">{new Intl.NumberFormat("en-US", { style: "currency", currency: event.currency || "USD" }).format(event.price_cents / 100)} per player</p>}
-        <Button size="lg" className="h-12 w-full text-base" disabled={joining || action.disabled} onClick={() => void join()}>{joining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{joining ? "Saving your place…" : action.label}</Button>
+        <Button size="lg" className="h-12 w-full text-base" busy={joining} disabled={joining || action.disabled} onClick={() => void join()}>{joining ? "Saving your place…" : action.label}</Button>
         {!entry.auth.isAuthenticated && !action.disabled && <p className="text-center text-xs text-muted-foreground">Sign in or create a free PULSE account to continue. We’ll bring you back to this event.</p>}
         {event.venue_registration_path && !event.can_open && <p className="text-center text-xs text-muted-foreground">Complete registration, payment and any waiver through the venue.</p>}
       </div>

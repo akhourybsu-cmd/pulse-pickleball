@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { RoundRobinPendingAction } from "../RoundRobinPendingAction";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ArrowLeft, Activity } from "lucide-react";
@@ -41,6 +42,7 @@ export function WizardContainer() {
   // group and default to "shared_group" visibility.
   const presetGroupId = searchParams.get("groupId");
   const [loading, setLoading] = useState(false);
+  const creatingRef = useRef(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -135,6 +137,7 @@ export function WizardContainer() {
   };
 
   const handleCreate = async () => {
+    if (creatingRef.current) return;
     // Review and step-menu edits can invalidate an earlier choice. Reuse
     // the existing validations before invoking the unchanged creation flow.
     const incomplete = steps.findIndex((step) => !isStepValid(step.id));
@@ -188,6 +191,7 @@ export function WizardContainer() {
       }
     }
 
+    creatingRef.current = true;
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -350,6 +354,7 @@ export function WizardContainer() {
       toast.error("Failed to create event");
       console.error(error);
     } finally {
+      creatingRef.current = false;
       setLoading(false);
     }
   };
@@ -490,7 +495,9 @@ export function WizardContainer() {
   };
 
   return (
-    <div className="rr-wizard rr-studio-shell" data-step={currentStep.id}>
+    <>
+    <RoundRobinPendingAction label={loading ? "Creating your round robin…" : null} />
+    <div className="rr-wizard rr-studio-shell" data-step={currentStep.id} aria-busy={loading} {...(loading ? { inert: "" } : {})}>
       <header className="rr-wizard-header">
         <svg className="rr-header-pulse" viewBox="0 0 1200 18" preserveAspectRatio="none" fill="none" aria-hidden="true">
           <path className="rr-heartbeat" pathLength="1" d="M0 9h550l12-5 10 9 12-12 14 16 12-8h590" stroke="currentColor" strokeWidth="1.5" />
@@ -538,5 +545,6 @@ export function WizardContainer() {
         isValid={isValid} isOptional={currentStep.isOptional} isLastStep={isLastStep} isLoading={loading}
         nextLabel={steps[currentStepIndex + 1]?.label} hint={validationHints[currentStep.id]} />
     </div>
+    </>
   );
 }

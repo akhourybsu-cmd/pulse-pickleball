@@ -4,6 +4,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
 import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
+import { useRoundRobinAction } from "@/hooks/useRoundRobinAction";
+import { RoundRobinPendingAction } from "@/components/round-robin/RoundRobinPendingAction";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -257,6 +259,7 @@ function SeatAvatars({
 }
 
 export default function RoundRobinDetail() {
+  const eventAction = useRoundRobinAction();
   const { id, groupId } = useParams();
   const { user: authUser } = useAuthState();
   const navigate = useNavigate();
@@ -601,7 +604,7 @@ export default function RoundRobinDetail() {
     setRegenConfirmOpen(true);
   };
 
-  const handleStartEvent = async () => {
+  const handleStartEvent = eventAction.guardClick("Starting event…", async () => {
     if (!event || startingEventRef.current) return;
     startingEventRef.current = true;
     setStartingEvent(true);
@@ -621,9 +624,9 @@ export default function RoundRobinDetail() {
       startingEventRef.current = false;
       setStartingEvent(false);
     }
-  };
+  });
 
-  const handleCloseRound = async (roundNo: number) => {
+  const handleCloseRound = eventAction.guardClick("Advancing the round…", async (roundNo: number) => {
     if (!event || closingRoundRef.current) return;
     if (scoreActionRef.current) {
       toast.info("Wait for the score to finish saving before closing the round.");
@@ -654,7 +657,7 @@ export default function RoundRobinDetail() {
       closingRoundRef.current = false;
       setClosingRound(false);
     }
-  };
+  });
 
   const getPlayerName = (playerId: string | null, matchData?: any) => {
     if (!playerId) return "—";
@@ -781,7 +784,7 @@ export default function RoundRobinDetail() {
   };
 
 
-  const handleSaveScore = async (match: ScheduleMatch) => {
+  const handleSaveScore = eventAction.guardClick("Saving score…", async (match: ScheduleMatch) => {
     if (!event || !userId || scoreActionRef.current || closingRoundRef.current || completingEventRef.current) return;
 
     const score = scores[match.id];
@@ -825,9 +828,9 @@ export default function RoundRobinDetail() {
       scoreActionRef.current = false;
       setSavingScore(null);
     }
-  };
+  });
 
-  const handleCompleteEvent = async () => {
+  const handleCompleteEvent = eventAction.guardClick("Completing event & syncing results…", async () => {
     if (!event || completingEventRef.current) return;
     if (scoreActionRef.current || closingRoundRef.current) {
       toast.error("Wait for the current save to finish before completing the event.");
@@ -855,9 +858,9 @@ export default function RoundRobinDetail() {
       completingEventRef.current = false;
       setCompletingEvent(false);
     }
-  };
+  });
 
-  const handleDeleteEvent = async () => {
+  const handleDeleteEvent = eventAction.guardClick("Updating event status…", async () => {
     if (!event || deletingEventRef.current) return;
     deletingEventRef.current = true;
     setDeletingEvent(true);
@@ -896,9 +899,9 @@ export default function RoundRobinDetail() {
       deletingEventRef.current = false;
       setDeletingEvent(false);
     }
-  };
+  });
 
-  const handleSaveEventSettings = async (updates: Partial<Event>) => {
+  const handleSaveEventSettings = eventAction.guard("Saving event settings…", async (updates: Partial<Event>) => {
     if (!event || !userId) throw new Error("Sign in again before saving.");
     const { data, error } = await supabase.rpc("rr_update_event_settings", {
       p_event_id: event.id,
@@ -910,7 +913,7 @@ export default function RoundRobinDetail() {
     toast.success("Event settings updated");
     await Promise.all([fetchEventDetails(), fetchAuditHistory()]);
     setHasUnsavedChanges(false);
-  };
+  });
 
   const handleToggleEditMode = () => {
     if (hasUnsavedChanges) {
@@ -1076,7 +1079,7 @@ export default function RoundRobinDetail() {
     }
   };
 
-  const handleAddPlayers = async (
+  const handleAddPlayers = eventAction.guard("Adding players & updating rounds…", async (
     requestedAdditions: RosterAdditionInput[],
   ): Promise<number> => {
     if (!event || !userId || requestedAdditions.length === 0) return 0;
@@ -1190,11 +1193,11 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       throw error;
     }
-  };
+  });
 
   const rrMutationInFlightRef = useRef(false);
 
-  const handleMarkInactive = async (playerEventId: string, allowBalanced = false): Promise<boolean> => {
+  const handleMarkInactive = eventAction.guard("Removing player & updating rounds…", async (playerEventId: string, allowBalanced: boolean = false): Promise<boolean> => {
     if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     const player = players.find(p => p.id === playerEventId);
     if (!player) throw new Error("Refresh the roster before removing this player.");
@@ -1233,13 +1236,13 @@ export default function RoundRobinDetail() {
         cancel: () => resolve(false),
       });
     });
-  };
+  });
 
-  const handleSubstitute = async (
+  const handleSubstitute = eventAction.guard("Substituting player & updating rounds…", async (
     originalRosterId: string,
     replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
     scope: 'global' | 'current_future' | number,
-    allowBalanced = false,
+    allowBalanced: boolean = false,
   ) => {
     if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     // Acquire before format validation, which performs async profile/guest
@@ -1354,10 +1357,10 @@ export default function RoundRobinDetail() {
     } finally {
       rrMutationInFlightRef.current = false;
     }
-  };
+  });
 
 
-  const handleApplyScheduleSettings = async ({
+  const handleApplyScheduleSettings = eventAction.guard("Updating courts & game targets…", async ({
     numCourts,
     gamesPerPlayer,
     equalGames = event?.equal_games ?? false,
@@ -1456,7 +1459,7 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       throw error;
     }
-  };
+  });
 
   const applyAtomicScheduleEdit = async ({
     action,
@@ -1486,7 +1489,7 @@ export default function RoundRobinDetail() {
     await fetchEventDetails();
   };
 
-  const handleRotatePartners = async (matchId: string) => {
+  const handleRotatePartners = eventAction.guard("Rotating partners…", async (matchId: string) => {
     try {
       await applyAtomicScheduleEdit({ action: "rotate_partners", matchId });
       toast.success("Partners rotated — both teams now have a new pairing");
@@ -1503,9 +1506,9 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       throw error;
     }
-  };
+  });
 
-  const handleSwapOpponents = async (match1Id: string, match2Id: string) => {
+  const handleSwapOpponents = eventAction.guard("Swapping opponents…", async (match1Id: string, match2Id: string) => {
     try {
       await applyAtomicScheduleEdit({
         action: "swap_opponents",
@@ -1526,9 +1529,9 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       throw error;
     }
-  };
+  });
 
-  const handleMoveCourt = async (matchId: string, newCourtNo: number) => {
+  const handleMoveCourt = eventAction.guard("Updating court assignments…", async (matchId: string, newCourtNo: number) => {
     const match = schedule.find((row) => row.id === matchId);
     const destinationOccupied = !!match && schedule.some((row) =>
       row.id !== matchId &&
@@ -1561,9 +1564,9 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       throw error;
     }
-  };
+  });
 
-  const handleEditMatchScore = async (matchId: string, team1Score: number, team2Score: number) => {
+  const handleEditMatchScore = eventAction.guard("Updating score & player history…", async (matchId: string, team1Score: number, team2Score: number) => {
     if (!event || !userId) throw new Error("Sign in again before saving.");
     if (scoreActionRef.current || closingRoundRef.current || completingEventRef.current) throw new Error("Wait for the current save to finish.");
     scoreActionRef.current = true;
@@ -1584,9 +1587,9 @@ export default function RoundRobinDetail() {
       scoreActionRef.current = false;
       setSavingScore(null);
     }
-  };
+  });
 
-  const removeMatchResult = async (matchId: string, action: "void" | "delete") => {
+  const removeMatchResult = eventAction.guard("Updating result & player history…", async (matchId: string, action: "void" | "delete") => {
     const match = schedule.find(row => row.id === matchId);
     if (!event || !match) throw new Error("Refresh and select the match again.");
     if (scoreActionRef.current || closingRoundRef.current || completingEventRef.current) throw new Error("Wait for the current save to finish.");
@@ -1615,11 +1618,11 @@ export default function RoundRobinDetail() {
       scoreActionRef.current = false;
       setSavingScore(null);
     }
-  };
+  });
   const handleVoidMatch = (matchId: string) => removeMatchResult(matchId, "void");
   const handleDeleteMatch = (matchId: string) => removeMatchResult(matchId, "delete");
 
-  const handleLeaveEvent = async () => {
+  const handleLeaveEvent = eventAction.guardClick("Leaving event…", async () => {
     if (!userId || !event) return;
 
     // Validation checks
@@ -1658,7 +1661,7 @@ export default function RoundRobinDetail() {
       console.error('Leave error:', error);
       toast.error('Failed to leave event');
     }
-  };
+  });
 
   // UI-only changes (score drafts, tabs, menus) must not regenerate a rotation.
   const activeRoster = useMemo(() => players.filter((player) => player.active !== false), [players]);
@@ -1898,7 +1901,7 @@ export default function RoundRobinDetail() {
   };
 
   // Actual rebuild, run once the styled confirmation is accepted.
-  const runRegenerateSchedule = async () => {
+  const runRegenerateSchedule = eventAction.guardClick("Building the updated schedule…", async () => {
     setRegenConfirmOpen(false);
     const pulse = startPulseActivity(hasSchedule ? "Rebalancing schedule…" : "Building schedule…");
     try {
@@ -1926,9 +1929,9 @@ export default function RoundRobinDetail() {
         getErrorMessage(error) || "We couldn't confirm the schedule update. The latest schedule is refreshed—verify it before retrying.",
       );
     }
-  };
+  });
 
-  const handleRepairSchedule = async () => {
+  const handleRepairSchedule = eventAction.guardClick("Repairing the schedule…", async () => {
     if (repairingSchedule) return;
     setRepairingSchedule(true);
     const pulse = startPulseActivity("Repairing schedule consistency…");
@@ -1954,11 +1957,12 @@ export default function RoundRobinDetail() {
     } finally {
       setRepairingSchedule(false);
     }
-  };
+  });
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="rr-event-page">
+    <RoundRobinPendingAction label={activeMatchPrompt && !resolvingActiveMatch ? null : eventAction.label} />
+    <div className="rr-event-page" aria-busy={!!eventAction.label} {...(eventAction.label ? { inert: "" } : {})}>
       {/* Slim top bar — back · "Round Robin" · share · overflow.
           Replaces the global PULSE/Bell/Profile/Theme/Sign-out toolbar
           on this route so the host has a focused command-center surface
@@ -2006,7 +2010,7 @@ export default function RoundRobinDetail() {
             }))}
             scores={scores}
             savingScore={savingScore}
-            busy={startingEvent || closingRound || completingEvent || !!savingScore}
+            busy={!!eventAction.label}
             loadError={loadError}
             onRefresh={fetchEventDetails}
             onScoreChange={handleScoreChange}
@@ -2531,9 +2535,10 @@ export default function RoundRobinDetail() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={async () => {
+                                  if (eventAction.isBusy()) return;
                                   if (!confirm(`Remove ${displayName} from this event?`)) return;
-                                  
-                                  await handleMarkInactive(player.id);
+                                  try { await handleMarkInactive(player.id); }
+                                  catch (error) { toast.error(getErrorMessage(error, "Could not remove this player.")); }
                                 }}
                                 title="Remove player"
                               >
