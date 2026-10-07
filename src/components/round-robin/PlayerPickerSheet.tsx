@@ -140,6 +140,7 @@ export function PlayerPickerSheet({
   const selectedIds = useMemo(() => new Set(local.map((p) => p.id)), [local]);
 
   const toggle = (p: PickerPlayer) => {
+    if (guestBusyRef.current) return;
     if (mode === "single") {
       // Commit immediately and close
       onPlayersChange([p]);
@@ -154,6 +155,7 @@ export function PlayerPickerSheet({
   };
 
   const removeOne = (id: string) => {
+    if (guestBusyRef.current) return;
     setLocal((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -241,6 +243,7 @@ export function PlayerPickerSheet({
         className={cn("rr-roster-picker h-[90dvh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-primary/30", contentClassName)}
       >
         {/* Sticky header */}
+        <fieldset disabled={guestBusy} aria-busy={guestBusy} className="contents">
         <div className="relative px-4 pt-4 pb-2 border-b border-border/60 bg-background overflow-hidden">
           <div
             aria-hidden
@@ -427,6 +430,7 @@ export function PlayerPickerSheet({
             </Button>
           </div>
         )}
+        </fieldset>
       </SheetContent>
     </Sheet>
   );
@@ -969,5 +973,4 @@ function GuestRosterList({
     </>
   );
 }
-
 

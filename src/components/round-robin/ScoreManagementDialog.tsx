@@ -600,6 +600,7 @@ export function ScoreManagementDialog({
             {mode === 'enter' && (
               <Button
                 onClick={handleEditScore}
+                busy={loading}
                 disabled={!selectedMatch || invalidScore || loading}
                 className="gap-1.5"
               >
@@ -610,6 +611,7 @@ export function ScoreManagementDialog({
             {mode === 'edit' && (
               <Button
                 onClick={handleEditScore}
+                busy={loading}
                 disabled={!selectedMatch || invalidScore || !hasScoreChanged || loading}
                 className="gap-1.5"
               >

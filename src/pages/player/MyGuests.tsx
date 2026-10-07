@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from "react";
+import { useRoundRobinAction } from "@/hooks/useRoundRobinAction";
+import { RoundRobinPendingAction } from "@/components/round-robin/RoundRobinPendingAction";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthState } from "@/hooks/useAuthState";
@@ -83,6 +85,7 @@ type ClaimantProfile = {
 };
 
 export default function MyGuests() {
+  const guestAction = useRoundRobinAction();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [name, setName] = useState("");
@@ -182,15 +185,15 @@ export default function MyGuests() {
     },
   });
 
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
-    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
-    qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
-    qc.invalidateQueries({ queryKey: ["guest-invites"] });
-  };
+  const refresh = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] }),
+    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] }),
+    qc.invalidateQueries({ queryKey: ["guest-players-roster"] }),
+    qc.invalidateQueries({ queryKey: ["guest-invites"] }),
+  ]);
 
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const approveClaim = async (inviteId: string) => {
+  const approveClaim = guestAction.guardClick("Linking guest account…", async (inviteId: string) => {
     setApprovingId(inviteId);
     try {
       await withPulseActivity(
@@ -203,21 +206,21 @@ export default function MyGuests() {
         },
         "Linked — removed from your guest list",
       );
-      refresh();
+      await refresh();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Could not approve claim."));
     } finally {
       setApprovingId(null);
     }
-  };
+  });
 
-  const rejectClaim = async (inviteId: string) => {
+  const rejectClaim = guestAction.guardClick("Updating guest invitation…", async (inviteId: string) => {
     try {
       const { data, error } = await supabase.rpc("revoke_guest_claim_invite", { _invite_id: inviteId });
       requireGuestResult(data, error);
-      setRejectTarget(null); refresh();
+      setRejectTarget(null); await refresh();
     } catch (error) { toast.error(getErrorMessage(error, "Could not reject claim.")); }
-  };
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -229,7 +232,7 @@ export default function MyGuests() {
     );
   }, [guests, search]);
 
-  const addGuest = async () => {
+  const addGuest = guestAction.guardClick("Creating guest…", async () => {
     const display = name.trim();
     if (!display || !userId || creatingRef.current) return;
     creatingRef.current = true;
@@ -247,16 +250,16 @@ export default function MyGuests() {
       });
       setName("");
       setNewGuestGender("");
-      refresh();
+      await refresh();
     } catch {
       toast.error("Could not add guest.");
     } finally {
       creatingRef.current = false;
       setCreating(false);
     }
-  };
+  });
 
-  const updateGuestGender = async (guestId: string, gender: BinaryGender) => {
+  const updateGuestGender = guestAction.guardClick("Saving guest gender…", async (guestId: string, gender: BinaryGender) => {
     setUpdatingGenderId(guestId);
     try {
       const { error } = await supabase
@@ -274,20 +277,20 @@ export default function MyGuests() {
     } finally {
       setUpdatingGenderId(null);
     }
-  };
+  });
 
-  const removeGuest = async (g: Guest) => {
-    setRemoveTarget(null);
+  const removeGuest = guestAction.guardClick("Updating guest archive…", async (g: Guest) => {
     try {
       await withPulseActivity(`${g.archived_at ? "Restoring" : "Archiving"} ${g.display_name}…`, async () => {
         const { data, error } = await supabase.rpc("archive_guest_player", { _guest_id: g.id, _archived: !g.archived_at });
         requireGuestResult(data, error);
       });
-      refresh();
+      await refresh();
+      setRemoveTarget(null);
     } catch {
       toast.error("Could not update guest archive. Please try again.");
     }
-  };
+  });
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -313,7 +316,7 @@ export default function MyGuests() {
     setMergeConfirm({ keep, remove });
   };
 
-  const confirmMerge = async () => {
+  const confirmMerge = guestAction.guardClick("Merging guest history…", async () => {
     if (!mergeConfirm || merging) return;
     setMerging(true);
     try {
@@ -329,15 +332,15 @@ export default function MyGuests() {
       }, `Merged into ${mergeConfirm.keep.display_name}`);
       setMergeConfirm(null);
       exitMergeMode();
-      refresh();
+      await refresh();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Merge failed."));
     } finally {
       setMerging(false);
     }
-  };
+  });
 
-  const saveGuest = async () => {
+  const saveGuest = guestAction.guardClick("Saving guest details…", async () => {
     if (!editGuest || saving || !editName.trim()) return;
     if (editEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
       toast.error("Enter a valid email address."); return;
@@ -348,10 +351,10 @@ export default function MyGuests() {
         .update({ display_name: editName.trim(), email: editEmail.trim() || null })
         .eq("id", editGuest.id).select("id").single();
       if (error || !data) throw error ?? new Error("Guest no longer available.");
-      setEditGuest(null); refresh(); toast.success("Guest updated");
+      setEditGuest(null); await refresh(); toast.success("Guest updated");
     } catch { toast.error("Could not save this guest. Please try again."); }
     finally { setSaving(false); }
-  };
+  });
 
   // Suggest duplicates (case-insensitive name match).
   const duplicateNames = useMemo(() => {
@@ -368,7 +371,9 @@ export default function MyGuests() {
   }, [guests]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+    <RoundRobinPendingAction label={guestAction.label} />
+    <div className="min-h-screen bg-background" aria-busy={!!guestAction.label} {...(guestAction.label ? { inert: "" } : {})}>
       <PageSEO
         title="Guest Roster | PULSE"
         description="Manage your reusable guest players for round robins."
@@ -746,20 +751,20 @@ export default function MyGuests() {
         />
       )}
 
-      <Dialog open={!!editGuest} onOpenChange={(open) => { if (!open && !saving) setEditGuest(null); }}>
+      <Dialog open={!!editGuest} onOpenChange={(open) => { if (!open && !guestAction.isBusy()) setEditGuest(null); }}>
         <DialogContent className="rr-guest-dialog rr-guest-surface sm:max-w-md">
           <DialogHeader><DialogTitle>Edit guest</DialogTitle></DialogHeader>
           <Label htmlFor="guest-edit-name">Name</Label>
-          <Input id="guest-edit-name" value={editName} maxLength={120} onChange={(e) => setEditName(e.target.value)} />
+          <Input id="guest-edit-name" disabled={saving} value={editName} maxLength={120} onChange={(e) => setEditName(e.target.value)} />
           <Label htmlFor="guest-edit-email">Email (optional)</Label>
-          <Input id="guest-edit-email" type="email" maxLength={254} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          <Input id="guest-edit-email" disabled={saving} type="email" maxLength={254} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
           <p className="text-xs text-muted-foreground">Changes apply to this guest's roster and history. Existing invitations keep their original recipient.</p>
           <DialogFooter><Button variant="outline" disabled={saving} onClick={() => setEditGuest(null)}>Cancel</Button><Button busy={saving} disabled={saving || !editName.trim()} onClick={saveGuest}>{saving ? "Saving…" : "Save guest"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Remove guest */}
-      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => { if (!o && !guestAction.isBusy()) setRemoveTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive this guest?</AlertDialogTitle>
@@ -770,19 +775,20 @@ export default function MyGuests() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={!!guestAction.label}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => removeTarget && removeGuest(removeTarget)}
+              disabled={!!guestAction.label}
+              onClick={event => { event.preventDefault(); if (removeTarget) void removeGuest(removeTarget); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Archive
+              {guestAction.label ? "Archiving…" : "Archive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Reject claim */}
-      <AlertDialog open={!!rejectTarget} onOpenChange={(o) => !o && setRejectTarget(null)}>
+      <AlertDialog open={!!rejectTarget} onOpenChange={(o) => { if (!o && !guestAction.isBusy()) setRejectTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reject this claim?</AlertDialogTitle>
@@ -791,12 +797,13 @@ export default function MyGuests() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={!!guestAction.label}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => rejectTarget && rejectClaim(rejectTarget)}
+              disabled={!!guestAction.label}
+              onClick={event => { event.preventDefault(); if (rejectTarget) void rejectClaim(rejectTarget); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Reject
+              {guestAction.label ? "Rejecting…" : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -804,7 +811,7 @@ export default function MyGuests() {
 
       <AlertDialog
         open={!!mergeConfirm}
-        onOpenChange={(o) => !o && setMergeConfirm(null)}
+        onOpenChange={(o) => { if (!o && !guestAction.isBusy()) setMergeConfirm(null); }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -838,13 +845,14 @@ export default function MyGuests() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmMerge} disabled={merging}>
+            <AlertDialogAction onClick={event => { event.preventDefault(); void confirmMerge(); }} disabled={merging}>
               {merging ? <Loader2 className="h-4 w-4 animate-spin" /> : "Merge"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </>
   );
 }
 

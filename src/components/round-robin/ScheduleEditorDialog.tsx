@@ -228,6 +228,7 @@ export function ScheduleEditorDialog({
 
   return (
     <ResponsiveSettingsModal
+      busy={loading}
       open={open}
       onOpenChange={(next) => { if (!next) close(); }}
       title="Manual schedule editor"

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import "./event.css";
 
 /**
@@ -31,6 +31,8 @@ export function ResponsiveSettingsModal({
   className,
   /** Small accent eyebrow above the title. */
   eyebrow = "Round Robin",
+  busy = false,
+  busyLabel = "Saving changes…",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,8 +42,12 @@ export function ResponsiveSettingsModal({
   children: React.ReactNode;
   className?: string;
   eyebrow?: string;
+  busy?: boolean;
+  busyLabel?: string;
 }) {
   const isMobile = useIsMobile();
+  const changeOpen = (next: boolean) => { if (!busy) onOpenChange(next); };
+  const progress = busy && <p role="status" className="mb-3 flex items-center gap-2 text-sm font-medium"><Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />{busyLabel}</p>;
 
   const wash = (
     <div
@@ -65,7 +71,7 @@ export function ResponsiveSettingsModal({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={changeOpen} dismissible={!busy}>
         <DrawerContent className="rr-event-modal max-h-[calc(100dvh-env(safe-area-inset-top)-16px)] border-t border-border/60">
           {wash}
           <DrawerHeader className="relative shrink-0 text-left pb-4 pt-3 pr-16">
@@ -75,16 +81,16 @@ export function ResponsiveSettingsModal({
                 {description}
               </DrawerDescription>
             )}
-            <DrawerClose className="rr-modal-close" aria-label={`Close ${title}`}><X className="h-5 w-5" /></DrawerClose>
+            <DrawerClose disabled={busy} className="rr-modal-close disabled:opacity-40" aria-label={`Close ${title}`}><X className="h-5 w-5" /></DrawerClose>
           </DrawerHeader>
 
           <div className="rr-event-modal-scroll relative flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-            {children}
+            <fieldset disabled={busy} aria-busy={busy} className="min-w-0">{children}</fieldset>
           </div>
 
           {footer && (
             <div className="relative flex-shrink-0 border-t border-border/60 bg-background/95 backdrop-blur px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {footer}
+              {progress}{footer}
             </div>
           )}
         </DrawerContent>
@@ -93,10 +99,14 @@ export function ResponsiveSettingsModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent
+        aria-busy={busy}
+        onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
+        onInteractOutside={event => { if (busy) event.preventDefault(); }}
         className={cn(
           "rr-event-modal sm:max-w-[680px] max-h-[90dvh] flex flex-col overflow-hidden border-border/70",
+          busy && "[&>button:last-child]:pointer-events-none [&>button:last-child]:opacity-40",
           className,
         )}
       >
@@ -106,10 +116,10 @@ export function ResponsiveSettingsModal({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <div className="rr-event-modal-scroll relative flex-1 overflow-y-auto px-1">{children}</div>
+        <div className="rr-event-modal-scroll relative flex-1 overflow-y-auto px-1"><fieldset disabled={busy} aria-busy={busy} className="min-w-0">{children}</fieldset></div>
 
         {footer && (
-          <div className="relative flex-shrink-0 pt-3 border-t border-border/60">{footer}</div>
+          <div className="relative flex-shrink-0 pt-3 border-t border-border/60">{progress}{footer}</div>
         )}
       </DialogContent>
     </Dialog>

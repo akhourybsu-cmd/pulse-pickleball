@@ -119,6 +119,7 @@ export function CourtsRoundsDialog({
 
   return (
     <ResponsiveSettingsModal
+      busy={loading}
       open={open}
       onOpenChange={(next) => { if (!next) handleClose(); }}
       title="Courts & Games"
@@ -132,6 +133,7 @@ export function CourtsRoundsDialog({
           </Button>
           <Button
             onClick={handleUpdate}
+            busy={loading}
             disabled={
               !hasChanges ||
               newCourts < 1 ||

@@ -11,7 +11,7 @@ vi.mock('@/components/ui/avatar',()=>({
 }));
 vi.mock('@/components/ui/pulse-activity',()=>({startPulseActivity:()=>activity}));
 vi.mock('@/components/round-robin/ResponsiveSettingsModal',()=>({
-  ResponsiveSettingsModal:({children,footer}: {children:React.ReactNode;footer:React.ReactNode})=><div>{children}{footer}</div>,
+  ResponsiveSettingsModal:({children,footer,onOpenChange,busy}: {children:React.ReactNode;footer:React.ReactNode;onOpenChange:(open:boolean)=>void;busy:boolean})=><div><button onClick={()=>onOpenChange(false)}>Dismiss sheet</button><fieldset disabled={busy}>{children}</fieldset>{footer}</div>,
   ModalActions:({children}: {children:React.ReactNode})=><div>{children}</div>,
 }));
 vi.mock('@/components/round-robin/PlayerPickerSheet',()=>({
@@ -77,4 +77,44 @@ it('keeps the balanced fallback opt-in and sends it only when checked',async()=>
   await act(async()=>button('Pick John').props.onClick());
   await act(async()=>button('Substitute Player').props.onClick());
   expect(props.onSubstitute).toHaveBeenCalledWith('r0',{playerId:'p5',guestPlayerId:null,guestName:undefined},'global',true);
+});
+
+it.each(['add', 'substitute'] as const)('locks %s inputs and dismissal, suppresses double taps, and unlocks for retry', async mode => {
+  let fail!: (error: Error) => void;
+  const mutation = mode === 'add' ? props.onAddPlayers : props.onSubstitute;
+  mutation.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }));
+  await openMode(mode === 'add' ? 'Add player' : 'Substitute player');
+  if (mode === 'substitute') await act(async () => root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async () => button('Pick John').props.onClick());
+  const label = mode === 'add' ? 'Add Player' : 'Substitute Player';
+  const submit = button(label).props.onClick;
+  let pending!: Promise<void>;
+  await act(async () => { pending = submit(); void submit(); });
+  expect(mutation).toHaveBeenCalledTimes(1);
+  expect(button('Back').props.disabled).toBe(true);
+  expect(button('Cancel').props.disabled).toBe(true);
+  expect(root.root.findByType('fieldset').props.disabled).toBe(true);
+  await act(async () => { button('Dismiss sheet').props.onClick(); button('Back').props.onClick(); });
+  expect(props.onOpenChange).not.toHaveBeenCalled();
+  await act(async () => { fail(new Error('Connection interrupted')); await pending; });
+  expect(activity.done).not.toHaveBeenCalled();
+  expect(button(label).props.disabled).toBe(false);
+  expect(root.root.findByType('fieldset').props.disabled).toBe(false);
+  await act(async () => button(label).props.onClick());
+  expect(mutation).toHaveBeenCalledTimes(2);
+});
+
+it('does not send another removal or dismiss the roster while a live-match decision is pending', async () => {
+  let cancel!: (value: boolean) => void;
+  props.onMarkInactive.mockImplementationOnce(() => new Promise<boolean>(resolve => { cancel = resolve; }));
+  await openMode('Remove from roster');
+  await act(async () => button('Remove from roster').props.onClick());
+  const submit = button('Remove').props.onClick;
+  let pending!: Promise<void>;
+  await act(async () => { pending = submit(); void submit(); button('Dismiss sheet').props.onClick(); });
+  expect(props.onMarkInactive).toHaveBeenCalledTimes(1);
+  expect(props.onOpenChange).not.toHaveBeenCalled();
+  await act(async () => { cancel(false); await pending; });
+  expect(button('Remove').props.disabled).toBe(false);
+  expect(activity.done).toHaveBeenCalledWith('Removal cancelled');
 });

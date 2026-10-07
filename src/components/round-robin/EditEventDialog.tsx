@@ -268,6 +268,7 @@ export function EditEventDialog({
 
   return (
     <ResponsiveSettingsModal
+      busy={saving}
       open={open}
       onOpenChange={next => { if (!savingRef.current) onOpenChange(next); }}
       title="Event settings"
@@ -277,7 +278,7 @@ export function EditEventDialog({
           <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || !name.trim() || !date || saving} className="gap-1.5">
+          <Button onClick={handleSave} busy={saving} disabled={!hasChanges || !name.trim() || !date || saving} className="gap-1.5">
             <Save className="h-4 w-4" />
             {saving ? "Saving…" : hasChanges ? "Save changes" : "No changes"}
           </Button>

@@ -95,6 +95,30 @@ describe("shared round robin entry", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
   });
 });
+it.each([false, true])('submits one delayed signup (waitlist=%s) and allows retry after failure', async full => {
+  mocks.auth.user = { id: 'player' }; mocks.auth.isAuthenticated = true;
+  if (full) current = { ...sample, confirmed_count: 18 };
+  await mount();
+  let finish!: (value: unknown) => void;
+  const original = mocks.rpc.getMockImplementation()!;
+  mocks.rpc.mockImplementation((name: string, ...args: unknown[]) => name === 'join_round_robin_event'
+    ? new Promise(resolve => { finish = resolve; }) : original(name, ...args));
+  const label = full ? 'Join the Waitlist' : 'Join the Event';
+  const click = button(label).props.onClick;
+  await act(async () => { click(); click(); click(); });
+  expect(mocks.rpc.mock.calls.filter(([name]) => name === 'join_round_robin_event')).toHaveLength(1);
+  expect(button('Saving your place').props.disabled).toBe(true);
+  expect(button('Saving your place').props['aria-busy']).toBe(true);
+  await act(async () => { finish({ data: null, error: new Error('Connection interrupted') }); await new Promise(resolve => setTimeout(resolve, 20)); });
+  expect(mocks.toast.success).not.toHaveBeenCalled();
+  expect(button(label).props.disabled).toBe(false);
+  expect(JSON.stringify(root!.toJSON())).toContain('Connection interrupted');
+  await act(async () => button(label).props.onClick());
+  expect(mocks.rpc.mock.calls.filter(([name]) => name === 'join_round_robin_event')).toHaveLength(2);
+  await act(async () => { finish({ data: { registration_status: full ? 'waitlisted' : 'confirmed', message: 'Saved' }, error: null }); await new Promise(resolve => setTimeout(resolve, 20)); });
+  expect(mocks.toast.success).toHaveBeenCalledWith('Saved');
+});
+
 describe("portable sharing", () => {
   it("uses the public origin, carries the invite, and keeps legacy invitation auth returns", () => {
     expect(roundRobinUrl(eventId, " abc-1234 ")).toBe(`https://pulsepb.com/round-robin/${eventId}?invite=ABC-1234`);
