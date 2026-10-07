@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2, type LucideIcon } from "lucide-react";
+import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Plus, Link2, type LucideIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -229,7 +229,7 @@ export function PlayerPickerSheet({
     ...(groupId ? [{ value: "group" as const, label: "Group", icon: UsersRound }] : []),
     { value: "recent", label: "Recent", icon: Clock },
     { value: "search", label: "Search", icon: Search },
-    ...(showGuest ? [{ value: "guest" as const, label: "Guest", icon: UserPlus }] : []),
+    ...(showGuest ? [{ value: "guest" as const, label: "Guests", icon: UserPlus }] : []),
   ];
 
 
@@ -238,7 +238,7 @@ export function PlayerPickerSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="bottom"
-        className={cn("h-[90vh] p-0 flex flex-col gap-0 rounded-t-2xl border-t border-border/60", contentClassName)}
+        className={cn("rr-roster-picker h-[90dvh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-primary/30", contentClassName)}
       >
         {/* Sticky header */}
         <div className="relative px-4 pt-4 pb-2 border-b border-border/60 bg-background overflow-hidden">
@@ -249,19 +249,20 @@ export function PlayerPickerSheet({
           <div className="relative flex items-start justify-between gap-3 mb-3 pr-10">
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
-                Roster
+                PULSE · Your roster
               </div>
               <SheetTitle className="text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
                 {mode === "single" ? "Choose a player" : "Add players"}
               </SheetTitle>
-              <SheetDescription className="mt-1 text-xs">{mode === "single" ? "Choose a player to continue." : "Find your people. Select players, then tap Done."}</SheetDescription>
             </div>
             {mode === "multi" && (
-              <span className="flex-shrink-0 mt-1 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-primary tabular-nums">
+              <span role="status" aria-live="polite" aria-atomic="true" className="flex-shrink-0 mt-1 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-foreground tabular-nums">
                 {local.length} selected
               </span>
             )}
           </div>
+
+          <SheetDescription className="relative mb-3 text-sm leading-relaxed">{mode === "single" ? "Choose a player to continue." : "Tap to select. Tap again to remove. Review your selection below."}</SheetDescription>
 
           {mode === "multi" && local.length > 0 && (
             <ScrollArea className="relative max-h-20 mb-3">
@@ -270,7 +271,7 @@ export function PlayerPickerSheet({
                   <Badge
                     key={p.id}
                     variant="secondary"
-                    className="px-2 py-1 gap-1 rounded-full border border-border/60"
+                    className="pl-2.5 pr-0 py-0 gap-1 rounded-full border border-primary/30 bg-primary/10 text-foreground"
                   >
                     {p.display_name || p.full_name}
                     {p.isGuest && (
@@ -281,8 +282,8 @@ export function PlayerPickerSheet({
                     <button
                       type="button"
                       onClick={() => removeOne(p.id)}
-                      className="ml-1 hover:text-destructive"
-                      aria-label="Remove"
+                      className="rr-pressable ml-1 flex h-9 w-9 items-center justify-center rounded-full hover:bg-primary/15"
+                      aria-label={`Remove ${p.display_name || p.full_name} from selection`}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -323,9 +324,9 @@ export function PlayerPickerSheet({
                 aria-selected={tab === value}
                 onClick={() => setTab(value)}
                 className={cn(
-                  "inline-flex min-h-10 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold transition-all",
+                  "rr-pressable inline-flex min-h-12 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold",
                   tab === value
-                    ? "bg-background text-foreground shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.3)] ring-1 ring-primary/20"
+                    ? "bg-secondary text-secondary-foreground shadow-sm ring-1 ring-primary/50"
                     : "hover:text-foreground",
                 )}
               >
@@ -416,12 +417,13 @@ export function PlayerPickerSheet({
 
         {/* Sticky footer — only in multi mode */}
         {mode === "multi" && (
-          <div className="border-t bg-background p-4 flex items-center justify-between gap-3">
-            <span className="text-sm text-muted-foreground">
-              {local.length} player{local.length === 1 ? "" : "s"}
-            </span>
-            <Button onClick={commit} className="flex-1 max-w-[180px]">
-              Done
+          <div className="rr-picker-footer shrink-0 border-t bg-background p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tabular-nums">{local.length} selected</p>
+              <p className="text-xs text-muted-foreground">{local.filter(p => p.isGuest).length} guests included</p>
+            </div>
+            <Button onClick={commit} disabled={guestBusy} className="flex-1 min-w-[150px] sm:max-w-[240px]">
+              <Check className="h-4 w-4" /> Use selection
             </Button>
           </div>
         )}
@@ -462,24 +464,27 @@ function GuestPanel({
   const canAdd = !busy && !!guestName.trim() && (!genderRequired || !!guestGender);
 
   return (
-    <div className="h-full m-0 flex flex-col">
-      <div className="px-4 pt-4 pb-3 border-b space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="h-full min-h-0 m-0 flex flex-col overflow-y-auto">
+      <div className="shrink-0 mx-4 mt-4 mb-2 rounded-2xl border border-primary/25 bg-primary/[0.045] p-4 space-y-3">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold">
             Add new guest
           </p>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 text-right">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {eventFormat === "open"
-              ? "Name only — reusable later"
+              ? "No account needed. Create once, then select this guest for future events."
               : fixedGender
                 ? "Gender set by event format"
                 : "Gender required for scheduling"}
-          </span>
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             placeholder="e.g. Alex K"
+            aria-label="New guest name"
+            autoComplete="off"
             value={guestName}
+            disabled={busy}
             onChange={(e) => onGuestNameChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -493,7 +498,7 @@ function GuestPanel({
             <Select
               value={guestGender}
               onValueChange={(value) => onGuestGenderChange(value as BinaryGender)}
-              disabled={!!fixedGender}
+              disabled={busy || !!fixedGender}
             >
               <SelectTrigger
                 className="h-11 w-full sm:w-36"
@@ -507,9 +512,9 @@ function GuestPanel({
               </SelectContent>
             </Select>
           )}
-          <Button type="button" onClick={onAddGuest} disabled={!canAdd} className="h-11">
+          <Button type="button" onClick={onAddGuest} disabled={!canAdd} busy={busy} className="h-11">
             <UserPlus className="h-4 w-4 mr-1" />
-            {busy ? "Adding…" : "Add"}
+            {busy ? "Creating guest…" : "Create & select"}
           </Button>
         </div>
       </div>
@@ -554,10 +559,10 @@ function PlayerRow({
       type="button"
       onClick={onToggle}
       disabled={disabled}
+      aria-pressed={selected}
       aria-describedby={disabledReason ? `${p.id}-eligibility` : undefined}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left",
-        selected && "bg-primary/5",
+        "rr-roster-choice rr-pressable flex items-center gap-3 px-3 py-3 text-left",
         disabled && "cursor-not-allowed opacity-55 hover:bg-transparent",
       )}
     >
@@ -571,7 +576,7 @@ function PlayerRow({
           <p
             id={disabledReason ? `${p.id}-eligibility` : undefined}
             className={cn(
-              "text-xs text-muted-foreground truncate",
+              "text-xs text-muted-foreground leading-relaxed",
               disabledReason && "text-amber-600 dark:text-amber-400",
             )}
           >
@@ -584,7 +589,7 @@ function PlayerRow({
       {trailing && <div className="shrink-0">{trailing}</div>}
       <div
         className={cn(
-          "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+          "rr-roster-check h-7 w-7 rounded-full border flex items-center justify-center shrink-0",
           selected
             ? "bg-primary border-primary"
             : disabled
@@ -592,7 +597,7 @@ function PlayerRow({
               : "border-muted-foreground/30",
         )}
       >
-        {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+        {selected ? <Check className="h-4 w-4 text-primary-foreground" /> : !disabled && <Plus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
     </button>
   );
@@ -706,12 +711,12 @@ function GroupList({
         {showAddAll && remaining.length > 0 && (
           <div className="px-4 pb-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="text-primary"
               onClick={() => remaining.forEach((p) => onToggle(p))}
             >
-              Add all {remaining.length}
+              <Plus className="h-4 w-4" /> Select all {remaining.length}
             </Button>
           </div>
         )}
@@ -922,7 +927,7 @@ function GuestRosterList({
     <>
     <div className="px-4 py-2"><Input aria-label="Search saved guests" placeholder="Search saved guests" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
     {items.length === 0 && <EmptyState message="No available guests match your search." />}
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1 min-h-[180px]">
       <div className="py-2">
         {items.map((p) => (
           <PlayerRow
@@ -964,6 +969,5 @@ function GuestRosterList({
     </>
   );
 }
-
 
 

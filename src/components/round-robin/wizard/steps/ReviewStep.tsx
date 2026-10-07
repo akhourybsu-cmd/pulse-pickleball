@@ -1,5 +1,5 @@
 import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, Share2, UserPlus, type LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { WizardFormData, calculateScheduleMetrics } from "../hooks/useWizardSteps";
 import { StepHeader } from "../StepHeader";
 import { cn } from "@/lib/utils";

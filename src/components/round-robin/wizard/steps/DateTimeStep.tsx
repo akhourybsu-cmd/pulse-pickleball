@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { StepHeader } from "../StepHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
   Popover,

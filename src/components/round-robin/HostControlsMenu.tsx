@@ -3,7 +3,7 @@ import {
   ArrowLeftRight, ClipboardList, History,
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -243,7 +243,7 @@ export function HostControlsMenu({
                         disabled={e.disabled}
                         onClick={() => { setOpen(false); e.onSelect(); }}
                         className={cn(
-                          "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45",
+                          "rr-pressable group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left active:bg-muted/60 disabled:opacity-45",
                           e.destructive && "bg-destructive/[0.04]",
                         )}
                       >

@@ -5,22 +5,23 @@ let user: { id: string; email: string } | null = params.has('claim') ? null : { 
 const listeners = new Set<() => void>();
 export const signIn = () => { user = { id: 'player', email: 'player@example.test' }; listeners.forEach(f => f()); };
 export function useAuthState() { return { user: useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => user), loading: false, isAuthenticated: !!user }; }
-export const useFriends = () => ({ friends: [], isLoading: false });
-export const useGroupMembers = () => ({ members: [], isLoading: false });
-export const useRecentCoPlayers = () => ({ players: [], isLoading: false });
+const profiles = [{ id: 'p-jamie', full_name: 'Jamie Chen', display_name: 'Jamie Chen', gender: 'female', current_rating: 3.42 }, { id: 'p-devon', full_name: 'Devon Miller', display_name: 'Devon Miller', gender: 'male', current_rating: 3.58 }];
+export const useFriends = () => ({ friends: profiles.map(profile => ({ profile })), loading: false });
+export const useGroupMembers = () => ({ members: profiles.map(profile => ({ profile })), loading: false });
+export const useRecentCoPlayers = () => ({ data: profiles, isLoading: false });
 type Row = Record<string, any>;
 const guests: Row[] = [
   { id: 'guest-alex', display_name: 'Alex Rivera', created_by: 'owner', gender: 'female', email: 'alex@example.test' },
   { id: 'guest-jordan', display_name: 'Jordan Brooks', created_by: 'owner', gender: 'male' },
 ].map(g => ({ archived_at: null, linked_user_id: null, created_at: '2026-10-01T12:00:00Z', group_id: null, phone: null, email: null, ...g }));
 const invites: Row[] = [];
-const tables: Record<string, Row[]> = { guest_players: guests, guest_claim_invites: invites, profiles_public: [] };
+const tables: Record<string, Row[]> = { guest_players: guests, guest_claim_invites: invites, profiles_public: profiles };
 function from(table: string) {
   const filters: ((r: Row) => boolean)[] = [];
   let mutation: { op: string; payload: Row | Row[] } | null = null;
   let single = false; let range: [number, number] | null = null;
   const execute = async () => {
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r => setTimeout(r, mutation && params.has('slow') ? 4000 : 120));
     let rows = tables[table] ?? [];
     if (mutation?.op === 'insert') {
       const inserted = (Array.isArray(mutation.payload) ? mutation.payload : [mutation.payload]).map(p => ({ id: crypto.randomUUID(), created_at: new Date().toISOString(), archived_at: null, linked_user_id: null, ...p }));

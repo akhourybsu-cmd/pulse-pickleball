@@ -1,7 +1,7 @@
 import { FileText, MapPin, Globe, Lock, Check, X, Asterisk } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card } from "@/components/ui/card";
 import { CityAutocomplete, VerifiedCity } from "@/components/match-wizard/CityAutocomplete";
 import { generateDefaultEventName } from "../hooks/useWizardSteps";

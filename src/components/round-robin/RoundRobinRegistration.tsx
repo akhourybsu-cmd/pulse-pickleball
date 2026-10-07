@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CalendarDays, CheckCircle2, Clock3, Copy, Loader2, MapPin, Share2, Trophy, Users } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { stashPostAuthRedirect } from "@/lib/authRedirect";

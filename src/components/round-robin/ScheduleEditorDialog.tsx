@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { cn } from "@/lib/utils";
 import { ModalActions, ResponsiveSettingsModal } from "./ResponsiveSettingsModal";

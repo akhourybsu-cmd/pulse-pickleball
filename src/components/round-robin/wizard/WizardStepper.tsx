@@ -1,6 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { cn } from "@/lib/utils";
 import { PRESSABLE } from "@/lib/motion";
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import {
   Dialog,
   DialogContent,

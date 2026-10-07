@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Activity, ArrowRight, Check, ChevronLeft, ChevronRight, Coffee, ListOrdered, Maximize2, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Input } from '@/components/ui/input';
 import { canScoreCommandMatch, commandSchedule, type CommandMatch } from '@/lib/roundRobin/commandCenter';
 import './command-center.css';

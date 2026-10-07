@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, ChevronRight, ListOrdered } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { WizardStep } from "./hooks/useWizardSteps";
