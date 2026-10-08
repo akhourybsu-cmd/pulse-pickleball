@@ -15,6 +15,17 @@ export function selectNextV2(bank: readonly AssessmentItem[], responses: Respons
   // No game evidence in any foundation: offer review/practice guidance now
   // rather than asking another 28 increasingly difficult unknown situations.
   if (snapshot.meta.scoredCount === 0) return null;
+  // V3 always probes the common decision gaps, using the normal prerequisite
+  // chain. These replace redundant probes within the existing 32–44 limit.
+  if (items.some(i => i.version === 3)) {
+    for (const key of ['v3_return_2', 'v3_counters_2', 'v3_drive_3']) {
+      const item = unasked.find(i => i.itemKey === key);
+      if (!item) continue;
+      const prerequisite = item.prerequisite?.itemKey;
+      if (prerequisite && !Object.prototype.hasOwnProperty.call(responses, prerequisite)) return prerequisite;
+      return item.itemKey;
+    }
+  }
   const measures = snapshot.meta.evidence!.dimensions;
   // Every completed flow probes all four dimensions. Unknown evidence may still
   // end at the cap; completion validation then offers answer review, not a rating.

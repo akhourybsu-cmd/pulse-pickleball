@@ -519,7 +519,7 @@ export function scoreAssessment(
   responses: Responses,
   ctx: ScoringContext = {},
 ): ScoringSnapshot {
-  if (items.some(item => item.version === 2)) return scoreAssessmentV2(items, responses);
+  if (items.some(item => item.version >= 2)) return scoreAssessmentV2(items, responses);
   const answered = collect(items, responses);
   const contradictions = detectContradictions(answered);
   const contradictionSeverity = contradictions.length;

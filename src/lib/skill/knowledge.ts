@@ -1,12 +1,12 @@
 import { bandForLevel, type Subskill } from './model';
 
 export const GUIDE_PATH = '/pickleball-guide';
-export const KNOWLEDGE_REVIEWED = '2026-09-22';
+export const KNOWLEDGE_REVIEWED = '2026-10-08';
 /** Public teaching references, not evidence validating PULSE's scoring model. */
 export const KNOWLEDGE_SOURCES = {
   rules: { label: 'USA Pickleball · rules summary', url: 'https://usapickleball.org/rules/summary/' },
   play: { label: 'USA Pickleball · how to play', url: 'https://usapickleball.org/pickleball-skills/level-one/how-to-play-pickleball/' },
-  matrix: { label: 'USA Pickleball · skill definitions', url: 'https://usapickleball.org/docs/skill-rating/USAP-Player-Skill-Level-Matrix.pdf' },
+  matrix: { label: 'USA Pickleball · skill definitions', url: 'https://usapickleball.org/skill-level/' },
   developing: { label: 'USA Pickleball · developing skills', url: 'https://usapickleball.org/skill-level/level-three/' },
   advanced: { label: 'USA Pickleball · advanced skills', url: 'https://usapickleball.org/skill-level/level-four/' },
   terms: { label: 'USA Pickleball · shot terminology', url: 'https://usapickleball.org/blog-category/pickleball-basic-terms/' },
@@ -20,8 +20,21 @@ export const KNOWLEDGE_SOURCES = {
   overheads: { label: 'USA Pickleball · overhead and lob placement', url: 'https://usapickleball.org/pickleball-skills/level-three/where-to-hit-overheads-and-where-to-lob/' },
   lobs: { label: 'USA Pickleball · lob decisions', url: 'https://usapickleball.org/pickleball-skills/level-three/pickleball-lob-shots/' },
   wheelchair: { label: 'USA Pickleball · wheelchair rules', url: 'https://usapickleball.org/rules/wheelchair/' },
+  technique: { label: 'Selkirk TV · DJ Howard fundamentals video course', url: 'https://www.selkirk.com/pages/courses/pickleball-fundamentals-master-the-court-step-by-step' },
+  lobVideo: { label: 'Pickleball Central · forehand and lob video lessons', url: 'https://pickleballcentral.com/pickleball-videos/instructional-videos/' },
 } as const;
 export type KnowledgeSource = keyof typeof KNOWLEDGE_SOURCES;
+/** Optional publisher-hosted footage. Never presented as a demonstration of a
+ * specific assessment item, an endorsement, or validation of the score. */
+export const TECHNIQUE_LESSONS: Partial<Record<Subskill, { source: KnowledgeSource; topic: string }>> = {
+  serve: { source: 'technique', topic: 'Serve mechanics' },
+  forehand: { source: 'technique', topic: 'Forehand mechanics' },
+  backhand: { source: 'technique', topic: 'Backhand mechanics' },
+  dinking: { source: 'technique', topic: 'Dink mechanics' },
+  volleys: { source: 'technique', topic: 'Volley mechanics' },
+  transition_play: { source: 'technique', topic: 'Transition footwork' },
+  overheads_lobs: { source: 'lobVideo', topic: 'Lob technique' },
+};
 export interface SkillKnowledge {
   definition: string;
   purpose: string;
@@ -44,7 +57,7 @@ export const SKILL_KNOWLEDGE: Record<Subskill, SkillKnowledge> = {
   return: {
     definition: 'The return is the receiving team’s first shot, played after the serve bounces.',
     purpose: 'Depth and useful flight time keep the serving team back while helping the returner establish a balanced position near the kitchen.',
-    lookFor: 'Observe placement and readiness for the next ball, including serves to the backhand. Arriving at the line out of control is not a complete success.',
+    lookFor: 'Observe placement and readiness for the next ball, including serves to the backhand. Read the bounce when topspin or slice changes its speed or direction. Arriving at the line out of control is not a complete success.',
     misconception: 'A return need not land in the diagonal service box. That restriction belongs to the serve.',
     practice: 'Observe 10 returns. Record in-court depth and whether you were ready for the next shot, rather than counting only points won.',
     sources: ['returns', 'play'],
@@ -60,7 +73,7 @@ export const SKILL_KNOWLEDGE: Record<Subskill, SkillKnowledge> = {
   backhand: {
     definition: 'A backhand groundstroke plays a bounced ball on the opposite side from your forehand. One- and two-handed techniques can both be effective.',
     purpose: 'A usable backhand lets you cover your side without repeatedly exposing another gap.',
-    lookFor: 'Count actual backhand opportunities, including consecutive balls and directional targets. Running around every backhand provides little evidence of that stroke.',
+    lookFor: 'Count actual backhand opportunities, including consecutive balls and directional targets. One sequence of three playable balls counts as one rally, not three separate successes. Running around every backhand provides little evidence of that stroke.',
     misconception: 'A less powerful backhand can still be reliable. Judge its intended result and control, rather than comparing swing speed with your forehand.',
     practice: 'Ask for a comfortable backhand rally. Count controlled contacts and target hits; then observe whether that control carries into games.',
     sources: ['matrix', 'developing'],
@@ -107,7 +120,7 @@ export const SKILL_KNOWLEDGE: Record<Subskill, SkillKnowledge> = {
   },
   counters: {
     definition: 'A counter responds to an opponent’s fast attack; a compact block may neutralize it, while a controlled redirection can turn defense into offense.',
-    purpose: 'Keeping the paddle ready and controlling contact helps you handle fast exchanges without a long swing.',
+    purpose: 'Keeping the paddle ready and controlling contact helps you handle fast exchanges without a long swing. Recognizing an out ball also matters: leaving one counts as successful only when it lands out.',
     lookFor: 'Notice consecutive controlled replies and whether you recover for the next ball. A reflex touch that pops up is different from a useful counter.',
     misconception: 'Every fast ball does not need a harder reply. A softer block may be the appropriate choice.',
     practice: 'Use comfortable, agreed pace. Count controlled replies in short exchanges, then record similar opportunities during games.',
@@ -140,7 +153,7 @@ export const SKILL_KNOWLEDGE: Record<Subskill, SkillKnowledge> = {
   overheads_lobs: {
     definition: 'An overhead attacks a reachable high ball. A lob sends the ball over opponents toward the backcourt.',
     purpose: 'Placement can move opponents, while sensible lob choices can create space or recovery time.',
-    lookFor: 'Assess balanced overhead contact, useful lob depth and communication when a ball passes overhead.',
+    lookFor: 'Assess overhead placement, offensive lob depth and defensive retrieval separately. Being strong at one does not prove the others. The report groups these related skills, but does not treat unlike answers as contradictions.',
     misconception: 'A lob is not automatically defensive, and an overhead is not automatically a winner. A short lob or overhead hit directly to a ready opponent may concede the advantage.',
     practice: 'Agree on who covers lobs. Use reachable feeds and safe movement; turn to track a deep ball rather than backpedaling blindly. Count placement, not maximum power.',
     sources: ['overheads', 'lobs'],

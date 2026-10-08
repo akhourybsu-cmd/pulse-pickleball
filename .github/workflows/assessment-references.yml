@@ -1,0 +1,25 @@
+name: Check assessment teaching references
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 13 * * 1'
+  pull_request:
+    paths:
+      - 'src/lib/skill/knowledge.ts'
+      - 'scripts/check-assessment-references.mjs'
+      - '.github/workflows/assessment-references.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - run: node scripts/check-assessment-references.mjs

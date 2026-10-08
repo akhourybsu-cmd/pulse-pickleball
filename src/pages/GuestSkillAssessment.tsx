@@ -60,11 +60,11 @@ export default function GuestSkillAssessment() {
       setSaved({ id: attemptId, ownerId, snapshot });
       a.clearSaved(attemptId);
       setParams({}, { replace: true });
-      trackAssessmentFunnel('saved');
+      trackAssessmentFunnel('saved', a.assessmentVersion);
     } catch (error) {
       if (!mounted.current) return;
       setSaveError(error instanceof GuestClaimError ? error.reason : 'retry');
-      trackAssessmentFunnel('save_failed');
+      trackAssessmentFunnel('save_failed', a.assessmentVersion);
     } finally { if (mounted.current) setSaving(false); inFlight.current = false; }
   }, [a, auth.user, auth.isAuthenticated, saved, setParams]);
 
@@ -79,7 +79,7 @@ export default function GuestSkillAssessment() {
   }, [auth.loading, auth.user, auth.isAuthenticated, a.draft, params, saveToAccount]);
 
   const save = async (mode: 'signup' | 'login' = 'signup') => {
-    trackAssessmentFunnel('save_requested');
+    trackAssessmentFunnel('save_requested', a.assessmentVersion);
     const needsSignIn = saveError === 'sign_in' || saveError === 'conflict';
     const needsVerification = saveError === 'mfa_required' || (auth.user && !auth.isAuthenticated);
     if (auth.user && !needsSignIn && !needsVerification) { void saveToAccount(); return; }
@@ -93,12 +93,12 @@ export default function GuestSkillAssessment() {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) { toast.error('Could not end the current session. Try again before signing in.'); return; }
     }
-    trackAssessmentFunnel('auth_started');
+    trackAssessmentFunnel('auth_started', a.assessmentVersion);
     navigate(`/auth?mode=${needsSignIn || needsVerification ? 'login' : mode}&redirect=${encodeURIComponent(returnTo)}`);
   };
   const inviteUrl = publicAppUrl(`${ASSESSMENT_PATH}?source=friend`);
   const copyInvite = async () => {
-    try { await copyText(inviteUrl); trackAssessmentFunnel('invite_copied'); toast.success('Assessment invitation copied.'); }
+    try { await copyText(inviteUrl); trackAssessmentFunnel('invite_copied', a.assessmentVersion); toast.success('Assessment invitation copied.'); }
     catch { toast.info('Copy the assessment link shown below.'); }
   };
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { executeSql, readLocalMigrations, unwrapOuterTransaction } from './deploy-supabase-migrations.mjs';
 
 import { PRODUCTION_SUPABASE_PROJECT as project } from '../src/lib/backendPolicy.mjs';
-const releaseVersions = ['20260922180000', '20260922200000'];
+const releaseVersions = ['20260922180000', '20260922200000', '20261008130000'];
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const compatibilitySql = `SELECT
   count(*) FILTER (WHERE mfa_method = 'sms')::integer AS unsupported_sms,
@@ -45,6 +45,7 @@ export async function checkAssessmentRelease({ accessToken, projectRef, prefligh
   const [status] = await query(`SELECT
     to_regprocedure('public.pulse_mfa_status()') IS NOT NULL AND
     to_regprocedure('public.import_guest_skill_assessment(uuid,uuid,jsonb,jsonb)') IS NOT NULL AS installed,
+    EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '20261008130000') AS version_three,
     EXISTS (SELECT 1 FROM pg_roles r, unnest(r.rolconfig) setting WHERE r.rolname = 'authenticator'
       AND setting = 'pgrst.db_pre_request=public.pulse_enforce_mfa') AS guarded,
     NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -54,7 +55,7 @@ export async function checkAssessmentRelease({ accessToken, projectRef, prefligh
       CROSS JOIN (VALUES ('anon'),('authenticated')) roles(role_name)
       WHERE n.nspname='public' AND p.proname IN ('pulse_issue_mfa_email','pulse_verify_mfa_email','pulse_cancel_mfa_email','insert_mfa_code','verify_and_use_mfa_code','import_guest_skill_assessment')
       AND has_function_privilege(role_name,p.oid,'EXECUTE')) AS grants_closed;`);
-  if (!status || !['installed', 'guarded', 'policies', 'grants_closed'].every(key => status[key] === true)) {
+  if (!status || !['installed', 'version_three', 'guarded', 'policies', 'grants_closed'].every(key => status[key] === true)) {
     throw new Error(`Assessment backend readiness failed: ${JSON.stringify(status ?? {})}`);
   }
   if (!rows) throw new Error('Readiness query did not complete.');

@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { claimGuestReport } from '../../src/lib/skill/claimGuestReport';
 import { createGuestAssessment } from '../../src/lib/skill/guestAssessment';
+import { QUESTION_BANK_V3 } from '../../src/lib/skill/questionBankV3';
 import { QUESTION_BANK_V2 } from '../../src/lib/skill/questionBankV2';
 import { scoreAssessment } from '../../src/lib/skill/scoring';
 
 const draft = createGuestAssessment();
-const snapshot = scoreAssessment(QUESTION_BANK_V2, {});
+const snapshot = scoreAssessment(QUESTION_BANK_V3, {});
 const result = { data: { authoritative: true, attemptId: draft.id, snapshot }, error: null };
 const session = { access_token: 'unit-test-token', user: { id: 'player-a' } };
 type Invoke = Parameters<typeof claimGuestReport>[2]['invoke'];
@@ -13,11 +14,19 @@ function setup() { return { getSession: vi.fn(async () => ({ data: { session }, 
 afterEach(() => vi.useRealTimers());
 
 describe('guest report account handoff', () => {
+  it('saves a resumed version-two guest report with its original model', async () => {
+    const legacy = { ...draft, version: 2 as const };
+    const oldSnapshot = scoreAssessment(QUESTION_BANK_V2, {});
+    const deps = setup();
+    deps.invoke.mockResolvedValue({ ...result, data: { ...result.data, snapshot: oldSnapshot } });
+    await expect(claimGuestReport(legacy, 'player-a', deps)).resolves.toEqual(oldSnapshot);
+    expect(deps.invoke.mock.calls[0][1].body.assessmentVersion).toBe(2);
+  });
   it('pins the request to the initiating account and sends raw answers with an explicit session token', async () => {
     const deps = setup();
     await expect(claimGuestReport(draft, 'player-a', deps)).resolves.toEqual(snapshot);
     expect(deps.invoke).toHaveBeenCalledWith('skill-claim', {
-      body: { attemptId: draft.id, assessmentVersion: 2, responses: draft.responses },
+      body: { attemptId: draft.id, assessmentVersion: 3, responses: draft.responses },
       headers: { Authorization: 'Bearer unit-test-token' }, signal: expect.any(AbortSignal),
     });
   });

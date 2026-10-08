@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AssessmentQuestion } from './AssessmentQuestion';
-import { SUBSKILL_LABELS, RESPONSE_MASTERY, RESPONSE_LABELS, clamp } from '@/lib/skill/model';
+import { ASSESSMENT_VERSION, SUBSKILL_LABELS, RESPONSE_MASTERY, RESPONSE_LABELS, clamp } from '@/lib/skill/model';
 import type { useSkillAssessment } from '@/hooks/useSkillAssessment';
 import { PulseTrace } from './PulseTrace';
 import './assessment-brand.css';
@@ -41,7 +41,7 @@ export function AssessmentWizard({ a, onExit }: { a: AssessmentWizardState; onEx
     <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} saved answers, maximum ${a.maxItems}`}>
       <div className="h-full bg-gradient-to-r from-primary to-emerald-300 motion-safe:transition-[width]" style={{ width: `${pct}%` }} />
     </div>
-    {a.assessmentVersion === 1 && <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">You’re finishing an earlier assessment with its original questions and scoring. Your next assessment will use the updated format.</p>}
+    {a.assessmentVersion < ASSESSMENT_VERSION && <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">You’re finishing an earlier assessment with its original questions and scoring. Your next assessment will use the updated format.</p>}
     {reviewing ? review : editingKey || !a.complete ? item && <AssessmentQuestion key={item.itemKey} item={item} initialValue={a.responses[item.itemKey]} saving={a.saving} editing={!!editingKey}
       onConfirm={async value => { const saved = await a.answer(item.itemKey, value); if (saved && editingKey) { setEditingKey(null); setReviewing(true); } }} /> : <section className="space-y-4 rounded-2xl border bg-card p-5 text-center">
         <Check className="mx-auto h-9 w-9 text-primary" />

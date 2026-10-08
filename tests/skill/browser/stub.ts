@@ -1,10 +1,10 @@
 // Isolated preview storage. No backend, auth tokens, network calls or live data.
-import { QUESTION_BANK_V2 } from '../../../src/lib/skill/questionBankV2';
+import { QUESTION_BANK_V3 } from '../../../src/lib/skill/questionBankV3';
 import { selectNextV2 } from '../../../src/lib/skill/adaptiveV2';
 import { computeAuthoritativeResult } from '../../../supabase/functions/_shared/skill/complete';
 import type { Responses } from '../../../src/lib/skill/scoring';
 import type { ResponseKey } from '../../../src/lib/skill/model';
-import { createGuestAssessment, writeGuestAssessment, GUEST_ASSESSMENT_KEY } from '../../../src/lib/skill/guestAssessment';
+import { createGuestAssessment, writeGuestAssessment, GUEST_ASSESSMENT_KEY, LEGACY_GUEST_ASSESSMENT_KEY } from '../../../src/lib/skill/guestAssessment';
 import { computeGuestClaim } from '../../../supabase/functions/_shared/skill/claim';
 type Row = Record<string, unknown>;
 const storageKey = 'pulse-assessment-v2-preview';
@@ -31,10 +31,10 @@ export function signInPreview() {
 }
 export function signOutPreview() { localStorage.removeItem('skill-preview-user'); sessionStorage.removeItem('skill-preview-verified'); previewChallenge = null; for (const fn of authListeners) fn('SIGNED_OUT', null); window.dispatchEvent(new Event('preview-auth')); }
 export function failNextSave() { failSave = true; }
-export function resetPreview() { setPreviewStall('none'); localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.removeItem('skill-preview-mfa'); sessionStorage.removeItem('skill-preview-verified'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
+export function resetPreview() { setPreviewStall('none'); localStorage.removeItem(storageKey); localStorage.removeItem(GUEST_ASSESSMENT_KEY); localStorage.removeItem(LEGACY_GUEST_ASSESSMENT_KEY); localStorage.removeItem('skill-preview-user'); localStorage.removeItem('skill-preview-mfa'); sessionStorage.removeItem('skill-preview-verified'); localStorage.setItem('skill-preview-route', '/skill-assessment'); location.reload(); }
 export function seedGuest() {
   const draft = createGuestAssessment();
-  while (Object.keys(draft.responses).length < 64) { const key = selectNextV2(QUESTION_BANK_V2, draft.responses); if (!key) break; draft.responses[key] = 'usually'; }
+  while (Object.keys(draft.responses).length < 64) { const key = selectNextV2(QUESTION_BANK_V3, draft.responses); if (!key) break; draft.responses[key] = 'usually'; }
   writeGuestAssessment(localStorage, draft);
   localStorage.setItem('skill-preview-route', '/skill-assessment');
   location.reload();
@@ -44,11 +44,11 @@ export function seedUnknown() { seedResponses('not_sure'); }
 function seedResponses(answer: ResponseKey) {
   const responses: Responses = {};
   for (let n = 0; n < 64; n++) {
-    const next = selectNextV2(QUESTION_BANK_V2, responses);
+    const next = selectNextV2(QUESTION_BANK_V3, responses);
     if (!next) break;
     responses[next] = answer;
   }
-  write({ skill_assessment_attempts: [{ id: 'preview-draft', player_id: 'preview-player', assessment_version: 2, status: 'in_progress' }],
+  write({ skill_assessment_attempts: [{ id: 'preview-draft', player_id: 'preview-player', assessment_version: 3, status: 'in_progress' }],
     skill_assessment_responses: Object.entries(responses).map(([item_key, response_key]) => ({ attempt_id: 'preview-draft', item_key, response_key })) });
   location.reload();
 }
@@ -120,15 +120,15 @@ export const supabase = {
       if (existing) return { data: { authoritative: true, attemptId: existing.id, snapshot: existing.scoring_snapshot }, error: null };
       const claim = computeGuestClaim(options.body);
       if (!claim.ok) return { data: claim, error: new Error('Invalid claim') };
-      data.skill_assessment_attempts.unshift({ id: claim.attemptId, player_id: 'preview-player', assessment_version: 2, status: 'completed', scoring_snapshot: claim.snapshot, completed_at: new Date().toISOString(), estimated_level_display: claim.snapshot.estimatedLevelDisplay, display_band: claim.snapshot.displayBand });
+      data.skill_assessment_attempts.unshift({ id: claim.attemptId, player_id: 'preview-player', assessment_version: claim.snapshot.scoringModelVersion, status: 'completed', scoring_snapshot: claim.snapshot, completed_at: new Date().toISOString(), estimated_level_display: claim.snapshot.estimatedLevelDisplay, display_band: claim.snapshot.displayBand });
       data.skill_assessment_responses.push(...Object.entries(claim.responses).map(([item_key, response_key]) => ({ attempt_id: claim.attemptId, item_key, response_key })));
       write(data);
       return { data: { authoritative: true, attemptId: claim.attemptId, snapshot: claim.snapshot }, error: null };
     }
     const rows = data.skill_assessment_responses.filter(r => r.attempt_id === options.body.attemptId);
-    const result = computeAuthoritativeResult({ assessmentVersion: 2, responses: rows.map(r => ({ item_key: String(r.item_key), response_key: String(r.response_key) })) });
-    if (!result.ok) return { data: result, error: new Error('Insufficient evidence') };
     const attempt = data.skill_assessment_attempts.find(r => r.id === options.body.attemptId)!;
+    const result = computeAuthoritativeResult({ assessmentVersion: Number(attempt.assessment_version), responses: rows.map(r => ({ item_key: String(r.item_key), response_key: String(r.response_key) })) });
+    if (!result.ok) return { data: result, error: new Error('Insufficient evidence') };
     Object.assign(attempt, { status: 'completed', scoring_snapshot: result.snapshot, completed_at: new Date().toISOString(), estimated_level_display: result.snapshot.estimatedLevelDisplay, display_band: result.snapshot.displayBand });
     write(data);
     return { data: { snapshot: result.snapshot }, error: null };

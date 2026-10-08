@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { computeGuestClaim } from '../../supabase/functions/_shared/skill/claim';
 import { QUESTION_BANK_V2 } from '../../src/lib/skill/questionBankV2';
+import { QUESTION_BANK_V3 } from '../../src/lib/skill/questionBankV3';
 import { selectNextV2 } from '../../src/lib/skill/adaptiveV2';
 import type { Responses } from '../../src/lib/skill/scoring';
 const player = '10000000-0000-4000-8000-000000000001';
@@ -37,6 +38,7 @@ beforeAll(async () => {
   await db.exec(migration('20260729123000_skill_assessment_foundation.sql'));
   await db.exec(migration('20260729232349_129918c2-769f-4e1d-82fb-8f5e60cf4dd6.sql'));
   await db.exec(migration('20260922180000_guest_skill_assessment_claim.sql'));
+  await db.exec(migration('20261008130000_skill_assessment_v3.sql'));
 }, 30_000);
 beforeEach(async () => {
   await db.exec('TRUNCATE profiles CASCADE');
@@ -46,6 +48,22 @@ beforeEach(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe('atomic guest assessment transfer using production SQL', () => {
+  it('imports V3 with its own version, preserves V2 history, and never changes the performance rating', async () => {
+    await importReport();
+    const next: Responses = {};
+    for (let n = 0; n < 64; n++) { const key = selectNextV2(QUESTION_BANK_V3, next); if (!key) break; next[key] = 'usually'; }
+    const result = computeGuestClaim({ attemptId: draftId, assessmentVersion: 3, responses: next });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const saved = await db.query('SELECT import_guest_skill_assessment($1, $2, $3, $4) AS snapshot', [player, draftId, next, result.snapshot]);
+    expect(saved.rows[0].snapshot).toEqual(result.snapshot);
+    expect((await db.query('SELECT assessment_version FROM skill_assessment_attempts ORDER BY assessment_version')).rows).toEqual([{ assessment_version: 2 }, { assessment_version: 3 }]);
+    expect((await db.query('SELECT scoring_snapshot FROM skill_assessment_attempts WHERE id = $1', [attempt])).rows[0].scoring_snapshot).toEqual(snapshot);
+    expect((await db.query('SELECT current_rating FROM profiles WHERE id = $1', [player])).rows[0].current_rating).toBe('3.25');
+    const again = await db.query('SELECT import_guest_skill_assessment($1, $2, $3, $4) AS snapshot', [player, draftId, next, result.snapshot]);
+    expect(again.rows[0].snapshot).toEqual(result.snapshot);
+    expect((await db.query('SELECT * FROM skill_evidence')).rows).toHaveLength(2);
+  });
   it('stores raw answers, the full snapshot, scores and evidence while preserving the match rating', async () => {
     const saved = await importReport();
     expect(saved.rows[0].snapshot).toEqual(snapshot);

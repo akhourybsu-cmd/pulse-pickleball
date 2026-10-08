@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGuestAssessment, parseGuestAssessment, readGuestAssessment, writeGuestAssessment, clearGuestAssessment, GUEST_ASSESSMENT_KEY, GUEST_RETENTION_MS, canAutoSaveGuest, guestSaveReturnPath } from '../../src/lib/skill/guestAssessment';
-import { QUESTION_BANK_V2 } from '../../src/lib/skill/questionBankV2';
+import { QUESTION_BANK_V3 } from '../../src/lib/skill/questionBankV3';
 import { selectNextV2 } from '../../src/lib/skill/adaptiveV2';
 import { scoreAssessment, type Responses } from '../../src/lib/skill/scoring';
 import { computeGuestClaim } from '../../supabase/functions/_shared/skill/claim';
+import { LEGACY_GUEST_ASSESSMENT_KEY } from '../../src/lib/skill/guestAssessment';
 const memory = () => { const values = new Map<string, string>(); return {
   getItem: (key: string) => values.get(key) ?? null,
   setItem: (key: string, value: string) => { values.set(key, value); },
@@ -13,12 +14,32 @@ export function completedGuest() {
   const draft = createGuestAssessment();
   const responses: Responses = {};
   while (Object.keys(responses).length < 64) {
-    const key = selectNextV2(QUESTION_BANK_V2, responses);
+    const key = selectNextV2(QUESTION_BANK_V3, responses);
     if (!key) break;
     responses[key] = 'usually';
   }
   return { ...draft, responses, completedAt: Date.now() };
 }
+
+describe('draft storage across app upgrades', () => {
+  it('resumes a legacy draft, then safely moves it out of reach of older app copies', () => {
+    const storage = memory();
+    const legacy = { ...createGuestAssessment(), version: 2 as const, responses: { v2_serve_0: 'usually' as const } };
+    storage.setItem(LEGACY_GUEST_ASSESSMENT_KEY, JSON.stringify(legacy));
+    expect(readGuestAssessment(storage)).toEqual(legacy);
+    expect(writeGuestAssessment(storage, legacy)).toBe(true);
+    expect(storage.getItem(LEGACY_GUEST_ASSESSMENT_KEY)).toBeNull();
+    expect(readGuestAssessment(storage)).toEqual(legacy);
+    storage.removeItem(LEGACY_GUEST_ASSESSMENT_KEY); // An older open client cannot clear the migrated draft.
+    expect(readGuestAssessment(storage)).toEqual(legacy);
+  });
+  it('leaves future-version data untouched', () => {
+    const storage = memory(), raw = JSON.stringify({ ...createGuestAssessment(), version: 4 });
+    storage.setItem(GUEST_ASSESSMENT_KEY, raw);
+    expect(readGuestAssessment(storage)).toBeNull();
+    expect(storage.getItem(GUEST_ASSESSMENT_KEY)).toBe(raw);
+  });
+});
 
 describe('anonymous assessment retention and explicit save intent', () => {
   it('resumes raw answers, discards injected derived scores and preserves the idempotency key', () => {
@@ -38,7 +59,7 @@ describe('anonymous assessment retention and explicit save intent', () => {
   });
   it('handles corruption, unknown questions, unsupported versions and invalid response keys', () => {
     const draft = createGuestAssessment();
-    for (const raw of ['{', JSON.stringify({ ...draft, version: 1 }), JSON.stringify({ ...draft, responses: { bad: 'usually' } }), JSON.stringify({ ...draft, responses: { [QUESTION_BANK_V2[0].itemKey]: '__proto__' } })]) {
+    for (const raw of ['{', JSON.stringify({ ...draft, version: 1 }), JSON.stringify({ ...draft, responses: { bad: 'usually' } }), JSON.stringify({ ...draft, responses: { [QUESTION_BANK_V3[0].itemKey]: '__proto__' } })]) {
       expect(parseGuestAssessment(raw)).toBeNull();
     }
   });
@@ -68,13 +89,13 @@ describe('anonymous assessment retention and explicit save intent', () => {
 describe('server guest import validation', () => {
   it('independently recomputes the same full report while ignoring supplied scores and owner IDs', () => {
     const draft = completedGuest();
-    const result = computeGuestClaim({ attemptId: draft.id, assessmentVersion: 2, responses: draft.responses, snapshot: { estimatedLevelRaw: 9 }, playerId: 'forged' });
+    const result = computeGuestClaim({ attemptId: draft.id, assessmentVersion: 3, responses: draft.responses, snapshot: { estimatedLevelRaw: 9 }, playerId: 'forged' });
     expect(result.ok).toBe(true);
-    if (result.ok) { expect(result.snapshot).toEqual(scoreAssessment(QUESTION_BANK_V2, draft.responses)); expect(result).not.toHaveProperty('playerId'); }
+    if (result.ok) { expect(result.snapshot).toEqual(scoreAssessment(QUESTION_BANK_V3, draft.responses)); expect(result).not.toHaveProperty('playerId'); }
   });
   it('rejects partial evidence, fabricated questions and invalid payload shapes', () => {
     const draft = completedGuest();
-    const base = { attemptId: draft.id, assessmentVersion: 2, responses: draft.responses };
-    for (const body of [null, [], { ...base, attemptId: 'bad' }, { ...base, assessmentVersion: 1 }, { ...base, responses: {} }, { ...base, responses: { ...draft.responses, forged: 'usually' } }, { ...base, responses: { [QUESTION_BANK_V2[0].itemKey]: 10 } }]) expect(computeGuestClaim(body).ok).toBe(false);
+    const base = { attemptId: draft.id, assessmentVersion: 3, responses: draft.responses };
+    for (const body of [null, [], { ...base, attemptId: 'bad' }, { ...base, assessmentVersion: 1 }, { ...base, responses: {} }, { ...base, responses: { ...draft.responses, forged: 'usually' } }, { ...base, responses: { [QUESTION_BANK_V3[0].itemKey]: 10 } }]) expect(computeGuestClaim(body).ok).toBe(false);
   });
 });

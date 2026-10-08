@@ -4,6 +4,7 @@ import { StaticRouter } from 'react-router-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { AssessmentQuestion } from '../../src/components/skill/AssessmentQuestion';
 import { CourtScenario } from '../../src/components/skill/CourtScenario';
+import { QUESTION_BANK_V3 } from '../../src/lib/skill/questionBankV3';
 import { QUESTION_BANK_V2 } from '../../src/lib/skill/questionBankV2';
 import { scoreAssessment } from '../../src/lib/skill/scoring';
 import { sanitizeForOrganizer } from '../../src/lib/skill/organizerCard';
@@ -23,24 +24,24 @@ describe('assessment accessibility and privacy', () => {
     expect(html).toContain('Not enough game experience');
   });
   it('provides text equivalents and a still view for every scenario with reduced motion', () => {
-    for (const item of QUESTION_BANK_V2) {
+    for (const item of [...QUESTION_BANK_V2, ...QUESTION_BANK_V3]) {
       const html = renderToStaticMarkup(<CourtScenario item={item} />);
       expect(html).toContain('role="img"');
       expect(html).toContain('<title');
-      expect(html).toContain('Still diagram');
+      expect(html).toContain('Still steps');
       expect(html).not.toContain('class="assessment-moving-ball"');
-      expect(html).not.toContain('court animation');
+      expect(html).not.toContain('aria-label="Play court animation"');
       expect(html).not.toMatch(/<(video|iframe)\b/);
-      expect(html).toContain('Partner');
+      expect(html).toContain('Sequence &amp; what to watch');
       expect(html).toContain('KITCHEN');
     }
   });
   it('labels an incoming return honestly and makes holding still explicit', () => {
     const bounce = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_positioning_0')!;
     const hold = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_transition_play_2')!;
-    expect(renderToStaticMarkup(<CourtScenario item={bounce} />)).toContain('Their return');
+    expect(renderToStaticMarkup(<CourtScenario item={bounce} />)).toContain('Return bounce');
     expect(renderToStaticMarkup(<CourtScenario item={bounce} />)).not.toContain('Your shot');
-    expect(renderToStaticMarkup(<CourtScenario item={hold} />)).toContain('STOP');
+    expect(renderToStaticMarkup(<CourtScenario item={hold} />)).toContain('Hold and defend');
   });
   it('counts a three-shot sequence as one successful rally', () => {
     const item = QUESTION_BANK_V2.find(i => i.itemKey === 'v2_forehand_1')!;
