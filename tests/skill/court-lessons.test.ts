@@ -64,6 +64,7 @@ describe('question-specific court and height lessons', () => {
     expect(lob.to[0]).toBeLessThan(312); expect(lob.to[2]).toBe(0);
   });
   it('shows the fifth shot, leaves the out ball untouched, and actually recovers from wide positions', () => {
+    for (const key of ['drive_2', 'dinking_2', 'dink_strategy_2', 'speedups_2', 'strategy_2', 'overheads_lobs_1']) expect(lesson(key).view, key).toBe('court');
     expect(lesson('drive_3').steps.filter(s => s.ball.shot).map(s => s.ball.shot)).toEqual([3, 4, 5]);
     const leave = lesson('counters_2'); expect(leave.steps.every(s => !s.ball.contact)).toBe(true); expect(leave.steps.at(-1)!.ball.to[0]).toBeLessThan(48);
     const dink = lesson('dinking_2').steps.at(-1)!; expect(dink.to.you[1]).toBeLessThan(dink.from.you[1]);

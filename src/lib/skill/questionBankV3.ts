@@ -35,7 +35,7 @@ const scenarios: Record<Subskill, [Prompt, Prompt, Prompt, Prompt]> = {
     p(4.5, 'On an important point, a fast serve reaches your backhand.', 'Your backhand return lands in the back third of the opponents’ court.', 'Backhand return under pressure', 'Let the fast serve bounce, then use your backhand to reach the deep target.'),
   ],
   forehand: [
-    p(2.5, 'A routine ball bounces to your forehand near the baseline.', 'Your forehand clears the net and lands inside the court.', 'Forehand control', 'The paddle contacts a bounced ball on the forehand side. Right-handed example.'),
+    p(2.5, 'A routine ball bounces to your forehand near the baseline.', 'Your forehand clears the net and lands inside the court.', 'Forehand control', 'The paddle contacts a bounced ball on the forehand side. Use the handedness toggle to match your paddle side.'),
     p(3.5, 'In a rally, you get three playable, medium-paced forehands near the baseline.', 'All three of your forehands land inside the court.', 'Forehand sequence', 'Count your three contacts, with an opponent’s reply between each one.', { contacts: 3 }),
     p(4, 'You are balanced near the baseline and see open space crosscourt.', 'Your forehand lands in the crosscourt space you chose.', 'Forehand placement', 'The target marks open space away from the opponents.'),
     p(4.5, 'A deep ball pushes you back on an important point.', 'Your forehand reply lands in the back third of the opposite court.', 'Deep forehand under pressure', 'Move back to the deep bounce, then send the forehand to a generous deep target.'),

@@ -51,6 +51,9 @@ export function getCourtLesson(item: AssessmentItem): CourtLesson {
   const scene: CourtLesson = { steps: [], caption: item.visualCue ?? `${item.situation} ${item.success}`, stroke,
     view: ['drive', 'third_shot_drop', 'dinking', 'dink_strategy', 'speedups', 'counters', 'volleys', 'resets_defense', 'overheads_lobs', 'strategy'].includes(skill) ? 'height' : 'court',
     target: { x: 224, y: 42, width: 86, height: 116 }, pressure: item.dimension === 'pressure', count };
+  // Lateral gaps and recovery disappear when projected into a height view.
+  // Lead with the court for those questions; height remains available on demand.
+  if (stage === 2 && ['drive', 'dinking', 'dink_strategy', 'speedups', 'strategy'].includes(skill) || skill === 'overheads_lobs' && stage === 1) scene.view = 'court';
   let players: Players = { you: [122, backhand ? 138 : 114], partner: [128, 65], opponent: [234, 80], other: [234, 140] };
   let ball: BallPoint = [234, 80, 2];
   const pose = (x: number, y: number): Point => [x - 10, y + (backhand ? 12 : -12)];
