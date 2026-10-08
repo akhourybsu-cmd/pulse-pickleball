@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { copyText } from '@/lib/share';
-import { assessmentCardName, downloadAssessmentCard, renderAssessmentCard, shareAssessmentCard, type AssessmentCardFormat } from '@/lib/skill/assessmentShare';
+import { ASSESSMENT_CARD_SIZE, ASSESSMENT_CARD_EXPORT_SCALE, assessmentCardName, downloadAssessmentCard, renderAssessmentCard, shareAssessmentCard, type AssessmentCardFormat } from '@/lib/skill/assessmentShare';
 import type { ScoringSnapshot } from '@/lib/skill/scoring';
 import { AssessmentShareCard } from './AssessmentShareCard';
 import './assessment-brand.css';
@@ -55,10 +55,10 @@ export default function AssessmentShareDialog({ snapshot, completedAt, playerNam
         <div className="skill-share-preview"><AssessmentShareCard ref={svg} snapshot={snapshot} completedAt={completedAt} name={name} format={format} /></div>
         <div className="skill-share-options">
           <fieldset disabled={busy}><legend className="text-sm font-semibold mb-2">Card format</legend><div className="skill-share-formats">
-            {(['square', 'portrait'] as const).map(value => <button type="button" key={value} aria-pressed={format === value} onClick={() => setFormat(value)}><strong>{value === 'square' ? 'Square' : 'Portrait'}</strong><span>{value === 'square' ? '1080 × 1080' : '1080 × 1350'}</span></button>)}
+            {(['square', 'portrait'] as const).map(value => <button type="button" key={value} aria-pressed={format === value} onClick={() => setFormat(value)}><strong>{value === 'square' ? 'Square' : 'Portrait'}</strong><span>{ASSESSMENT_CARD_SIZE[value].width * ASSESSMENT_CARD_EXPORT_SCALE} × {ASSESSMENT_CARD_SIZE[value].height * ASSESSMENT_CARD_EXPORT_SCALE}</span></button>)}
           </div></fieldset>
           <label className="block text-sm font-semibold">Name on card <span className="font-normal text-muted-foreground">(optional)</span><input className="skill-share-name" maxLength={40} value={name} onChange={event => setName(Array.from(event.target.value).slice(0, 40).join(''))} disabled={busy} placeholder="Leave blank to hide your name" autoComplete="off" /></label>
-          <p className="skill-help">Only the details shown on this card are included. Your answers and profile privacy stay unchanged.</p>
+          <p className="skill-help">High-resolution PNG with 2× detail. Only the details shown on this card are included. Your answers and profile privacy stay unchanged.</p>
           <div role="status" aria-live="polite" className="skill-share-status">{error ? <><span>Couldn’t prepare the image.</span><Button variant="outline" size="sm" onClick={() => setRetry(v => v + 1)}>Retry image</Button></> : !file ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing your card…</> : 'Your image is ready to share.'}</div>
           <Button disabled={!file || busy} className="skill-primary-button gap-2" onClick={() => void act('share')}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Share card</Button>
           <Button disabled={!file || busy} variant="outline" className="gap-2" onClick={() => void act('download')}><Download className="h-4 w-4" /> Download PNG</Button>
