@@ -5,6 +5,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
 import { SkillAssessmentCTA } from '../../../src/components/skill/SkillAssessmentCTA';
 import { SkillProfileSection } from '../../../src/components/skill/SkillProfileSection';
+import ShareCardGallery from './ShareCardGallery';
 import SelfAssessment from '../../../src/pages/player/SelfAssessment';
 import GuestSkillAssessment from '../../../src/pages/GuestSkillAssessment';
 import Auth from '../../../src/pages/Auth';
@@ -43,7 +44,7 @@ export default function Preview() {
       <button className="min-h-10 rounded border px-3" onClick={seedUnknown}>Seed unsure questions</button>
       <button className="min-h-10 rounded border px-3" onClick={resetPreview}>Reset preview</button>
       <label>Scene <select aria-label="Preview scene" className="min-h-10 border bg-background" value={scene} onChange={e => setScene(e.target.value)}>
-        <option value="flow">Assessment flow</option>{QUESTION_BANK_V3.map(i => <option key={i.itemKey} value={i.itemKey}>{i.focus} · {i.dimension}</option>)}
+        <option value="flow">Assessment flow</option><option value="share-cards">Share card gallery</option>{QUESTION_BANK_V3.map(i => <option key={i.itemKey} value={i.itemKey}>{i.focus} · {i.dimension}</option>)}
       </select></label>
     </header>
     <main className="mx-auto max-w-full" style={{ width }}>
@@ -53,7 +54,7 @@ export default function Preview() {
         <Route path="/profile-preview" element={<div className="mx-auto max-w-lg p-4 space-y-6"><SkillAssessmentCTA userId="preview-player" /><SkillProfileSection userId="preview-player" isSelf={false} /></div>} />
         <Route path="/pickleball-guide" element={<PickleballGuide />} />
         <Route path="*" element={<p className="p-10">Preview destination reached.</p>} />
-      </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V3.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
+      </Routes> : scene === 'share-cards' ? <ShareCardGallery /> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V3.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
     </main><Toaster richColors /></div></MemoryRouter></HelmetProvider>;
 }
 createRoot(document.getElementById('root')!).render(<AuthStateProvider><Preview /></AuthStateProvider>);

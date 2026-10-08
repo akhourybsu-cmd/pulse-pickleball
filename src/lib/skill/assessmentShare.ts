@@ -3,6 +3,7 @@ import type { ScoringSnapshot } from './scoring';
 
 export type AssessmentCardFormat = 'square' | 'portrait';
 export const ASSESSMENT_CARD_SIZE = { square: { width: 1080, height: 1080 }, portrait: { width: 1080, height: 1350 } };
+export const ASSESSMENT_CARD_EXPORT_SCALE = 2;
 
 /** Explicit allowlist: an exported card never contains answers or private diagnostics. */
 export function assessmentShareSummary(snapshot: ScoringSnapshot, completedAt?: string | null) {
@@ -34,10 +35,11 @@ export async function renderAssessmentCard(svg: SVGSVGElement, format: Assessmen
       image.src = url;
     });
     const canvas = document.createElement('canvas');
-    canvas.width = width; canvas.height = height;
+    canvas.width = width * ASSESSMENT_CARD_EXPORT_SCALE;
+    canvas.height = height * ASSESSMENT_CARD_EXPORT_SCALE;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Image export is unavailable');
-    context.drawImage(image, 0, 0, width, height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Card image could not be created')), 'image/png'));
     return new File([blob], `pulse-self-assessment-${format}.png`, { type: 'image/png' });
   } finally { URL.revokeObjectURL(url); }
