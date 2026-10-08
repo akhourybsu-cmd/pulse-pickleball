@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useId, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowUpRight, CheckCheck, ChevronDown, Info, Layers3, RotateCcw, Target, TrendingUp } from 'lucide-react';
+import { Activity, ArrowUpRight, CheckCheck, ChevronDown, Info, Layers3, RotateCcw, Target, TrendingUp, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { DOMAIN_LABELS, SUBSKILL_LABELS, SUBSKILL_GROUPS, type Subskill } from '@/lib/skill/model';
@@ -16,30 +16,17 @@ import { GUIDE_PATH } from '@/lib/skill/knowledge';
 
 const TONES = ['gold', 'teal', 'blue', 'violet'] as const;
 
-export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, nextRetakeLabel }: {
+export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, nextRetakeLabel, onShare }: {
   snapshot: ScoringSnapshot; completedAt?: string | null; onRetake?: () => void;
-  canRetake?: boolean; nextRetakeLabel?: string | null;
+  canRetake?: boolean; nextRetakeLabel?: string | null; onShare?: () => void;
 }) {
   const reduced = useReducedMotion();
   const evidence = snapshot.meta.evidence;
   const practiceFocus = snapshot.developmentPriorities.length ? snapshot.developmentPriorities.slice(0, 3)
     : snapshot.subskills.filter(s => !s.insufficientEvidence).sort((a, b) => a.rawLevel - b.rawLevel).slice(0, 3);
   return <motion.div className="skill-studio skill-report-grid" initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4 }}>
+    <header className="skill-wide skill-report-toolbar"><div><div className="skill-overline">Your game, in focus</div><h1>Skill Fingerprint</h1><p>{completedAt ? `Assessed ${new Date(completedAt).toLocaleDateString()}` : 'Your PULSE self-assessment'}</p></div>{onShare && <Button onClick={onShare} className="skill-primary-button gap-2 min-h-11"><Share2 size={16} /> Share card</Button>}</header>
     <ScoreHero snapshot={snapshot} />
-    {evidence && <section className="skill-surface skill-wide" aria-labelledby="skill-measures-title">
-      <SectionHeading id="skill-measures-title" icon={<Activity />} title="Four views of your game" subtitle="Your reported success in the situations you answered" />
-      <div className="skill-dimension-grid">
-        {evidence.dimensions.map((d, i) => <article className="skill-dimension" data-tone={TONES[i]} key={d.dimension}>
-          <h3>{MEASURE_LABELS[d.dimension]}</h3>
-          <div className="skill-dimension-value">{d.successRate === null ? '—' : `${Math.round(d.successRate * 100)}%`}<small>{d.successRate === null ? 'unmeasured' : 'reported success'}</small></div>
-          <Track value={(d.successRate ?? 0) * 100} label={`${MEASURE_LABELS[d.dimension]}: ${d.successRate === null ? 'not enough evidence' : `${Math.round(d.successRate * 100)} percent reported success`}`} />
-          <p>{d.scored} supporting answers{d.answered > d.scored ? ` · ${d.answered - d.scored} unsure` : ''}</p>
-        </article>)}
-      </div>
-      <div className="skill-evidence-note"><Info size={14} /><p className="skill-help">These percentages summarize your own answers, not your percentile among players. Question difficulty and the number of answers vary, so compare the situations as well as the percentages.</p></div>
-    </section>}
-    <ScoreCalculation snapshot={snapshot} />
-    <ScoreMeaning snapshot={snapshot} />
     <section className="skill-surface" data-tone="teal" aria-labelledby="skill-strengths-title">
       <SectionHeading id="skill-strengths-title" icon={<TrendingUp />} title="Where your game shines" subtitle="Relative strengths supported by your answers" />
       {snapshot.strengths.length ? <ul className="skill-insight-list">{snapshot.strengths.map(s => <li key={s.subskill}>
@@ -66,6 +53,25 @@ export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, n
         insufficient={d.insufficientEvidence || snapshot.subskills.some(s => s.domain === d.domain && s.insufficientEvidence)} evidenceCount={d.evidenceCount} version={snapshot.scoringModelVersion} tone={TONES[i % 4]} />)}</div>
       <p className="skill-help mt-5">“Not enough information” means one or more skills in that domain need additional answers. It does not mean a low level.</p>
     </section>
+    <section className="skill-surface skill-wide" aria-labelledby="skill-detail-title">
+      <SectionHeading id="skill-detail-title" icon={<Layers3 />} title="Explore all 16 skills" subtitle="Open a group for scores and supporting answer counts" />
+      {SUBSKILL_GROUPS.map(group => <SubskillGroup key={group.key} title={group.label} subskills={group.subskills} snapshot={snapshot} />)}
+    </section>
+    {evidence && <section className="skill-surface skill-wide" aria-labelledby="skill-measures-title">
+      <SectionHeading id="skill-measures-title" icon={<Activity />} title="Four views of your game" subtitle="Your reported success in the situations you answered" />
+      <div className="skill-dimension-grid">
+        {evidence.dimensions.map((d, i) => <article className="skill-dimension" data-tone={TONES[i]} key={d.dimension}>
+          <h3>{MEASURE_LABELS[d.dimension]}</h3>
+          <div className="skill-dimension-value">{d.successRate === null ? '—' : `${Math.round(d.successRate * 100)}%`}<small>{d.successRate === null ? 'unmeasured' : 'reported success'}</small></div>
+          <Track value={(d.successRate ?? 0) * 100} label={`${MEASURE_LABELS[d.dimension]}: ${d.successRate === null ? 'not enough evidence' : `${Math.round(d.successRate * 100)} percent reported success`}`} />
+          <p>{d.scored} supporting answers{d.answered > d.scored ? ` · ${d.answered - d.scored} unsure` : ''}</p>
+        </article>)}
+      </div>
+      <div className="skill-evidence-note"><Info size={14} /><p className="skill-help">These percentages summarize your own answers, not your percentile among players. Question difficulty and the number of answers vary, so compare the situations as well as the percentages.</p></div>
+    </section>}
+    <ScoreMeaning snapshot={snapshot} />
+    <details className="skill-wide skill-report-method"><summary><div><strong>Behind your assessment</strong><span>Score calculation, evidence support, and limitations</span></div><ChevronDown size={18} aria-hidden="true" /></summary><div className="skill-report-grid">
+      <ScoreCalculation snapshot={snapshot} />
     <section className="skill-surface" aria-labelledby="skill-evidence-title">
       <SectionHeading id="skill-evidence-title" icon={<CheckCheck />} title="How much supports this?" subtitle="Evidence confidence, separate from your skill level" />
       <div className="skill-confidence-label"><span>{snapshot.confidence.label}</span><strong>{snapshot.confidence.total}<small className="text-muted-foreground text-xs"> / 100</small></strong></div>
@@ -79,10 +85,7 @@ export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, n
       {evidence?.limitations.map(note => <p key={note} className="skill-help mt-3">{note}</p>)}
       {snapshot.contradictions.length > 0 && <p className="skill-help mt-3">{snapshot.contradictions.length} answer pattern(s) need a closer look: success was reported more often in a harder situation than in a foundation situation. This reduces evidence confidence.</p>}
     </section>
-    <section className="skill-surface" aria-labelledby="skill-detail-title">
-      <SectionHeading id="skill-detail-title" icon={<Layers3 />} title="Explore all 16 skills" subtitle="Open a group for scores and supporting answer counts" />
-      {SUBSKILL_GROUPS.map(group => <SubskillGroup key={group.key} title={group.label} subskills={group.subskills} snapshot={snapshot} />)}
-    </section>
+    </div></details>
     <footer className="skill-wide skill-assessment-details">
       <p className="skill-help">Self-assessed · Scoring model v{snapshot.scoringModelVersion}{completedAt ? ` · ${new Date(completedAt).toLocaleDateString()}` : ''}<br />{snapshot.meta.answeredCount} answers · {snapshot.meta.scoredCount} scored · {snapshot.meta.notSureCount} unsure</p>
       {onRetake && <div><Button variant="outline" className="gap-2" onClick={onRetake} disabled={!canRetake}><RotateCcw size={14} /> Retake assessment</Button>{!canRetake && nextRetakeLabel && <p className="skill-help mt-2">{nextRetakeLabel}</p>}</div>}

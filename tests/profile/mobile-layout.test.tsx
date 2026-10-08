@@ -9,6 +9,7 @@ import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/hooks/useAuthState', () => ({ useAuthState: () => ({ user: null }) }));
+vi.mock('@/hooks/useSkillProfileSummary', () => ({ useSkillProfileSummary: () => ({ row: null, loaded: true, error: false, retry: vi.fn() }) }));
 vi.mock('@/lib/permissions', () => ({ isPlatformAdmin: vi.fn() }));
 vi.mock('@/lib/skill/featureFlag', () => ({ isSkillAssessmentEnabled: () => true }));
 
