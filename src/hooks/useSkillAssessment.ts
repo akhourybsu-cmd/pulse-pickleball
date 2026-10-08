@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {
-  QUESTION_BANK_V1,
-} from "@/lib/skill/questionBank";
-import { QUESTION_BANK_V2 } from '@/lib/skill/questionBankV2';
+import { assessmentBank } from '@/lib/skill/banks';
 import { ADAPTIVE_CONFIG_V2 } from '@/lib/skill/adaptiveV2';
 import {
   ASSESSMENT_VERSION,
@@ -100,7 +97,7 @@ export function useSkillAssessment() {
         const history = ((completed ?? []) as unknown as CompletedAttempt[]);
         const draftId = (draft as unknown as { id: string } | null)?.id ?? null;
         const assessmentVersion = (draft as unknown as { assessment_version: number } | null)?.assessment_version ?? ASSESSMENT_VERSION;
-        if (![1, 2].includes(assessmentVersion)) throw new Error('This assessment version needs a newer app.');
+        if (![1, 2, 3].includes(assessmentVersion)) throw new Error('This assessment version needs a newer app.');
 
         let responses: Responses = {};
         if (draftId) {
@@ -221,7 +218,7 @@ export function useSkillAssessment() {
     if (!state.attemptId || inFlight.current) return;
     inFlight.current = true;
     setState((s) => ({ ...s, phase: "finalizing" }));
-    const provisional = scoreAssessment(state.assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1, state.responses);
+    const provisional = scoreAssessment(assessmentBank(state.assessmentVersion), state.responses);
     try {
       const { data, error } = await withAuthDeadline(signal => supabase.functions.invoke("skill-complete", {
         body: { attemptId: state.attemptId, finalResponses: state.responses },
@@ -276,8 +273,8 @@ export function useSkillAssessment() {
   const showResult = useCallback(() => setState((s) => ({ ...s, phase: "result" })), []);
 
   // Derived (pure) values for the wizard.
-  const bank = state.assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1;
-  const cfg = state.assessmentVersion === 2 ? ADAPTIVE_CONFIG_V2 : DEFAULT_ADAPTIVE_CONFIG;
+  const bank = assessmentBank(state.assessmentVersion);
+  const cfg = state.assessmentVersion >= 2 ? ADAPTIVE_CONFIG_V2 : DEFAULT_ADAPTIVE_CONFIG;
   const nextItemKey = state.phase === "in_progress"
     ? selectNextItemKey(bank, state.responses, cfg)
     : null;
@@ -288,7 +285,7 @@ export function useSkillAssessment() {
   return {
     ...state,
     bank,
-    canFinalize: complete && (state.assessmentVersion === 2 ? !!runningSnapshot?.meta.evidence?.sufficient : (runningSnapshot?.meta.scoredCount ?? 0) >= 20),
+    canFinalize: complete && (state.assessmentVersion >= 2 ? !!runningSnapshot?.meta.evidence?.sufficient : (runningSnapshot?.meta.scoredCount ?? 0) >= 20),
     nextItemKey,
     answeredCount,
     complete,

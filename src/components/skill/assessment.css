@@ -1,16 +1,37 @@
-.assessment-court { overflow: hidden; border-radius: 16px; background: #103f39; color: #eef8f1; }
-.assessment-court-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 12px; font-size: 12px; }
-.assessment-court-toolbar button { display: flex; align-items: center; gap: 5px; min-height: 44px; min-width: 70px; justify-content: center; border-radius: 8px; font-weight: 600; }
-.assessment-court-toolbar button:hover { background: #ffffff12; }
 .assessment-still { display: flex; align-items: center; min-height: 44px; opacity: .75; }
-.assessment-court > svg { display: block; width: 100%; }
-.assessment-court svg text { fill: #eef8f1; font-size: 12px; font-weight: 600; }
-.assessment-court-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; padding: 0 10px 8px; font-size: 12px; }
-.assessment-court-key span { display: inline-flex; align-items: center; gap: 5px; }
-.assessment-gold-key { color: #ffe08a; }
-.assessment-ball-key { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: white; }
-.assessment-target-key { width: 14px; height: 10px; border: 1px dashed #ffe08a; background: #ffe08a29; }
-.assessment-court figcaption { border-top: 1px solid #ffffff1f; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
 .assessment-slider { width: 100%; height: 44px; cursor: pointer; accent-color: hsl(var(--primary)); }
 .assessment-slider:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; border-radius: 12px; }
 .assessment-slider:disabled { cursor: wait; opacity: .5; }
+
+.assessment-lesson { border: 1px solid #77bdab40; border-radius: 16px; background: #103c36; color: #edf6f3; overflow: hidden; }
+.assessment-lesson-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 10px 0; }
+.assessment-view-switch { display: flex; padding: 3px; border-radius: 10px; background: #081f1b70; }
+.assessment-lesson button { touch-action: manipulation; }
+.assessment-lesson button:focus-visible, .assessment-lesson input:focus-visible, .assessment-lesson summary:focus-visible { outline: 2px solid #ffe08a; outline-offset: 2px; }
+.assessment-view-switch button { min-height: 40px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 650; }
+.assessment-view-switch button[aria-pressed=true] { color: #142b24; background: #ffe08a; }
+.assessment-lesson-context { font-size: 10px; color: #d6e8df; padding: 0 4px; }
+.assessment-lesson-diagram { display: block; width: 100%; height: auto; overflow: visible; }
+.assessment-lesson-diagram text { font: 600 11px system-ui, sans-serif; fill: #edf6f3; }
+.assessment-lesson-controls { display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 8px; }
+.assessment-lesson-controls button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 44px; border-radius: 9px; background: #071f1b60; font-size: 12px; gap: 5px; }
+.assessment-lesson-controls button:hover:not(:disabled) { background: #ffffff15; }
+.assessment-lesson-controls button:active:not(:disabled) { background: #ffe08a25; }
+.assessment-lesson-controls button:disabled { opacity: .35; }
+.assessment-lesson-controls .assessment-play { padding: 0 12px; color: #ffe08a; font-weight: 700; }
+.assessment-timeline { width: calc(100% - 28px); display: block; margin: 2px 14px; height: 26px; accent-color: #ffe08a; cursor: pointer; }
+.assessment-step-copy { padding: 3px 14px 10px; min-height: 82px; }
+.assessment-step-copy > span { display: block; color: #ffe08a; font-size: 10px; letter-spacing: .08em; margin-bottom: 3px; }
+.assessment-step-copy > strong { font-size: 13px; line-height: 1.4; }
+.assessment-step-copy p { margin: 3px 0 0; color: #d0e5dd; font-size: 12px; line-height: 1.55; }
+.assessment-sequence { padding: 0 14px; border-top: 1px solid #ffffff12; }
+.assessment-sequence summary { cursor: pointer; font-size: 12px; min-height: 44px; align-content: center; }
+.assessment-sequence ol { margin: 0 0 8px; padding: 0; list-style: none; display: grid; gap: 4px; }
+.assessment-sequence button { width: 100%; text-align: left; padding: 8px; border-radius: 8px; background: #ffffff08; }
+.assessment-sequence strong, .assessment-sequence span { display: block; font-size: 12px; line-height: 1.5; }
+.assessment-sequence span { color: #d0e5dd; }
+.assessment-lesson figcaption { padding: 10px 14px; font-size: 12px; line-height: 1.6; border-top: 1px solid #ffffff12; }
+.assessment-lesson-foot { padding: 0 14px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; color: #bed6cc; font-size: 10px; }
+.assessment-lesson-foot label { display: flex; align-items: center; gap: 6px; min-height: 32px; cursor: pointer; }
+.assessment-lesson-foot input { accent-color: #ffe08a; }
+@media (prefers-reduced-motion: reduce) { .assessment-lesson * { scroll-behavior: auto; } }

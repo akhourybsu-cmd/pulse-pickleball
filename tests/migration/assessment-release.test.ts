@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const config = { projectRef: 'rqfqwavhtfwwtmfjnxkx', accessToken: 'sbp_test_only' };
 const compatible = { unsupported_sms: 0, missing_authenticator: 0 };
-const ready = { installed: true, guarded: true, policies: true, grants_closed: true };
+const ready = { installed: true, version_three: true, guarded: true, policies: true, grants_closed: true };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 
 describe('assessment production release gate', () => {
@@ -20,9 +20,9 @@ describe('assessment production release gate', () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body).read_only).toBe(true);
   });
-  it('rehearses only the two assessment migrations and rolls back instead of recording them', async () => {
+  it('rehearses only the assessment migrations and rolls back instead of recording them', async () => {
     const local = await readLocalMigrations(fileURLToPath(new URL('../../supabase/migrations', import.meta.url)));
-    const existing = local.filter(m => !['20260922180000', '20260922200000'].includes(m.version)).map(m => ({ version: m.version }));
+    const existing = local.filter(m => !['20260922180000', '20260922200000', '20261008130000'].includes(m.version)).map(m => ({ version: m.version }));
     const bodies: { query: string; read_only: boolean }[] = [];
     const fetchImpl = async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body)); bodies.push(body);
@@ -36,11 +36,11 @@ describe('assessment production release gate', () => {
     expect(rehearsal.query.trim().endsWith('ROLLBACK;')).toBe(true);
     expect(rehearsal.query).not.toMatch(/COMMIT;|INSERT INTO supabase_migrations/);
     expect(bodies.filter(b => !b.read_only)).toHaveLength(1);
-  });
-  it('blocks publication when any installed database protection is absent', async () => {
+  }, 15000); // Reads the full migration history twice; allow slower Windows disks.
+  it.each(['guarded', 'version_three'])('blocks publication when %s is absent', async missing => {
     const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
       const query = JSON.parse(String(init.body)).query;
-      return json([query.includes('AS grants_closed') ? { ...ready, guarded: false } : compatible]);
+      return json([query.includes('AS grants_closed') ? { ...ready, [missing]: false } : compatible]);
     });
     await expect(checkAssessmentRelease({ ...config, fetchImpl })).rejects.toThrow('readiness failed');
     expect(fetchImpl.mock.calls.every(([url]) => url.includes('api.supabase.com'))).toBe(true);

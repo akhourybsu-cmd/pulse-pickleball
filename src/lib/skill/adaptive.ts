@@ -139,7 +139,7 @@ export function selectNextItemKey(
   responses: Responses,
   cfg: AdaptiveConfig = DEFAULT_ADAPTIVE_CONFIG,
 ): string | null {
-  if (bank.some(i => i.version === 2)) return selectNextV2(bank, responses, cfg === DEFAULT_ADAPTIVE_CONFIG ? ADAPTIVE_CONFIG_V2 : cfg);
+  if (bank.some(i => i.version >= 2)) return selectNextV2(bank, responses, cfg === DEFAULT_ADAPTIVE_CONFIG ? ADAPTIVE_CONFIG_V2 : cfg);
   const items = activeBank(bank);
   const answered = answeredCount(items, responses);
   if (answered >= cfg.maxItems) return null;

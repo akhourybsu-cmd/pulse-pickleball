@@ -81,10 +81,10 @@ export function SkillIntro({
 
       <motion.section {...item} className="skill-intro-grid">
         <Point icon={<ListChecks className="h-4 w-4" />}>
-          Think of your <strong>last 10 doubles games</strong> against similar players. For each situation, estimate how often you succeed out of 10 chances.
+          Think of your <strong>recent doubles games</strong> against similar players—roughly your last 10 games. Estimate successes out of 10 comparable chances; you do not need exactly 10 recorded attempts.
         </Point>
         <Point icon={<Clock className="h-4 w-4" />}>
-          <strong>Slide or tap, then continue.</strong> You can review answers before finishing. Questions cover shots, consistency, decisions and pressure.
+          <strong>Slide or tap, then continue.</strong> You can review answers before finishing. Each question tells you what counts as one success. Visuals show the contact, ball flight and movement to watch for.
         </Point>
         <Point icon={<ShieldCheck className="h-4 w-4" />}>
           <strong>Haven’t tried it in games?</strong> Choose “Not enough game experience”. Missing experience never counts as zero skill.

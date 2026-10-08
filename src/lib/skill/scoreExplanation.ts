@@ -5,7 +5,7 @@ import type { ScoringSnapshot } from './scoring';
  * This never sets a score. Parity tests bind the explanation to the scorer.
  */
 export function explainScore(snapshot: ScoringSnapshot) {
-  if (snapshot.scoringModelVersion !== 2) return null;
+  if (snapshot.scoringModelVersion < 2) return null;
   const available = snapshot.subskills.filter(s => s.evidenceCount > 0);
   if (!available.length) return null;
   const average = available.reduce((sum, s) => sum + s.rawLevel, 0) / available.length;

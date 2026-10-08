@@ -9,7 +9,7 @@ import Auth from '../../../src/pages/Auth';
 import PickleballGuide from '../../../src/pages/PickleballGuide';
 import { PublicHomepage } from '../../../src/components/homepage/PublicHomepage';
 import { AssessmentQuestion } from '../../../src/components/skill/AssessmentQuestion';
-import { QUESTION_BANK_V2 } from '../../../src/lib/skill/questionBankV2';
+import { QUESTION_BANK_V3 } from '../../../src/lib/skill/questionBankV3';
 import { AuthStateProvider } from '../../../src/hooks/useAuthState';
 import { failNextSave, resetPreview, seedReady, seedUnknown, seedGuest, signInPreview, signOutPreview, enablePreviewMfa, setPreviewStall, type PreviewStall } from './stub';
 import '../../../src/index.css';
@@ -41,7 +41,7 @@ export default function Preview() {
       <button className="min-h-10 rounded border px-3" onClick={seedUnknown}>Seed unsure questions</button>
       <button className="min-h-10 rounded border px-3" onClick={resetPreview}>Reset preview</button>
       <label>Scene <select aria-label="Preview scene" className="min-h-10 border bg-background" value={scene} onChange={e => setScene(e.target.value)}>
-        <option value="flow">Assessment flow</option>{QUESTION_BANK_V2.map(i => <option key={i.itemKey} value={i.itemKey}>{i.subskill} · {i.dimension}</option>)}
+        <option value="flow">Assessment flow</option>{QUESTION_BANK_V3.map(i => <option key={i.itemKey} value={i.itemKey}>{i.focus} · {i.dimension}</option>)}
       </select></label>
     </header>
     <main className="mx-auto max-w-full" style={{ width }}>
@@ -50,7 +50,7 @@ export default function Preview() {
         <Route path="/player/self-assessment" element={<SelfAssessment />} /><Route path="/" element={<PublicHomepage />} />
         <Route path="/pickleball-guide" element={<PickleballGuide />} />
         <Route path="*" element={<p className="p-10">Preview destination reached.</p>} />
-      </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V2.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
+      </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V3.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}
     </main><Toaster richColors /></div></MemoryRouter></HelmetProvider>;
 }
 createRoot(document.getElementById('root')!).render(<AuthStateProvider><Preview /></AuthStateProvider>);

@@ -18,13 +18,12 @@ import {
   RESPONSE_KEYS,
   type ResponseKey,
 } from "./model.ts";
-import { QUESTION_BANK_V1 } from "./questionBank.ts";
-import { QUESTION_BANK_V2 } from './questionBankV2.ts';
+import { assessmentBank } from './banks.ts';
 import { selectNextV2 } from './adaptiveV2.ts';
 import { scoreAssessment, type ScoringSnapshot } from "./scoring.ts";
 
-export const SUPPORTED_ASSESSMENT_VERSIONS = [1, 2] as const;
-export const SUPPORTED_SCORING_MODEL_VERSIONS = [1, 2] as const;
+export const SUPPORTED_ASSESSMENT_VERSIONS = [1, 2, 3] as const;
+export const SUPPORTED_SCORING_MODEL_VERSIONS = [1, 2, 3] as const;
 
 /** Minimum scored answers before a completion is accepted. */
 export const MIN_RESPONSES_TO_COMPLETE = 20;
@@ -68,7 +67,7 @@ export function computeAuthoritativeResult(input: {
   }
 
   // Active bank for this assessment version.
-  const bank = assessmentVersion === 2 ? QUESTION_BANK_V2 : QUESTION_BANK_V1;
+  const bank = assessmentBank(assessmentVersion);
   const active = bank.filter((it) => it.active && it.version === assessmentVersion);
   const activeKeys = new Set(active.map((it) => it.itemKey));
 
@@ -90,7 +89,7 @@ export function computeAuthoritativeResult(input: {
   }
 
   const snapshot = scoreAssessment(active, resolved);
-  if (assessmentVersion === 2 && (
+  if (assessmentVersion >= 2 && (
     active.some(i => i.phase === 'foundation' && resolved[i.itemKey] === undefined) ||
     selectNextV2(active, resolved) !== null || !snapshot.meta.evidence?.sufficient
   )) {

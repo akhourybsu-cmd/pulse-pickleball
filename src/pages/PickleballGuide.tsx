@@ -4,7 +4,8 @@ import { ArrowLeft, ArrowRight, BookOpen, Search } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { PageSEO } from '@/components/seo/PageSEO';
 import { PulseTrace } from '@/components/skill/PulseTrace';
-import { KnowledgeLinks } from '@/components/skill/SkillKnowledge';
+import { KnowledgeLinks, TechniqueLesson } from '@/components/skill/SkillKnowledge';
+import { SkillExamples } from '@/components/skill/SkillExamples';
 import { FUNDAMENTALS, GLOSSARY, GUIDE_PATH, KNOWLEDGE_REVIEWED, KNOWLEDGE_SOURCES, SKILL_KNOWLEDGE, getLevelContext } from '@/lib/skill/knowledge';
 import { LEVEL_BANDS, SUBSKILL_GROUPS, SUBSKILL_LABELS, type Subskill } from '@/lib/skill/model';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
@@ -29,7 +30,7 @@ export default function PickleballGuide() {
       <section id="score-meaning" className="skill-surface space-y-5">
         <div className="skill-section-head"><div><h2>Three numbers with different meanings</h2><small>Use the right kind of evidence for the question you want to answer</small></div><BookOpen aria-hidden="true" /></div>
         <div className="skill-guide-columns">
-          <article><h3>PULSE Self-Assessed Level</h3><p>A provisional estimate from your reported doubles situations. Version 2 ranges from 1.5 to 4.5. It describes the answers you gave and needs confirmation in play.</p></article>
+          <article><h3>PULSE Self-Assessed Level</h3><p>A provisional estimate from your reported doubles situations. Versions 2 and 3 range from 1.5 to 4.5. It describes the answers you gave and needs confirmation in play.</p></article>
           <article><h3>Evidence confidence</h3><p>How much answer coverage and agreement supports that estimate. Self-report contributes at most 60/100. A confidence of 55 is not a 55% chance your level is correct.</p></article>
           <article><h3>PULSE Performance Rating</h3><p>A separate match-based number influenced by eligible, verified results within PULSE. Completing or saving this assessment does not change it. It does not diagnose individual strokes.</p></article>
         </div>
@@ -39,7 +40,7 @@ export default function PickleballGuide() {
           <p>Individual skill estimates consider question difficulty and four measures: execution (30%), repeatability (30%), decisions and placement (25%), and pressure (15%). These are fitting weights for available observations, not four percentages to average into a level.</p>
           <p>The overall blend uses the equal average of answered skills (65%), the lowest answered essential skill (20%), and strategy (15%). When strategy is unanswered, its term uses the overall skill average. The estimate is capped at 0.5 above the lowest essential estimate, and within 1.5–4.5.</p>
           <p>Essential skills are serve, return, dinking, third-shot drop, resets and positioning. Extra follow-up questions add evidence without giving a skill more votes in the overall average. At least two scored answers are needed to mark a skill as supported; full results require broader coverage.</p>
-          <p>A reported success percentage is not a player percentile. A guide range is not a validated statistical confidence interval. Different questions and contexts can produce different estimates; a retake increase alone does not prove improvement.</p>
+          <p>Version 3 states whether you count a single opportunity or a whole three-shot sequence. Overheads and lobs are assessed separately within their shared category; different abilities do not create an inconsistency penalty. A reported success percentage is not a player percentile. A guide range is not a validated statistical confidence interval. Different questions and contexts can produce different estimates; a retake increase alone does not prove improvement.</p>
         </div></details>
         <details><summary>PULSE bands and useful practice directions</summary><p>These are PULSE learning suggestions, not official skill certifications or a claim that every skill in a band is present. Bands use the unrounded estimate; the headline number is rounded to one decimal.</p>
           <div className="skill-guide-bands">{LEVEL_BANDS.map(band => {
@@ -62,7 +63,7 @@ export default function PickleballGuide() {
           return skills.length > 0 && <div key={group.key} className="skill-guide-group"><h3>{group.label}</h3>{skills.map(skill => {
             const guide = SKILL_KNOWLEDGE[skill];
             return <details id={`skill-${skill}`} key={skill} open={focusSkill === skill || query.trim().length > 0}>
-              <summary>{SUBSKILL_LABELS[skill]}</summary><div className="space-y-3"><p>{guide.definition}</p><p><strong>Why it matters:</strong> {guide.purpose}</p><p><strong>Evidence to look for:</strong> {guide.lookFor}</p><p><strong>Common misunderstanding:</strong> {guide.misconception}</p><p><strong>Try observing:</strong> {guide.practice}</p><KnowledgeLinks sources={guide.sources} /></div>
+              <summary>{SUBSKILL_LABELS[skill]}</summary><div className="space-y-3"><p>{guide.definition}</p><p><strong>Why it matters:</strong> {guide.purpose}</p><p><strong>Evidence to look for:</strong> {guide.lookFor}</p><p><strong>Common misunderstanding:</strong> {guide.misconception}</p><p><strong>Try observing:</strong> {guide.practice}</p><SkillExamples skill={skill} /><TechniqueLesson skill={skill} /><KnowledgeLinks sources={guide.sources} /></div>
             </details>;
           })}</div>;
         })}

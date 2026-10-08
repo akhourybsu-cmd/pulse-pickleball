@@ -30,7 +30,7 @@ export async function claimGuestReport(draft: GuestAssessment, ownerId: string, 
     if (error || !session) throw new GuestClaimError('sign_in');
     if (session.user.id !== ownerId) throw new GuestClaimError('account_changed');
     const result = await deps.invoke('skill-claim', {
-      body: { attemptId: draft.id, assessmentVersion: 2, responses: draft.responses },
+      body: { attemptId: draft.id, assessmentVersion: draft.version, responses: draft.responses },
       headers: { Authorization: `Bearer ${session.access_token}` }, signal: controller.signal,
     });
     assertCurrent();
@@ -39,7 +39,7 @@ export async function claimGuestReport(draft: GuestAssessment, ownerId: string, 
       throw new GuestClaimError(status === 401 ? 'sign_in' : status === 403 ? 'mfa_required' : status === 409 ? 'conflict' : 'retry');
     }
     const data = result.data as { authoritative?: boolean; attemptId?: string; snapshot?: ScoringSnapshot } | null;
-    if (!data?.authoritative || data.attemptId !== draft.id || data.snapshot?.scoringModelVersion !== 2 ||
+    if (!data?.authoritative || data.attemptId !== draft.id || data.snapshot?.scoringModelVersion !== draft.version ||
       !Number.isFinite(data.snapshot.estimatedLevelRaw) || !Array.isArray(data.snapshot.subskills)) throw new GuestClaimError('retry');
     return data.snapshot;
   };

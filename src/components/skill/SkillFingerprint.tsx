@@ -7,7 +7,8 @@ import { Logo } from '@/components/Logo';
 import { DOMAIN_LABELS, SUBSKILL_LABELS, SUBSKILL_GROUPS, type Subskill } from '@/lib/skill/model';
 import type { ScoringSnapshot } from '@/lib/skill/scoring';
 import { explainScore } from '@/lib/skill/scoreExplanation';
-import { MEASURE_LABELS, QUESTION_BANK_V2 } from '@/lib/skill/questionBankV2';
+import { MEASURE_LABELS } from '@/lib/skill/questionBankV2';
+import { assessmentBank } from '@/lib/skill/banks';
 import { PulseTrace } from './PulseTrace';
 import './assessment-brand.css';
 import { ScoreMeaning } from './SkillKnowledge';
@@ -51,10 +52,11 @@ export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, n
       <SectionHeading id="skill-priorities-title" icon={<Target />} title="Your next-game focus" subtitle="Turn this analysis into something you can practise" />
       <p className="skill-help">{snapshot.developmentPriorities.length ? 'Choose one of these development priorities for your next few games.' : 'No clear relative weakness stood out. These are useful starting points among your lower supported skill estimates.'} Count successes across 10 relevant opportunities, then compare observations with a coach or experienced partner.</p>
       {practiceFocus.map((priority, index) => {
-        const scenario = snapshot.scoringModelVersion === 2 ? QUESTION_BANK_V2.find(i => i.subskill === priority.subskill && i.dimension === (priority.displayLevel < 3 ? 'execution' : 'consistency')) : null;
+        const candidates = snapshot.scoringModelVersion >= 2 ? assessmentBank(snapshot.scoringModelVersion).filter(i => i.subskill === priority.subskill) : [];
+        const scenario = candidates.find(i => i.dimension === (priority.displayLevel < 3 ? 'execution' : 'consistency')) ?? candidates[0];
         return <article className="skill-practice-card" key={priority.subskill}><span>0{index + 1}</span>
           <h3>{SUBSKILL_LABELS[priority.subskill]}</h3>
-          {scenario ? <><p>{scenario.situation}</p><p><strong>Count a success when:</strong> {scenario.success}</p></> : <p>Observe this skill during games and discuss it with a coach or experienced partner.</p>}
+          {scenario ? <><p>{scenario.situation}</p><p><strong>Count a success when:</strong> {scenario.success}</p>{scenario.observation && <p className="skill-help">{scenario.observation.note}</p>}</> : <p>Observe this skill during games and discuss it with a coach or experienced partner.</p>}
         </article>;
       })}
     </section>
@@ -68,7 +70,7 @@ export function SkillFingerprint({ snapshot, completedAt, onRetake, canRetake, n
       <SectionHeading id="skill-evidence-title" icon={<CheckCheck />} title="How much supports this?" subtitle="Evidence confidence, separate from your skill level" />
       <div className="skill-confidence-label"><span>{snapshot.confidence.label}</span><strong>{snapshot.confidence.total}<small className="text-muted-foreground text-xs"> / 100</small></strong></div>
       <Track value={snapshot.confidence.total} label={`Evidence confidence ${snapshot.confidence.total} of 100`} tone="teal" />
-      {snapshot.scoringModelVersion === 2 && <div className="space-y-4 mt-5">
+      {snapshot.scoringModelVersion >= 2 && <div className="space-y-4 mt-5">
         <EvidenceRow title="Answer coverage" value={snapshot.confidence.completionCoverage} max={40} />
         <EvidenceRow title="Agreement across answers" value={snapshot.confidence.internalConsistency} max={20} />
         <div className="skill-calculation"><p className="skill-help">Independent coach / match evidence<br /><span className="text-foreground">Not included in this assessment</span></p><span className="skill-tag">Self-report only</span></div>
@@ -113,8 +115,8 @@ function ScoreHero({ snapshot }: { snapshot: ScoringSnapshot }) {
 
 function LevelGauge({ snapshot }: { snapshot: ScoringSnapshot }) {
   const gradient = `skill-gauge-${useId().replace(/:/g, '')}`;
-  const min = snapshot.scoringModelVersion === 2 ? 1.5 : 1;
-  const max = snapshot.scoringModelVersion === 2 ? 4.5 : 4.7;
+  const min = snapshot.scoringModelVersion >= 2 ? 1.5 : 1;
+  const max = snapshot.scoringModelVersion >= 2 ? 4.5 : 4.7;
   const percent = Math.max(0, Math.min(100, (snapshot.estimatedLevelDisplay - min) / (max - min) * 100));
   return <div className="skill-gauge">
     <svg viewBox="0 0 240 240" className="skill-gauge-svg" aria-hidden="true">
@@ -157,7 +159,7 @@ function EvidenceRow({ title, value, max }: { title: string; value: number; max:
   return <div><div className="skill-confidence-label"><span>{title}</span><span className="tabular-nums">{value.toFixed(1)} / {max}</span></div><Track value={value / max * 100} label={`${title}: ${value.toFixed(1)} of ${max}`} tone="blue" /></div>;
 }
 function SkillBar({ label, level, insufficient, evidenceCount, version, tone = 'gold' }: { label: string; level: number; insufficient?: boolean; evidenceCount: number; version: number; tone?: string }) {
-  const min = version === 2 ? 1.5 : 1, max = version === 2 ? 4.5 : 4.7;
+  const min = version >= 2 ? 1.5 : 1, max = version >= 2 ? 4.5 : 4.7;
   return <div className="skill-skill-row" data-tone={tone}>
     <div className="skill-skill-row-head"><span>{label}</span>{insufficient ? <small>Not enough information</small> : <strong>{level.toFixed(1)}</strong>}</div>
     <Track value={insufficient ? 0 : (level - min) / (max - min) * 100} label={`${label}: ${insufficient ? 'not enough information' : level.toFixed(1)}`} />

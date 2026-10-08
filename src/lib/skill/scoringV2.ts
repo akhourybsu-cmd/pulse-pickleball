@@ -37,6 +37,7 @@ function estimate(observations: Observation[]): number {
 }
 
 export function scoreAssessmentV2(items: readonly AssessmentItem[], responses: Responses): ScoringSnapshot {
+  const modelVersion = items.some(i => i.version === 3) ? 3 : 2;
   const answered = items.filter(i => i.active && Object.prototype.hasOwnProperty.call(RESPONSE_MASTERY, responses[i.itemKey]));
   const scored: Observation[] = answered.flatMap(item => {
     const frequency = RESPONSE_MASTERY[responses[item.itemKey]];
@@ -46,11 +47,16 @@ export function scoreAssessmentV2(items: readonly AssessmentItem[], responses: R
   const subskills: SubskillScore[] = SUBSKILLS.map(subskill => {
     const evidence = scored.filter(o => o.item.subskill === subskill);
     const attempts = answered.filter(i => i.subskill === subskill);
-    const conflict = evidence.find(hi => evidence.some(lo => hi.item.anchorLevel > lo.item.anchorLevel && hi.frequency - lo.frequency >= 0.4 - 1e-9));
+    const comparable = (hi: Observation, lo: Observation) => modelVersion === 2 || (
+      !!hi.item.contradictionGroup && hi.item.contradictionGroup === lo.item.contradictionGroup &&
+      hi.item.observation?.unit === lo.item.observation?.unit && hi.item.observation?.contacts === lo.item.observation?.contacts
+    );
+    const isConflict = (hi: Observation, lo: Observation) => comparable(hi, lo) && hi.item.anchorLevel > lo.item.anchorLevel && hi.frequency - lo.frequency >= 0.4 - 1e-9;
+    const conflict = evidence.find(hi => evidence.some(lo => isConflict(hi, lo)));
     if (conflict) {
-      const low = evidence.find(lo => conflict.item.anchorLevel > lo.item.anchorLevel && conflict.frequency - lo.frequency >= 0.4 - 1e-9)!;
+      const low = evidence.find(lo => isConflict(conflict, lo))!;
       contradictions.push({ group: subskill, highItemKey: conflict.item.itemKey, lowItemKey: low.item.itemKey,
-        note: 'Success is reported more often in a harder situation. Review whether the situations were comparable.' });
+        note: modelVersion === 3 ? 'The same target was rated more successful under pressure. Review these comparable situations.' : 'Success is reported more often in a harder situation. Review whether the situations were comparable.' });
     }
     const rawLevel = estimate(evidence);
     return { subskill, domain: SUBSKILL_DOMAIN[subskill], rawLevel, displayLevel: displayLevel(rawLevel),
@@ -90,13 +96,14 @@ export function scoreAssessmentV2(items: readonly AssessmentItem[], responses: R
     externalCorroboration: 0, total, label: total < 35 ? 'Low confidence' as const : total < 50 ? 'Developing confidence' as const : 'Moderate confidence' as const };
   const sufficient = scored.length >= 20 && skillsCovered >= 8 && essentialSkillsCovered === 6 && dimensionCoverage >= 0.75;
   const limitations = ['Based on your reported game situations; no coach observation or match results were used.'];
+  if (modelVersion === 3) limitations.push('Question difficulty and the level conversion are provisional. Overheads, lobs and retrieval are distinct abilities within one broad skill category.');
   if (essentialSkillsCovered < 6) limitations.push('Some essential doubles skills need more answers.');
   if (dimensions.some(d => !d.scored)) limitations.push('Some measures, including pressure if untested, have limited evidence.');
-  if (contradictions.length) limitations.push('Some harder situations were rated above their foundations; review those answers.');
+  if (contradictions.length) limitations.push(modelVersion === 3 ? 'Comparable targets were rated more successful under pressure; review those answers.' : 'Some harder situations were rated above their foundations; review those answers.');
   const width = 0.35 + (1 - total / 60) * 0.4;
   const evaluated = subskills.filter(s => !s.insufficientEvidence);
   return {
-    scoringModelVersion: 2, estimatedLevelRaw: raw, estimatedLevelDisplay: displayLevel(raw), displayBand: bandForLevel(raw).label,
+    scoringModelVersion: modelVersion, estimatedLevelRaw: raw, estimatedLevelDisplay: displayLevel(raw), displayBand: bandForLevel(raw).label,
     lowerBound: displayLevel(Math.max(1.5, raw - width)), upperBound: displayLevel(Math.min(4.5, raw + width)), confidence,
     subskills, domains, contradictions, primaryStyle: null, secondaryStyle: null,
     strengths: evaluated.filter(s => s.rawLevel >= 3 && s.rawLevel >= raw + 0.25 && s.confidence >= 40)

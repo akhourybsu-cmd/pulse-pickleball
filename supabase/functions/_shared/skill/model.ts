@@ -19,10 +19,10 @@
 /* ------------------------------------------------------------------ */
 
 /** Question-bank version. Stored on every response + attempt. */
-export const ASSESSMENT_VERSION = 2;
+export const ASSESSMENT_VERSION = 3;
 /** Scoring-model version. Stored on every snapshot so history stays
  *  interpretable when the math evolves. */
-export const SCORING_MODEL_VERSION = 2;
+export const SCORING_MODEL_VERSION = 3;
 
 /* ------------------------------------------------------------------ */
 /*  Broad domains (9)                                                 */
@@ -307,6 +307,12 @@ export interface AssessmentItem {
   /** V2: observable game situation and success criterion, independent of frequency. */
   situation?: string;
   success?: string;
+  /** V3 uses authored counting instructions; copy edits cannot change the denominator. */
+  observation?: { unit: 'opportunity' | 'rally'; contacts: 1 | 3; note: string };
+  /** The particular ability inside a broad reporting category (e.g. lob vs overhead). */
+  focus?: string;
+  /** A visual's explicit teaching point, also used as its text alternative. */
+  visualCue?: string;
 }
 
 /* ------------------------------------------------------------------ */
