@@ -9,7 +9,7 @@ import RoundRobinDetail from '../../../src/pages/RoundRobinDetail';
 import RoundRobinKiosk from '../../../src/pages/RoundRobinKiosk';
 import '../../../src/index.css';
 import '../../marketing/browser/capture.css';
-import { advancePreviewRound, hidePreviewEvent, togglePreviewConnection } from './stub';
+import { advancePreviewRound, hidePreviewEvent, togglePreviewConnection, scorePreviewMatch, completePreviewEvent } from './stub';
 const params = new URLSearchParams(window.location.search);
 if (params.has('capture')) document.documentElement.classList.add('product-capture');
 const query = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -22,7 +22,14 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
         <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
         <Route path="*" element={<p className="p-8">Local preview navigation complete. Reload to return.</p>} />
-      </Routes>{params.has('simulate') && <div className="fixed bottom-0 left-0 z-[100] bg-primary text-primary-foreground p-2 text-xs flex gap-4"><button onClick={advancePreviewRound}>Advance preview round</button><button onClick={togglePreviewConnection}>Toggle preview connection</button><button onClick={hidePreviewEvent}>Hide preview event</button></div>}<Toaster /></QueryClientProvider>
+      </Routes>{params.has('simulate') && <details className="fixed bottom-0 left-0 z-[100] max-w-full bg-primary text-primary-foreground p-2 text-xs">
+        <summary>Preview controls</summary><div className="flex flex-wrap gap-4 p-2">
+          <button onClick={scorePreviewMatch}>Save preview score</button>
+          <button onClick={advancePreviewRound}>Advance preview round</button>
+          <button onClick={completePreviewEvent}>Complete preview event</button>
+          <button onClick={togglePreviewConnection}>Toggle preview connection</button>
+          <button onClick={hidePreviewEvent}>Hide preview event</button>
+        </div></details>}<Toaster /></QueryClientProvider>
     </MemoryRouter>
   </ThemeProvider></Profiler>
 );

@@ -6,7 +6,7 @@ import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinB
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, ArrowLeft, Share2 } from "lucide-react";
+import { Calendar, ArrowLeft, Share2, RefreshCw } from "lucide-react";
 import { shareRoundRobin } from "@/lib/roundRobin/sharing";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
@@ -31,7 +31,9 @@ interface PlayerRoundRobinViewProps {
   rows: HydratedEventMatch[];
   userId: string | null;
   loadError?: string | null;
-  onRetry: () => void;
+  refreshing: boolean;
+  updatedAt: Date | null;
+  onRefresh: () => void;
 }
 
 interface Event {
@@ -57,7 +59,7 @@ interface Event {
 
 type ScheduleMatch = ReturnType<typeof buildPlayerEventSnapshot>['schedule'][number];
 
-export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, onRetry }: PlayerRoundRobinViewProps) {
+export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, refreshing, updatedAt, onRefresh }: PlayerRoundRobinViewProps) {
   const navigate = useNavigate();
   const [playerSearch, setPlayerSearch] = useState("");
   const [activeView, setActiveView] = useState("court");
@@ -133,7 +135,6 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
 
       {/* Main Content Area */}
       <main className="rr-event-width rr-event-main rr-player-main" aria-label="Player event view">
-        {loadError && <div role="alert" className="flex items-center gap-3 rounded-xl border border-destructive/30 p-3 text-sm">{loadError}<Button size="sm" variant="outline" onClick={onRetry}>Retry</Button></div>}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,6 +142,17 @@ export function PlayerRoundRobinView({ event, roster, rows, userId, loadError, o
           className="rr-host-workspace rr-player-workspace"
         >
           <Tabs value={activeView} onValueChange={setActiveView} className="rr-player-view-tabs">
+            <div className="flex shrink-0 items-center justify-between gap-3 pb-2">
+              <div className="min-w-0 text-xs text-muted-foreground">
+                <p>{loadError ? "Unable to update" : "Updates automatically"}</p>
+                {updatedAt && <p className="mt-0.5 text-[11px]">Last checked <time dateTime={updatedAt.toISOString()}>{updatedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time></p>}
+              </div>
+              <Button variant="outline" size="sm" className="min-h-11 shrink-0 gap-2" busy={refreshing} onClick={onRefresh} aria-label="Refresh scores and court assignments">
+                <RefreshCw aria-hidden="true" className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} />
+                {refreshing ? "Updating…" : "Refresh"}
+              </Button>
+            </div>
+            {loadError && <div role="alert" className="mb-2 shrink-0 rounded-xl border border-destructive/30 p-3 text-sm">Could not update. Showing the last saved scores and assignments. <button className="min-h-11 px-2 font-semibold underline disabled:opacity-50" disabled={refreshing} onClick={onRefresh}>Retry</button></div>}
             <EventTabs playerHome playerCount={players.filter(p => p.rosterStatus === "active").length} />
 
             <TabsContent value="court" className="rr-courtside-panel">
