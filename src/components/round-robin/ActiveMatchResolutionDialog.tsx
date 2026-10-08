@@ -28,6 +28,7 @@ interface ActiveMatchResolutionDialogProps {
   courtNo: number;
   /** Whether the live match already has a final score entered. */
   isScored: boolean;
+  canAbandon?: boolean;
   /** Current scoreline, shown when scored so the host knows what "keep" means. */
   team1Score?: number | null;
   team2Score?: number | null;
@@ -52,6 +53,7 @@ export function ActiveMatchResolutionDialog({
   participantName,
   courtNo,
   isScored,
+  canAbandon = true,
   team1Score,
   team2Score,
   loading = false,
@@ -70,14 +72,14 @@ export function ActiveMatchResolutionDialog({
         : "Leave the current game available for scoring. The player is removed from future rounds.",
       tone: "primary", recommended: true,
     });
-    if (!isScored) out.push({
+    if (!isScored && canAbandon) out.push({
       kind: "abandon", icon: Trash2, title: "Abandon this unscored match",
       description: "Use if this game will not finish. It will not count in standings; future rounds are rebalanced.",
       tone: "destructive",
     });
 
     return out;
-  }, [isScored, team1Score, team2Score]);
+  }, [isScored, canAbandon, team1Score, team2Score]);
 
   const [selected, setSelected] = useState<ActiveMatchResolutionKind | null>(null);
 

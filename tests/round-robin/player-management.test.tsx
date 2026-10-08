@@ -29,6 +29,8 @@ afterEach(()=>act(()=>root?.unmount()));
 const text=(n:ReactTestInstance|string):string=>typeof n==='string'?n:n.children.map(text).join('');
 const button=(label:string)=>root.root.findAllByType('button').find(b=>text(b)===label)!;
 const props={open:true,onOpenChange:vi.fn(),eventStatus:'live' as const,currentRound:3,totalRounds:7,hasSchedule:true,firstAdjustableRound:4,eventFormat:'open' as const,
+  scheduleVersion:0,
+  schedule:[{id:'match',round_no:3,court_no:1,is_bye:false,a1_player_id:'p0',a2_player_id:'p1',b1_player_id:'p2',b2_player_id:'p3',team1_score:null,team2_score:null}],
   players:Array.from({length:6},(_,i)=>({id:`r${i}`,player_id:`p${i}`,active:true,profiles:{id:`p${i}`,full_name:`Player ${i}`,display_name:null}})),
   onAddPlayers:vi.fn().mockResolvedValue(1),onMarkInactive:vi.fn().mockResolvedValue(true),onSubstitute:vi.fn().mockResolvedValue(undefined)};
 const openMode=async(label:string)=>{
@@ -43,7 +45,7 @@ it('allows a resting roster member and sends current-plus-future scope',async()=
   await act(async()=>root.root.findAllByType('select')[1].props.onChange({target:{value:'current_future'}}));
   expect(root.root.findAllByType('select')[1].props.value).toBe('current_future');
   await act(async()=>button('Substitute Player').props.onClick());
-  expect(props.onSubstitute).toHaveBeenCalledWith('r0',{playerId:'p5',guestPlayerId:null,guestName:undefined},'current_future',false);
+  expect(props.onSubstitute).toHaveBeenCalledWith('r0',{playerId:'p5',guestPlayerId:null,guestName:undefined},'current_future',false,0);
 });
 it('does not report removal before confirmation or after cancellation',async()=>{
   let resolve!:(v:boolean)=>void;
@@ -65,7 +67,8 @@ it('leaves failed substitutions ready to retry without a success animation',asyn
   await act(async()=>button('Substitute Player').props.onClick());
   expect(activity.fail).toHaveBeenCalled();
   expect(activity.done).not.toHaveBeenCalled();
-  expect(button('Substitute Player').props.disabled).toBe(false);
+  expect(button('Substitute Player').props.disabled).toBe(true);
+  expect(text(root.root)).toContain('Review latest');
 });
 it('keeps the balanced fallback opt-in and sends it only when checked',async()=>{
   await act(async()=>{root=create(<PlayerManagementDialog {...props} equalGames />)});
@@ -76,7 +79,7 @@ it('keeps the balanced fallback opt-in and sends it only when checked',async()=>
   await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
   await act(async()=>button('Pick John').props.onClick());
   await act(async()=>button('Substitute Player').props.onClick());
-  expect(props.onSubstitute).toHaveBeenCalledWith('r0',{playerId:'p5',guestPlayerId:null,guestName:undefined},'global',true);
+  expect(props.onSubstitute).toHaveBeenCalledWith('r0',{playerId:'p5',guestPlayerId:null,guestName:undefined},'global',true,0);
 });
 
 it.each(['add', 'substitute'] as const)('locks %s inputs and dismissal, suppresses double taps, and unlocks for retry', async mode => {
@@ -98,10 +101,63 @@ it.each(['add', 'substitute'] as const)('locks %s inputs and dismissal, suppress
   expect(props.onOpenChange).not.toHaveBeenCalled();
   await act(async () => { fail(new Error('Connection interrupted')); await pending; });
   expect(activity.done).not.toHaveBeenCalled();
-  expect(button(label).props.disabled).toBe(false);
+  expect(button(label).props.disabled).toBe(true);
   expect(root.root.findByType('fieldset').props.disabled).toBe(false);
+  await act(async () => button('Review latest').props.onClick());
+  if (mode === 'substitute') {
+    await act(async () => root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+    await act(async () => button('Pick John').props.onClick());
+  }
   await act(async () => button(label).props.onClick());
   expect(mutation).toHaveBeenCalledTimes(2);
+});
+
+it('never widens a one-round replacement when live play advances', async () => {
+  await openMode('Substitute player');
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async()=>button('Pick John').props.onClick());
+  await act(async()=>root.root.findAllByType('select')[1].props.onChange({target:{value:'3'}}));
+  await act(async()=>root.update(<PlayerManagementDialog {...props} currentRound={4} scheduleVersion={1} />));
+  expect(root.root.findAllByType('select')[1].props.value).toBe('3');
+  expect(button('Substitute Player').props.disabled).toBe(true);
+  expect(text(root.root)).toContain('The live round changed');
+  await act(async()=>button('Substitute Player').props.onClick());
+  expect(props.onSubstitute).not.toHaveBeenCalled();
+  await act(async()=>button('Review latest').props.onClick());
+  expect(root.root.findAllByType('select')[1].props.value).toBe('3');
+});
+
+it('requires explicit review after a concurrent update and submits the reviewed version', async () => {
+  await openMode('Substitute player');
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async()=>button('Pick John').props.onClick());
+  await act(async()=>root.update(<PlayerManagementDialog {...props} scheduleVersion={2} />));
+  await act(async()=>button('Substitute Player').props.onClick());
+  expect(props.onSubstitute).not.toHaveBeenCalled();
+  await act(async()=>button('Review latest').props.onClick());
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async()=>button('Pick John').props.onClick());
+  await act(async()=>button('Substitute Player').props.onClick());
+  expect(props.onSubstitute).toHaveBeenCalledWith('r0',expect.anything(),'global',false,2);
+});
+
+it('keeps a failed refresh from approving a stale edit', async () => {
+  await openMode('Substitute player');
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async()=>button('Pick John').props.onClick());
+  await act(async()=>root.update(<PlayerManagementDialog {...props} scheduleVersion={2} onRefresh={vi.fn().mockRejectedValue(new Error('Network offline'))} />));
+  await act(async()=>button('Review latest').props.onClick());
+  expect(button('Substitute Player').props.disabled).toBe(true);
+  expect(root.root.findAllByType('select')[0].props.value).toBe('r0');
+  expect(text(root.root)).toContain('could not be confirmed');
+});
+
+it('clears the replacement when the outgoing player changes', async () => {
+  await openMode('Substitute player');
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r0'}}));
+  await act(async()=>button('Pick John').props.onClick());
+  await act(async()=>root.root.findAllByType('select')[0].props.onChange({target:{value:'r1'}}));
+  expect(button('Substitute Player').props.disabled).toBe(true);
 });
 
 it('does not send another removal or dismiss the roster while a live-match decision is pending', async () => {

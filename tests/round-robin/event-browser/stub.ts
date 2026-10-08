@@ -51,6 +51,7 @@ export function hidePreviewEvent() { event.status = 'voided'; event.voided = tru
 export function scorePreviewMatch() {
   const match = schedule.find(row => row.round_no === event.current_round && row.court_no === 1);
   if (match) Object.assign(match, { team1_score: 11, team2_score: 6 });
+  event.schedule_version++;
   notifyChanges();
 }
 export function completePreviewEvent() { event.status = 'completed'; notifyChanges(); }
@@ -65,6 +66,7 @@ function createChannel() {
 }
 export function advancePreviewRound() {
   event.current_round = Math.min(event.num_rounds, event.current_round + 1);
+  event.schedule_version++;
   notifyChanges();
 }
 if (params.has('rest') && schedule[2]) { schedule[2].is_bye = true; }
@@ -154,7 +156,7 @@ export const supabase = {
     }
     if (params.has('command') && name === 'generate-round-robin-schedule') {
       event.schedule_version++;
-      return {data:{num_rounds:event.num_rounds,impact:{summary:'Preview schedule refreshed.'}},error:null};
+      return {data:{success:true,num_rounds:event.num_rounds,impact:{summary:'Preview schedule refreshed.'}},error:null};
     }
     return {data:null,error:{message:'This preview does not submit event changes.'}};
   }},
