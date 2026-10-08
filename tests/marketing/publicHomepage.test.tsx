@@ -65,12 +65,14 @@ describe("public homepage", () => {
     expect(html).toContain('aria-roledescription="carousel"');
     expect(html).toContain('aria-label="Previous feature" disabled=""');
     expect(html).toContain('aria-label="Next feature"');
-    expect(html).toContain('aria-label="Choose a feature"');
-    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(figures.filter(figure => figure.includes('tabindex="0"'))).toHaveLength(1);
-    expect(figures.filter(figure => figure.includes('tabindex="-1"'))).toHaveLength(productScreens.length - 1);
-    expect(figures[0]).toContain('loading="eager"');
-    expect(figures.slice(1).every(figure => figure.includes('loading="lazy"'))).toBe(true);
+    for (const name of ['Your game', 'Your people', 'Organized play']) {
+      expect(html).toContain(`aria-label="${name}: explore PULSE screens"`);
+      expect(html).toContain(`aria-label="${name} screen choices"`);
+    }
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(3);
+    expect(figures.filter(figure => figure.includes('tabindex="0"'))).toHaveLength(3);
+    expect(figures.filter(figure => figure.includes('tabindex="-1"'))).toHaveLength(productScreens.length - 3);
+    expect(figures.every(figure => figure.includes('loading="lazy"'))).toBe(true);
     for (const screen of productScreens) {
       expect(html).toContain(`src="${screen.src}"`);
       expect(screen.alt.length).toBeGreaterThan(30);
@@ -85,7 +87,10 @@ describe("public homepage", () => {
     const html = render(<PublicHomepage />);
     expect(html).not.toContain('src="/images/product/assessment.jpg"');
     expect(html).toContain('src="/images/product/profile.jpg"');
-    expect(html).toContain('1 of 7: App home');
+    expect(html).toContain('1 of 2: App home');
+    expect(html).toContain('2 of 2: Your PULSE');
+    expect(html).toContain('1 of 3: Friends');
+    expect(html).toContain('1 of 2: Round robins');
   });
   it("explains pricing, devices, ratings, and existing groups with native accessible disclosures", () => {
     const html = render(<PublicHomepage />);

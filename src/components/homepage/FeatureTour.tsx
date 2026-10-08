@@ -6,9 +6,16 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { productScreens } from './productScreens';
 
-export function FeatureTour() {
+const groupKeys = {
+  game: ['app-home', 'assessment', 'profile'],
+  people: ['friends', 'chat', 'communities'],
+  organizers: ['round-robin', 'league'],
+};
+const groupLabels = { game: 'Your game', people: 'Your people', organizers: 'Organized play' };
+
+export function FeatureTour({ group }: { group: keyof typeof groupKeys }) {
   const reduced = useReducedMotion();
-  const screens = isSkillAssessmentEnabled() ? productScreens : productScreens.filter(screen => screen.key !== 'assessment');
+  const screens = productScreens.filter(screen => groupKeys[group].includes(screen.key) && (screen.key !== 'assessment' || isSkillAssessmentEnabled()));
   const [viewport, api] = useEmblaCarousel({ align: 'start', loop: false, duration: reduced ? 0 : 25 });
   const [selected, setSelected] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -35,20 +42,19 @@ export function FeatureTour() {
     event.preventDefault(); api?.scrollTo(Math.max(0, Math.min(screens.length - 1, index)));
   };
 
-  return <div ref={region} className="mkt-tour" id="product-tour" role="region" aria-roledescription="carousel" aria-label="Explore PULSE features" tabIndex={0} onKeyDown={keyboard}>
-    <div className="mkt-tour-top"><span><i aria-hidden="true" /> INSIDE PULSE</span><span className="mkt-tour-hint">Swipe or choose a feature</span></div>
-    <div className="mkt-tour-pills" role="group" aria-label="Choose a feature">{screens.map((screen, index) => <button key={screen.key} type="button" aria-pressed={index === selected} onClick={() => api?.scrollTo(index)}>{screen.label}</button>)}</div>
+  return <div ref={region} className="mkt-tour" id={group === 'game' ? 'product-tour' : `${group}-tour`} role="region" aria-roledescription="carousel" aria-label={`${groupLabels[group]}: explore PULSE screens`} tabIndex={0} onKeyDown={keyboard}>
+    <div className="mkt-tour-pills" role="group" aria-label={`${groupLabels[group]} screen choices`}>{screens.map((screen, index) => <button key={screen.key} type="button" aria-pressed={index === selected} onClick={() => api?.scrollTo(index)}>{screen.label}</button>)}</div>
     <div className="mkt-tour-viewport" ref={viewport}>
       <div className="mkt-tour-track">
         {screens.map((screen, index) => <div className="mkt-tour-slide" key={screen.key} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${screens.length}: ${screen.label}`} aria-hidden={index !== selected}>
-          <div className="mkt-tour-copy"><h2>{screen.title}</h2><p>{screen.description}</p></div>
           <figure>
             <button type="button" className="mkt-screen-window" onClick={event => { opener.current = event.currentTarget; setExpanded(index); }} tabIndex={index === selected ? 0 : -1} aria-label={`Enlarge ${screen.label.toLowerCase()} screenshot`}>
-              <img src={screen.src} alt={screen.alt} width={390} height={844} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" />
+              <img src={screen.src} alt={screen.alt} width={390} height={844} loading="lazy" decoding="async" />
               <span className="mkt-screen-expand"><Expand aria-hidden="true" size={14} /> View screen</span>
             </button>
             <figcaption>Actual PULSE screen · Demo data</figcaption>
           </figure>
+          <div className="mkt-tour-copy"><h3>{screen.title}</h3><p>{screen.description}</p></div>
         </div>)}
       </div>
     </div>

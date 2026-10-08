@@ -69,3 +69,42 @@ Select Homepage; check 320, 390, 768 and 1440 px in light and dark themes.
 The homepage unit tests protect public destinations, feature-flag behavior,
 accessible controls, image resources and demo-data labeling. Framing and image
 legibility are verified in the browser at the four widths above.
+
+## Premium homepage layout (October 8, 2026)
+
+The homepage now presents three independent screenshot galleries: your game
+(app home, assessment, profile), your people (friends, chat, communities), and
+organized play (round robins, leagues). The assessment feature flag removes
+that slide without leaving an empty gallery position. All product captures
+retain their complete original proportions and demo labels.
+
+The hero uses a locally hosted photograph by Mason Tuttle:
+[original photograph](https://www.pexels.com/photo/paddle-and-ball-on-court-17299528/),
+[Pexels license](https://www.pexels.com/license/), checked October 8, 2026.
+Source image: `https://images.pexels.com/photos/17299528/pexels-photo-17299528/free-photo-of-paddle-and-ball-on-court.jpeg`.
+The 1600px JPEG is 119,066 bytes; the 800px mobile source is 34,323 bytes.
+These files live in `public/images/marketing/`; visitors make no image request
+to Pexels. Photographer credit is linked in the footer. The photograph is
+illustrative court equipment, not a PULSE product screenshot or endorsement.
+
+Motion is progressive enhancement: a brief entrance, three subtle gold pulses,
+and section reveals in browsers supporting CSS view timelines. Reduced-motion
+preferences disable these effects and the galleries' transitions. There is no
+autoplay, mandatory scroll snapping, nested vertical scroller, or scroll handler.
+Ordinary touch scrolling and browser zoom remain available.
+
+The marketing Vite fixture also serves `/`, so public anchor navigation can be
+checked without accidentally mounting the production app. It carries the real
+URL hash into its memory router for section scrolling after the page mounts.
+
+Validation: homepage regressions (11 tests), application TypeScript check,
+changed-component ESLint, and production build/backend-artifact guard passed.
+Browser checks covered 320/390/768/1024/1440px light layouts and
+320/390/768/1440px dark layouts without horizontal overflow. All eight
+screenshots loaded at their original aspect ratio. Three independent galleries
+passed selection, keyboard Home/End/Right navigation and disabled end controls;
+the enlarged assessment dialog returned focus on Escape. The 320px mobile menu
+fills its available width; its organizer link closes the menu and positions the
+section below the fixed header. Guest assessment and signup CTAs reached the
+local fixture destinations. This is presentation/navigation QA, not a new live
+account-creation or OAuth test.

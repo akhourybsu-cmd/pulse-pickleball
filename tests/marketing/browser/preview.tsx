@@ -22,7 +22,7 @@ if (params.has('capture')) document.documentElement.classList.add('product-captu
 const destinations: Record<string, string> = { 'app-home': '/player/dashboard', friends: '/player/friends', chat: '/player/messages/demo-chat', communities: '/player/community', profile: '/player/profile' };
 const route = params.has('league') ? '/player/leagues/demo-league' : destinations[params.get('screen') ?? ''] ?? '/';
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><ThemeProvider attribute="class" forcedTheme={params.has('dark') ? 'dark' : 'light'}><HelmetProvider><MemoryRouter initialEntries={[route]}><ActiveViewProvider><Routes>
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><ThemeProvider attribute="class" forcedTheme={params.has('dark') ? 'dark' : 'light'}><HelmetProvider><MemoryRouter initialEntries={[route + window.location.hash]}><ActiveViewProvider><Routes>
   <Route path="/" element={<PublicHomepage />} />
   <Route element={<PlayerShell />}>
     <Route path="/player/leagues/:leagueId" element={<PlayerLeagueDetail />} />
