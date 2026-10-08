@@ -73,6 +73,10 @@ export const supabase = {
       if ((table === 'skill_assessment_attempts' && operation === 'select' && stalled('load')) ||
         (operation === 'upsert' && stalled('answer')) || (operation === 'update' && stalled('activity'))) return neverRespond();
       const data = read();
+      if (table === 'player_skill_profiles') {
+        const result = data.skill_assessment_attempts.find(r => r.status === 'completed')?.scoring_snapshot as { estimatedLevelDisplay: number; displayBand: string; confidence: { total: number } } | undefined;
+        return { data: result ? { self_assessed_level: result.estimatedLevelDisplay, self_assessed_band: result.displayBand, self_assessment_confidence: result.confidence.total, provisional_status: true } : null, error: null };
+      }
       const rows = data[table] ?? [];
       const matches = (r: Row) => filters.every(([key, value]) => r[key] === value);
       let result = rows.filter(matches);

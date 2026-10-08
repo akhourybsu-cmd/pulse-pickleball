@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
+import { SkillAssessmentCTA } from '../../../src/components/skill/SkillAssessmentCTA';
+import { SkillProfileSection } from '../../../src/components/skill/SkillProfileSection';
 import SelfAssessment from '../../../src/pages/player/SelfAssessment';
 import GuestSkillAssessment from '../../../src/pages/GuestSkillAssessment';
 import Auth from '../../../src/pages/Auth';
@@ -26,7 +28,7 @@ export default function Preview() {
       <strong className="mr-2">PULSE · Local preview</strong>
       <Link className="min-h-10 rounded border p-3" to="/skill-assessment">Guest flow</Link>
       <Link className="min-h-10 rounded border p-3" to="/player/self-assessment">Account flow</Link>
-      <Link className="min-h-10 rounded border p-3" to="/">Homepage</Link>
+      <Link className="min-h-10 rounded border p-3" to="/">Homepage</Link><Link className="min-h-10 rounded border p-3" to="/profile-preview">Profile cards</Link>
       <button className="min-h-10 rounded border px-3" onClick={signInPreview}>Simulate sign-in</button>
       <button className="min-h-10 rounded border px-3" onClick={signOutPreview}>Simulate sign-out</button>
       <button className="min-h-10 rounded border px-3" onClick={enablePreviewMfa}>Require mock email MFA</button>
@@ -48,6 +50,7 @@ export default function Preview() {
       {scene === 'flow' ? <Routes>
         <Route path="/skill-assessment" element={<GuestSkillAssessment />} /><Route path="/auth" element={<Auth />} />
         <Route path="/player/self-assessment" element={<SelfAssessment />} /><Route path="/" element={<PublicHomepage />} />
+        <Route path="/profile-preview" element={<div className="mx-auto max-w-lg p-4 space-y-6"><SkillAssessmentCTA userId="preview-player" /><SkillProfileSection userId="preview-player" isSelf={false} /></div>} />
         <Route path="/pickleball-guide" element={<PickleballGuide />} />
         <Route path="*" element={<p className="p-10">Preview destination reached.</p>} />
       </Routes> : <div className="mx-auto max-w-lg p-4"><AssessmentQuestion key={scene} item={QUESTION_BANK_V3.find(i => i.itemKey === scene)!} saving={false} onConfirm={() => setScene('flow')} /></div>}

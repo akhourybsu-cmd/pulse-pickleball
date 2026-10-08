@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Loader2, History, Gauge, PlayCircle } from "lucide-react";
@@ -7,7 +7,10 @@ import { AssessmentWizard } from "@/components/skill/AssessmentWizard";
 import { SkillIntro } from "@/components/skill/SkillIntro";
 import { SkillFingerprint } from "@/components/skill/SkillFingerprint";
 import { useSkillAssessment, type CompletedAttempt } from "@/hooks/useSkillAssessment";
+import { useAuthState } from '@/hooks/useAuthState';
 import { cn } from "@/lib/utils";
+
+const AssessmentShareDialog = lazy(() => import('@/components/skill/AssessmentShareDialog'));
 
 /**
  * Dedicated player route: /player/self-assessment. Renders inside
@@ -22,6 +25,10 @@ import { cn } from "@/lib/utils";
 export default function SelfAssessment() {
   const navigate = useNavigate();
   const a = useSkillAssessment();
+  const { profile } = useAuthState();
+  const playerName = profile?.display_name || profile?.full_name || '';
+  const [shareAttempt, setShareAttempt] = useState<CompletedAttempt | null>(null);
+  const shareIntentApplied = useRef(false);
   const reduced = useReducedMotion();
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState<CompletedAttempt | null>(null);
@@ -35,6 +42,12 @@ export default function SelfAssessment() {
     intentApplied.current = true;
     if (initialMode === 'retake' && assessmentPhase === 'result') showIntro();
   }, [assessmentPhase, showIntro, initialMode]);
+
+  useEffect(() => {
+    if (shareIntentApplied.current || params.get('share') !== '1' || !a.latest?.scoring_snapshot || (a.phase !== 'result' && mode !== 'view')) return;
+    shareIntentApplied.current = true;
+    setShareAttempt(a.latest);
+  }, [a.latest, a.phase, mode, params]);
 
   if (a.phase === "loading") {
     return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
@@ -63,6 +76,7 @@ export default function SelfAssessment() {
 
   return (
     <div className="skill-studio skill-account container mx-auto max-w-4xl px-4 py-5 pb-24">
+      {shareAttempt?.scoring_snapshot && <Suspense fallback={<p role="status" className="skill-help">Opening your share card…</p>}><AssessmentShareDialog key={shareAttempt.id} snapshot={shareAttempt.scoring_snapshot} completedAt={shareAttempt.completed_at} playerName={playerName} onClose={() => setShareAttempt(null)} /></Suspense>}
       {/* In-page top row (global header/bottom nav are untouched). */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <Button variant="ghost" size="sm" className="-ml-2 group" onClick={() => navigate(-1)}>
@@ -79,7 +93,7 @@ export default function SelfAssessment() {
       {showHistory && (a.phase !== "in_progress" || mode === 'view') ? (
         selectedHistory?.scoring_snapshot ? <div className="space-y-4">
           <Button variant="outline" onClick={() => setSelectedHistory(null)}><ArrowLeft className="mr-2 h-4 w-4" /> Back to history</Button>
-          <SkillFingerprint snapshot={selectedHistory.scoring_snapshot} completedAt={selectedHistory.completed_at} />
+          <SkillFingerprint snapshot={selectedHistory.scoring_snapshot} completedAt={selectedHistory.completed_at} onShare={() => setShareAttempt(selectedHistory)} />
         </div> : <AssessmentHistory history={a.history} onSelect={setSelectedHistory} />
       ) : a.phase === "finalizing" ? (
         <Centered>
@@ -114,6 +128,7 @@ export default function SelfAssessment() {
             completedAt={a.latest!.completed_at}
             onRetake={() => { setMode("retake"); a.showIntro(); }}
             canRetake
+            onShare={() => setShareAttempt(a.latest)}
           />
         </div>
       ) : a.phase === "in_progress" && mode !== 'view' ? (
@@ -148,10 +163,10 @@ function AssessmentHistory({ history, onSelect }: { history: CompletedAttempt[];
     return <p className="text-sm text-muted-foreground text-center py-8">No completed assessments yet.</p>;
   }
   return (
-    <div className="space-y-2">
-      <h2 className="font-display text-lg font-semibold mb-1">Assessment history</h2>
+    <div className="skill-history"><div className="skill-overline">Your game over time</div>
+      <h2>Assessment history</h2><p className="skill-help mb-5">Revisit your analysis or share a card from any completed assessment.</p>
       {history.map((h) => (
-        <button type="button" key={h.id} disabled={!h.scoring_snapshot} onClick={() => onSelect(h)} className={cn("w-full text-left rounded-xl border border-border/70 bg-card p-3 flex items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary")}>
+        <button type="button" key={h.id} disabled={!h.scoring_snapshot} onClick={() => onSelect(h)} className={cn("skill-history-row")}>
           <div className="min-w-0">
             <div className="text-sm font-semibold">
               {h.estimated_level_display?.toFixed(1) ?? "—"} · {h.display_band ?? "—"}
