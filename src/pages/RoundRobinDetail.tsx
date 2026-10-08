@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
 import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
 import { useRoundRobinAction } from "@/hooks/useRoundRobinAction";
+import { useRoundRobinLiveUpdates } from "@/hooks/useRoundRobinLiveUpdates";
 import { RoundRobinPendingAction } from "@/components/round-robin/RoundRobinPendingAction";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -264,7 +265,7 @@ export default function RoundRobinDetail() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -359,7 +360,7 @@ export default function RoundRobinDetail() {
     if (auditHistoryOpen) void fetchAuditHistory();
   }, [auditHistoryOpen, fetchAuditHistory]);
 
-  const fetchEventDetails = useCallback(async () => {
+  const readEventDetails = useCallback(async () => {
     if (!id || !authUser) return;
     const request = ++fetchRequestRef.current;
     try {
@@ -488,6 +489,7 @@ export default function RoundRobinDetail() {
         setEvent(eventData as Event);
         setIsOrganizer(!managerResult.error && managerResult.data === true);
         setLoadError(null);
+        setUpdatedAt(new Date());
         setPlayers(hydratedPlayers);
         setSchedule(hydratedSchedule);
         setIsParticipant(hydratedPlayers.some((player) => player.active &&
@@ -503,74 +505,13 @@ export default function RoundRobinDetail() {
     }
   }, [id, authUser]);
 
-  // A transactional rebuild inserts many schedule rows, and Supabase emits a
-  // realtime event for each one. Coalesce that burst into one authoritative
-  // refresh so the host view does not flicker or launch dozens of duplicate
-  // roster/profile queries.
-  const scheduleRealtimeRefresh = useCallback(() => {
-    if (realtimeRefreshTimerRef.current) {
-      clearTimeout(realtimeRefreshTimerRef.current);
-    }
-    realtimeRefreshTimerRef.current = setTimeout(() => {
-      realtimeRefreshTimerRef.current = null;
-      void fetchEventDetails();
-    }, 180);
-  }, [fetchEventDetails]);
-
+  // An old event/account read must not commit after navigation or sign-out.
   useEffect(() => {
-    if (!id || !authUser) return;
-    void fetchEventDetails();
-
-    // Event-scoped channel name — a shared name collides if two detail
-    // views are ever mounted (or remount mid-teardown on fast nav).
-    const channel = supabase
-      .channel(`round-robin-changes-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_events',
-          filter: `id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_schedule',
-          filter: `event_id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_players',
-          filter: `event_id=eq.${id}`
-        },
-        () => scheduleRealtimeRefresh()
-      )
-      .subscribe();
-
-    // The shared read also owns resume updates for the player view.
-    const onVisible = () => { if (document.visibilityState === "visible") scheduleRealtimeRefresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
     return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
       fetchRequestRef.current += 1;
-      if (realtimeRefreshTimerRef.current) {
-        clearTimeout(realtimeRefreshTimerRef.current);
-      }
-      supabase.removeChannel(channel);
     };
-  }, [id, authUser, fetchEventDetails, scheduleRealtimeRefresh]);
+  }, [readEventDetails]);
+  const { refresh: fetchEventDetails, refreshing } = useRoundRobinLiveUpdates(id, authUser?.id, readEventDetails);
 
   // Scoring/completion RPCs own rating effects. Reading an event is side-effect free.
 
@@ -1770,7 +1711,7 @@ export default function RoundRobinDetail() {
 
   // Non-organizers see simplified view
   if (!isOrganizer && !isAdmin) {
-    return <PlayerRoundRobinView key={`${id}:${userId}`} event={event} roster={players} rows={schedule} userId={userId} loadError={loadError} onRetry={() => void fetchEventDetails()} />;
+    return <PlayerRoundRobinView key={`${id}:${userId}`} event={event} roster={players} rows={schedule} userId={userId} loadError={loadError} refreshing={refreshing} updatedAt={updatedAt} onRefresh={() => void fetchEventDetails()} />;
   }
 
   // Organizers and admins see full view

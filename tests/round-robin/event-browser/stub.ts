@@ -36,18 +36,36 @@ if (params.has('manycourts')) {
 }
 const mutationAttempts = new Set<string>();
 const listeners = new Map<object, (() => void)[]>();
+const connectionListeners = new Map<object, (status: string) => void>();
 let disconnected = false;
-export function togglePreviewConnection() { disconnected = !disconnected; for (const callbacks of listeners.values()) callbacks.forEach(callback => callback()); }
-export function hidePreviewEvent() { event.status = 'voided'; event.voided = true; for (const callbacks of listeners.values()) callbacks.forEach(callback => callback()); }
+function notifyChanges() {
+  if (!params.has('missed')) for (const callbacks of listeners.values()) callbacks.forEach(callback => callback());
+}
+function removeChannel(channel: object) { listeners.delete(channel); connectionListeners.delete(channel); }
+export function togglePreviewConnection() {
+  disconnected = !disconnected;
+  for (const callback of connectionListeners.values()) callback(disconnected ? 'CHANNEL_ERROR' : 'SUBSCRIBED');
+  notifyChanges();
+}
+export function hidePreviewEvent() { event.status = 'voided'; event.voided = true; notifyChanges(); }
+export function scorePreviewMatch() {
+  const match = schedule.find(row => row.round_no === event.current_round && row.court_no === 1);
+  if (match) Object.assign(match, { team1_score: 11, team2_score: 6 });
+  notifyChanges();
+}
+export function completePreviewEvent() { event.status = 'completed'; notifyChanges(); }
 function createChannel() {
   const callbacks: (() => void)[] = [];
-  const channel = { on: (_type: string, _filter: unknown, callback: () => void) => { callbacks.push(callback); return channel; }, subscribe: () => channel, unsubscribe: () => listeners.delete(channel) };
+  const channel = { on: (_type: string, _filter: unknown, callback: () => void) => { callbacks.push(callback); return channel; }, subscribe: (callback?: (status: string) => void) => {
+    if (callback) { connectionListeners.set(channel, callback); queueMicrotask(() => callback('SUBSCRIBED')); }
+    return channel;
+  }, unsubscribe: () => removeChannel(channel) };
   listeners.set(channel, callbacks);
   return channel;
 }
 export function advancePreviewRound() {
   event.current_round = Math.min(event.num_rounds, event.current_round + 1);
-  for (const callbacks of listeners.values()) callbacks.forEach(callback => callback());
+  notifyChanges();
 }
 if (params.has('rest') && schedule[2]) { schedule[2].is_bye = true; }
 if (params.has('scored') && schedule[2]) { schedule[2].team1_score = 11; schedule[2].team2_score = 0; }
@@ -70,7 +88,7 @@ if (params.has('longnames')) {
 }
 export const supabase = {
   auth:{ getUser:async()=>({data:{user}}),getSession:async()=>({data:{session:{user}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>undefined}}}) },
-  channel:createChannel,removeChannel:(channel:object)=>listeners.delete(channel),
+  channel:createChannel,removeChannel,
   rpc:(name:string, args:Record<string,unknown> = {})=>{
     const execute=async()=>{
     recordRead(`rpc:${name}`);

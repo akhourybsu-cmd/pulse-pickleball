@@ -44,3 +44,10 @@ Add `?kiosk` to mount the actual public display against the isolated backend. It
 Check large and compact broadcast sizes plus a 320px phone: every court and ranked player must be reachable through pages, manual navigation pauses cycling, themes persist, and exit confirmation returns to the event. Empty completed events must not award a podium. A failed refresh retains the last snapshot with a warning on live and final screens; a hidden event clears it.
 
 For the host, `?command&slow&retry&rest` exercises saving, synchronous pending locks, failed-save draft retention, retry, resting seats, advancing, and completion. `completed&removedresult` verifies a removed score never highlights a winner. `sparse` verifies browsing saved rounds while unsafe advancement stays disabled.
+
+Player live-update checks (October 7): `?player&simulate&latency=150` adds a collapsible Preview controls panel for score saves, round advances, event completion, and read interruption/recovery. Add `missed` to suppress change notifications and exercise the 15-second foreground fallback. These controls change only local fixture data.
+
+- A saved 11–6 score appeared on Your court and updated the player's record without navigation. Advancing to round 3 kept Schedule selected and showed the new assignments.
+- Manual refresh and connection recovery preserved the Players tab and the search text. Failed reads retained the saved snapshot with a retry message; reconnecting cleared it. Event completion updated the status.
+- With change notifications suppressed, the foreground check still picked up the score. The refresh button and content fit 390px and 320px phone widths without horizontal page overflow.
+- Hook regression tests cover notification bursts, subscription recovery, visibility/online changes, slow-read serialization, manual retry, route changes, and cleanup. A PostgreSQL test checks the publication migration is replay-safe and preserves read policies. The fixture does not send real Supabase notifications or modify real player scores.
