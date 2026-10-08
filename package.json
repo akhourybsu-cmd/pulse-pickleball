@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:round-robin": "vitest run tests/round-robin src/lib/roundRobin --maxWorkers=1",
+    "test:round-robin-events": "node scripts/test-round-robin-events.mjs",
     "benchmark:round-robin": "node scripts/benchmark-round-robin.mjs",
     "test:watch": "vitest",
     "payments:check": "node scripts/check-stripe-readiness.mjs",
