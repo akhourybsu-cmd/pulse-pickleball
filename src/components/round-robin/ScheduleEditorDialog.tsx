@@ -12,7 +12,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { roundRobinEditError } from "@/lib/roundRobin/editGuidance";
+import { useRoundRobinEditReview } from "@/hooks/useRoundRobinEditReview";
 import { cn } from "@/lib/utils";
 import { ModalActions, ResponsiveSettingsModal } from "./ResponsiveSettingsModal";
 
@@ -46,13 +47,17 @@ interface ScheduleEditorDialogProps {
   eventStatus: "draft" | "live" | "completed" | "voided";
   eventFormat?: "open" | "mixed" | "male" | "female";
   numCourts: number;
+  scheduleVersion?: number;
+  onRefresh?: () => Promise<number>;
+  onManagePlayers?: () => void;
+  onManageScores?: () => void;
   getPlayerName: (playerId: string | null) => string;
   /** Cross-rotate A1+A2 vs B1+B2 to A1+B1 vs A2+B2. */
-  onRotatePartners: (matchId: string) => Promise<void>;
+  onRotatePartners: (matchId: string, expectedVersion?: number) => Promise<void>;
   /** Exchange Match 1 Team B with Match 2 Team A. */
-  onSwapOpponents: (match1Id: string, match2Id: string) => Promise<void>;
+  onSwapOpponents: (match1Id: string, match2Id: string, expectedVersion?: number) => Promise<void>;
   /** Move to an open court, or swap court assignments when occupied. */
-  onMoveCourt: (matchId: string, newCourtNo: number) => Promise<void>;
+  onMoveCourt: (matchId: string, newCourtNo: number, expectedVersion?: number) => Promise<void>;
 }
 
 type ActionMode = "rotate-partners" | "swap-opponents" | "move-court" | null;
@@ -68,6 +73,10 @@ export function ScheduleEditorDialog({
   eventStatus,
   eventFormat = "open",
   numCourts,
+  scheduleVersion = 0,
+  onRefresh,
+  onManagePlayers,
+  onManageScores,
   getPlayerName,
   onRotatePartners,
   onSwapOpponents,
@@ -85,17 +94,24 @@ export function ScheduleEditorDialog({
   const [loading, setLoading] = useState(false);
   const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const review = useRoundRobinEditReview(open, mode !== null, scheduleVersion, onRefresh);
+  const actionBlocked = loading || review.reviewing || review.needsReview || !!saveError;
+  const wasOpen = useRef(false);
 
   const roundsKey = rounds.join(",");
   useEffect(() => {
-    if (!open || savingRef.current) return;
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!opening) return;
     setSelectedRound(currentRound || Number(roundsKey.split(",")[0]) || 1);
     setSaveError(null);
     setMode(null);
     setSelectedMatch("");
     setSelectedMatch2("");
     setNewCourtNo(1);
-  }, [currentRound, open, roundsKey]);
+    // Background updates must not silently discard the host's selection.
+    // A changed version is reviewed explicitly before the next save.
+  }, [open, currentRound, roundsKey]);
 
   const allRoundRows = schedule.filter((match) => match.round_no === selectedRound);
   const roundMatches = allRoundRows.filter((match) => !match.is_bye && isCanonical(match));
@@ -137,22 +153,26 @@ export function ScheduleEditorDialog({
     setNewCourtNo(1);
   };
 
+  const reviewLatest = async () => {
+    if (await review.reviewLatest()) { setSaveError(null); resetAction(); }
+  };
+
   const close = () => {
-    if (savingRef.current) return;
+    if (savingRef.current || review.reviewing) return;
     resetAction();
     onOpenChange(false);
   };
 
   const handleRotatePartners = async () => {
-    if (!selectedMatchData || isRoundLocked || savingRef.current) return;
+    if (!selectedMatchData || isRoundLocked || savingRef.current || actionBlocked) return;
     savingRef.current = true;
     setSaveError(null);
     setLoading(true);
     try {
-      await onRotatePartners(selectedMatch);
+      await onRotatePartners(selectedMatch, review.reviewedVersion);
       resetAction();
     } catch (error) {
-      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
+      setSaveError(roundRobinEditError(error));
     } finally {
       savingRef.current = false;
       setLoading(false);
@@ -160,15 +180,15 @@ export function ScheduleEditorDialog({
   };
 
   const handleSwapOpponents = async () => {
-    if (!selectedMatchData || !selectedMatch2Data || selectedMatch === selectedMatch2 || isRoundLocked || savingRef.current) return;
+    if (!selectedMatchData || !selectedMatch2Data || selectedMatch === selectedMatch2 || isRoundLocked || savingRef.current || actionBlocked) return;
     savingRef.current = true;
     setSaveError(null);
     setLoading(true);
     try {
-      await onSwapOpponents(selectedMatch, selectedMatch2);
+      await onSwapOpponents(selectedMatch, selectedMatch2, review.reviewedVersion);
       resetAction();
     } catch (error) {
-      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
+      setSaveError(roundRobinEditError(error));
     } finally {
       savingRef.current = false;
       setLoading(false);
@@ -176,15 +196,15 @@ export function ScheduleEditorDialog({
   };
 
   const handleMoveCourt = async () => {
-    if (!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked || savingRef.current) return;
+    if (!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked || savingRef.current || actionBlocked) return;
     savingRef.current = true;
     setSaveError(null);
     setLoading(true);
     try {
-      await onMoveCourt(selectedMatchData.id, newCourtNo);
+      await onMoveCourt(selectedMatchData.id, newCourtNo, review.reviewedVersion);
       resetAction();
     } catch (error) {
-      setSaveError(getErrorMessage(error, "The schedule change was not saved. Review and retry."));
+      setSaveError(roundRobinEditError(error));
     } finally {
       savingRef.current = false;
       setLoading(false);
@@ -202,14 +222,14 @@ export function ScheduleEditorDialog({
   };
 
   const actionButton = mode === "rotate-partners" ? (
-    <Button onClick={handleRotatePartners} disabled={!selectedMatch || isRoundLocked || loading} className="gap-1.5">
+    <Button onClick={handleRotatePartners} disabled={!selectedMatchData || isRoundLocked || actionBlocked} className="gap-1.5">
       {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
       {loading ? "Rotating…" : "Rotate partners"}
     </Button>
   ) : mode === "swap-opponents" ? (
     <Button
       onClick={handleSwapOpponents}
-      disabled={!selectedMatch || !selectedMatch2 || selectedMatch === selectedMatch2 || isRoundLocked || loading}
+      disabled={!selectedMatchData || !selectedMatch2Data || selectedMatch === selectedMatch2 || isRoundLocked || actionBlocked}
       className="gap-1.5"
     >
       {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <MoveHorizontal className="h-4 w-4" />}
@@ -218,7 +238,7 @@ export function ScheduleEditorDialog({
   ) : mode === "move-court" ? (
     <Button
       onClick={handleMoveCourt}
-      disabled={!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked || loading}
+      disabled={!selectedMatchData || selectedMatchData.court_no === newCourtNo || isRoundLocked || actionBlocked}
       className="gap-1.5"
     >
       {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
@@ -228,7 +248,8 @@ export function ScheduleEditorDialog({
 
   return (
     <ResponsiveSettingsModal
-      busy={loading}
+      busy={loading || review.reviewing}
+      busyLabel={review.reviewing ? "Loading latest schedule…" : "Saving schedule change…"}
       open={open}
       onOpenChange={(next) => { if (!next) close(); }}
       title="Manual schedule editor"
@@ -247,8 +268,11 @@ export function ScheduleEditorDialog({
         </ModalActions>
       }
     >
-      {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
-      <fieldset disabled={loading} className="space-y-4 pb-1">
+      {(saveError || review.needsReview || review.reviewError) && <Alert role="alert" className="mb-3 border-amber-500/40"><AlertDescription className="space-y-2 text-sm">
+        <p>{review.reviewError || saveError || "The event changed while you were editing. Review the latest schedule and select the matches again before saving."}</p>
+        <Button size="sm" variant="outline" busy={review.reviewing} disabled={loading} onClick={reviewLatest}>Review latest</Button>
+      </AlertDescription></Alert>}
+      <fieldset disabled={loading || review.reviewing} className="space-y-4 pb-1">
         <section>
           <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Choose round</h3>
@@ -284,7 +308,11 @@ export function ScheduleEditorDialog({
             <LockKeyhole className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             <AlertDescription className="text-xs leading-relaxed">
               <strong className="font-semibold text-foreground">Round {selectedRound} is protected.</strong>{" "}
-              {selectedRoundLockReasons.join(" · ")}. View its assignments below; editing is disabled so recorded play cannot be disconnected or rewritten.
+              {selectedRoundLockReasons.join(" · ")}. Choose an unplayed future round to edit teams or courts. For a live player replacement, use Manage players. For a score correction, use Manage scores.
+              <div className="mt-2 flex flex-wrap gap-2">
+                {onManagePlayers && <Button size="sm" variant="outline" onClick={onManagePlayers}>Manage players</Button>}
+                {onManageScores && <Button size="sm" variant="outline" onClick={onManageScores}>Manage scores</Button>}
+              </div>
             </AlertDescription>
           </Alert>
         ) : (

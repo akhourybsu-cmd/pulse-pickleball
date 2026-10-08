@@ -51,3 +51,11 @@ Player live-update checks (October 7): `?player&simulate&latency=150` adds a col
 - Manual refresh and connection recovery preserved the Players tab and the search text. Failed reads retained the saved snapshot with a retry message; reconnecting cleared it. Event completion updated the status.
 - With change notifications suppressed, the foreground check still picked up the score. The refresh button and content fit 390px and 320px phone widths without horizontal page overflow.
 - Hook regression tests cover notification bursts, subscription recovery, visibility/online changes, slow-read serialization, manual retry, route changes, and cleanup. A PostgreSQL test checks the publication migration is replay-safe and preserves read policies. The fixture does not send real Supabase notifications or modify real player scores.
+
+Live editing checks (October 8): `?command&simulate&retry` fails the first manual schedule edit and first schedule-generation request to exercise recovery. Simulated score saves and round advances now increment the event version, matching production conflict checks.
+
+- At 390px, a failed partner rotation kept the selected round and court, showed persistent recovery instructions, and blocked another save until Review latest. Reselecting the court and saving updated the fixture pairing successfully.
+- The protected-round guidance opened Manage players directly. A failed live-player removal closed its resolution prompt, returned to the player sheet with the error visible, and released the pending action. Review latest cleared the old removal selection and enabled another choice.
+- At 320px, the roster, recovery controls, and footer fit the viewport; the roster scrolls within the sheet. The only console error captured was the deliberately failed fixture mutation.
+- Component tests cover stale versions, a round advancing during a one-round replacement, failed refreshes, and changing the outgoing player. Domain tests cover player/guest double-booking, protected scores/locks/history, and actionable planner errors.
+- These local checks do not perform real roster mutations: generation requests are mocked. PostgreSQL regression tests separately exercise the versioned edit/substitution transactions and preservation of saved play.

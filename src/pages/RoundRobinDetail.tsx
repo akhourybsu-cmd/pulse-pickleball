@@ -6,6 +6,7 @@ import { getErrorCode, getErrorMessage } from "@/lib/getErrorMessage";
 import { withReadDeadline } from "@/lib/roundRobin/readDeadline";
 import { useRoundRobinAction } from "@/hooks/useRoundRobinAction";
 import { useRoundRobinLiveUpdates } from "@/hooks/useRoundRobinLiveUpdates";
+import { roundRobinEditError } from "@/lib/roundRobin/editGuidance";
 import { RoundRobinPendingAction } from "@/components/round-robin/RoundRobinPendingAction";
 import { RoundRobinButton as Button } from "@/components/round-robin/RoundRobinButton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -287,6 +288,7 @@ export default function RoundRobinDetail() {
   const [completingEvent, setCompletingEvent] = useState(false);
   const fetchRequestRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const lastEventReadRef = useRef<{ version: number; error: unknown }>({ version: 0, error: new Error("Refresh the event before editing.") });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [regenConfirmOpen, setRegenConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
@@ -299,6 +301,7 @@ export default function RoundRobinDetail() {
   const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
   const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
   const [repairingSchedule, setRepairingSchedule] = useState(false);
+  const [scheduleRepairError, setScheduleRepairError] = useState<string | null>(null);
   const [auditEntries, setAuditEntries] = useState<any[]>([]);
   const [inviteGuest, setInviteGuest] = useState<{ id: string; name: string; email: string | null } | null>(null);
   // When an organizer pulls a player who is currently ON COURT in the live
@@ -309,6 +312,7 @@ export default function RoundRobinDetail() {
     participantName: string;
     courtNo: number;
     isScored: boolean;
+    canAbandon: boolean;
     team1Score: number | null;
     team2Score: number | null;
     run: (kind: ActiveMatchResolutionKind) => Promise<void>;
@@ -489,6 +493,7 @@ export default function RoundRobinDetail() {
         setEvent(eventData as Event);
         setIsOrganizer(!managerResult.error && managerResult.data === true);
         setLoadError(null);
+        lastEventReadRef.current = { version: eventData.schedule_version ?? 0, error: null };
         setUpdatedAt(new Date());
         setPlayers(hydratedPlayers);
         setSchedule(hydratedSchedule);
@@ -500,6 +505,7 @@ export default function RoundRobinDetail() {
     } catch (error: unknown) {
       if (request !== fetchRequestRef.current) return;
       setLoadError("Could not refresh the event. Your saved scores have not been changed.");
+      lastEventReadRef.current.error = error;
       console.error("Round-robin refresh failed:", getErrorCode(error), getErrorMessage(error));
       setLoading(false);
     }
@@ -512,6 +518,11 @@ export default function RoundRobinDetail() {
     };
   }, [readEventDetails]);
   const { refresh: fetchEventDetails, refreshing } = useRoundRobinLiveUpdates(id, authUser?.id, readEventDetails);
+  const refreshForEdit = useCallback(async () => {
+    await fetchEventDetails();
+    if (lastEventReadRef.current.error) throw lastEventReadRef.current.error;
+    return lastEventReadRef.current.version;
+  }, [fetchEventDetails]);
 
   // Scoring/completion RPCs own rating effects. Reading an event is side-effect free.
 
@@ -886,8 +897,10 @@ export default function RoundRobinDetail() {
       // roster) instead of hiding every 422 behind a generic network error.
       const context = generateError.context;
       const detail = context instanceof Response ? await context.json().catch(() => null) : null;
-      throw new Error(detail?.error || generateError.message);
+      throw Object.assign(new Error(detail?.error || generateError.message), { code: detail?.code });
     }
+    if (data?.success !== true) throw new Error("The schedule change was not confirmed. Review latest before retrying.");
+    setScheduleRepairError(null);
 
     const result = data as {
       num_rounds?: number;
@@ -1082,6 +1095,7 @@ export default function RoundRobinDetail() {
         });
       } catch (regenerationError) {
         console.error("post-add schedule regeneration failed", regenerationError);
+        setScheduleRepairError(`The roster was saved, but the remaining schedule was not confirmed. ${roundRobinEditError(regenerationError)}`);
         await fetchEventDetails();
         toast.warning(
           `${auditPlayers.length === 1 ? "The player was" : "The players were"} added, but the remaining schedule needs repair before play continues.`,
@@ -1104,7 +1118,7 @@ export default function RoundRobinDetail() {
 
   const rrMutationInFlightRef = useRef(false);
 
-  const handleMarkInactive = eventAction.guard("Removing player & updating rounds…", async (playerEventId: string, allowBalanced: boolean = false): Promise<boolean> => {
+  const handleMarkInactive = eventAction.guard("Removing player & updating rounds…", async (playerEventId: string, allowBalanced: boolean = false, expectedVersion: number = event?.schedule_version ?? 0): Promise<boolean> => {
     if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     const player = players.find(p => p.id === playerEventId);
     if (!player) throw new Error("Refresh the roster before removing this player.");
@@ -1117,6 +1131,7 @@ export default function RoundRobinDetail() {
       rrMutationInFlightRef.current = true;
       try {
         await regenerateScheduleFromRound(event.current_round || 1, {
+          expectedVersion,
           reason: `${participantName} removed; remaining rounds rebalanced`,
           rosterChange: { outgoingSeatId, resolution: kind === "abandon" ? "abandon" : "keep_current", allowBalanced },
         });
@@ -1135,11 +1150,13 @@ export default function RoundRobinDetail() {
     // Keep the caller pending until the host confirms and the transaction
     // succeeds. Cancelling must never show a successful removal.
     setPlayerManagementOpen(false);
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean>((resolve, reject) => {
+      const row = schedule.find(match => match.id === live.match.id);
       setActiveMatchPrompt({
         participantName, courtNo: live.match.court_no, isScored: live.isScored,
+        canAbandon: !!row && row.team1_score == null && row.team2_score == null && row.locked_at == null && row.match_id == null && !row.abandoned,
         team1Score: live.match.team1_score ?? null, team2Score: live.match.team2_score ?? null,
-        run: async kind => { await doRemove(kind); resolve(true); },
+        run: async kind => { try { await doRemove(kind); resolve(true); } catch (error) { reject(error); throw error; } },
         cancel: () => resolve(false),
       });
     });
@@ -1150,6 +1167,7 @@ export default function RoundRobinDetail() {
     replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
     scope: 'global' | 'current_future' | number,
     allowBalanced: boolean = false,
+    expectedVersion: number = event?.schedule_version ?? 0,
   ) => {
     if (!event || !userId || rrMutationInFlightRef.current) throw new Error("Wait for the current roster change to finish.");
     // Acquire before format validation, which performs async profile/guest
@@ -1195,6 +1213,7 @@ export default function RoundRobinDetail() {
             event.status === "draft" ? 1 : (event.current_round || 1),
             {
               reason: "Global substitute applied; future rounds rebalanced",
+              expectedVersion,
               rosterChange: { outgoingSeatId, incomingSeatId, includeCurrent: scope === "current_future", allowBalanced },
             },
           );
@@ -1232,10 +1251,10 @@ export default function RoundRobinDetail() {
             "RR_INVALID_SUBSTITUTE:Only the current live round can use a one-round substitution. Use All Future Rounds for later rounds.",
           );
         }
-        const { error } = await supabase.rpc("rr_substitute_round", {
+        const { data, error } = await supabase.rpc("rr_substitute_round", {
           p_request_id: crypto.randomUUID(),
           p_event_id: event.id,
-          p_expected_version: event.schedule_version ?? 0,
+          p_expected_version: expectedVersion,
           p_round_no: scope,
           p_original_roster_id: originalRosterId,
           p_replacement_player_id: replacement.playerId,
@@ -1243,20 +1262,12 @@ export default function RoundRobinDetail() {
           p_reason: `One-round substitution for Round ${scope}`,
         });
         if (error) throw error;
+        if (!(data as { ok?: boolean } | null)?.ok) throw new Error("The replacement was not confirmed. Review latest before retrying.");
 
         await fetchEventDetails();
         toast.success(`Player substituted for Round ${scope}; every other round is unchanged`);
       } catch (error: unknown) {
-        const message = getErrorMessage(error);
-        toast.error(
-          message.includes("RR_STALE_VERSION")
-            ? "The schedule changed elsewhere. Refresh before applying this substitute."
-            : message.includes("RR_PROTECTED_ROUND")
-              ? "That match is already started, scored, or locked. No assignment changed."
-              : message.includes("RR_INVALID_SUBSTITUTE")
-                ? message.split("RR_INVALID_SUBSTITUTE:").pop() || "That substitute cannot be used in this round."
-                : "The substitute could not be applied. Nothing changed.",
-        );
+        toast.error(roundRobinEditError(error));
         console.error(error);
         await fetchEventDetails();
         throw error;
@@ -1373,18 +1384,20 @@ export default function RoundRobinDetail() {
     matchId,
     secondMatchId = null,
     newCourtNo = null,
+    expectedVersion = event?.schedule_version ?? 0,
   }: {
     action: "rotate_partners" | "swap_opponents" | "move_court";
     matchId: string;
     secondMatchId?: string | null;
     newCourtNo?: number | null;
+    expectedVersion?: number;
   }) => {
     if (!event) return;
 
     const { data, error } = await supabase.rpc("rr_edit_schedule", {
       p_request_id: crypto.randomUUID(),
       p_event_id: event.id,
-      p_expected_version: event.schedule_version ?? 0,
+      p_expected_version: expectedVersion,
       p_action: action,
       p_match_id: matchId,
       p_second_match_id: secondMatchId,
@@ -1396,9 +1409,9 @@ export default function RoundRobinDetail() {
     await fetchEventDetails();
   };
 
-  const handleRotatePartners = eventAction.guard("Rotating partners…", async (matchId: string) => {
+  const handleRotatePartners = eventAction.guard("Rotating partners…", async (matchId: string, expectedVersion?: number) => {
     try {
-      await applyAtomicScheduleEdit({ action: "rotate_partners", matchId });
+      await applyAtomicScheduleEdit({ action: "rotate_partners", matchId, expectedVersion });
       toast.success("Partners rotated — both teams now have a new pairing");
     } catch (error: unknown) {
       const message = getErrorMessage(error);
@@ -1415,12 +1428,13 @@ export default function RoundRobinDetail() {
     }
   });
 
-  const handleSwapOpponents = eventAction.guard("Swapping opponents…", async (match1Id: string, match2Id: string) => {
+  const handleSwapOpponents = eventAction.guard("Swapping opponents…", async (match1Id: string, match2Id: string, expectedVersion?: number) => {
     try {
       await applyAtomicScheduleEdit({
         action: "swap_opponents",
         matchId: match1Id,
         secondMatchId: match2Id,
+        expectedVersion,
       });
       toast.success("Opponent teams swapped");
     } catch (error: unknown) {
@@ -1438,7 +1452,7 @@ export default function RoundRobinDetail() {
     }
   });
 
-  const handleMoveCourt = eventAction.guard("Updating court assignments…", async (matchId: string, newCourtNo: number) => {
+  const handleMoveCourt = eventAction.guard("Updating court assignments…", async (matchId: string, newCourtNo: number, expectedVersion?: number) => {
     const match = schedule.find((row) => row.id === matchId);
     const destinationOccupied = !!match && schedule.some((row) =>
       row.id !== matchId &&
@@ -1452,6 +1466,7 @@ export default function RoundRobinDetail() {
         action: "move_court",
         matchId,
         newCourtNo,
+        expectedVersion,
       });
       toast.success(
         destinationOccupied
@@ -1857,6 +1872,7 @@ export default function RoundRobinDetail() {
     } catch (error) {
       pulse.fail();
       console.error("schedule repair failed", error);
+      setScheduleRepairError(roundRobinEditError(error));
       await fetchEventDetails();
       toast.error(
         "We couldn't confirm the repair. The latest schedule is refreshed—verify it before retrying.",
@@ -2034,19 +2050,25 @@ export default function RoundRobinDetail() {
             now sees exactly one primary action surface — the
             WhatsNextBanner — below the hero. */}
 
-        {isOrganizer && needsScheduleRepair && !event.voided && event.status !== "completed" && (
+        {(isOrganizer || isAdmin) && (needsScheduleRepair || scheduleRepairError) && !event.voided && event.status !== "completed" && (
           <Alert className="mb-4 overflow-hidden border-amber-500/35 bg-gradient-to-r from-amber-500/[0.11] via-card to-card shadow-sm">
             <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             <AlertDescription className="ml-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="font-semibold text-foreground">Schedule and event settings are out of sync</p>
+                <p className="font-semibold text-foreground">{needsScheduleRepair ? "Schedule and event settings are out of sync" : "Check the remaining schedule"}</p>
+                {scheduleRepairError && <p role="alert" className="mt-1 text-sm">{scheduleRepairError}</p>}
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   {currentSchedulePlan?.ok === false
                     ? currentSchedulePlan.warnings.find((warning) => warning.severity === "error")?.message
-                    : `The saved rotation does not fully reflect ${event.num_courts} ${event.num_courts === 1 ? "court" : "courts"}, ${activeRoster.length} active players, and a ${event.games_per_player || 3}-game target.`}{" "}
+                    : needsScheduleRepair ? `The saved rotation does not fully reflect ${event.num_courts} ${event.num_courts === 1 ? "court" : "courts"}, ${activeRoster.length} active players, and a ${event.games_per_player || 3}-game target.` : "Review the latest assignments before applying another change."}{" "}
                   Current, completed, and scored play stays locked; repair begins with Round {repairFromRound}.
                 </p>
+                {currentSchedulePlan?.ok === false && <p className="mt-1 text-xs">Check the roster for enough eligible players. If equal game totals cannot work, open Courts & games to adjust the game target or turn off Equal games.</p>}
               </div>
+              <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" busy={refreshing} onClick={async () => { try { await refreshForEdit(); setScheduleRepairError(null); } catch (error) { setScheduleRepairError(roundRobinEditError(error)); } }}>Review latest</Button>
+              <Button size="sm" variant="outline" onClick={() => setPlayerManagementOpen(true)}>Manage players</Button>
+              <Button size="sm" variant="outline" onClick={() => setCourtsRoundsOpen(true)}>Courts & games</Button>
               <Button
                 type="button"
                 size="sm"
@@ -2057,6 +2079,7 @@ export default function RoundRobinDetail() {
                 <RefreshCw className={cn("h-3.5 w-3.5", repairingSchedule && "animate-spin")} />
                 {repairingSchedule ? "Repairing…" : "Repair schedule"}
               </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -2569,6 +2592,9 @@ export default function RoundRobinDetail() {
             open={playerManagementOpen}
             onOpenChange={setPlayerManagementOpen}
             players={players}
+            schedule={schedule}
+            scheduleVersion={event.schedule_version ?? 0}
+            onRefresh={refreshForEdit}
             eventStatus={event.status}
             currentRound={event.current_round}
             totalRounds={event.num_rounds}
@@ -2593,6 +2619,7 @@ export default function RoundRobinDetail() {
               participantName={activeMatchPrompt.participantName}
               courtNo={activeMatchPrompt.courtNo}
               isScored={activeMatchPrompt.isScored}
+              canAbandon={activeMatchPrompt.canAbandon}
               team1Score={activeMatchPrompt.team1Score}
               team2Score={activeMatchPrompt.team2Score}
               loading={resolvingActiveMatch}
@@ -2602,9 +2629,11 @@ export default function RoundRobinDetail() {
                   await activeMatchPrompt.run(kind);
                   setActiveMatchPrompt(null);
                 } catch {
-                  // The run() path already surfaced a specific toast; keep the
-                  // dialog open so the host can pick a different resolution or
-                  // cancel rather than losing their place.
+                  // Reject the original roster action so its persistent error
+                  // and recovery controls are visible. Do not trap the host
+                  // retrying a closure pinned to an old event version.
+                  setActiveMatchPrompt(null);
+                  setPlayerManagementOpen(true);
                 } finally {
                   setResolvingActiveMatch(false);
                 }
@@ -2633,6 +2662,10 @@ export default function RoundRobinDetail() {
             open={scheduleEditorOpen}
             onOpenChange={setScheduleEditorOpen}
             schedule={schedule}
+            scheduleVersion={event.schedule_version ?? 0}
+            onRefresh={refreshForEdit}
+            onManagePlayers={() => { setScheduleEditorOpen(false); setPlayerManagementOpen(true); }}
+            onManageScores={() => { setScheduleEditorOpen(false); setScoreManagementOpen(true); }}
             currentRound={event.current_round}
             eventStatus={event.status}
             eventFormat={event.format}

@@ -91,10 +91,33 @@ it('preserves manual schedule selection on equivalent refresh, exposes failures,
   await act(async () => root.update(<ScheduleEditorDialog {...props} schedule={matches.map(match => ({ ...match }))} />));
   expect(button('Rotate partners').props.disabled).toBe(false);
   await act(async () => button('Rotate partners').props.onClick());
-  expect(rotate).toHaveBeenCalledWith('match-1');
+  expect(rotate).toHaveBeenCalledWith('match-1',0);
   expect(text(root.root.findByProps({ role: 'alert' }))).toContain('Refresh and review');
+  expect(button('Rotate partners').props.disabled).toBe(true);
+  await act(async () => button('Review latest').props.onClick());
+  await act(async () => root.root.findAllByType('button').find(node => text(node).startsWith('Rotate partners'))!.props.onClick());
+  await act(async () => root.root.findAllByType('button').find(node => node.props['aria-label']?.startsWith('Court 1:'))!.props.onClick());
   await act(async () => button('Rotate partners').props.onClick());
   expect(rotate).toHaveBeenCalledTimes(2);
+});
+
+it('preserves the chosen round and blocks stale schedule edits until the host reviews', async () => {
+  const rotate = vi.fn().mockResolvedValue(undefined);
+  const props = { open:true, onOpenChange:vi.fn(), schedule:matches, currentRound:1, eventStatus:'live' as const, numCourts:2, scheduleVersion:0, getPlayerName:(id:string|null)=>id??'', onRotatePartners:rotate, onSwapOpponents:vi.fn(), onMoveCourt:vi.fn() };
+  await act(async()=>{root=create(<ScheduleEditorDialog {...props} />)});
+  await act(async()=>button('Round 2').props.onClick());
+  await act(async()=>root.root.findAllByType('button').find(node=>text(node).startsWith('Rotate partners'))!.props.onClick());
+  await act(async()=>root.root.findAllByType('button').find(node=>node.props['aria-label']?.startsWith('Court 1:'))!.props.onClick());
+  await act(async()=>root.update(<ScheduleEditorDialog {...props} scheduleVersion={1} />));
+  expect(button('Round 2').props['aria-pressed']).toBe(true);
+  expect(button('Rotate partners').props.disabled).toBe(true);
+  await act(async()=>button('Rotate partners').props.onClick());
+  expect(rotate).not.toHaveBeenCalled();
+  await act(async()=>button('Review latest').props.onClick());
+  await act(async()=>root.root.findAllByType('button').find(node=>text(node).startsWith('Rotate partners'))!.props.onClick());
+  await act(async()=>root.root.findAllByType('button').find(node=>node.props['aria-label']?.startsWith('Court 1:'))!.props.onClick());
+  await act(async()=>button('Rotate partners').props.onClick());
+  expect(rotate).toHaveBeenCalledWith('match-1',1);
 });
 it('explains resolved courts to players without telling them to play a removed result', async () => {
   const label = resolvedMatchLabel({ abandoned: true, abandoned_reason: 'Result voided by host' });
