@@ -4,7 +4,15 @@ import path from 'node:path';
 const fixture = path.resolve(__dirname, 'leagueFixture.ts');
 const socialFixture = path.resolve(__dirname, 'socialFixture.ts');
 export default defineConfig({
-  plugins: [react()], cacheDir: 'node_modules/.vite-marketing-qa',
+  plugins: [react(), {
+    name: 'marketing-fixture-at-root',
+    configureServer(server) {
+      server.middlewares.use((request, _response, next) => {
+        if (request.url?.split('?')[0] === '/') request.url = `/tests/marketing/browser/index.html${request.url.slice(1)}`;
+        next();
+      });
+    },
+  }], cacheDir: 'node_modules/.vite-marketing-qa',
   define: { 'import.meta.env.VITE_SKILL_ASSESSMENT': JSON.stringify('on') },
   optimizeDeps: { entries: ['tests/marketing/browser/index.html'] },
   resolve: { alias: [

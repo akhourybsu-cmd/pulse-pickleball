@@ -6,6 +6,7 @@ import { HeroSection } from "./HeroSection";
 import { AssessmentSection } from './AssessmentSection';
 import { PlayerFeaturesSection } from "./PlayerFeaturesSection";
 import { FeatureSpotlights } from "./FeatureSpotlights";
+import { CommunitySection } from "./CommunitySection";
 import { HowItWorksSection } from "./HowItWorksSection";
 import { FAQSection } from "./FAQSection";
 import { SplitCTASection } from "./SplitCTASection";
@@ -28,7 +29,7 @@ export const PublicHomepage = () => {
     <a className="mkt-skip-link" href="#main-content">Skip to content</a>
     <HomepageNav isLoggedIn={false} userMode="player" />
     <main id="main-content" tabIndex={-1}>
-      <HeroSection /><PlayerFeaturesSection /><AssessmentSection /><FeatureSpotlights /><HowItWorksSection /><FAQSection /><SplitCTASection />
+      <HeroSection /><PlayerFeaturesSection /><AssessmentSection /><CommunitySection /><FeatureSpotlights /><HowItWorksSection /><FAQSection /><SplitCTASection />
     </main>
     <HomepageFooter />
   </div>;
