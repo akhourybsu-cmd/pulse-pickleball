@@ -9,11 +9,11 @@ import { seatsOf, type CoreMatch, type EventFormat } from '../../src/lib/roundRo
 import { computeStandings, countsTowardScore, type StandingsSeatRow } from '../../src/lib/roundRobin/standings';
 import { projectRosterAdjustment, planWithRosterFallback, type RosterAdjustment, type RosterMatch } from '../../supabase/functions/_shared/roundRobin/rosterAdjustment';
 
-// Complete events, not 32 assertions against one event. All events coexist in
+// Complete events, not repeated assertions against one event. Selected events coexist in
 // one isolated database; no production credentials or network access are used.
 type Scenario = { name: string; players: number; courts: number; games: number; format?: EventFormat;
   guests?: boolean; claimed?: boolean; unranked?: boolean; action?: string; burst?: boolean };
-const scenarios: Scenario[] = [
+const baselineScenarios: Scenario[] = [
   { name: 'Four-player baseline', players: 4, courts: 1, games: 4 },
   { name: 'Five players rotating rests', players: 5, courts: 1, games: 4 },
   { name: 'Six players on one court', players: 6, courts: 1, games: 4 },
@@ -47,12 +47,32 @@ const scenarios: Scenario[] = [
   { name: 'One hundred twenty-eight players eight games', players: 128, courts: 16, games: 8, burst: true },
   { name: 'Thirty-two mixed players twenty games', players: 32, courts: 8, games: 20, format: 'mixed', burst: true },
 ];
+// A fresh set with different event IDs/seeds and combinations of existing rules.
+// Keep these separate so a follow-up run reports only genuinely additional games.
+const additionalScenarios: Scenario[] = [
+  { name: 'Mixed doubles one-round registered substitute', players: 8, courts: 2, games: 6, format: 'mixed', action: 'one-new' },
+  { name: 'Mixed doubles one-round guest substitute', players: 8, courts: 2, games: 6, format: 'mixed', action: 'one-guest' },
+  { name: 'Mixed doubles permanent registered substitute', players: 12, courts: 3, games: 6, format: 'mixed', action: 'roster-new' },
+  { name: 'Mixed doubles guest substitute for future play', players: 12, courts: 3, games: 6, format: 'mixed', action: 'roster-guest-future' },
+  { name: 'Womens claimed-guest score corrections', players: 8, courts: 2, games: 4, format: 'female', guests: true, claimed: true, action: 'correct' },
+  { name: 'Mens unranked event with a voided result', players: 12, courts: 3, games: 4, format: 'male', unranked: true, action: 'void' },
+  { name: 'Six-player single-court scoring failure recovery', players: 6, courts: 1, games: 8, action: 'rollback' },
+  { name: 'Mixed doubles departure after the current game', players: 14, courts: 3, games: 6, format: 'mixed', action: 'remove-keep' },
+  { name: 'Claimed guests with live edits and stale submissions', players: 20, courts: 5, games: 6, guests: true, claimed: true, action: 'stale' },
+  { name: 'Twenty-eight players burst scoring on seven courts', players: 28, courts: 7, games: 6, burst: true },
+  { name: 'Unranked mixed doubles burst with claimed guests', players: 24, courts: 6, games: 8, format: 'mixed', guests: true, claimed: true, unranked: true, burst: true },
+  { name: 'Womens doubles departure abandoning a game', players: 8, courts: 2, games: 6, format: 'female', action: 'remove-abandon' },
+];
+const suite = process.env.RR_EVENT_MATRIX_SUITE ?? 'all';
+if (!['all', 'baseline', 'additional'].includes(suite)) throw new Error(`Unknown event matrix suite: ${suite}`);
+const scenarios = [...baselineScenarios, ...additionalScenarios].map((scenario, i) => ({ ...scenario, number: i + 1 }))
+  .filter(scenario => suite === 'all' || (suite === 'additional' ? scenario.number > baselineScenarios.length : scenario.number <= baselineScenarios.length));
 const slots = ['a1', 'a2', 'b1', 'b2'] as const;
 const uuid = (n: number) => `a8000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 type Row = RosterMatch & StandingsSeatRow & { id: string; event_id: string; match_id: string | null; voided_at: string | null; superseded_by_schedule_id: string | null };
 type Roster = { id: string; player_id: string | null; guest_player_id: string | null; active: boolean; schedule_game_credit: number; schedule_first_eligible_round: number };
 type Event = { status: string; current_round: number; num_rounds: number; schedule_version: number; games_per_player: number; equal_games: boolean };
-type Result = { number: number; name: string; players: number; courts: number; format: string; targetGames: number; eventId: string; status: string;
+type Result = { number: number; name: string; players: number; courts: number; format: string; action?: string; targetGames: number; eventId: string; status: string;
   rounds: number; scoredMatches: number; scoreCalls: number; retries: number; rejectedChanges: number; mutations: number; participantResults: number; fullRatingReplays: number; durationMs: number; error?: string };
 const results: Result[] = [];
 const scoreTimings: number[] = [];
@@ -78,7 +98,7 @@ afterAll(async () => {
   if (process.env.RR_EVENT_MATRIX_REPORT) {
     const sorted = [...scoreTimings].sort((a, b) => a - b);
     const report = { environment: 'Isolated PGlite with production SQL functions and rating/stat triggers; synthetic auth/schema; no HTTP, realtime delivery, or multi-connection load',
-      generatedAt: new Date().toISOString(), finalReconciliation, events: results,
+      generatedAt: new Date().toISOString(), suite, expectedEvents: scenarios.length, finalReconciliation, events: results,
       totals: { events: results.length, passed: results.filter(r => r.status === 'passed').length,
         scoredMatches: results.reduce((n, r) => n + r.scoredMatches, 0), scoreCalls: results.reduce((n, r) => n + r.scoreCalls, 0),
         retries: results.reduce((n, r) => n + r.retries, 0), rejectedChanges: results.reduce((n, r) => n + r.rejectedChanges, 0),
@@ -93,11 +113,11 @@ const seatOf = (r: Roster) => r.player_id ? `p:${r.player_id}` : `g:${r.guest_pl
 const scheduleJson = (matches: CoreMatch[]) => matches.map(m => ({ round_no: m.round_no, court_no: m.court_no, is_bye: m.is_bye,
   ...Object.fromEntries(slots.flatMap(s => [[`${s}_player_id`, m[s]?.startsWith('p:') ? m[s]!.slice(2) : null], [`${s}_guest_id`, m[s]?.startsWith('g:') ? m[s]!.slice(2) : null]])) }));
 
-it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event $number: $name', async scenario => {
+it.each(scenarios)('event $number: $name', async scenario => {
   const began = performance.now();
   const base = scenario.number * 10_000;
   const eventId = uuid(base), owner = uuid(base + 1);
-  const result: Result = { number: scenario.number, name: scenario.name, players: scenario.players, courts: scenario.courts, format: scenario.format ?? 'open', targetGames: scenario.games,
+  const result: Result = { number: scenario.number, name: scenario.name, players: scenario.players, courts: scenario.courts, format: scenario.format ?? 'open', action: scenario.action, targetGames: scenario.games,
     eventId, status: 'running', rounds: 0, scoredMatches: 0, scoreCalls: 0, retries: 0, rejectedChanges: 0, mutations: 0, participantResults: 0, fullRatingReplays: 0, durationMs: 0 };
   results.push(result);
   const genders = new Map<string, 'male' | 'female'>();
@@ -128,9 +148,9 @@ it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event
     result.rejectedChanges++;
     expect(await snapshot()).toEqual(before);
   }
-  async function addIdentity(index: number, guest = false, claimed = false) {
+  async function addIdentity(index: number, guest = false, claimed = false, requestedGender?: 'male' | 'female') {
     const id = uuid(base + index);
-    const gender = scenario.format === 'male' || scenario.format === 'female' ? scenario.format : index % 2 ? 'female' : 'male';
+    const gender = requestedGender ?? (scenario.format === 'male' || scenario.format === 'female' ? scenario.format : index % 2 ? 'female' : 'male');
     if (!guest || claimed) {
       const profile = claimed ? uuid(base + index + 1000) : id;
       await db.query('INSERT INTO profiles(id,gender) VALUES($1,$2)', [profile, gender]); profileIds.push(profile);
@@ -200,7 +220,14 @@ it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event
     const counted = matches.filter(countsTowardScore);
     expect(history).toHaveLength(counted.length);
     expect(new Set(counted.map(m => m.match_id)).size).toBe(counted.length);
-    for (const row of counted) expect(history.find(m => m.id === row.match_id)).toMatchObject({ team1_score: row.team1_score, team2_score: row.team2_score });
+    for (const row of counted) {
+      // Guest substitutions in round 2 intentionally disable rating eligibility
+      // for subsequent saves across the event. Earlier results keep their policy,
+      // including when the host corrects them after the event is complete.
+      const afterGuestIntroduced = row.round_no >= 2 && ['one-guest', 'roster-guest-future'].includes(scenario.action ?? '');
+      expect(history.find(m => m.id === row.match_id)).toMatchObject({ team1_score: row.team1_score, team2_score: row.team2_score,
+        count_for_rating: !scenario.unranked && !afterGuestIntroduced && seatsOf(row).every(seat => seat.startsWith('p:')) });
+    }
     expect(standings.reduce((n, r) => n + r.gamesPlayed, 0)).toBe(counted.length * 4);
     expect(standings.reduce((n, r) => n + r.wins, 0)).toBe(counted.length * 2);
     expect(standings.reduce((n, r) => n + r.pointDiff, 0)).toBe(0);
@@ -251,15 +278,19 @@ it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event
       if (evt.current_round === 2 && scenario.action && !changed) {
         const current = matches.filter(m => m.round_no === 2 && !m.is_bye), outgoing = current[0].a1!;
         if (scenario.action.startsWith('one-')) {
-          const incoming = scenario.action === 'one-resting' ? matches.find(m => m.round_no === 2 && m.is_bye)!.a1! : await addIdentity(800, scenario.action === 'one-guest');
+          const incoming = scenario.action === 'one-resting' ? matches.find(m => m.round_no === 2 && m.is_bye)!.a1! : await addIdentity(800, scenario.action === 'one-guest', false, genders.get(outgoing));
           const original = roster.find(r => seatOf(r) === outgoing)!;
+          if (scenario.format === 'mixed') {
+            const wrongGender = await addIdentity(801, false, false, genders.get(outgoing) === 'male' ? 'female' : 'male');
+            await rejectUnchanged(() => rpc('rr_substitute_round', [uuid(nextRequest++), eventId, evt.schedule_version, 2, original.id, wrongGender.slice(2), null, 'Invalid mixed pairing']), /mixed|male.*female/i);
+          }
           const args = [uuid(nextRequest++), eventId, evt.schedule_version, 2, original.id, incoming.startsWith('p:') ? incoming.slice(2) : null, incoming.startsWith('g:') ? incoming.slice(2) : null, 'One round matrix'];
           await rpc('rr_substitute_round', args); result.mutations++;
           const saved = await snapshot(); await rpc('rr_substitute_round', args); result.retries++; expect(await snapshot()).toEqual(saved);
           expect((await state()).matches.filter(m => m.round_no !== 2)).toEqual(matches.filter(m => m.round_no !== 2));
           expect((await state()).roster).toEqual(roster);
         } else if (scenario.action.startsWith('roster-')) {
-          const incoming = scenario.action === 'roster-resting' ? matches.find(m => m.round_no === 2 && m.is_bye)!.a1! : await addIdentity(800, scenario.action === 'roster-guest-future');
+          const incoming = scenario.action === 'roster-resting' ? matches.find(m => m.round_no === 2 && m.is_bye)!.a1! : await addIdentity(800, scenario.action === 'roster-guest-future', false, genders.get(outgoing));
           await adjust({ outgoingSeatId: outgoing, incomingSeatId: incoming, includeCurrent: scenario.action !== 'roster-guest-future' });
         } else if (scenario.action.startsWith('remove-')) {
           await adjust({ outgoingSeatId: outgoing, resolution: scenario.action === 'remove-abandon' ? 'abandon' : 'keep_current' });
@@ -319,7 +350,9 @@ it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event
     expect(await rpc('rr_complete_event', [eventId, finished.evt.schedule_version, 0])).toEqual(completed);
     result.retries++; expect(await snapshot()).toEqual(afterComplete);
     expect((await state()).evt).toMatchObject({ status: 'completed', current_round: null });
-    if (scenario.action === 'correct') { await score(finished.matches.find(countsTowardScore)!, 11, 4); result.mutations++; }
+    if (['correct', 'one-guest', 'roster-guest-future'].includes(scenario.action ?? '')) {
+      await score(finished.matches.find(countsTowardScore)!, 11, 4); result.mutations++;
+    }
     await reconcile();
     expect((await db.query("SELECT * FROM round_robin_audit WHERE event_id=$1 AND change_type='event_complete'", [eventId])).rows).toHaveLength(1);
     // A later event must never mutate an earlier event's lifecycle or history.
@@ -333,12 +366,11 @@ it.each(scenarios.map((scenario, i) => ({ ...scenario, number: i + 1 })))('event
   }
 }, 300_000);
 
-it('reconciles all 32 events and rating snapshots against a full history replay', async () => {
-  expect(results).toHaveLength(32);
+it(`reconciles all ${scenarios.length} selected events and rating snapshots against a full history replay`, async () => {
+  expect(results).toHaveLength(scenarios.length);
   expect(results.every(r => r.status === 'passed')).toBe(true);
-  expect(results.filter(r => r.number !== 25 && r.number !== 26).every(r => r.fullRatingReplays === 0)).toBe(true);
-  expect(results[24].fullRatingReplays).toBe(7);
-  expect(results[25].fullRatingReplays).toBe(1);
+  for (const result of results) expect(result.fullRatingReplays, result.name).toBe(result.action === 'correct' ? result.rounds + 1 : ['void', 'one-guest', 'roster-guest-future'].includes(result.action ?? '') ? 1 : 0);
+  if (suite !== 'baseline') expect(results.filter(r => r.number > baselineScenarios.length).reduce((n, r) => n + r.scoredMatches, 0)).toBeGreaterThanOrEqual(50);
   const accounts = () => db.query<{ id: string; current_rating: string; total_matches: number; wins: number; losses: number; total_points_for: number; total_points_against: number }>(
     'SELECT id,current_rating,total_matches,wins,losses,total_points_for,total_points_against FROM profiles ORDER BY id');
   const snapshots = () => db.query<{ id: string; rating_before: string | null; rating_after: string | null; rating_change: string | null }>(
@@ -365,6 +397,6 @@ it('reconciles all 32 events and rating snapshots against a full history replay'
     (SELECT count(*)::int FROM round_robin_events WHERE status='completed') completed,
     (SELECT count(*)::int FROM matches WHERE NOT voided) matches,
     (SELECT count(*)::int FROM match_participants mp JOIN matches m ON m.id=mp.match_id WHERE NOT m.voided) participants`)).rows[0];
-  expect(totals).toEqual({ completed: 32, matches: results.reduce((n, r) => n + r.scoredMatches, 0), participants: results.reduce((n, r) => n + r.participantResults, 0) });
+  expect(totals).toEqual({ completed: scenarios.length, matches: results.reduce((n, r) => n + r.scoredMatches, 0), participants: results.reduce((n, r) => n + r.participantResults, 0) });
   finalReconciliation = 'passed';
 }, 120_000);
