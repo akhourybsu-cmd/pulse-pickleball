@@ -2,8 +2,8 @@ apply plugin: 'com.android.application'
 
 // Release signing — reads android/keystore.properties (gitignored) when present.
 // CI writes this file from repository secrets; locally you create it once (see
-// GOOGLE_PLAY_LAUNCH.md). When absent, the release build is simply left unsigned
-// so debug builds and `gradlew tasks` never break.
+// GOOGLE_PLAY_LAUNCH.md). Debug builds and `gradlew tasks` work without signing,
+// but a release build must never silently produce an unsigned Play bundle.
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 def hasKeystore = keystorePropertiesFile.exists()
@@ -18,12 +18,12 @@ android {
         applicationId "com.pulsepb.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Local release prepared after verifying Play's latest upload is 9.
-        // A CI VERSION_CODE override must also exceed the highest Play upload;
-        // workflow run numbers are not necessarily ahead of manual releases.
+        // Historical defaults for local debug builds. Release workflow inputs
+        // must exceed the highest uploaded Play version, including drafts;
+        // workflow run numbers are not app versions.
         // (Single method call — avoids Groovy parsing `versionCode(x).toInteger()`.)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "10")
-        versionName "1.0.9"
+        versionName (System.getenv("VERSION_NAME") ?: "1.0.9")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -84,3 +84,15 @@ tasks.register('verifyPulseBackend', Exec) {
     commandLine 'node', 'scripts/check-backend-artifact.mjs', '--native'
 }
 tasks.named('preBuild').configure { dependsOn 'verifyPulseBackend' }
+
+tasks.register('verifyPulseSigning') {
+    doLast {
+        if (!hasKeystore || ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].any { !keystoreProperties[it] }) {
+            throw new GradleException('Release signing is not configured. Use the Android release workflow with the existing PULSE upload key, or configure android/keystore.properties. Do not create a replacement key.')
+        }
+        if (!file(keystoreProperties['storeFile']).exists()) {
+            throw new GradleException('The configured PULSE upload keystore does not exist. Check storeFile in android/keystore.properties.')
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn 'verifyPulseSigning' }
