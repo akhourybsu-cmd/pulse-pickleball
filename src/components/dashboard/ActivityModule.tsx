@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { MatchVerificationDialog } from "./MatchVerificationDialog";
+import { matchHistoryPath } from '@/lib/navigation/matchLink';
 
 interface ActionItem {
   id: string;
@@ -211,7 +212,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
             title: "Match Recorded",
             description: `${match.team1_score}-${match.team2_score}${p.rating_change ? ` (${p.rating_change > 0 ? '+' : ''}${p.rating_change.toFixed(2)})` : ''}`,
             timestamp: match.updated_at,
-            link: "/player/matches",
+            link: matchHistoryPath(match.id),
           });
         }
       }

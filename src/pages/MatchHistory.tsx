@@ -45,6 +45,7 @@ import { SocialHero } from "@/components/social/_shared";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
 import { RoundRobinMatchGroup } from "@/components/matches/RoundRobinMatchGroup";
 import { cn } from "@/lib/utils";
+import { linkedHistoryMatch } from '@/lib/navigation/matchLink';
 
 const issues = [
   { value: "contest_result", label: "Incorrect score" },
@@ -79,6 +80,13 @@ export default function MatchHistory() {
   const pending = ownHistory
     ? history.data?.pendingMatches || emptyMatches
     : emptyMatches;
+  const linkedId = params.get('match');
+  const linked = linkedHistoryMatch(linkedId, matches, pending);
+  const showAllMatches = () => {
+    const next = new URLSearchParams(params);
+    next.delete('match');
+    setParams(next, { replace: true });
+  };
   const playerName = history.data?.playerName || "Player";
   const playerAvatarUrl = history.data?.playerAvatarUrl;
   const tab = params.get("tab");
@@ -351,7 +359,22 @@ export default function MatchHistory() {
             </Button>
           </div>
         )}
-        {history.data && (
+        {history.data && linkedId && (
+          <section aria-label="Selected match" className="mx-auto max-w-2xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold">Selected match</h2>
+              <Button variant="outline" className="min-h-11 rounded-xl" onClick={showAllMatches}>View all matches</Button>
+            </div>
+            {linked ? <>
+              {renderMatch(linked.match, linked.pending)}
+              {linked.match.rr_event_id && <Link className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4" to={`/round-robin/${encodeURIComponent(linked.match.rr_event_id)}`}>View round robin</Link>}
+            </> : <div role="status" className="rounded-2xl border border-border/60 bg-card p-5">
+              <p className="font-semibold">This match isn’t available</p>
+              <p className="mt-2 text-sm text-muted-foreground">It may have been removed or belong to another account. You can still view your available matches.</p>
+            </div>}
+          </section>
+        )}
+        {history.data && !linkedId && (
           <>
             <div className="grid grid-cols-3 divide-x divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card px-1 py-4 sm:py-5">
               <div className="px-2 text-center">

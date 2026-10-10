@@ -94,7 +94,7 @@ const COMMUNITY_LINKS: HubLink[] = [
     to: "/player/messages",
     icon: MessageSquare,
     label: "Messages",
-    description: "Direct conversations",
+    description: "Your direct and community chats",
   },
 ];
 

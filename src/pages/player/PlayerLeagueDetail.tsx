@@ -59,6 +59,8 @@ import {
 } from "@/components/leagues/PlayerLeagueStage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { playerLeagueTabFromHash, visiblePlayerLeagueTabs } from "@/lib/leagues/playerNavigation";
+import { LeagueHostLink } from '@/components/leagues/LeagueHostLink';
+import { useReturnNavigation } from '@/hooks/useReturnNavigation';
 import { LeagueFeed } from "@/components/leagues/LeagueFeed";
 import { needsMatchAction } from "@/lib/leagues/operations";
 
@@ -91,6 +93,7 @@ export default function PlayerLeagueDetail() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const leagueReturn = useReturnNavigation('/player/leagues', 'My leagues');
   const requestedTab = playerLeagueTabFromHash(location.hash);
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
@@ -208,10 +211,10 @@ export default function PlayerLeagueDetail() {
             size="sm"
             variant="outline"
             className="group mt-4 border-[color:var(--lg-gold)]/50 text-[color:var(--lg-accent-gold)]"
-            onClick={() => navigate("/player/leagues")}
+            onClick={leagueReturn.goBack}
           >
             <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />{" "}
-            Back to my leagues
+            Back to {leagueReturn.label}
           </ActionButton>
         </div>
       </LeagueScope>
@@ -264,7 +267,7 @@ export default function PlayerLeagueDetail() {
   const changeTab = (tab: string) =>
     navigate(
       { pathname: location.pathname, search: location.search, hash: `#${tab}` },
-      { replace: true, preventScrollReset: true }
+      { replace: true, preventScrollReset: true, state: location.state }
     );
   const renderMatches = (rows: typeof matches, allowPlay: boolean) => (
     <ul className="grid gap-4 xl:grid-cols-2">
@@ -300,11 +303,11 @@ export default function PlayerLeagueDetail() {
           <ActionButton
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/player/leagues")}
+            onClick={leagueReturn.goBack}
             className="-ml-2 h-11 rounded-xl text-muted-foreground"
           >
             <ArrowLeft className="mr-1.5 h-4 w-4" />
-            My leagues
+            {leagueReturn.label}
           </ActionButton>
           {canManage && (
             <ActionButton
@@ -358,6 +361,7 @@ export default function PlayerLeagueDetail() {
               {league.location}
             </span>
           )}
+          {league.community_id && <LeagueHostLink communityId={league.community_id} userId={currentUserId} onHero />}
           {managerName && (
             <span className="text-xs text-[#d4d5cf]">
               Organized by {managerName}
@@ -728,7 +732,7 @@ export default function PlayerLeagueDetail() {
                   <div>
                     <dt className="text-xs text-muted-foreground">Venue or community</dt>
                     <dd className="mt-1 text-sm font-semibold">
-                      <button type="button" className="underline underline-offset-4" onClick={() => navigate(`/player/community/group/${encodeURIComponent(league.community_id!)}`)}>View host page</button>
+                      <LeagueHostLink communityId={league.community_id} userId={currentUserId} />
                     </dd>
                   </div>
                 )}

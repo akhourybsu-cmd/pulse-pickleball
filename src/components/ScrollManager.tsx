@@ -51,9 +51,15 @@ export function ScrollManager() {
   useEffect(() => {
     cancelRestore(); // never let a previous route's restore bleed into this one
 
-    const saved = positions.get(key);
+    // Expanding an existing list changes its URL without moving the reader.
+    if (navType === 'REPLACE' && location.state?.preserveScroll === true) return cancelRestore;
+
+    const requested = location.state?.restoreScrollY;
+    const explicitRestore = location.state?.restoreScrollFor === key + location.hash &&
+      typeof requested === 'number' && Number.isFinite(requested) && requested >= 0;
+    const saved = explicitRestore ? requested : positions.get(key);
     const shouldRestore =
-      navType === "POP" || (saved != null && isPrimaryTabPath(location.pathname));
+      explicitRestore || navType === "POP" || (saved != null && isPrimaryTabPath(location.pathname));
 
     if (!shouldRestore || saved == null || saved <= 0) {
       window.scrollTo(0, 0);

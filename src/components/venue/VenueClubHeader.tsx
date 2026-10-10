@@ -22,6 +22,7 @@ export interface VenueClubHeaderProps {
   /** The persistent app shell owns back/settings controls and safe-area padding. */
   embedded?: boolean;
   onBack: () => void;
+  backLabel?: string;
   onSettings: () => void;
   onOperations: () => void;
   onBook: () => void;
@@ -29,11 +30,11 @@ export interface VenueClubHeaderProps {
   onSchedule: () => void;
 }
 
-export function VenueClubHeader({ identity, cover, city, state, verified, hoursRaw, timeZone, courtCount, freeNow, hasBooking, isAdmin, isOperator, booking, showActions = true, embedded = false, onBack, onSettings, onOperations, onBook, onPlay, onSchedule }: VenueClubHeaderProps) {
+export function VenueClubHeader({ identity, cover, city, state, verified, hoursRaw, timeZone, courtCount, freeNow, hasBooking, isAdmin, isOperator, booking, showActions = true, embedded = false, onBack, backLabel = 'Back to Community', onSettings, onOperations, onBook, onPlay, onSchedule }: VenueClubHeaderProps) {
   const location = [city, state].filter(Boolean).join(', ');
   const Heading = embedded ? 'h2' : 'h1';
   if (booking) return <header className="flex items-center gap-3 border-b border-border bg-background px-4 pb-3 pt-[calc(0.5rem+env(safe-area-inset-top))]">
-    <button type="button" aria-label="Back to venue overview" onClick={onBack} className="club-icon-button"><ArrowLeft className="h-5 w-5" /></button>
+    <button type="button" aria-label={backLabel} onClick={onBack} className="club-icon-button"><ArrowLeft className="h-5 w-5" /></button>
     <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{identity.name}</p><h1 id="club-booking-title" tabIndex={-1} className="text-lg font-semibold outline-none">Book a court</h1></div>
   </header>;
   return <>
@@ -42,7 +43,7 @@ export function VenueClubHeader({ identity, cover, city, state, verified, hoursR
         <VenueCoverImage {...cover} alt={`${identity.name} banner`} />
         <div aria-hidden className={cn('pointer-events-none absolute inset-0', cover.fit !== 'contain' && 'bg-gradient-to-b from-[#081322]/45 via-transparent to-[#081322]/20')} />
         {!embedded && <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-[calc(0.375rem+env(safe-area-inset-top))]">
-          <button type="button" aria-label="Back to Community" onClick={onBack} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><ArrowLeft className="h-[18px] w-[18px]" /></button>
+          <button type="button" aria-label={backLabel} onClick={onBack} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><ArrowLeft className="h-[18px] w-[18px]" /></button>
           <div className="flex gap-1.5">
             {isOperator && <button type="button" aria-label="Venue operations" onClick={onOperations} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><Gauge className="h-[18px] w-[18px]" /></button>}
             {isAdmin && <button type="button" aria-label="Manage venue" onClick={onSettings} className="club-icon-button border border-white/20 bg-[#081322]/65 text-white backdrop-blur-md"><Settings className="h-[18px] w-[18px]" /></button>}

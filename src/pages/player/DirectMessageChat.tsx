@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useReturnNavigation } from '@/hooks/useReturnNavigation';
 import { ArrowLeft, ArrowDown, MoreVertical, BellOff, Bell, Shield, Flag, UserX, Check, RefreshCw, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
@@ -66,6 +67,7 @@ function linkifyContent(content: string) {
 export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
+  const chatReturn = useReturnNavigation('/player/social', 'Chats', true);
   const {
     messages,
     loading,
@@ -486,7 +488,7 @@ export default function DirectMessageChat() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
+            onClick={chatReturn.goBack}
             className="h-8 w-8"
             aria-label="Back to messages"
           >

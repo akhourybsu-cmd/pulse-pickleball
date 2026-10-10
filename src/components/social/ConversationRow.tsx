@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { returnContextState } from "@/lib/navigation/returnContext";
 import { memo } from "react";
 import {
   Users, BellOff, MoreVertical, Check, ArrowUpRight,
@@ -37,6 +38,7 @@ export const ConversationRow = memo(function ConversationRow({
   onLeave: (id: string) => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const c = conversation;
   const isGroup = c.type === "group";
   const hasUnread = c.unreadCount > 0;
@@ -48,7 +50,7 @@ export const ConversationRow = memo(function ConversationRow({
     // the same tap that opens a DM. The thread performs its own persistence
     // update too; this provider-level update keeps every inbox surface synced.
     if (!isGroup && hasUnread) onMarkRead?.(c.id);
-    navigate(c.route, { state: isGroup ? { fromSocialInbox: true } : undefined });
+    navigate(c.route, { state: returnContextState(location, 'Chats') });
   };
 
   return (
@@ -119,7 +121,7 @@ export const ConversationRow = memo(function ConversationRow({
           <DropdownMenuContent align="end" className="w-52">
             {isGroup ? (
               <DropdownMenuItem
-                onClick={() => navigate(`/player/community/group/${c.relatedCommunityId ?? c.id}`)}
+                onClick={() => navigate(`/player/community/group/${c.relatedCommunityId ?? c.id}`, { state: returnContextState(location, 'Chats') })}
               >
                 <ArrowUpRight className="h-4 w-4 mr-2" /> View group
               </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { isToday, isThisWeek } from 'date-fns';
 import { AlertCircle, ArrowUpRight, CheckCheck, Compass, Loader2, MessageCircle, PenSquare, RefreshCw, Search, UserPlus, Users } from 'lucide-react';
@@ -22,7 +22,8 @@ export function SocialInbox() {
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const filter = inboxFilter(params.get('filter'));
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const requestedShown = Number(params.get('shown'));
+  const shown = Number.isSafeInteger(requestedShown) && requestedShown >= PAGE_SIZE ? Math.min(requestedShown, 10000) : PAGE_SIZE;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [leaving, setLeaving] = useState<SocialConversation | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,9 +33,14 @@ export function SocialInbox() {
     const copy = new URLSearchParams(params);
     if (next.query !== undefined) { if (next.query) copy.set('q', next.query); else copy.delete('q'); }
     if (next.filter !== undefined) { if (next.filter === 'all') copy.delete('filter'); else copy.set('filter', next.filter); }
+    copy.delete('shown');
     setParams(copy, { replace: true });
   };
-  useEffect(() => { setShown(PAGE_SIZE); }, [query, filter]);
+  const showMore = () => {
+    const copy = new URLSearchParams(params);
+    copy.set('shown', String(shown + PAGE_SIZE));
+    setParams(copy, { replace: true, preventScrollReset: true, state: { preserveScroll: true } });
+  };
   const visible = useMemo(() => filterConversations(conversations, filter, query), [conversations, filter, query]);
   const unreadChats = conversations.filter(c => c.unreadCount > 0).length;
   const sections = useMemo(() => {
@@ -96,7 +102,7 @@ export function SocialInbox() {
               <h3 className="px-4 pb-1 pt-2 text-[11px] font-medium text-muted-foreground sm:px-6">{label}</h3>
               <ul className="divide-y divide-border/30">{items.map(conversation => <ConversationRow key={conversation.type + ':' + conversation.id} conversation={conversation} onMarkRead={markRead} onToggleMute={setMuted} onLeave={requestLeave} />)}</ul>
             </section>)}
-            {visible.length > shown && <div className="px-4 sm:px-6"><Button variant="ghost" className="min-h-11 w-full rounded-xl" onClick={() => setShown(value => value + PAGE_SIZE)}>Load more conversations</Button></div>}
+            {visible.length > shown && <div className="px-4 sm:px-6"><Button variant="ghost" className="min-h-11 w-full rounded-xl" onClick={showMore}>Load more conversations</Button></div>}
           </div>}
         </div>
         {conversations.length > 0 && <div className="flex min-h-12 items-center justify-between gap-2 border-t border-border/40 px-4 text-[11px] text-muted-foreground sm:px-6">

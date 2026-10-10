@@ -42,7 +42,7 @@ export function GettingStartedCard({
     return [
       { key: "photo", label: "Add a profile photo", desc: "So partners recognize you", to: "/player/profile/edit", icon: Camera, done: hasPhoto },
       { key: "location", label: "Set your location", desc: "Find play and players near you", to: "/player/profile/edit?focus=location", icon: MapPin, done: hasLocation },
-      { key: "match", label: "Record your first match", desc: "Makes your PULSE rating real", to: "/player/matches/new", icon: Swords, done: hasMatch },
+      { key: "match", label: "Record your first match", desc: "Start building your match-based PULSE rating", to: "/player/matches/new", icon: Swords, done: hasMatch },
     ];
   }, [profile]);
 

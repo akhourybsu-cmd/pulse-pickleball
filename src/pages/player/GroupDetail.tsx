@@ -45,6 +45,7 @@ import { ClubhouseNavigation } from '@/components/community/ClubhouseNavigation'
 import { CommunityLoadError } from '@/components/community/CommunityLoadError';
 import { communityAbilities } from '@/lib/community/navigation';
 import { useCommunityTabs } from '@/hooks/useCommunityTabs';
+import { useReturnNavigation } from '@/hooks/useReturnNavigation';
 
 
 
@@ -60,6 +61,11 @@ export default function GroupDetail() {
   const abilities = communityAbilities(group?.settings, membership);
 
   const [searchParams] = useSearchParams();
+  const returnToVenue = isVenueCommunitiesEnabled() && !!group?.venue && searchParams.get('view') === 'community';
+  const communityReturn = useReturnNavigation(
+    returnToVenue ? `/player/community/group/${groupId}` : '/player/community',
+    returnToVenue ? 'Venue' : 'Communities',
+  );
   const { activeTab, visitedTabs, handleTabChange } = useCommunityTabs(groupSettings.chat_enabled);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   
@@ -154,8 +160,8 @@ export default function GroupDetail() {
     return (
       <div className="px-4 py-12 text-center">
         <h2 className="text-lg font-medium">Group not found</h2>
-        <Button onClick={() => navigate('/player/community')} variant="outline" size="sm" className="mt-4">
-          Back to Community
+        <Button onClick={communityReturn.goBack} variant="outline" size="sm" className="mt-4">
+          Back to {communityReturn.label}
         </Button>
       </div>
     );
@@ -173,10 +179,10 @@ export default function GroupDetail() {
           variant="ghost"
           size="sm"
           className="-ml-2 mb-6 text-muted-foreground"
-          onClick={() => navigate('/player/community')}
+          onClick={communityReturn.goBack}
         >
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Community
+          {communityReturn.label}
         </Button>
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
           {!isVenueGroup ? <CommunityIdentity group={group} label={typeLabel} /> : <div className="p-6 text-center">
@@ -206,7 +212,7 @@ export default function GroupDetail() {
     >
       {!isVenueGroup && <>
         <div className="club-toolbar">
-          <Button variant="ghost" className="gap-2 px-2 text-xs" onClick={() => navigate('/player/community')}><ArrowLeft className="h-4 w-4" />Communities</Button>
+          <Button variant="ghost" className="gap-2 px-2 text-xs" onClick={communityReturn.goBack}><ArrowLeft className="h-4 w-4" />{communityReturn.label}</Button>
           <div className="flex items-center gap-1">
             {(group.invite_code || group.visibility === 'public') && <Button variant="ghost" size="icon" aria-label={`Share ${group.name}`} onClick={() => setInviteModalOpen(true)}><Share2 className="h-4 w-4" /></Button>}
             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Community options"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
@@ -279,8 +285,8 @@ export default function GroupDetail() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 -ml-0.5 shrink-0 rounded-full border border-white/15 text-white/90 hover:text-white hover:bg-white/10"
-            onClick={() => navigate(isVenueGroup && searchParams.get('view') === 'community' ? `/player/community/group/${groupId}` : '/player/community')}
-            aria-label={isVenueGroup && searchParams.get('view') === 'community' ? 'Back to venue' : 'Back to Community'}
+            onClick={communityReturn.goBack}
+            aria-label={`Back to ${communityReturn.label}`}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
