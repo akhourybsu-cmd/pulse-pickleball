@@ -52,7 +52,7 @@ const VALID_TABS = ["friends", "requests", "suggestions"] as const;
 type FriendsTab = (typeof VALID_TABS)[number];
 const grid = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 const card =
-  "min-w-0 rounded-2xl border border-border/60 bg-card p-3.5 shadow-sm";
+  "min-w-0 rounded-2xl border border-border/40 bg-card p-4";
 
 export default function Friends({
   embedded = false,

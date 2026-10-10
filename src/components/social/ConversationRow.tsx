@@ -53,17 +53,8 @@ export const ConversationRow = memo(function ConversationRow({
 
   return (
     <li
-      className={cn(
-        "group relative flex min-h-[88px] items-center gap-1 rounded-2xl border p-3 transition-colors sm:gap-2 sm:p-4",
-        hasUnread
-          ? "bg-primary/[0.045] border-primary/25"
-          : "bg-card border-border/50 hover:border-primary/20 hover:bg-muted/25",
-      )}
+      className="group relative flex min-h-[88px] items-center gap-2 px-4 py-3 transition-colors hover:bg-muted/35 focus-within:bg-muted/35 sm:px-6"
     >
-      {hasUnread && (
-        <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-gradient-to-b from-primary to-primary/30" aria-hidden />
-      )}
-
       <button
         onClick={open}
         className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -71,20 +62,20 @@ export const ConversationRow = memo(function ConversationRow({
         aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}${hasUnread ? `, ${inboxCount(c.unreadCount)} unread messages` : ''}`}
       >
         <div className="relative shrink-0">
-          <Avatar className="h-11 w-11 ring-1 ring-border/60 sm:h-12 sm:w-12">
+          <Avatar className={cn("h-12 w-12", isGroup && "rounded-2xl")}>
             <AvatarImage src={c.avatarUrl || undefined} alt="" />
             <AvatarFallback className={cn(isGroup && "bg-primary/10 text-primary")}>
               {isGroup ? <Users className="h-5 w-5" /> : initials(c.title)}
             </AvatarFallback>
           </Avatar>
-          {isGroup && <span aria-hidden className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-muted text-foreground"><Users className="h-3 w-3" /></span>}
+          {isGroup && c.avatarUrl && <span aria-hidden className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-muted text-foreground"><Users className="h-3 w-3" /></span>}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <p className={cn(
-                "text-sm truncate leading-5",
+                "text-[15px] truncate leading-5 tracking-[-0.01em]",
                 hasUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90",
               )}>
                 {c.title}
@@ -96,13 +87,13 @@ export const ConversationRow = memo(function ConversationRow({
           </div>
           {c.lastMessagePreview ? (
             <p className={cn(
-              "text-[13px] leading-5 line-clamp-2 mt-1 [overflow-wrap:anywhere]",
-              hasUnread ? "text-foreground/90 font-medium" : "text-muted-foreground",
+              "text-[13px] leading-5 truncate mt-1",
+              hasUnread ? "text-foreground/80" : "text-muted-foreground",
             )}>
               {c.lastMessagePreview}
             </p>
           ) : (
-            <p className="text-xs italic text-muted-foreground mt-0.5">
+            <p className="text-[13px] text-muted-foreground mt-1">
               {isGroup ? "Start the conversation" : "Send your first message"}
             </p>
           )}
@@ -110,9 +101,9 @@ export const ConversationRow = memo(function ConversationRow({
       </button>
 
       <div className="flex shrink-0 flex-col items-end gap-0.5">
-        <time dateTime={time.iso} title={time.full} className="text-[10px] tabular-nums text-muted-foreground sm:text-[11px]">{time.short}</time>
+        <time dateTime={time.iso} title={time.full} className="text-[11px] tabular-nums text-muted-foreground">{time.short}</time>
         <div className="flex items-center gap-1">
-        {hasUnread && <Badge aria-hidden className="h-5 min-w-5 justify-center bg-primary px-1.5 text-[10px] text-primary-foreground">{inboxCount(c.unreadCount)}</Badge>}
+        {hasUnread && <Badge aria-hidden className="h-5 min-w-5 justify-center rounded-full border-0 bg-primary px-1.5 text-[10px] text-primary-foreground">{inboxCount(c.unreadCount)}</Badge>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
