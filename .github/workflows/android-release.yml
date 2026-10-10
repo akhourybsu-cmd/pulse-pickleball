@@ -18,11 +18,23 @@ name: Android release (signed AAB → Play)
 on:
   workflow_dispatch:
     inputs:
+      version_code:
+        description: "New version code, greater than every existing upload in Play Console"
+        required: true
+        type: string
+      version_name:
+        description: "Version shown to testers"
+        required: true
+        default: "1.1.0"
+        type: string
+      upload_to_play:
+        description: "Upload to the named Play track (requires the Play service-account secret)"
+        default: false
+        type: boolean
       track:
-        description: "Play track to publish to (used only if the service-account secret is set)"
-        default: internal
-        type: choice
-        options: [internal, alpha, beta, production]
+        description: "Exact existing Play track ID; leave blank when only building a bundle"
+        required: false
+        type: string
 
 concurrency:
   group: android-release
@@ -46,6 +58,14 @@ jobs:
 
       - name: Verify production release target
         run: node scripts/check-production-release.mjs
+
+      - name: Validate Android release inputs
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          UPLOAD_TO_PLAY: ${{ inputs.upload_to_play }}
+          PLAY_TRACK: ${{ inputs.track }}
+        run: node scripts/check-android-release.mjs
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -82,8 +102,16 @@ jobs:
 
       - name: Build signed AAB
         env:
-          VERSION_CODE: ${{ github.run_number }}
-        run: cd android && ./gradlew bundleRelease --no-daemon
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: cd android && ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Verify bundle signature
+        run: |
+          bundle=android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "$bundle" | tee /tmp/pulse-bundle-signature.txt
+          grep -q 'jar verified' /tmp/pulse-bundle-signature.txt
+          sha256sum "$bundle" > "$bundle.sha256"
 
       - name: Clean up secrets from workspace
         if: always()
@@ -91,16 +119,18 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pulse-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: pulse-${{ inputs.version_name }}-${{ inputs.version_code }}-release-aab
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/bundle/release/app-release.aab.sha256
           if-no-files-found: error
 
       - name: Recheck release before Play upload
-        if: ${{ env.PLAY_SA != '' }}
+        if: ${{ inputs.upload_to_play }}
         run: node scripts/check-production-release.mjs
 
       - name: Upload to Google Play
-        if: ${{ env.PLAY_SA != '' }}
+        if: ${{ inputs.upload_to_play }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ env.PLAY_SA }}

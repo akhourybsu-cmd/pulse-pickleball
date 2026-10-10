@@ -10,8 +10,8 @@
   --skill-gold: #ffd16a; --skill-teal: #64e9cf; --skill-violet: #b4a4ff; --skill-blue: #79baff;
   color: hsl(var(--foreground)); color-scheme: dark;
 }
-.skill-public { min-height: 100vh; background: radial-gradient(ellipse at 10% 4%, #25413960, transparent 38rem), radial-gradient(ellipse at 95% 30%, #47341d55, transparent 32rem), #0c121c; }
-.skill-public-nav { border-bottom: 1px solid #ffffff15; background: #0c121cd9; }
+.skill-public { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom, 0px); background: radial-gradient(ellipse at 10% 4%, #25413960, transparent 38rem), radial-gradient(ellipse at 95% 30%, #47341d55, transparent 32rem), #0c121c; }
+.skill-public-nav { padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid #ffffff15; background: #0c121cd9; }
 .skill-public-nav-inner { max-width: 1060px; margin: auto; padding: 21px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .skill-brand-link { display: inline-flex; align-items: center; gap: 22px; }
 .skill-brand-link svg { width: 142px; height: auto; color: #f8f4e9; }
