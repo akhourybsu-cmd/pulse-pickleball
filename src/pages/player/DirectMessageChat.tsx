@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useReturnNavigation } from '@/hooks/useReturnNavigation';
+import { useConversationRestriction } from '@/hooks/useConversationRestriction';
+import { withAuthDeadline } from '@/lib/authDeadline';
 import { ArrowLeft, ArrowDown, MoreVertical, BellOff, Bell, Shield, Flag, UserX, Check, RefreshCw, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
@@ -78,10 +80,23 @@ export default function DirectMessageChat() {
     viewerMembership,
     currentUserId,
     notFound,
+    loadError,
+    refreshing,
+    refetch,
     sendMessage,
     retryMessage,
   } = useConversation(conversationId || null);
   const { markRead } = useDirectMessages();
+  const privacy = useConversationRestriction(currentUserId, participant?.id);
+  const restricted = privacy.data ?? null;
+  const scope = useMemo(() => ({ conversationId, currentUserId }), [conversationId, currentUserId]);
+  const activeScope = useRef<object | null>(scope);
+  activeScope.current = scope;
+  useEffect(() => {
+    activeScope.current = scope;
+    return () => { if (activeScope.current === scope) activeScope.current = null; };
+  }, [scope]);
+  const muteRequest = useRef<object | null>(null);
   // While this thread is open, its message notifications self-clear.
   useRegisterActiveContext([conversationId ? `conversation:${conversationId}` : null]);
 
@@ -94,7 +109,6 @@ export default function DirectMessageChat() {
   // button stays live for back-to-back sends.
   const [muted, setMuted] = useState(false);
   const [leftAt, setLeftAt] = useState<string | null>(null);
-  const [restricted, setRestricted] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [atBottom, setAtBottom] = useState(true);
@@ -121,7 +135,6 @@ export default function DirectMessageChat() {
     setNewMessage('');
     setMuted(false);
     setLeftAt(null);
-    setRestricted(null);
     setReportOpen(false);
     setReportReason('');
     setAtBottom(true);
@@ -131,7 +144,7 @@ export default function DirectMessageChat() {
     didInitialScrollRef.current = false;
     lastMarkedMessageIdRef.current = null;
     loadingOlderRef.current = false;
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -160,38 +173,6 @@ export default function DirectMessageChat() {
     setMuted(viewerMembership.isMuted);
     setLeftAt(viewerMembership.leftAt);
   }, [viewerMembership]);
-
-  // Check if blocked either way / target privacy.
-  useEffect(() => {
-    if (!participant?.id || !currentUserId) return;
-    (async () => {
-      const { data: blocks } = await supabase
-        .from('user_blocks')
-        .select('blocker_id, blocked_id')
-        .or(
-          `and(blocker_id.eq.${currentUserId},blocked_id.eq.${participant.id}),` +
-          `and(blocker_id.eq.${participant.id},blocked_id.eq.${currentUserId})`
-        );
-      if (blocks && blocks.length > 0) {
-        const youBlocked = blocks.some((block) => block.blocker_id === currentUserId);
-        setRestricted(youBlocked ? "You've blocked this user. Unblock from Settings to message." : "You can't message this user.");
-        return;
-      }
-      const { data: prefs } = await supabase
-        .from('user_messaging_prefs')
-        .select('dm_privacy')
-        .eq('user_id', participant.id)
-        .maybeSingle();
-      if (prefs?.dm_privacy === 'nobody') {
-        setRestricted('This user is not accepting messages.');
-        return;
-      }
-      setRestricted(null);
-    })();
-    // Block/privacy status depends on the two users, not on message volume —
-    // keying on messages.length re-ran this whole check (two extra queries)
-    // on every incoming message.
-  }, [participant?.id, currentUserId]);
 
   const markNewestRead = useCallback(() => {
     const newest = messages[messages.length - 1];
@@ -226,6 +207,7 @@ export default function DirectMessageChat() {
     try {
       await loadOlder();
       requestAnimationFrame(() => {
+        if (activeScope.current !== scope) return;
         container.scrollTop = anchoredScrollTop(
           previousTop,
           previousHeight,
@@ -233,9 +215,9 @@ export default function DirectMessageChat() {
         );
       });
     } finally {
-      loadingOlderRef.current = false;
+      if (activeScope.current === scope) loadingOlderRef.current = false;
     }
-  }, [hasMore, loadOlder, loadingOlder]);
+  }, [hasMore, loadOlder, loadingOlder, scope]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -362,7 +344,7 @@ export default function DirectMessageChat() {
   // anything but a perfect connection.
   const handleSend = () => {
     const text = newMessage.trim();
-    if (!text || restricted || leftAt) return;
+    if (!text || restricted || leftAt || privacy.isPending || privacy.isError || !currentUserId || !participant) return;
     setNewMessage('');
     void stopTyping();
     inputRef.current?.focus();
@@ -376,38 +358,48 @@ export default function DirectMessageChat() {
   };
 
   const toggleMute = async () => {
-    if (!conversationId || !currentUserId) return;
+    if (!conversationId || !currentUserId || muteRequest.current === scope) return;
+    muteRequest.current = scope;
     const next = !muted;
     setMuted(next);
-    const { error } = await supabase
-      .from('conversation_participants')
-      .update({ is_muted: next })
-      .eq('conversation_id', conversationId)
-      .eq('user_id', currentUserId);
-    if (error) {
+    try {
+      const { error } = await withAuthDeadline(signal => supabase
+        .from('conversation_participants')
+        .update({ is_muted: next })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', currentUserId).abortSignal(signal));
+      if (error) throw error;
+      if (activeScope.current === scope) toast.success(next ? 'Conversation muted' : 'Conversation unmuted');
+    } catch {
+      if (activeScope.current !== scope) return;
       setMuted(!next);
       toast.error('Failed to update mute');
-    } else {
-      toast.success(next ? 'Conversation muted' : 'Conversation unmuted');
+    } finally {
+      if (muteRequest.current === scope) muteRequest.current = null;
     }
   };
 
   const leaveConversation = async () => {
     if (!conversationId || !currentUserId) return;
-    const { error } = await supabase
-      .from('conversation_participants')
-      .update({ left_at: new Date().toISOString() })
-      .eq('conversation_id', conversationId)
-      .eq('user_id', currentUserId);
-    if (error) { toast.error('Failed to leave'); return; }
-    toast.success('You left the conversation');
-    navigate('/player/messages');
+    try {
+      const { error } = await withAuthDeadline(signal => supabase
+        .from('conversation_participants')
+        .update({ left_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', currentUserId).abortSignal(signal));
+      if (error) throw error;
+      if (activeScope.current !== scope) return;
+      toast.success('You left the conversation');
+      navigate('/player/messages');
+    } catch {
+      if (activeScope.current === scope) toast.error('Failed to leave. Please try again.');
+    }
   };
 
   const doBlock = async () => {
     if (!participant?.id) return;
     const ok = await block(participant.id);
-    if (ok) navigate('/player/messages');
+    if (ok && activeScope.current === scope) navigate('/player/messages');
   };
 
   const submitReport = async () => {
@@ -420,7 +412,7 @@ export default function DirectMessageChat() {
       reason: reportReason,
       conversationId: conversationId || undefined,
     });
-    if (ok) { setReportOpen(false); setReportReason(''); }
+    if (ok && activeScope.current === scope) { setReportOpen(false); setReportReason(''); }
   };
 
   const getInitials = (n: string | null) =>
@@ -459,6 +451,19 @@ export default function DirectMessageChat() {
     );
   }
 
+  if (loadError && !participant) {
+    return (
+      <div className="px-4 py-12 text-center" role="status">
+        <h2 className="text-lg font-medium">Conversation couldn't load</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="outline" onClick={chatReturn.goBack}>Back to Chats</Button>
+          <Button disabled={refreshing} onClick={() => void refetch()}>{refreshing ? 'Retrying…' : 'Try again'}</Button>
+        </div>
+      </div>
+    );
+  }
+
   // Invalid conversation id, or one this user isn't a participant of
   // (RLS returns zero rows for both). Previously this rendered an
   // empty chat headed "Player" with no indication anything was wrong.
@@ -476,10 +481,10 @@ export default function DirectMessageChat() {
     );
   }
 
-  const sendDisabled = !!restricted || !!leftAt;
+  const sendDisabled = !!restricted || !!leftAt || privacy.isPending || privacy.isError || !currentUserId || !participant;
   const restrictedBanner = leftAt
     ? 'You are no longer in this conversation.'
-    : restricted;
+    : privacy.isPending ? 'Checking messaging settings…' : restricted;
 
   return (
     <div className="flex flex-col h-[100dvh] z-40 bg-gradient-to-b from-primary/[0.04] via-background to-background" style={paneStyle}>
@@ -577,6 +582,12 @@ export default function DirectMessageChat() {
         </div>
       </div>
 
+      {(loadError || privacy.isError) && (
+        <div role="status" className="flex items-center justify-between gap-3 border-b border-border/30 px-4 py-2 text-xs text-muted-foreground">
+          <span>{privacy.isError ? "Messaging settings couldn't load." : "Messages couldn't refresh. Your conversation is still here."}</span>
+          <Button variant="ghost" size="sm" disabled={refreshing || privacy.isFetching} onClick={() => { if (privacy.isError) void privacy.refetch(); if (loadError) void refetch(); }}>Try again</Button>
+        </div>
+      )}
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollContainerRef}
