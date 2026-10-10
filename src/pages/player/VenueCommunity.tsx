@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useReturnNavigation } from '@/hooks/useReturnNavigation';
+import { returnContextState } from '@/lib/navigation/returnContext';
 import { Ticket, ChevronRight, FolderOpen, Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -75,6 +77,7 @@ export default function VenueCommunity() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const communityReturn = useReturnNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sharing, setSharing] = useState(false);
 
@@ -84,7 +87,7 @@ export default function VenueCommunity() {
   selectedDay.setHours(0, 0, 0, 0);
   const setDay = (value: Date) => {
     const next = new URLSearchParams(searchParams); next.set('day', venueDayKey(value));
-    setSearchParams(next, { replace: true });
+    setSearchParams(next, { replace: true, state: location.state });
   };
 
   // Social inbox rows deep-link with ?tab=chat. The venue shell previously
@@ -102,17 +105,17 @@ export default function VenueCommunity() {
   const setCommunitySection = (section: 'posts' | 'members') => {
     const next = venueTabParams(searchParams, 'feed');
     if (section === 'members') next.set('section', 'players'); else next.delete('section');
-    setSearchParams(next, { replace: activeTab === 'feed' });
+    setSearchParams(next, { replace: activeTab === 'feed', state: location.state });
   };
   const playCategory = ['all', 'open_play', 'clinic', 'practice'].includes(searchParams.get('playCategory') ?? '') ? searchParams.get('playCategory')! : 'all';
   const setPlayCategory = (value: string) => {
     const next = venueTabParams(searchParams, 'play'); next.set('playCategory', value);
-    setSearchParams(next, { replace: activeTab === 'play' });
+    setSearchParams(next, { replace: activeTab === 'play', state: location.state });
   };
   const eventFilter = (['competition', 'leagues', 'social'].includes(searchParams.get('eventFilter') ?? '') ? searchParams.get('eventFilter') : 'upcoming') as VenueEventFilter;
   const setEventFilter = (value: VenueEventFilter) => {
     const next = venueTabParams(searchParams, 'events'); next.set('eventFilter', value);
-    setSearchParams(next, { replace: activeTab === 'events' });
+    setSearchParams(next, { replace: activeTab === 'events', state: location.state });
   };
   const communityPreview = useVenueCommunityPreview(groupId, !isDesktopLayout && initialTab === 'home');
 
@@ -126,7 +129,7 @@ export default function VenueCommunity() {
 
   const openTab = (tab: VenuePageTab) => {
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
-    setSearchParams(venueTabParams(searchParams, tab));
+    setSearchParams(venueTabParams(searchParams, tab), { state: location.state });
   };
 
   // Also honor a chat deep link that arrives while React Router reuses this
@@ -218,7 +221,7 @@ export default function VenueCommunity() {
     if (!invalidChat && !invalidBook) return;
     const next = new URLSearchParams(searchParams);
     next.delete('tab');
-    setSearchParams(next, { replace: true });
+    setSearchParams(next, { replace: true, state: location.state });
   }, [activeTab, chatEnabled, hasCourts, modules.booking, modules.loading, modules.isError, dayLoading, dayError, searchParams, setSearchParams, loading, group]);
 
   if (!loading && (isError || !group)) return <VenueLoadState fullPage onRetry={() => void refetchGroup()} />;
@@ -282,7 +285,7 @@ export default function VenueCommunity() {
         nextStart={nextUp[0]?.start_time}
         isOperator={isOperator}
         isAdmin={canManageSettings}
-        onBack={() => navigate('/player/community')}
+        onBack={communityReturn.goBack} backLabel={`Back to ${communityReturn.label}`}
         onShare={onShare}
         onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
         onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
@@ -299,7 +302,7 @@ export default function VenueCommunity() {
       >
         <VenueMobileShell mobile={!isDesktopLayout} activeTab={activeTab} visited={visitedTabs} memoryKey={(membership?.user_id ?? 'guest') + ':' + groupId} identity={identity} hasBooking={bookingTabAvailable}
           onCommunity={() => openTab('feed')} onPlay={() => openTab('play')}
-          onExit={() => (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox ? navigate(-1) : navigate('/player/community')}
+          onExit={communityReturn.goBack} backLabel={`Back to ${communityReturn.label}`}
           onMyVisit={() => navigate(`/player/community/group/${groupId}/my-visit?venue=${group.venue_id}`)}
           onBookings={() => navigate('/player/bookings')}
           onTools={() => setFilesOpen(true)}
@@ -331,7 +334,7 @@ export default function VenueCommunity() {
                     identity={identity} cover={{ src: venue?.cover_image_url, fit: venue?.cover_image_fit, crop: venue?.cover_crop, focalPoint: venue?.cover_focal_point }}
                     city={venue?.city} state={venue?.state} verified={group.is_venue_verified} hoursRaw={venue?.hours_of_operation} timeZone={venue?.timezone}
                     courtCount={dayLoading || dayError ? 0 : activeCourtCount} freeNow={freeNow} hasBooking={bookingTabAvailable} isAdmin={canManageSettings} isOperator={isOperator}
-                    onBack={() => navigate('/player/community')} onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
+                    onBack={communityReturn.goBack} backLabel={`Back to ${communityReturn.label}`} onSettings={() => navigate(`/player/community/group/${groupId}/manage`)} onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
                     onBook={() => openTab('book')} onPlay={() => setPlayCategory('open_play')} onSchedule={() => setPlayCategory('all')}
                   /></div>}
                   {privateSample && !isDesktopLayout && <div className="mb-4"><PrivateVenueNotice /></div>}
@@ -406,7 +409,7 @@ export default function VenueCommunity() {
                   <VenueEventsPage name={identity.name} events={occasions.data ?? []} filter={eventFilter} onFilter={setEventFilter}
                     loading={occasions.isPending} error={occasions.isError} onRetry={() => void occasions.refetch()}
                     timeZone={venue?.timezone}
-                    onProgram={setSelectedProgramId} onLeague={id => navigate('/player/leagues/' + id)} />
+                    onProgram={setSelectedProgramId} onLeague={id => navigate('/player/leagues/' + id, { state: returnContextState(location, 'Community') })} />
                 </VenuePanel>
 
                 <VenuePanel

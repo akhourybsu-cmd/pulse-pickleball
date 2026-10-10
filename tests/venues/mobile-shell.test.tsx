@@ -75,6 +75,7 @@ describe('persistent venue mobile shell', () => {
     expect(page).toContain('<VenueMobileShell');
     expect(page).toContain('<VenueClubHeader embedded');
     const tools = readFileSync('src/pages/player/GroupDetail.tsx', 'utf8');
-    expect(tools).toContain("searchParams.get('view') === 'community' ? `/player/community/group/${groupId}`");
+    // Contextual returns take precedence; direct tool links keep a venue fallback.
+    expect(tools).toContain("returnToVenue ? `/player/community/group/${groupId}`");
   });
 });

@@ -46,6 +46,20 @@ beforeEach(() => {
   mocks.inbox.mockImplementation(() => state); mocks.friends.mockReturnValue({ friends: [{ id: 'friend' }], pendingRequests: [{ id: 'request' }] });
 });
 afterEach(() => { act(() => view?.unmount()); });
+it('keeps expanded inbox rows when returning from a conversation and resets them when filtering', async () => {
+  state.conversations = Array.from({ length: 70 }, (_, i) => conversation(String(i)));
+  await mount();
+  expect(rowButtons()).toHaveLength(30);
+  act(() => button('Load more conversations').props.onClick());
+  expect(rowButtons()).toHaveLength(60);
+  act(() => rowButtons()[59].props.onClick());
+  expect(routeState).toMatchObject({ returnContext: { to: '/player/social?shown=60', label: 'Chats' } });
+  act(() => navigate(-1));
+  expect(rowButtons()).toHaveLength(60);
+  act(() => filter('Unread').props.onClick());
+  expect(rowButtons()).toHaveLength(30);
+  expect(url).not.toContain('shown=');
+});
 it('filters by chat type and unread chats, combines search, and clears it accessibly', async () => {
   await mount(); expect(rowButtons()).toHaveLength(2); expect(contents(filter('Unread'))).toBe('Unread1');
   expect(rowButtons()[0].props['aria-label']).toContain('99+ unread messages');
@@ -60,7 +74,7 @@ it('retains the inbox URL and filters after opening a chat and returning with Ba
   act(() => rowButtons()[0].props.onClick()); expect(url).toBe('/player/messages/dm'); expect(mocks.read).toHaveBeenCalledWith('dm');
   act(() => navigate(-1)); expect(search().props.value).toBe('alex'); expect(filter('Direct').props['aria-pressed']).toBe(true);
   act(() => filter('Groups').props.onClick()); act(() => search().props.onChange({ target: { value: '' } }));
-  act(() => rowButtons()[0].props.onClick()); expect(url).toBe('/player/community/group/group?tab=chat'); expect(routeState).toEqual({ fromSocialInbox: true });
+  act(() => rowButtons()[0].props.onClick()); expect(url).toBe('/player/community/group/group?tab=chat'); expect(routeState).toMatchObject({ returnContext: { to: '/player/social?filter=groups', label: 'Chats' } });
 });
 it('preserves each view’s URL when moving between Chats and Friends', async () => {
   await mount('/player/social?filter=unread&q=alex');

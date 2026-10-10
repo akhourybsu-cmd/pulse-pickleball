@@ -6,7 +6,8 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { ArrowUpRight, MessageCircle, Users } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, MessageCircle, Users } from "lucide-react";
+import { useReturnNavigation } from '@/hooks/useReturnNavigation';
 import { useAuthState } from "@/hooks/useAuthState";
 import {
   usePublicCommunity,
@@ -43,6 +44,7 @@ export default function PublicCommunity({
   const { groupId, slug } = useParams<{ groupId: string; slug: string }>();
   const { isAuthenticated } = useAuthState();
   const location = useLocation();
+  const communityReturn = useReturnNavigation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = usePublicCommunity(publicGroupId || groupId, slug);
@@ -100,6 +102,7 @@ export default function PublicCommunity({
     return (
       <Navigate
         to={`/player/community/group/${group.id}${location.search}${location.hash}`}
+        state={location.state}
         replace
       />
     );
@@ -127,12 +130,12 @@ export default function PublicCommunity({
     next.delete("program");
     if (value === "home") next.delete("tab");
     else next.set("tab", value);
-    setParams(next);
+    setParams(next, { state: location.state });
   };
   const gate = (action: string, destinationTab = tab, eventId?: string) => {
     const returnTo = destination(destinationTab, eventId);
     setSelectedId(null);
-    if (memberContext) navigate(returnTo, { replace: true });
+    if (memberContext) navigate(returnTo, { replace: true, state: location.state });
     setIntent({ action, returnTo });
   };
   const access = (action: string, returnTo?: string) =>
@@ -196,7 +199,7 @@ export default function PublicCommunity({
             onClick={() => {
               const next = new URLSearchParams(params);
               next.set("page", String(page - 1));
-              setParams(next);
+              setParams(next, { state: location.state });
             }}
           >
             Previous
@@ -208,7 +211,7 @@ export default function PublicCommunity({
             onClick={() => {
               const next = new URLSearchParams(params);
               next.set("page", String(page + 1));
-              setParams(next);
+              setParams(next, { state: location.state });
             }}
           >
             Next
@@ -223,6 +226,7 @@ export default function PublicCommunity({
       brand={venue}
       className="mx-auto min-w-0 max-w-6xl space-y-5 [overflow-wrap:anywhere]"
     >
+      {memberContext && <Button variant="ghost" className="min-h-11 gap-2" onClick={communityReturn.goBack}><ArrowLeft className="h-4 w-4" />{communityReturn.label}</Button>}
       <CommunityHero group={group} />
       <nav
         aria-label="Community sections"

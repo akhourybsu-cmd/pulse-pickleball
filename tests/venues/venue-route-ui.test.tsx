@@ -5,12 +5,13 @@ import GroupRoute from '@/pages/player/GroupRoute';
 const state = vi.hoisted(() => ({
   group: {} as any, modules: {} as any, params: new URLSearchParams(), setParams: vi.fn(),
   buttons: [] as { label: string; click?: () => any }[], role: null as string | null,
+  navigate: vi.fn(), returnState: null as unknown,
 }));
 vi.mock('react', async importOriginal => {
   const actual = await importOriginal<typeof import('react')>(); let index = 0;
   return { ...actual, lazy: () => { const label = ['Free community shell', 'Facility shell', 'Public overview'][index++]; return () => actual.createElement('p', null, label); } };
 });
-vi.mock('react-router-dom', () => ({ Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>, useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }) }));
+vi.mock('react-router-dom', () => ({ Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>, useSearchParams: () => [state.params, state.setParams], useParams: () => ({ groupId: 'group' }), useLocation: () => ({ pathname: '/player/community/group/group', search: '?' + state.params, hash: '', state: state.returnState }), useNavigate: () => state.navigate }));
 vi.mock('@/hooks/useMarkCommunityRead', () => ({ useMarkCommunityRead: vi.fn() }));
 vi.mock('@/hooks/useGroupDetail', () => ({ useGroupDetail: () => state.group }));
 vi.mock('@/hooks/useVenueModules', () => ({ useVenueModules: () => state.modules }));
@@ -20,12 +21,19 @@ vi.mock('@/components/venue/VenueLoadState', () => ({ VenueLoadState: () => <p>V
 vi.mock('@/components/ui/button', () => ({ Button: ({ children, onClick }: any) => { state.buttons.push({ label: children, click: onClick }); return <button>{children}</button>; } }));
 const render = () => renderToStaticMarkup(<GroupRoute />);
 beforeEach(() => {
-  vi.clearAllMocks(); state.buttons = []; state.params = new URLSearchParams('tab=members'); state.role = null;
+  vi.clearAllMocks(); state.buttons = []; state.params = new URLSearchParams('tab=members'); state.role = null; state.returnState = null;
   state.group = { group: { venue_id: 'venue', venue: { name: 'ELEVENO' } }, loading: false, isError: false, refetch: vi.fn() };
   state.modules = { loading: false, isError: false, booking: true, facility: true, refetch: vi.fn() };
 });
 
 describe('venue community fallback routing', () => {
+  it('offers a return to the league when its host community is unavailable', () => {
+    state.returnState = { returnContext: { to: '/player/leagues/ladder?season=autumn#standings', label: 'League', scrollY: 500 } };
+    state.group.group = null; state.group.isError = true;
+    expect(render()).toContain('Back to League');
+    state.buttons.find(button => Array.isArray(button.label) && button.label.join('') === 'Back to League')!.click!();
+    expect(state.navigate).toHaveBeenCalledWith('/player/leagues/ladder?season=autumn#standings', expect.objectContaining({ replace: true }));
+  });
   it('keeps signed-in nonmembers and pending members on the public overview, preserving staff access', () => {
     state.group.group.visibility = 'public';
     expect(render()).toContain('Public overview');

@@ -71,6 +71,7 @@ interface VenueMastheadProps {
   isOperator: boolean;
   isAdmin: boolean;
   onBack: () => void;
+  backLabel?: string;
   onOperations: () => void;
   onSettings: () => void;
   onShare?: () => void;
@@ -102,6 +103,7 @@ export function VenueMasthead({
   isOperator,
   isAdmin,
   onBack,
+  backLabel = "Back to Community",
   onOperations,
   onSettings,
   onShare,
@@ -165,7 +167,7 @@ export function VenueMasthead({
               size="sm"
               className="h-11 min-w-11 rounded-full border border-white/20 bg-[#081322]/70 px-2.5 text-white backdrop-blur-md hover:bg-[#081322]/90 hover:text-white focus-visible:ring-white lg:px-3.5"
               onClick={onBack}
-              aria-label="Back to Community"
+              aria-label={backLabel}
             >
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden text-xs font-semibold lg:inline">Community</span>
