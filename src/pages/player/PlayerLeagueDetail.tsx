@@ -15,6 +15,7 @@ import {
   MapPin,
   ArrowUpRight,
   Activity,
+  Megaphone,
 } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
@@ -57,7 +58,8 @@ import {
   leagueSessionTime,
 } from "@/components/leagues/PlayerLeagueStage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { playerLeagueTabFromHash } from "@/lib/leagues/playerNavigation";
+import { playerLeagueTabFromHash, visiblePlayerLeagueTabs } from "@/lib/leagues/playerNavigation";
+import { LeagueFeed } from "@/components/leagues/LeagueFeed";
 import { needsMatchAction } from "@/lib/leagues/operations";
 
 const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
@@ -252,14 +254,13 @@ export default function PlayerLeagueDetail() {
     publishedSessions.find(
       (s) => s.scheduled_date && s.scheduled_date >= today
     );
-  const tabs = [
-    { id: "gameday", label: "Game day", icon: Activity },
-    { id: "standings", label: "Standings", icon: Trophy },
-    { id: "schedule", label: "Schedule", icon: CalendarDays },
-    { id: "results", label: "Results", icon: Swords },
-    ...(isTeamMode ? [{ id: "team", label: "My team", icon: Users }] : []),
-    { id: "info", label: "League info", icon: Info },
-  ];
+  const tabLabels = {
+    gameday: { label: "Game day", icon: Activity }, standings: { label: "Standings", icon: Trophy },
+    schedule: { label: "Schedule", icon: CalendarDays }, results: { label: "Results", icon: Swords },
+    team: { label: "My team", icon: Users }, info: { label: "League info", icon: Info },
+    feed: { label: "Feed", icon: Megaphone },
+  };
+  const tabs = visiblePlayerLeagueTabs(isTeamMode).map(id => ({ id, ...tabLabels[id] }));
   const changeTab = (tab: string) =>
     navigate(
       { pathname: location.pathname, search: location.search, hash: `#${tab}` },
@@ -696,6 +697,10 @@ export default function PlayerLeagueDetail() {
               )}
             </TabsContent>
           )}
+
+          <TabsContent value="feed" forceMount className="league-player-panel data-[state=inactive]:hidden">
+            <LeagueFeed key={`${league.id}:${currentUserId}`} leagueId={league.id} currentUserId={currentUserId} canManage={canManage} active={activeTab === "feed"} />
+          </TabsContent>
 
           <TabsContent value="info" className="league-player-panel space-y-5">
             <section className="lg-card space-y-4 p-5 sm:p-6">

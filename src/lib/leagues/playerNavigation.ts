@@ -19,8 +19,15 @@ export const PLAYER_LEAGUE_TABS = [
   "results",
   "team",
   "info",
+  "feed",
 ] as const;
 export type PlayerLeagueTab = (typeof PLAYER_LEAGUE_TABS)[number];
+
+/** Feed is always sixth; team leagues retain their additional info section. */
+export function visiblePlayerLeagueTabs(isTeamMode: boolean): PlayerLeagueTab[] {
+  return ["gameday", "standings", "schedule", "results", isTeamMode ? "team" : "info", "feed",
+    ...(isTeamMode ? ["info" as const] : [])];
+}
 
 /** Keep existing notification and match links working after introducing tabs. */
 export function playerLeagueTabFromHash(hash: string): PlayerLeagueTab {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   playerLeagueTabFromHash,
   PLAYER_LEAGUE_TABS,
+  visiblePlayerLeagueTabs,
 } from "@/lib/leagues/playerNavigation";
 import {
   GROUPS,
@@ -9,6 +10,16 @@ import {
 } from "@/components/admin/leagues/leagueManageTabs";
 
 describe("player league navigation", () => {
+  it("makes Feed the sixth tab for every format without dropping team or info links", () => {
+    for (const team of [true, false]) {
+      const tabs = visiblePlayerLeagueTabs(team);
+      expect(tabs[5]).toBe('feed');
+      expect(new Set(tabs).size).toBe(tabs.length);
+      expect(tabs).toContain('info');
+      expect(tabs.includes('team')).toBe(team);
+      expect(playerLeagueTabFromHash('#feed')).toBe('feed');
+    }
+  });
   it("preserves existing links to unfinished games and match history", () => {
     expect(playerLeagueTabFromHash("#upcoming")).toBe("gameday");
     expect(playerLeagueTabFromHash("#past")).toBe("results");
