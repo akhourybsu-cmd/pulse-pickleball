@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { MessageCircle, Users } from "lucide-react";
 import Friends from "./Friends";
 import { SocialInbox } from "@/components/social/SocialInbox";
-import { SocialHero } from "@/components/social/_shared";
 import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedControl";
 import { useFriends } from "@/hooks/useFriends";
 import { useRef } from "react";
@@ -29,12 +28,8 @@ export default function Social() {
 
   return (
     <div className="flex min-w-0 flex-col min-h-[calc(100dvh-120px)]">
-      {/* Shared player title band with the Chats/Friends switch beneath it. */}
-      <SocialHero
-        eyebrow="Your circle"
-        title="Social"
-      >
-        <p className="mt-2 text-sm text-muted-foreground">Good games start with good company.</p>
+      <header className="container mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 lg:py-6">
+        <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-foreground sm:text-[32px]">Social</h1>
         <PlayerSegmentedControl
           value={view}
           onValueChange={(next) => navigate(destinations.current[next])}
@@ -44,9 +39,9 @@ export default function Social() {
           ]}
           ariaLabel="Social views"
           layoutId="social-seg-active"
-          className="mt-3 max-w-sm"
+          className="max-w-sm sm:w-64"
         />
-      </SocialHero>
+      </header>
 
       <div className="container mx-auto min-h-0 max-w-[1400px] flex-1 px-0">
         {view === "chats" ? <SocialInbox /> : <Friends embedded />}
