@@ -25,6 +25,9 @@ export async function leagueSimulationDatabase() {
     CREATE TABLE matches(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),match_date date,team1_score int,team2_score int,created_by uuid,source text,court_no int,match_type text,status text,verified_by uuid[],count_for_rating bool,voided bool DEFAULT false,void_reason text);
     CREATE TABLE match_participants(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),match_id uuid REFERENCES matches ON DELETE CASCADE,player_id uuid,team int);
     CREATE FUNCTION has_role(uuid,app_role) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+    -- Session verification is isolated here; auth/mfa-database.test.ts exercises
+    -- league feed policies against the real MFA functions and session proofs.
+    CREATE FUNCTION pulse_has_required_mfa() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT true $$;
     CREATE FUNCTION update_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=now(); RETURN NEW; END $$;
     CREATE FUNCTION skill_touch_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=now(); RETURN NEW; END $$;
     CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),recipient uuid,kind text,title text,body text,link text);
