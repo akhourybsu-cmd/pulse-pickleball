@@ -1,3 +1,5 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   createContext,
   createElement,
@@ -29,21 +31,10 @@ import {
  * maintaining competing copies.
  */
 
-interface RawLatest {
-  content: string;
-  image_url: string | null;
-  created_at: string;
-  senderId: string;
-  senderName: string | null;
-}
-
-interface InboxGroup extends GroupSource {
-  lastChatReadAt: string | null;
-}
-
 interface GroupInboxState {
   conversations: SocialConversation[];
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   totalUnread: number;
   refetch: () => void;
@@ -52,354 +43,57 @@ interface GroupInboxState {
 export interface SocialInboxState {
   conversations: SocialConversation[];
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   currentUserId: string | null;
-  markRead: (conversationId: string) => void;
-  setMuted: (conversationId: string, muted: boolean) => void;
-  leaveConversation: (conversationId: string) => void;
+  markRead: (conversationId: string) => Promise<boolean>;
+  setMuted: (conversationId: string, muted: boolean) => Promise<boolean>;
+  leaveConversation: (conversationId: string) => Promise<boolean>;
   refetch: () => void;
 }
 
 const GroupInboxContext = createContext<GroupInboxState | null>(null);
 const GROUP_REFRESH_DEBOUNCE_MS = 160;
-const EPOCH = "1970-01-01T00:00:00.000Z";
 
 function useGroupInboxState(enabled: boolean): GroupInboxState {
   const { user } = useAuthState();
-  const currentUserId = user?.id ?? null;
-  const [groups, setGroups] = useState<InboxGroup[]>([]);
-  const [latestByGroup, setLatestByGroup] = useState<Map<string, RawLatest>>(new Map());
-  const [unreadByGroup, setUnreadByGroup] = useState<Map<string, number>>(new Map());
-  const [groupsLoading, setGroupsLoading] = useState(enabled);
-  const [messagesLoading, setMessagesLoading] = useState(enabled);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
-  const [messagesError, setMessagesError] = useState<string | null>(null);
-  const [groupsRefreshVersion, setGroupsRefreshVersion] = useState(0);
-  const [messagesRefreshVersion, setMessagesRefreshVersion] = useState(0);
-  const groupIdsRef = useRef<Set<string>>(new Set());
-  const refreshTimerRef = useRef<number | null>(null);
-  const refreshMembershipRef = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!enabled || !currentUserId) {
-      groupIdsRef.current = new Set();
-      setGroups([]);
-      setGroupsLoading(false);
-      setGroupsError(null);
-      return;
-    }
-
-    setGroupsLoading(true);
-    setGroupsError(null);
-    void (async () => {
-      const { data, error } = await supabase
-        .from("group_members")
-        .select(`
-          group_id,
-          last_read_at,
-          last_chat_read_at,
-          groups!inner (
-            id,
-            name,
-            icon_url,
-            member_count,
-            updated_at
-          )
-        `)
-        .eq("user_id", currentUserId)
-        .eq("status", "active");
-
-      if (cancelled) return;
-      if (error) {
-        setGroupsError(error.message || "Failed to load group chats");
-        setGroupsLoading(false);
-        return;
-      }
-
-      type GroupRelation = {
-        id: string;
-        name: string;
-        icon_url: string | null;
-        member_count: number | null;
-        updated_at: string | null;
-      };
-      type MembershipResult = {
-        last_read_at: string | null;
-        last_chat_read_at: string | null;
-        groups: GroupRelation | GroupRelation[] | null;
-      };
-
-      const nextGroups = ((data ?? []) as unknown as MembershipResult[])
-        .map((membership): InboxGroup | null => {
-          const relation = Array.isArray(membership.groups)
-            ? membership.groups[0]
-            : membership.groups;
-          if (!relation) return null;
-          return {
-            id: relation.id,
-            name: relation.name,
-            icon_url: relation.icon_url,
-            member_count: relation.member_count ?? 0,
-            updated_at: relation.updated_at ?? EPOCH,
-            lastChatReadAt: membership.last_chat_read_at ?? membership.last_read_at,
-          };
-        })
-        .filter((group): group is InboxGroup => group !== null);
-
-      groupIdsRef.current = new Set(nextGroups.map((group) => group.id));
-      setGroups(nextGroups);
-      setGroupsLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUserId, enabled, groupsRefreshVersion]);
-
-  const groupIds = useMemo(() => groups.map((group) => group.id), [groups]);
-  const groupIdsKey = groupIds.join(",");
-  const lastReadKey = groups
-    .map((group) => `${group.id}:${group.lastChatReadAt ?? ""}`)
-    .join(",");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!enabled || !currentUserId || groupIds.length === 0) {
-      setLatestByGroup(new Map());
-      setUnreadByGroup(new Map());
-      setMessagesLoading(false);
-      setMessagesError(null);
-      return;
-    }
-
-    setMessagesLoading(true);
-    setMessagesError(null);
-    void (async () => {
-      const { data, error } = await supabase
-        .from("group_messages")
-        .select("group_id, content, image_url, created_at, user_id")
-        .in("group_id", groupIds)
-        .order("created_at", { ascending: false })
-        .limit(300);
-
-      if (cancelled) return;
-      if (error) {
-        setMessagesError(error.message || "Failed to load group messages");
-        setMessagesLoading(false);
-        return;
-      }
-
-      const rows = (data ?? []) as Array<{
-        group_id: string;
-        content: string;
-        image_url: string | null;
-        created_at: string | null;
-        user_id: string;
-      }>;
-      const latest = new Map<string, (typeof rows)[number]>();
-      for (const row of rows) {
-        if (!latest.has(row.group_id)) latest.set(row.group_id, row);
-      }
-
-      const lastReadByGroup = new Map(
-        groups.map((group) => [group.id, group.lastChatReadAt] as const),
-      );
-      const unread = new Map<string, number>();
-      for (const row of rows) {
-        if (row.user_id === currentUserId) continue;
-        const lastRead = lastReadByGroup.get(row.group_id);
-        const createdAt = row.created_at ?? EPOCH;
-        if (!lastRead || createdAt > lastRead) {
-          unread.set(row.group_id, (unread.get(row.group_id) ?? 0) + 1);
-        }
-      }
-
-      const senderIds = Array.from(
-        new Set(Array.from(latest.values()).map((row) => row.user_id)),
-      );
-      const nameById = new Map<string, string>();
-      if (senderIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles_public")
-          .select("id, display_name, full_name")
-          .in("id", senderIds);
-        for (const profile of profiles ?? []) {
-          nameById.set(
-            profile.id,
-            profile.display_name || profile.full_name || "Member",
-          );
-        }
-      }
-
-      if (cancelled) return;
-      const nextLatest = new Map<string, RawLatest>();
-      latest.forEach((row, groupId) => {
-        nextLatest.set(groupId, {
-          content: row.content,
-          image_url: row.image_url,
-          created_at: row.created_at ?? EPOCH,
-          senderId: row.user_id,
-          senderName: nameById.get(row.user_id) ?? null,
-        });
-      });
-      setLatestByGroup(nextLatest);
-      setUnreadByGroup(unread);
-      setMessagesLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // groupIdsKey/lastReadKey deliberately represent the exact query inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, enabled, groupIdsKey, lastReadKey, messagesRefreshVersion]);
-
-  const scheduleRefresh = useCallback((includeMembership: boolean) => {
-    refreshMembershipRef.current =
-      refreshMembershipRef.current || includeMembership;
-    if (refreshTimerRef.current !== null) {
-      window.clearTimeout(refreshTimerRef.current);
-    }
-    refreshTimerRef.current = window.setTimeout(() => {
-      const refreshMembership = refreshMembershipRef.current;
-      refreshMembershipRef.current = false;
-      refreshTimerRef.current = null;
-      if (refreshMembership) {
-        setGroupsRefreshVersion((version) => version + 1);
-      }
-      setMessagesRefreshVersion((version) => version + 1);
-    }, GROUP_REFRESH_DEBOUNCE_MS);
-  }, []);
-
-  const refetch = useCallback(() => {
-    if (refreshTimerRef.current !== null) {
-      window.clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    refreshMembershipRef.current = false;
-    setGroupsRefreshVersion((version) => version + 1);
-    setMessagesRefreshVersion((version) => version + 1);
-  }, []);
-
-  useEffect(() => {
-    if (!enabled || !currentUserId) return;
-
-    let subscribed = false;
-    const channel = supabase
-      .channel(`social-group-inbox-${currentUserId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "group_messages" },
-        (payload) => {
-          const next = payload.new as { group_id?: unknown };
-          const previous = payload.old as { group_id?: unknown };
-          const groupId =
-            typeof next.group_id === "string"
-              ? next.group_id
-              : typeof previous.group_id === "string"
-                ? previous.group_id
-                : null;
-          if (!groupId || groupIdsRef.current.has(groupId)) {
-            scheduleRefresh(false);
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "group_members",
-          filter: `user_id=eq.${currentUserId}`,
-        },
-        () => scheduleRefresh(true),
-      )
-      .subscribe((status) => {
-        if (status !== "SUBSCRIBED") return;
-        if (subscribed) scheduleRefresh(true);
-        subscribed = true;
-      });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [currentUserId, enabled, scheduleRefresh]);
-
-  useEffect(() => {
-    if (!enabled || !currentUserId) return;
-
-    const refreshIfVisible = () => {
-      if (document.visibilityState === "visible") scheduleRefresh(true);
-    };
-    window.addEventListener("focus", refreshIfVisible);
-    document.addEventListener("visibilitychange", refreshIfVisible);
-    return () => {
-      window.removeEventListener("focus", refreshIfVisible);
-      document.removeEventListener("visibilitychange", refreshIfVisible);
-    };
-  }, [currentUserId, enabled, scheduleRefresh]);
-
-  useEffect(
-    () => () => {
-      if (refreshTimerRef.current !== null) {
-        window.clearTimeout(refreshTimerRef.current);
-      }
+  const userId = user?.id ?? null;
+  const client = useQueryClient();
+  const key = useMemo(() => ['group-inbox', userId], [userId]);
+  const query = useQuery({
+    queryKey: key, enabled: enabled && !!userId, staleTime: 30_000, refetchOnWindowFocus: false,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('social_group_inbox' as never).abortSignal(signal);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<GroupSource & { last_message: GroupLatestMessage | null; unread_count: number }>;
     },
-    [],
-  );
-
-  const conversations = useMemo(
-    () =>
-      groups.map((group) => {
-        const raw = latestByGroup.get(group.id);
-        const latest: GroupLatestMessage | null = raw
-          ? {
-              content: raw.content,
-              image_url: raw.image_url,
-              created_at: raw.created_at,
-              senderName: raw.senderName,
-              senderIsMe: raw.senderId === currentUserId,
-            }
-          : null;
-        return groupToConversation(
-          group,
-          latest,
-          unreadByGroup.get(group.id) ?? 0,
-        );
-      }),
-    [currentUserId, groups, latestByGroup, unreadByGroup],
-  );
-  const totalUnread = useMemo(
-    () =>
-      conversations.reduce(
-        (total, conversation) => total + conversation.unreadCount,
-        0,
-      ),
-    [conversations],
-  );
-
-  return useMemo(
-    () => ({
-      conversations,
-      loading: enabled && (groupsLoading || messagesLoading),
-      error: groupsError ?? messagesError,
-      totalUnread,
-      refetch,
-    }),
-    [
-      conversations,
-      enabled,
-      groupsError,
-      groupsLoading,
-      messagesError,
-      messagesLoading,
-      refetch,
-      totalUnread,
-    ],
-  );
+  });
+  const refetch = useCallback(() => { void client.invalidateQueries({ queryKey: key }); }, [client, key]);
+  const conversations = useMemo(() => userId ? (query.data ?? []).map(row => groupToConversation(row, row.last_message, row.unread_count)) : [], [query.data, userId]);
+  const groupIdsRef = useRef(new Set<string>());
+  groupIdsRef.current = new Set(conversations.map(row => row.id));
+  useEffect(() => {
+    if (!enabled || !userId) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => { clearTimeout(timer); timer = setTimeout(refetch, GROUP_REFRESH_DEBOUNCE_MS); };
+    const visible = () => { if (document.visibilityState === 'visible') schedule(); };
+    let connected = false;
+    const channel = supabase.channel('social-group-inbox-' + userId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages' }, payload => {
+        const groupId = (payload.new as { group_id?: string }).group_id ?? (payload.old as { group_id?: string }).group_id;
+        if (!groupId || groupIdsRef.current.has(groupId)) schedule();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_members', filter: 'user_id=eq.' + userId }, schedule)
+      .subscribe(status => { if (status === 'SUBSCRIBED') { if (connected) schedule(); connected = true; } });
+    window.addEventListener('online', schedule);
+    document.addEventListener('visibilitychange', visible);
+    return () => { clearTimeout(timer); window.removeEventListener('online', schedule);
+      document.removeEventListener('visibilitychange', visible); void supabase.removeChannel(channel); };
+  }, [enabled, userId, refetch]);
+  return { conversations, loading: enabled && !!userId && query.isPending,
+    refreshing: query.isFetching && !query.isPending,
+    error: query.error ? getErrorMessage(query.error, 'Could not refresh community chats.') : null,
+    totalUnread: conversations.reduce((sum, row) => sum + row.unreadCount, 0), refetch };
 }
 
 /**
@@ -474,6 +168,7 @@ export function useSocialInbox(): SocialInboxState {
   return {
     conversations,
     loading: dm.loading || groupLoading,
+    refreshing: dm.refreshing || !!groupInbox?.refreshing,
     error: dm.error ?? groupError,
     currentUserId: dm.currentUserId,
     markRead: dm.markRead,

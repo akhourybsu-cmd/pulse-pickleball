@@ -5,6 +5,7 @@ import { SocialInbox } from "@/components/social/SocialInbox";
 import { SocialHero } from "@/components/social/_shared";
 import { PlayerSegmentedControl } from "@/components/layout/PlayerSegmentedControl";
 import { useFriends } from "@/hooks/useFriends";
+import { useRef } from "react";
 
 
 /**
@@ -23,17 +24,20 @@ export default function Social() {
   const { pendingRequests } = useFriends();
   const view: "chats" | "friends" =
     location.pathname.startsWith("/player/friends") ? "friends" : "chats";
+  const destinations = useRef({ chats: '/player/social', friends: '/player/friends' });
+  destinations.current[view] = location.pathname + location.search;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-120px)]">
+    <div className="flex min-w-0 flex-col min-h-[calc(100dvh-120px)]">
       {/* Shared player title band with the Chats/Friends switch beneath it. */}
       <SocialHero
-        eyebrow="Connect"
+        eyebrow="Your circle"
         title="Social"
       >
+        <p className="mt-2 text-sm text-muted-foreground">Good games start with good company.</p>
         <PlayerSegmentedControl
           value={view}
-          onValueChange={(next) => navigate(next === "chats" ? "/player/social" : "/player/friends")}
+          onValueChange={(next) => navigate(destinations.current[next])}
           options={[
             { value: "chats", label: "Chats", icon: MessageCircle },
             { value: "friends", label: "Friends", icon: Users, count: pendingRequests.length, accentCount: true },

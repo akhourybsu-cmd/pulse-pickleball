@@ -1,235 +1,133 @@
-import { useMemo, useState } from "react";
-import { isToday, isThisWeek } from "date-fns";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  MessageCircle, Search, AlertCircle, PenSquare, Inbox, VolumeX, Zap,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { SocialEmptyState } from "./_shared";
-import {
-  filterConversations, type InboxFilter, type SocialConversation,
-} from "@/lib/social/inbox";
-import { useSocialInbox } from "@/hooks/useSocialInbox";
-import { ConversationRow } from "./ConversationRow";
-import { MessageFriendPickerSheet } from "@/components/messaging/MessageFriendPickerSheet";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { isToday, isThisWeek } from 'date-fns';
+import { AlertCircle, ArrowUpRight, CheckCheck, Compass, Loader2, MessageCircle, PenSquare, RefreshCw, Search, UserPlus, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SearchField } from '@/components/ui/search-field';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+import { filterConversations, inboxCount, inboxFilter, type InboxFilter, type SocialConversation } from '@/lib/social/inbox';
+import { useSocialInbox } from '@/hooks/useSocialInbox';
+import { useFriends } from '@/hooks/useFriends';
+import { SocialEmptyState } from './_shared';
+import { ConversationRow } from './ConversationRow';
+import { MessageFriendPickerSheet } from '@/components/messaging/MessageFriendPickerSheet';
 
-/**
- * Unified Social inbox surface — direct messages and group chats in one
- * chronological list. A single compose action (icon) starts a new DM; search
- * and compact All/Unread/Muted filters sit above the list. Presentation only:
- * all data + mutations come from `useSocialInbox` / the underlying hooks.
- */
+const PAGE_SIZE = 30;
 export function SocialInbox() {
-  const {
-    conversations, loading, error, markRead, setMuted, leaveConversation, refetch,
-  } = useSocialInbox();
-  const reduced = useReducedMotion();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<InboxFilter>("all");
+  const { conversations, loading, refreshing, error, markRead, setMuted, leaveConversation, refetch } = useSocialInbox();
+  const { friends, pendingRequests } = useFriends();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const query = params.get('q') ?? '';
+  const filter = inboxFilter(params.get('filter'));
+  const [shown, setShown] = useState(PAGE_SIZE);
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  const unreadCount = conversations.reduce((s, c) => s + c.unreadCount, 0);
-  const mutedCount = conversations.filter((c) => c.isMuted).length;
-
-  const visible = useMemo(
-    () => filterConversations(conversations, filter, query),
-    [conversations, filter, query],
-  );
-
-  // Time sections over the already-sorted (newest-first) list.
+  const [leaving, setLeaving] = useState<SocialConversation | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [leaveError, setLeaveError] = useState(false);
+  const leaveLock = useRef(false);
+  const change = (next: { query?: string; filter?: InboxFilter }) => {
+    const copy = new URLSearchParams(params);
+    if (next.query !== undefined) { if (next.query) copy.set('q', next.query); else copy.delete('q'); }
+    if (next.filter !== undefined) { if (next.filter === 'all') copy.delete('filter'); else copy.set('filter', next.filter); }
+    setParams(copy, { replace: true });
+  };
+  useEffect(() => { setShown(PAGE_SIZE); }, [query, filter]);
+  const visible = useMemo(() => filterConversations(conversations, filter, query), [conversations, filter, query]);
+  const unreadChats = conversations.filter(c => c.unreadCount > 0).length;
   const sections = useMemo(() => {
-    const today: SocialConversation[] = [];
-    const week: SocialConversation[] = [];
-    const earlier: SocialConversation[] = [];
-    for (const c of visible) {
-      const d = new Date(c.lastActivityAt);
-      if (isToday(d)) today.push(c);
-      else if (isThisWeek(d, { weekStartsOn: 1 })) week.push(c);
-      else earlier.push(c);
+    const buckets: Record<string, SocialConversation[]> = { Today: [], 'This week': [], Earlier: [] };
+    for (const conversation of visible.slice(0, shown)) {
+      const date = new Date(conversation.lastActivityAt);
+      buckets[isToday(date) ? 'Today' : isThisWeek(date, { weekStartsOn: 1 }) ? 'This week' : 'Earlier'].push(conversation);
     }
-    return [
-      { label: "Today", items: today },
-      { label: "This week", items: week },
-      { label: "Earlier", items: earlier },
-    ].filter((s) => s.items.length > 0);
-  }, [visible]);
-
+    return Object.entries(buckets).filter(([, items]) => items.length);
+  }, [visible, shown]);
+  const clearFilters = () => change({ query: '', filter: 'all' });
+  const requestLeave = (id: string) => { setLeaving(conversations.find(c => c.id === id && c.type === 'dm') ?? null); setLeaveError(false); };
+  const confirmLeave = async () => {
+    if (!leaving || leaveLock.current) return;
+    leaveLock.current = true; setSaving(true); setLeaveError(false);
+    try {
+      if (await leaveConversation(leaving.id)) setLeaving(null);
+      else setLeaveError(true);
+    } catch { setLeaveError(true); }
+    finally { leaveLock.current = false; setSaving(false); }
+  };
+  const filtered = !!query.trim() || filter !== 'all';
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-8 lg:px-8 lg:py-6 xl:grid-cols-[minmax(0,820px)_minmax(280px,1fr)]">
-      <div className="min-w-0 lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-border/60 lg:bg-card/55 lg:pb-6 lg:shadow-[0_18px_45px_-38px_hsl(var(--foreground)/0.5)]">
-      {/* Toolbar: search + compose icon */}
-      <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6 lg:pt-5">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search chats…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="h-11 rounded-xl border-border/60 bg-card/80 pl-9"
-            aria-label="Search chats"
-          />
-        </div>
-        <Button
-          size="icon"
-          onClick={() => setPickerOpen(true)}
-          className="h-11 w-11 shrink-0 rounded-xl btn-premium active:scale-95"
-          aria-label="New message"
-        >
-          <PenSquare className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Compact filters */}
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 pb-3 sm:px-6">
-        <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label="All" count={conversations.length} />
-        <FilterChip active={filter === "unread"} onClick={() => setFilter("unread")} label="Unread" count={unreadCount} accent />
-        <FilterChip active={filter === "muted"} onClick={() => setFilter("muted")} label="Muted" count={mutedCount} />
-      </div>
-
-      {error && (
-        <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1">Couldn't load your chats.</span>
-          <button onClick={refetch} className="font-medium underline underline-offset-2">Retry</button>
-        </div>
-      )}
-
-      <div className="flex-1 pb-6">
-        {loading ? (
-          <div className="space-y-2 px-4 sm:px-6">
-            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[68px] w-full rounded-2xl" />)}
-          </div>
-        ) : visible.length === 0 ? (
-          <EmptyState
-            onCompose={() => setPickerOpen(true)}
-            isFiltered={conversations.length > 0}
-          />
-        ) : (
-          <div className="space-y-5 px-4 sm:px-6">
-            {sections.map((section) => (
-              <section key={section.label}>
-                <h2 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                  <span aria-hidden className="h-[2px] w-4 rounded-full bg-primary/70" />
-                  {section.label}
-                </h2>
-                <motion.ul
-                  layout={!reduced}
-                  className="space-y-1.5"
-                >
-                  <AnimatePresence initial={false}>
-                    {section.items.map((c) => (
-                      <ConversationRow
-                        key={c.id}
-                        conversation={c}
-                        onMarkRead={markRead}
-                        onToggleMute={setMuted}
-                        onLeave={leaveConversation}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </motion.ul>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
-      </div>
-
-      <aside className="hidden space-y-5 lg:block">
-        <div className="sticky top-[96px] space-y-5">
-          <div className="rounded-[24px] border border-border/60 bg-card/75 p-5 shadow-[0_18px_45px_-38px_hsl(var(--foreground)/0.5)]">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/80">At a glance</p>
-                <h2 className="mt-1 text-lg font-bold tracking-tight">Your inbox</h2>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Inbox className="h-5 w-5" />
-              </div>
+    <div className="grid min-w-0 gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:px-8 lg:py-6">
+      <section aria-label="Conversations" className="min-w-0 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_8px_32px_-24px_hsl(var(--foreground)/0.25)]">
+        <div className="space-y-4 border-b border-border/50 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight">Conversations</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {loading && !conversations.length ? 'Getting your chats ready…' : error && !conversations.length ? 'Your chats are temporarily unavailable' : unreadChats ? unreadChats + (unreadChats === 1 ? ' chat needs a look' : ' chats need a look') : 'A little connection goes a long way.'}
+              </p>
             </div>
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              {[
-                { label: 'Chats', value: conversations.length, icon: MessageCircle },
-                { label: 'Unread', value: unreadCount, icon: Zap },
-                { label: 'Muted', value: mutedCount, icon: VolumeX },
-              ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="rounded-2xl border border-border/50 bg-background/65 p-3">
-                  <Icon className="h-4 w-4 text-primary/80" />
-                  <p className="mt-3 text-xl font-bold tabular-nums">{value}</p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-                </div>
-              ))}
-            </div>
-            <Button onClick={() => setPickerOpen(true)} className="mt-4 h-11 w-full rounded-xl btn-premium">
-              <PenSquare className="mr-2 h-4 w-4" />Start a conversation
+            <Button onClick={() => setPickerOpen(true)} className="h-11 shrink-0 gap-2 rounded-xl">
+              <PenSquare className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">New message</span><span className="sr-only sm:hidden">New message</span>
             </Button>
           </div>
-
-          <div className="rounded-[24px] border border-border/60 bg-muted/30 p-5">
-            <p className="text-sm font-semibold">Keep plans moving</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Direct messages and community chats stay together here, ordered by the latest activity.
-            </p>
+          <SearchField value={query} onValueChange={value => change({ query: value })} placeholder="Search chats" aria-label="Search chats" className="h-11 rounded-xl border-border/60 bg-background/65" />
+          <div role="group" aria-label="Filter conversations" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+            {([['all', 'All'], ['unread', 'Unread'], ['direct', 'Direct'], ['groups', 'Groups'], ['muted', 'Muted']] as const).map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={filter === value} onClick={() => change({ filter: value })}
+                className={cn('inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  filter === value ? 'bg-primary/10 text-foreground ring-1 ring-inset ring-primary/30' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+                {label}{value === 'unread' && unreadChats > 0 && <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] tabular-nums text-primary-foreground">{inboxCount(unreadChats)}</span>}
+              </button>
+            ))}
           </div>
         </div>
+        {error && <div role="alert" className="mx-4 mt-4 flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 text-sm sm:mx-5">
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
+          <p className="flex-1 py-3">{conversations.length ? "Some chats couldn't refresh. Your loaded conversations are still here." : "Couldn't load your chats. Please try again."}</p>
+          <Button variant="ghost" className="min-h-11 shrink-0 px-2" disabled={refreshing || loading} onClick={refetch}>Retry</Button>
+        </div>}
+        <div className="min-h-64 p-3 sm:p-5">
+          {loading && !conversations.length ? <div role="status" aria-label="Loading conversations" className="space-y-3">
+            {[0, 1, 2, 3].map(id => <div key={id} className="flex h-[88px] items-center gap-3 rounded-2xl border border-border/50 p-4"><Skeleton className="h-11 w-11 shrink-0 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-2/5" /><Skeleton className="h-3 w-4/5" /></div></div>)}
+          </div> : error && !conversations.length ? null : !visible.length ? (
+            <SocialEmptyState icon={filter === 'unread' && !query ? CheckCheck : filtered ? Search : MessageCircle}
+              title={query.trim() ? 'No matching conversations' : filter === 'unread' ? "You're all caught up" : filtered ? 'No chats in this view' : 'Your next game starts here'}
+              description={query.trim() ? 'Try a name or words from the latest message.' : filter === 'unread' ? 'New messages will appear here.' : filtered ? 'Switch to All to see your conversations.' : 'Message a friend or meet your people in a community.'}
+              action={filtered ? <Button variant="outline" className="min-h-11 rounded-xl" onClick={clearFilters}>Show all chats</Button> : <div className="flex flex-wrap justify-center gap-2"><Button className="min-h-11 rounded-xl" onClick={() => setPickerOpen(true)}>New message</Button><Button variant="outline" className="min-h-11 rounded-xl" onClick={() => navigate('/player/community?view=explore')}>Explore communities</Button></div>} />
+          ) : <div className="space-y-5">
+            {sections.map(([label, items]) => <section key={label} aria-label={label}>
+              <h3 className="mb-2 px-1 text-xs font-medium text-muted-foreground">{label}</h3>
+              <ul className="space-y-2">{items.map(conversation => <ConversationRow key={conversation.type + ':' + conversation.id} conversation={conversation} onMarkRead={markRead} onToggleMute={setMuted} onLeave={requestLeave} />)}</ul>
+            </section>)}
+            {visible.length > shown && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => setShown(value => value + PAGE_SIZE)}>Load more conversations</Button>}
+          </div>}
+        </div>
+        {conversations.length > 0 && <div className="flex min-h-12 items-center justify-between gap-2 border-t border-border/50 px-4 text-xs text-muted-foreground sm:px-5">
+          <span role="status">{refreshing ? 'Updating chats…' : loading ? 'Loading more chats…' : filtered ? visible.length + (visible.length === 1 ? ' conversation' : ' conversations') : 'Chats update automatically'}</span>
+          <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Refresh conversations" disabled={refreshing || loading} onClick={refetch}><RefreshCw aria-hidden className={cn('h-4 w-4', refreshing && 'animate-spin motion-reduce:animate-none')} /></Button>
+        </div>}
+      </section>
+      <aside aria-label="Your social circle" className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <div className="rounded-3xl border border-border/60 bg-card p-5">
+          <div className="mb-4 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Users className="h-5 w-5" aria-hidden /></span><div><h2 className="font-semibold tracking-tight">Your circle</h2><p className="text-xs text-muted-foreground">Stay close to your court crew.</p></div></div>
+          {pendingRequests.length > 0 && <button type="button" onClick={() => navigate('/player/friends?tab=requests')} className="mb-3 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl bg-primary/10 px-3 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary"><span>{pendingRequests.length} friend {pendingRequests.length === 1 ? 'request' : 'requests'}</span><ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden /></button>}
+          <QuickLink icon={Users} label="Friends" detail={friends.length ? friends.length + ' in your circle' : 'Find familiar faces'} onClick={() => navigate('/player/friends')} />
+          <QuickLink icon={UserPlus} label="Find players" detail="Connect for your next game" onClick={() => navigate('/player/friends?connect=1')} />
+          <QuickLink icon={Compass} label="Communities" detail="Find a crew. Join the conversation." onClick={() => navigate('/player/community?view=explore')} />
+        </div>
       </aside>
-
       <MessageFriendPickerSheet open={pickerOpen} onOpenChange={setPickerOpen} />
+      <AlertDialog open={!!leaving} onOpenChange={open => { if (!open && !leaveLock.current) setLeaving(null); }}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Leave this conversation?</AlertDialogTitle><AlertDialogDescription>The chat with {leaving?.title} will leave your inbox and you'll stop receiving its message notifications.</AlertDialogDescription></AlertDialogHeader>
+          {leaveError && <p role="alert" className="text-sm text-destructive">Couldn't leave this conversation. Please try again.</p>}
+          <AlertDialogFooter><AlertDialogCancel disabled={saving}>Keep conversation</AlertDialogCancel><AlertDialogAction disabled={saving} onClick={event => { event.preventDefault(); void confirmLeave(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}Leave conversation</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
-function FilterChip({
-  active, onClick, label, count, accent,
-}: { active: boolean; onClick: () => void; label: string; count: number; accent?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] transition-[transform,color,background-color,border-color] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none",
-        active
-          ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.6)]"
-          : "bg-card/70 text-muted-foreground border-border/50 hover:text-foreground hover:bg-card",
-      )}
-    >
-      {label}
-      {count > 0 && (
-        <span className={cn(
-          "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold",
-          active
-            ? "bg-primary-foreground/20 text-primary-foreground"
-            : accent
-              ? "bg-primary/15 text-primary"
-              : "bg-muted text-muted-foreground",
-        )}>
-          {count}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function EmptyState({ onCompose, isFiltered }: { onCompose: () => void; isFiltered: boolean }) {
-  return (
-    <SocialEmptyState
-      icon={isFiltered ? Search : MessageCircle}
-      title={isFiltered ? "No chats here" : "No conversations yet"}
-      description={
-        isFiltered
-          ? "Try a different filter or search term."
-          : "Message a friend or join a community group to start chatting."
-      }
-      action={
-        isFiltered ? undefined : (
-          <Button onClick={onCompose} className="rounded-full btn-premium">
-            <PenSquare className="h-4 w-4 mr-1.5" />
-            New message
-          </Button>
-        )
-      }
-    />
-  );
+function QuickLink({ icon: Icon, label, detail, onClick }: { icon: typeof Users; label: string; detail: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="flex min-h-16 w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Icon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block text-sm font-medium">{label}</span><span className="mt-0.5 block text-xs text-muted-foreground">{detail}</span></span><ArrowUpRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" /></button>;
 }

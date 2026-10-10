@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
-import { motion } from "framer-motion";
+import { memo } from "react";
 import {
   Users, BellOff, MoreVertical, Check, ArrowUpRight,
 } from "lucide-react";
@@ -14,6 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import type { SocialConversation } from "@/lib/social/inbox";
+import { inboxCount } from "@/lib/social/inbox";
+import { conversationTime } from "@/lib/social/conversationTime";
 
 const initials = (n: string) =>
   (n || "U").split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
@@ -24,7 +25,7 @@ const initials = (n: string) =>
  * the conversation; the overflow menu carries per-type actions (DMs can be
  * marked read / muted / left; groups link to their Community page).
  */
-export function ConversationRow({
+export const ConversationRow = memo(function ConversationRow({
   conversation,
   onMarkRead,
   onToggleMute,
@@ -39,6 +40,7 @@ export function ConversationRow({
   const c = conversation;
   const isGroup = c.type === "group";
   const hasUnread = c.unreadCount > 0;
+  const time = conversationTime(c.lastActivityAt);
 
   const open = () => {
     haptic("tap");
@@ -50,15 +52,12 @@ export function ConversationRow({
   };
 
   return (
-    <motion.li
-      layout
-      whileTap={{ scale: 0.99 }}
+    <li
       className={cn(
-        "group relative flex min-h-[76px] items-center gap-2.5 rounded-2xl border p-3 transition-[background-color,border-color]",
-        "shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)]",
+        "group relative flex min-h-[88px] items-center gap-1 rounded-2xl border p-3 transition-colors sm:gap-2 sm:p-4",
         hasUnread
-          ? "bg-card/85 border-primary/35 shadow-[0_2px_18px_-10px_hsl(var(--primary)/0.45)]"
-          : "bg-card/70 border-border/50 hover:bg-card",
+          ? "bg-primary/[0.045] border-primary/25"
+          : "bg-card border-border/50 hover:border-primary/20 hover:bg-muted/25",
       )}
     >
       {hasUnread && (
@@ -68,66 +67,58 @@ export function ConversationRow({
       <button
         onClick={open}
         className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}`}
+        type="button"
+        aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}${hasUnread ? `, ${inboxCount(c.unreadCount)} unread messages` : ''}`}
       >
         <div className="relative shrink-0">
-          <Avatar className="h-12 w-12 ring-1 ring-border/60">
-            <AvatarImage src={c.avatarUrl || undefined} />
+          <Avatar className="h-11 w-11 ring-1 ring-border/60 sm:h-12 sm:w-12">
+            <AvatarImage src={c.avatarUrl || undefined} alt="" />
             <AvatarFallback className={cn(isGroup && "bg-primary/10 text-primary")}>
               {isGroup ? <Users className="h-5 w-5" /> : initials(c.title)}
             </AvatarFallback>
           </Avatar>
+          {isGroup && <span aria-hidden className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-muted text-foreground"><Users className="h-3 w-3" /></span>}
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <p className={cn(
-                "text-sm truncate",
+                "text-sm truncate leading-5",
                 hasUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90",
               )}>
                 {c.title}
               </p>
-              {isGroup && (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Group
-                </span>
-              )}
               {c.isMuted && (
                 <BellOff className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Muted" />
               )}
             </div>
-            <span className="text-[11px] text-muted-foreground shrink-0">
-              {formatDistanceToNow(new Date(c.lastActivityAt), { addSuffix: false })}
-            </span>
           </div>
           {c.lastMessagePreview ? (
             <p className={cn(
-              "text-xs truncate mt-0.5",
+              "text-[13px] leading-5 line-clamp-2 mt-1 [overflow-wrap:anywhere]",
               hasUnread ? "text-foreground/90 font-medium" : "text-muted-foreground",
             )}>
               {c.lastMessagePreview}
             </p>
           ) : (
             <p className="text-xs italic text-muted-foreground mt-0.5">
-              {isGroup ? "No messages yet" : "Say hi 👋"}
+              {isGroup ? "Start the conversation" : "Send your first message"}
             </p>
           )}
         </div>
       </button>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {hasUnread && (
-          <Badge className="bg-primary text-primary-foreground text-[10px] h-5 min-w-[20px] justify-center px-1.5">
-            {c.unreadCount > 99 ? "99+" : c.unreadCount}
-          </Badge>
-        )}
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <time dateTime={time.iso} title={time.full} className="text-[10px] tabular-nums text-muted-foreground sm:text-[11px]">{time.short}</time>
+        <div className="flex items-center gap-1">
+        {hasUnread && <Badge aria-hidden className="h-5 min-w-5 justify-center bg-primary px-1.5 text-[10px] text-primary-foreground">{inboxCount(c.unreadCount)}</Badge>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 opacity-60 hover:opacity-100 active:scale-95"
+              className="h-11 w-11 rounded-xl text-muted-foreground hover:text-foreground"
               aria-label={`Actions for ${c.title}`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -161,7 +152,8 @@ export function ConversationRow({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
-    </motion.li>
+    </li>
   );
-}
+});
