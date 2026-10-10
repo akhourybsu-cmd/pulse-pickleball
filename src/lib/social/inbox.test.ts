@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { conversationTime } from './conversationTime';
 import {
   dmToConversation,
   groupToConversation,
@@ -6,6 +7,8 @@ import {
   filterConversations,
   messagePreview,
   totalUnread,
+  inboxFilter,
+  inboxCount,
   type DmSource,
   type GroupSource,
 } from "./inbox";
@@ -94,6 +97,15 @@ describe("social inbox — sort + filter", () => {
     expect(filterConversations(list, "muted", "").map((c) => c.id)).toEqual(["b"]);
   });
 
+  it('combines direct/group filters with search and rejects unknown URL filters', () => {
+    expect(filterConversations(list, 'direct', '').map(c => c.id)).toEqual(['a', 'b']);
+    expect(filterConversations(list, 'groups', 'crew').map(c => c.id)).toEqual(['c']);
+    expect(filterConversations(list, 'groups', 'newest')).toEqual([]);
+    expect(inboxFilter('direct')).toBe('direct');
+    expect(inboxFilter('invalid')).toBe('all'); expect(inboxFilter(null)).toBe('all');
+    expect(inboxCount(100)).toBe('99+'); expect(inboxCount(2)).toBe('2');
+  });
+
   it("search matches title and preview", () => {
     expect(filterConversations(list, "all", "ladder").map((c) => c.id)).toEqual(["c"]);
     expect(filterConversations(list, "all", "newest").map((c) => c.id)).toEqual(["b"]);
@@ -102,4 +114,16 @@ describe("social inbox — sort + filter", () => {
   it("totalUnread sums across dm + group", () => {
     expect(totalUnread(list)).toBe(4);
   });
+});
+
+it('formats compact timestamps without throwing on missing or invalid activity', () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 9, 12));
+  try {
+    expect(conversationTime(new Date(2026, 9, 9, 10).toISOString()).short).toContain('10:00');
+    expect(conversationTime(new Date(2026, 9, 8, 10).toISOString()).short).toBe('Yesterday');
+    expect(conversationTime(new Date(2026, 8, 8, 10).toISOString()).short).toBe('Sep 8');
+    expect(conversationTime(new Date(2025, 8, 8, 10).toISOString()).short).toBe('Sep 8, 25');
+    expect(conversationTime('invalid')).toEqual({ short: '' });
+    expect(conversationTime('')).toEqual({ short: '' });
+  } finally { vi.useRealTimers(); }
 });

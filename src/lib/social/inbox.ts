@@ -125,7 +125,7 @@ export function sortConversations(list: SocialConversation[]): SocialConversatio
   });
 }
 
-export type InboxFilter = "all" | "unread" | "muted";
+export type InboxFilter = "all" | "unread" | "direct" | "groups" | "muted";
 
 /** Apply the active filter + a case-insensitive title/preview search. */
 export function filterConversations(
@@ -135,6 +135,8 @@ export function filterConversations(
 ): SocialConversation[] {
   let out = list;
   if (filter === "unread") out = out.filter((c) => c.unreadCount > 0);
+  else if (filter === "direct") out = out.filter((c) => c.type === "dm");
+  else if (filter === "groups") out = out.filter((c) => c.type === "group");
   else if (filter === "muted") out = out.filter((c) => c.isMuted);
   const q = query.trim().toLowerCase();
   if (q) {
@@ -151,3 +153,11 @@ export function filterConversations(
 export function totalUnread(list: SocialConversation[]): number {
   return list.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 }
+
+export const INBOX_FILTERS: readonly InboxFilter[] = ['all', 'unread', 'direct', 'groups', 'muted'];
+export function inboxFilter(value: string | null): InboxFilter {
+  return INBOX_FILTERS.includes(value as InboxFilter) ? value as InboxFilter : 'all';
+}
+
+/** Compact, bounded badges also represent the server's 100-message ceiling. */
+export const inboxCount = (count: number) => count > 99 ? '99+' : String(count);
