@@ -37,3 +37,13 @@ it('does not reset the page for a league hash-only tab change', () => {
   act(() => navigate('/player/leagues/a#schedule', { replace: true }));
   expect(browser.scrollTo).not.toHaveBeenCalled();
 });
+it('uses the latest reading position on Back after a contextual return', () => {
+  const destination = '/player/leagues/scroll-regression?season=fall#standings';
+  act(() => navigate(destination, { replace: true, state: { restoreScrollY: 750, restoreScrollFor: destination } }));
+  frame(); expect(browser.scrollY).toBe(750);
+  browser.scrollY = 1200;
+  browser.dispatchEvent(new Event('scroll')); frame();
+  act(() => navigate('/player/groups/scroll-regression'));
+  act(() => navigate(-1)); frame();
+  expect(browser.scrollY).toBe(1200);
+});

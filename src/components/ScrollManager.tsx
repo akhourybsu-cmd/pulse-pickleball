@@ -57,7 +57,11 @@ export function ScrollManager() {
     const requested = location.state?.restoreScrollY;
     const explicitRestore = location.state?.restoreScrollFor === key + location.hash &&
       typeof requested === 'number' && Number.isFinite(requested) && requested >= 0;
-    const saved = explicitRestore ? requested : positions.get(key);
+    // A fallback return leaves its initial position in history.state. On a
+    // later Back/Forward, prefer where the reader most recently scrolled.
+    const saved = navType === 'POP'
+      ? positions.get(key) ?? (explicitRestore ? requested : undefined)
+      : explicitRestore ? requested : positions.get(key);
     const shouldRestore =
       explicitRestore || navType === "POP" || (saved != null && isPrimaryTabPath(location.pathname));
 

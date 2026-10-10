@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
+import { format, isToday, isTomorrow, differenceInHours, parseISO } from "date-fns";
 import { 
   AlertCircle, 
   Calendar, 
@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { MatchVerificationDialog } from "./MatchVerificationDialog";
 import { matchHistoryPath } from '@/lib/navigation/matchLink';
+import { withAuthDeadline } from '@/lib/authDeadline';
+import { Button } from '@/components/ui/button';
 
 interface ActionItem {
   id: string;
@@ -62,14 +64,21 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
   const [alerts, setAlerts] = useState<ActionItem[]>([]);
   const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedFor, setLoadedFor] = useState<string>();
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setVerifyDialogOpen(false);
+    setSelectedMatchId(null);
     if (!userId) return;
 
-    const fetchActivity = async () => {
-      setLoading(true);
+    setLoading(true);
+    setError(false);
+    const fetchActivity = async (signal: AbortSignal) => {
       const actions: ActionItem[] = [];
       const timeAlerts: ActionItem[] = [];
       const updates: SystemUpdate[] = [];
@@ -95,12 +104,12 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
             )
           `)
           .eq("player_id", userId)
-          .eq("matches.status", "pending"),
+          .eq("matches.status", "pending").abortSignal(signal),
         supabase
           .from("round_robin_players")
           .select("event_id")
           .eq("player_id", userId)
-          .eq("active", true),
+          .eq("active", true).abortSignal(signal),
         supabase
           .from("match_participants")
           .select(`
@@ -118,7 +127,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           .eq("matches.status", "approved")
           .gte("matches.updated_at", sevenDaysAgo.toISOString())
           .order("created_at", { ascending: false })
-          .limit(5),
+          .limit(5).abortSignal(signal),
         supabase
           .from("round_robin_players")
           .select("id, joined_at, event_id")
@@ -126,8 +135,12 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
           .eq("active", true)
           .gte("joined_at", sevenDaysAgo.toISOString())
           .order("joined_at", { ascending: false })
-          .limit(3),
+          .limit(3).abortSignal(signal),
       ]);
+
+      for (const result of [pendingResult, upcomingResult, approvedResult, registrationsResult]) {
+        if (result.error) throw result.error;
+      }
 
       const pendingMatches = pendingResult.data;
       const recentApprovedMatches = approvedResult.data;
@@ -139,16 +152,16 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
         ? await supabase
             .from("round_robin_events")
             .select("id, name, date, start_time, location")
-            .in("id", rrEventIds)
+            .in("id", rrEventIds).abortSignal(signal)
         : { data: [], error: null };
       if (rrEventsResult.error) {
-        console.error("Failed to hydrate round-robin activity", rrEventsResult.error);
+        throw rrEventsResult.error;
       }
       const rrEventsById = new Map(
         (rrEventsResult.data ?? []).map((event) => [event.id, event as ActivityEvent]),
       );
-      const today = now.toISOString().split("T")[0];
-      const endDate = in48Hours.toISOString().split("T")[0];
+      const today = format(now, 'yyyy-MM-dd');
+      const endDate = format(in48Hours, 'yyyy-MM-dd');
       const upcomingRREvents = (upcomingResult.data ?? [])
         .map((registration) => ({ event: rrEventsById.get(registration.event_id) }))
         .filter(({ event }) => event && event.date >= today && event.date <= endDate);
@@ -168,7 +181,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               id: `verify-${match.id}`,
               type: "verify_match",
               title: "Verify Match Result",
-              description: `${match.team1_score}-${match.team2_score} on ${format(new Date(match.match_date), "MMM d")}`,
+              description: `${match.team1_score}-${match.team2_score} on ${format(parseISO(match.match_date), "MMM d")}`,
               link: `/player/matches`,
               matchId: match.id,
               urgency: "high",
@@ -181,21 +194,24 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       if (upcomingRREvents) {
         for (const reg of upcomingRREvents) {
           const event = reg.event as unknown as ActivityEvent;
-          const eventDate = new Date(event.date);
+          // Database dates are local calendar dates, not UTC midnight.
+          const eventDate = parseISO(`${event.date}${event.start_time ? `T${event.start_time}` : ''}`);
+          if (event.start_time && (eventDate < now || eventDate > in48Hours)) continue;
           const hoursUntil = differenceInHours(eventDate, now);
+          const timeLabel = event.start_time ? ` at ${format(eventDate, 'h:mm a')}` : '';
           
           timeAlerts.push({
             id: `event-${event.id}`,
             type: "event_soon",
             title: event.name,
             description: isToday(eventDate) 
-              ? `Today${event.start_time ? ` at ${event.start_time}` : ''}`
+              ? `Today${timeLabel}`
               : isTomorrow(eventDate)
-              ? `Tomorrow${event.start_time ? ` at ${event.start_time}` : ''}`
-              : format(eventDate, "EEE, MMM d"),
+              ? `Tomorrow${timeLabel}`
+              : `${format(eventDate, "EEE, MMM d")}${timeLabel}`,
             link: `/round-robin/${event.id}`,
-            urgency: hoursUntil < 12 ? "high" : "medium",
-            timestamp: event.date,
+            urgency: event.start_time && hoursUntil < 12 ? "high" : "medium",
+            timestamp: eventDate.toISOString(),
           });
         }
       }
@@ -238,17 +254,40 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       timeAlerts.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
       updates.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      setActionItems(actions);
-      setAlerts(timeAlerts);
-      setSystemUpdates(updates.slice(0, 5));
-      setLoading(false);
+      return { actions, timeAlerts, updates: updates.slice(0, 5) };
     };
 
-    fetchActivity();
-  }, [userId]);
+    void withAuthDeadline(fetchActivity).then(({ actions, timeAlerts, updates }) => {
+      if (cancelled) return;
+      setActionItems(actions);
+      setAlerts(timeAlerts);
+      setSystemUpdates(updates);
+    }).catch(() => {
+      if (!cancelled) setError(true);
+    }).finally(() => {
+      if (cancelled) return;
+      setLoadedFor(userId);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [userId, attempt]);
 
-  if (loading) {
+  if (!userId) return null;
+
+  if (loading || loadedFor !== userId) {
     return <DashboardModuleSkeleton count={2} />;
+  }
+
+  if (error) {
+    return (
+      <div className="px-3 py-6 text-center" role="status">
+        <p className="text-sm font-semibold">Activity couldn't load</p>
+        <p className="mt-1 text-xs text-muted-foreground">Check your connection and try again.</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => setAttempt(value => value + 1)}>
+          Try again
+        </Button>
+      </div>
+    );
   }
 
   const hasContent = actionItems.length > 0 || alerts.length > 0 || systemUpdates.length > 0;
