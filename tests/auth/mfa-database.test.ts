@@ -53,8 +53,17 @@ beforeAll(async () => {
     CREATE TABLE public.mfa_verification_codes(code text); GRANT ALL ON public.mfa_verification_codes TO authenticated;
     CREATE FUNCTION public.insert_mfa_code(uuid,text,text,timestamptz) RETURNS uuid LANGUAGE sql AS $$ SELECT $1 $$;
     CREATE FUNCTION public.verify_and_use_mfa_code(uuid,text,text) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
+    CREATE TABLE public.leagues(id uuid PRIMARY KEY, created_by uuid REFERENCES public.profiles ON DELETE CASCADE, visibility text);
+    CREATE TABLE public.league_members(league_id uuid, user_id uuid, status text);
+    CREATE TABLE public.league_substitutes(league_id uuid, user_id uuid, status text);
+    CREATE FUNCTION public.is_league_admin(uuid,uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+      SELECT EXISTS (SELECT 1 FROM public.leagues WHERE id=$1 AND created_by=$2)
+    $$;
   `);
   await db.exec(readFileSync(new URL('../../supabase/migrations/20260922200000_enforce_session_mfa.sql', import.meta.url), 'utf8'));
+  // Feed is created after the global MFA migration, as it is in production.
+  await db.exec(readFileSync(new URL('../../supabase/migrations/20261010010000_league_update_feed.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../../supabase/migrations/20261010011000_league_feed_mfa_policy.sql', import.meta.url), 'utf8'));
 }, 30_000);
 beforeEach(async () => {
   await admin('TRUNCATE auth.users CASCADE');
@@ -66,10 +75,33 @@ beforeEach(async () => {
   await admin("INSERT INTO public.lookup VALUES ('public')");
   await admin('INSERT INTO storage.objects VALUES ($1),($2)', [a, b]);
   await admin('INSERT INTO realtime.messages VALUES ($1),($2)', [a, b]);
+  await admin("INSERT INTO leagues VALUES ($1,$1,'private'),($2,$2,'private')", [a, b]);
+  await admin("INSERT INTO league_posts(id,league_id,author_id,content) VALUES($1,$2,$2,'League A update'),($3,$4,$4,'League B update')", [s1, a, sb, b]);
 });
 afterAll(async () => { await db?.close(); });
 
 describe('server-enforced session verification', () => {
+  it('requires a verified session to read the new league feed, while preserving league isolation', async () => {
+    await actor(); expect((await db.query('SELECT content FROM league_posts')).rows).toHaveLength(0);
+    expect(await issue()).toMatchObject({ ok: true }); expect(await verify()).toMatchObject({ ok: true });
+    await actor(); expect((await db.query('SELECT content FROM league_posts')).rows).toEqual([{ content: 'League A update' }]);
+    await actor(a, s2); expect((await db.query('SELECT content FROM league_posts')).rows).toHaveLength(0);
+    await actor(b, sb); expect((await db.query('SELECT content FROM league_posts')).rows).toEqual([{ content: 'League B update' }]);
+    const policies = await admin("SELECT permissive FROM pg_policies WHERE tablename='league_posts' AND policyname='pulse_required_mfa'");
+    expect(policies.rows).toEqual([{ permissive: 'RESTRICTIVE' }]);
+  });
+  it('guards feed mutation endpoints through the existing API pre-request check', async () => {
+    await actor();
+    for (const name of ['create_league_post', 'update_league_post', 'delete_league_post']) {
+      await db.query("SELECT set_config('request.path',$1,false)", [`/rpc/${name}`]);
+      await expect(db.query('SELECT public.pulse_enforce_mfa()')).rejects.toMatchObject({ code: '42501' });
+    }
+    await issue(); await verify(); await actor();
+    await db.query("SELECT set_config('request.path','/rpc/create_league_post',false)");
+    await expect(db.query('SELECT public.pulse_enforce_mfa()')).resolves.toBeDefined();
+    await db.query("SELECT public.create_league_post($1,'Verified organizer update',$2)", [a, challenge]);
+    expect((await db.query('SELECT content FROM league_posts ORDER BY content')).rows).toEqual([{ content: 'League A update' }, { content: 'Verified organizer update' }]);
+  });
   it('blocks opted-in users at row policies and pre-request while allowing their status check', async () => {
     await actor(); expect((await status()).verified).toBe(false);
     for (const table of ['profiles', 'private_data', 'lookup', 'storage.objects', 'realtime.messages']) expect((await db.query(`SELECT * FROM ${table}`)).rows).toHaveLength(0);
